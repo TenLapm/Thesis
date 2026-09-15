@@ -1,0 +1,27 @@
+{
+"environment":{"unity":"6000.4.10f1","os":"Windows 10  (10.0.19045) 64bit","cpu":"Intel(R) Core(TM) i7-8750H CPU @ 2.20GHz","cores":12,"ramMB":32562,"gpu":"NVIDIA GeForce GTX 1050 Ti","mode":"Editor play mode (vSync off, uncapped)"},
+"rebuildSweep":[
+ {"size":25,"density":0,"meanMs":1.0078,"minMs":0.7397,"maxMs":2.0663},
+ {"size":25,"density":0.1,"meanMs":1.1496,"minMs":0.8791,"maxMs":1.4531},
+ {"size":25,"density":0.25,"meanMs":1.2814,"minMs":1.0331,"maxMs":1.668},
+ {"size":38,"density":0,"meanMs":2.5608,"minMs":1.7049,"maxMs":5.5961},
+ {"size":38,"density":0.1,"meanMs":2.9224,"minMs":2.1937,"maxMs":3.5404},
+ {"size":38,"density":0.25,"meanMs":4.172,"minMs":3.0233,"maxMs":12.0119},
+ {"size":50,"density":0,"meanMs":3.9085,"minMs":3.0162,"maxMs":4.4341},
+ {"size":50,"density":0.1,"meanMs":3.8283,"minMs":3.3693,"maxMs":5.3014},
+ {"size":50,"density":0.25,"meanMs":6.0922,"minMs":4.8742,"maxMs":6.8181},
+ {"size":75,"density":0,"meanMs":8.9018,"minMs":6.8977,"maxMs":11.7625},
+ {"size":75,"density":0.1,"meanMs":11.6076,"minMs":8.2407,"maxMs":40.8415},
+ {"size":75,"density":0.25,"meanMs":12.1846,"minMs":9.8529,"maxMs":15.2762},
+ {"size":100,"density":0,"meanMs":17.7004,"minMs":13.1228,"maxMs":44.838},
+ {"size":100,"density":0.1,"meanMs":19.5983,"minMs":14.1763,"maxMs":44.3591},
+ {"size":100,"density":0.25,"meanMs":40.2473,"minMs":32.2581,"maxMs":77.3718}],
+"astarComparison":{"gridSize":38,"wallDensity":0.10,"fieldRebuildMs":2.807,"runs":[{"agents":100,"totalMs":10.5515,"perAgentMs":0.1055},{"agents":500,"totalMs":64.7664,"perAgentMs":0.1295},{"agents":1000,"totalMs":153.1196,"perAgentMs":0.1531}]},
+"agentTiers":[
+ {"agents":100,"frames":672,"avgMs":5.9576,"fps":167.8516,"p95Ms":7.3547,"worstMs":8.6639},
+ {"agents":250,"frames":385,"avgMs":10.3951,"fps":96.1993,"p95Ms":12.3098,"worstMs":15.911},
+ {"agents":500,"frames":231,"avgMs":17.3324,"fps":57.6955,"p95Ms":19.726,"worstMs":20.8859},
+ {"agents":1000,"frames":89,"avgMs":45.1437,"fps":22.1515,"p95Ms":56.9425,"worstMs":62.614}],
+"dynamicEdits":{"agents":500,"edits":16,"frames":180,"avgMs":44.4473,"fps":22.4985,"p95Ms":50.86,"worstMs":85.1802},
+"done":true
+}

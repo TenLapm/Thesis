@@ -1,0 +1,14 @@
+{
+"scenario":"ChokePoints",
+"label":"Choke",
+"environment":{"unity":"6000.4.10f1","os":"Windows 10  (10.0.19045) 64bit","cpu":"Intel(R) Core(TM) i7-8750H CPU @ 2.20GHz","cores":12,"ramMB":32562,"gpu":"NVIDIA GeForce GTX 1050 Ti","mode":"Editor play mode (vSync off, uncapped)"},
+"grid":{"x":38,"y":38,"nodes":1444,"walls":105,"scatterDensity":0},
+"rebuild":{"iterations":50,"meanMs":5.2056,"minMs":3.4285,"maxMs":7.7054},
+"path":{"tiles":59,"costTileUnits":67.8},
+"tiers":[
+ {"agents":100,"frames":631,"avgMs":6.3473,"fps":157.5465,"p95Ms":8.0614,"worstMs":13.8405},
+ {"agents":250,"frames":403,"avgMs":9.9517,"fps":100.4856,"p95Ms":11.8584,"worstMs":14.6822},
+ {"agents":500,"frames":256,"avgMs":15.6548,"fps":63.8782,"p95Ms":18.6282,"worstMs":21.8197},
+ {"agents":1000,"frames":98,"avgMs":40.8909,"fps":24.4553,"p95Ms":45.5232,"worstMs":48.3612}],
+"done":true
+}

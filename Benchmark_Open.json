@@ -1,0 +1,14 @@
+{
+"scenario":"OpenField",
+"label":"Open",
+"environment":{"unity":"6000.4.10f1","os":"Windows 10  (10.0.19045) 64bit","cpu":"Intel(R) Core(TM) i7-8750H CPU @ 2.20GHz","cores":12,"ramMB":32562,"gpu":"NVIDIA GeForce GTX 1050 Ti","mode":"Editor play mode (vSync off, uncapped)"},
+"grid":{"x":38,"y":38,"nodes":1444,"walls":0,"scatterDensity":0},
+"rebuild":{"iterations":50,"meanMs":2.0447,"minMs":1.5594,"maxMs":2.6287},
+"path":{"tiles":35,"costTileUnits":35},
+"tiers":[
+ {"agents":100,"frames":713,"avgMs":5.6162,"fps":178.0564,"p95Ms":6.7731,"worstMs":26.0144},
+ {"agents":250,"frames":352,"avgMs":11.3903,"fps":87.7937,"p95Ms":15.8971,"worstMs":41.9298},
+ {"agents":500,"frames":240,"avgMs":16.7396,"fps":59.7384,"p95Ms":21.2938,"worstMs":36.6665},
+ {"agents":1000,"frames":103,"avgMs":39.0824,"fps":25.5869,"p95Ms":43.0734,"worstMs":45.9702}],
+"done":true
+}
