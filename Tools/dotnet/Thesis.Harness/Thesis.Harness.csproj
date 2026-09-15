@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>netstandard2.1</TargetFramework>
+    <AssemblyName>Thesis.Harness</AssemblyName>
+    <RootNamespace>Thesis.Harness</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="$(ThesisAssets)Thesis\Harness\**\*.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <!-- Mirrors Thesis.Harness.asmdef references. -->
+    <ProjectReference Include="..\Thesis.Core\Thesis.Core.csproj" />
+    <ProjectReference Include="..\Thesis.Sim\Thesis.Sim.csproj" />
+    <ProjectReference Include="..\Thesis.Learning\Thesis.Learning.csproj" />
+    <ProjectReference Include="..\Thesis.Director\Thesis.Director.csproj" />
+  </ItemGroup>
+</Project>

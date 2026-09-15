@@ -1,0 +1,21 @@
+<Project>
+  <!--
+    Headless build of the pure Thesis.* assemblies (Docs/ARCHITECTURE.md §2.2).
+    Each csproj compiles the SAME source files Unity compiles from Assets/Thesis/.
+    These settings deliberately mirror Unity 6000.4 so code that builds here also
+    builds in Unity:
+      - LangVersion 9.0    Unity's C# version: no records, init, file-scoped namespaces.
+      - netstandard2.1     Unity's API surface: .NET 9-only APIs fail here first.
+      - no UnityEngine     `using UnityEngine` fails here too (I3).
+  -->
+  <PropertyGroup>
+    <LangVersion>9.0</LangVersion>
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <Deterministic>true</Deterministic>
+    <CheckForOverflowUnderflow>false</CheckForOverflowUnderflow>
+    <ThesisAssets>$(MSBuildThisFileDirectory)..\..\Assets\</ThesisAssets>
+    <NewtonsoftVersion>13.0.2</NewtonsoftVersion>
+  </PropertyGroup>
+</Project>

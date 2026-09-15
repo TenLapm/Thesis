@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>netstandard2.1</TargetFramework>
+    <AssemblyName>Thesis.Core</AssemblyName>
+    <RootNamespace>Thesis.Core</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="$(ThesisAssets)Thesis\Core\**\*.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <!-- Same version Unity's com.unity.nuget.newtonsoft-json 3.2.2 bundles. -->
+    <PackageReference Include="Newtonsoft.Json" Version="$(NewtonsoftVersion)" />
+  </ItemGroup>
+</Project>

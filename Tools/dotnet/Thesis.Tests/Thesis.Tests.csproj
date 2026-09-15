@@ -1,0 +1,30 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net9.0</TargetFramework>
+    <AssemblyName>Thesis.Tests</AssemblyName>
+    <RootNamespace>Thesis.Tests</RootNamespace>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+  </PropertyGroup>
+  <ItemGroup>
+    <!-- The same test files Unity runs as Thesis.Tests.EditMode. -->
+    <Compile Include="$(ThesisAssets)Tests\EditMode\**\*.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <!--
+      NUnit 3.x only. Unity's test framework ships a customised NUnit 3.5, so tests
+      must stick to classic asserts (Assert.AreEqual / Assert.That / Assert.Throws).
+      NUnit 4 removed the classic asserts and would let incompatible code through.
+    -->
+    <PackageReference Include="NUnit" Version="3.14.0" />
+    <PackageReference Include="NUnit3TestAdapter" Version="4.6.0" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.11.1" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Thesis.Core\Thesis.Core.csproj" />
+    <ProjectReference Include="..\Thesis.Sim\Thesis.Sim.csproj" />
+    <ProjectReference Include="..\Thesis.Learning\Thesis.Learning.csproj" />
+    <ProjectReference Include="..\Thesis.Director\Thesis.Director.csproj" />
+    <ProjectReference Include="..\Thesis.Harness\Thesis.Harness.csproj" />
+  </ItemGroup>
+</Project>

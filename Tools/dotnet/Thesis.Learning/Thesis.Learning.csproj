@@ -1,0 +1,14 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>netstandard2.1</TargetFramework>
+    <AssemblyName>Thesis.Learning</AssemblyName>
+    <RootNamespace>Thesis.Learning</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="$(ThesisAssets)Thesis\Learning\**\*.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <!-- Mirrors Thesis.Learning.asmdef. Must never reference Sim or Director (I3). -->
+    <ProjectReference Include="..\Thesis.Core\Thesis.Core.csproj" />
+  </ItemGroup>
+</Project>

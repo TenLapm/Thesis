@@ -1,0 +1,23 @@
+{
+    "name": "Thesis.Harness",
+    "rootNamespace": "Thesis.Harness",
+    "references": [
+        "Thesis.Core",
+        "Thesis.Sim",
+        "Thesis.Learning",
+        "Thesis.Director"
+    ],
+    "includePlatforms": [
+        "Editor"
+    ],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": true,
+    "precompiledReferences": [
+        "Newtonsoft.Json.dll"
+    ],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": true
+}

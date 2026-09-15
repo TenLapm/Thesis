@@ -104,3 +104,13 @@ InitTestScene*.unity*
 
 # Auto-generated cache in Assets folder
 /[Aa]ssets/[Ss]ceneDependencyCache*
+
+# Headless dotnet build of the pure Thesis.* assemblies (Docs/ARCHITECTURE.md §2.2).
+# The *.csproj / *.sln rules above target Unity's generated files; these are hand-written.
+!/Tools/dotnet/**/*.csproj
+!/Tools/dotnet/*.sln
+/Tools/dotnet/**/bin/
+/Tools/dotnet/**/obj/
+
+# Raw run output (telemetry, replays). Curated results live in /Results and are committed.
+/Runs/

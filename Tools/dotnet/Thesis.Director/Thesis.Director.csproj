@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>netstandard2.1</TargetFramework>
+    <AssemblyName>Thesis.Director</AssemblyName>
+    <RootNamespace>Thesis.Director</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="$(ThesisAssets)Thesis\Director\**\*.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <!-- Mirrors Thesis.Director.asmdef references. -->
+    <ProjectReference Include="..\Thesis.Core\Thesis.Core.csproj" />
+    <ProjectReference Include="..\Thesis.Sim\Thesis.Sim.csproj" />
+    <ProjectReference Include="..\Thesis.Learning\Thesis.Learning.csproj" />
+  </ItemGroup>
+</Project>
