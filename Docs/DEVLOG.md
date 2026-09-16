@@ -116,3 +116,84 @@ Probe: GetNeighbors loops swapped                             → 4 failed (orde
 ```
 
 **Known issues:** none. Nothing is committed yet.
+
+---
+
+## 2026-09-16 — WP2 Agents, placement, shape bag, economy
+
+**Changed**
+- `Thesis.Sim`: `Commands/SimCommand.cs` and `Events/SimEvent.cs` (the full command/event
+  enums from ARCHITECTURE §4.5, though WP2 only raises `WallPlaced`, `WallBreached`,
+  `AgentStalled`, `AgentLeaked` — dispatch and the rest of the events are WP3's job);
+  `Stats/OccupancyMap.cs`; `Agents/AgentState.cs` and `Agents/AgentSystem.cs` (the
+  step-3 agent pass, ported from `FlowAgent.Update`); `Build/ShapeDef.cs` (mutable,
+  `Rotate()` ported verbatim, `Clone()` plays the role `Instantiate()` played),
+  `Build/ShapeBag.cs` (7-bag, preview queue, hold, ported from `BlockManager`),
+  `Build/PlacementRecord.cs`, `Build/Placement.cs` (`CanPlace`/`TryPlace`, ported
+  from `PlayerBuilder`, generalised from one spawn to `map.Spawns`).
+
+**Deviations**
+- `ShapeDef` has no separate "rotation count"; like `BlockShape`, only `LocalTiles`
+  itself encodes the current orientation. `ShapeBag` tracks `CurrentRotationTurns`/
+  `HoldRotationTurns` alongside `CurrentShape`/`HoldShape` purely so a
+  `PlacementRecord` can log a `rot` field — the original never needed this because
+  nothing in it wrote that kind of telemetry.
+- A breach used to call `GenerateFlowField()` **immediately** inside `ChewWall`, so
+  later agents in the same Unity frame already saw the new field. `AgentSystem.Step`
+  only reports `fieldDirty`; the rebuild is the caller's job, once, after every
+  agent has moved. This was already flagged as an intended change in
+  `Docs/ARCHITECTURE.md` §4.2, not a new deviation — recorded here because WP2 is
+  where it first has an observable effect (the eight-agents-on-one-tile test would
+  give a different, still-correct, credited-once result under either rule).
+- `Placement.CanPlace` protects **every** entry in `map.Spawns`, not one `spawnPoint`
+  — this was WP2's explicit brief (multi-spawn support lands properly in WP9, but
+  the legality check already had to be spawn-count-agnostic since `MapData` is).
+
+**Findings**
+- `Assets/Scripts/BlockS/` has 9 `.asset` files (`I J L O S T Z Cube Wall`), but
+  `SampleScene`'s `BlockManager.shapeLibrary` only wires up 7 of them — the
+  standard tetrominoes (`I J L O S T Z`). `Cube` and `Wall` exist as assets but are
+  not part of the live game. WP2's "7-bag" tests use a 7-shape library to match
+  what SampleScene actually plays.
+
+**Tests added:** 33 (94 total: 90 pure + a few counted differently by each runner's
+TestCase expansion — both toolchains agree at 90 distinct test methods before
+TestCase expansion, 94+ individual results after)
+- `OccupancyMapTests` (3): increment per node, reset, rejects a negative size.
+- `AgentSystemTests` (8): **two agents breach in exactly half the ticks of one**
+  (6 vs 3, hand-computed); **breach reward credited exactly once for 1, 2 and 8
+  agents sharing a tile** (this is also WP2's review probe — see below); a stalled
+  agent credits `deathReward` and never touches core HP; a leaked agent costs 1
+  core HP and pays no reward; movement with `speed*dt` more than double the tile
+  spacing still lands exactly on the next tile, never past it; a dead agent is
+  fully skipped; occupancy and `MinCostSeen` update for live agents and are left
+  untouched for one that leaks on its first tick.
+- `ShapeBagTests` (7): rotation matches `(x,y) -> (y,-x)` over all 4 turns; a
+  clone's rotation never touches its master; **every consecutive run of 7 draws is
+  a permutation of a 7-shape library** (verified across 4 bags, i.e. 28 draws);
+  rotating a drawn instance never leaks into a later draw of the same shape; hold
+  works once per piece and preserves the held piece's rotation across a swap back;
+  rejects an empty library.
+- `PlacementTests` (8, one of them a 6-case `TestCaseSource`): the legality table
+  (off-map, static blocker, existing wall, spawn, core, valid) across all 4
+  rotations of a 2-tile shape on a hand-verified map; every spawn is protected,
+  not just the first; a successful placement spends the budget, sets
+  `terrainCost`/`wallHealth`, rebuilds the field, logs one `PlacementRecord`, and
+  emits one `WallPlaced` event per tile; `digCost`/`wallHealth` are clamped to
+  their floors (2 and 0.5); an illegal or unaffordable placement changes nothing;
+  budget never goes negative across repeated placements.
+
+**Commands run**
+```
+dotnet test Tools/dotnet/Thesis.Headless.sln                  → Passed 90/90 (~0.7 s)
+Unity MCP: refresh_unity(force, compile) + read_console       → 0 errors, 0 warnings
+Unity MCP: run_tests EditMode, Thesis.Tests.EditMode           → Passed 90/90
+```
+
+**Review probe (done, as a real test rather than a throwaway check):**
+`AgentSystemTests.BreachRewardIsCreditedExactlyOnceRegardlessOfAgentCount(8)` seeds
+8 agents onto one wall tile with health 0.01 and asserts exactly one
+`WallBreached` event and a budget increase of exactly one `wallBreakReward`. Passed.
+
+**Known issues:** none. Nothing from this session is committed — the user asked
+for WP2's implementation only, not a PR this time.
