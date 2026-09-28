@@ -1558,30 +1558,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: feee3a421966283419c29b2ab1a6efde, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::WaveSpawner
-  flowManager: {fileID: 1537456298}
   spawnPoint: {fileID: 342859809}
-  blockManager: {fileID: 1537456301}
-  playerCore: {fileID: 427945556}
+  simHost: {fileID: 0}
   agentPrefab: {fileID: 6972117724143071601, guid: c089fd024713beb42bb1a70b6702ff84, type: 3}
   agentPool: []
-  agentsPerWave: 100
-  spawnDelay: 0.2
-  agentsPerWaveIncrement: 5
-  spawnDelayDecrement: 0.02
-  minSpawnDelay: 0.15
-  baseLifeTime: 60
-  lifeTimeIncrementPerWave: 4
-  maxLifeTime: 200
-  baseMoveSpeed: 1.25
-  moveSpeedIncrementPerWave: 0.0375
-  maxMoveSpeed: 2.25
-  intermissionDuration: 10
-  initialPrepDuration: 45
-  budgetStipendPerWave: 20
-  lifeTimeSafetyMargin: 5
-  currentWave: 0
-  isIntermission: 0
-  intermissionTimeRemaining: 0
 --- !u!1 &362181644
 GameObject:
   m_ObjectHideFlags: 0
@@ -2184,7 +2164,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 5fb4971865f1ada478805fd4c25d6710, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PlayerCore
-  maxHealth: 10
+  simHost: {fileID: 0}
   OnHealthChanged:
     m_PersistentCalls:
       m_Calls: []
@@ -4480,6 +4460,8 @@ GameObject:
   - component: {fileID: 1537456302}
   - component: {fileID: 1537456303}
   - component: {fileID: 1537456304}
+  - component: {fileID: 1537456306}
+  - component: {fileID: 1537456305}
   m_Layer: 0
   m_Name: GameManager
   m_TagString: Untagged
@@ -4534,11 +4516,10 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::PlayerBuilder
   gridManager: {fileID: 1537456292}
-  flowManager: {fileID: 1537456298}
   blockManager: {fileID: 1537456301}
   playerCore: {fileID: 427945556}
   speedController: {fileID: 1537456303}
-  enemySpawnPoint: {fileID: 342859809}
+  simHost: {fileID: 0}
   standardWallPrefab: {fileID: 496078158134998511, guid: b96e5fb7c6c1a3b47afc18f8a83cee89, type: 3}
   clickLayer:
     serializedVersion: 2
@@ -4702,10 +4683,7 @@ MonoBehaviour:
   - {fileID: 11400000, guid: b44e9cf2ab168d042877b40d4dbd8de8, type: 2}
   - {fileID: 11400000, guid: 24e8c53c638a3e446adf3c949e3e3440, type: 2}
   - {fileID: 11400000, guid: 98670bd331809454e89959619ddfdfa4, type: 2}
-  currentShape: {fileID: 0}
-  holdShape: {fileID: 0}
-  buildBudget: 60
-  shapeVersion: 0
+  simHost: {fileID: 0}
 --- !u!114 &1537456302
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -4761,6 +4739,40 @@ MonoBehaviour:
   heatmapAlpha: 0.55
   groundOffset: 0.04
   showHint: 1
+--- !u!114 &1537456305
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1537456291}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 36772e77f360ca6488d7c93513a30ff4, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::DirectorHost
+  condition: 0
+--- !u!114 &1537456306
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 1537456291}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 3de92d1f93aaf0a4e8d1cc2f72cf1355, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::SimHost
+  configAsset: {fileID: 11400000, guid: 86c75f7252626c1419fde6906361767e, type: 2}
+  seed: 1
+  randomSeed: 0
+  maxTicksPerFrame: 20
+  gridManager: {fileID: 0}
+  flowManager: {fileID: 0}
+  waveSpawner: {fileID: 0}
+  blockManager: {fileID: 0}
+  directorHost: {fileID: 0}
 --- !u!1 &1682529657
 GameObject:
   m_ObjectHideFlags: 0

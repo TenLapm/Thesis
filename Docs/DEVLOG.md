@@ -156,11 +156,10 @@ Probe: GetNeighbors loops swapped                             → 4 failed (orde
   not part of the live game. WP2's "7-bag" tests use a 7-shape library to match
   what SampleScene actually plays.
 
-**Tests added:** 33 (94 total: 90 pure + a few counted differently by each runner's
-TestCase expansion — both toolchains agree at 90 distinct test methods before
-TestCase expansion, 94+ individual results after)
+**Tests added:** 29 test results (61 → 90 total; both runners report 90). *(Corrected
+2026-09-29: this line originally said "33 (94 total …)", which was a miscount.)*
 - `OccupancyMapTests` (3): increment per node, reset, rejects a negative size.
-- `AgentSystemTests` (8): **two agents breach in exactly half the ticks of one**
+- `AgentSystemTests` (9 results, 7 methods): **two agents breach in exactly half the ticks of one**
   (6 vs 3, hand-computed); **breach reward credited exactly once for 1, 2 and 8
   agents sharing a tile** (this is also WP2's review probe — see below); a stalled
   agent credits `deathReward` and never touches core HP; a leaked agent costs 1
@@ -168,13 +167,13 @@ TestCase expansion, 94+ individual results after)
   spacing still lands exactly on the next tile, never past it; a dead agent is
   fully skipped; occupancy and `MinCostSeen` update for live agents and are left
   untouched for one that leaks on its first tick.
-- `ShapeBagTests` (7): rotation matches `(x,y) -> (y,-x)` over all 4 turns; a
+- `ShapeBagTests` (6): rotation matches `(x,y) -> (y,-x)` over all 4 turns; a
   clone's rotation never touches its master; **every consecutive run of 7 draws is
   a permutation of a 7-shape library** (verified across 4 bags, i.e. 28 draws);
   rotating a drawn instance never leaks into a later draw of the same shape; hold
   works once per piece and preserves the held piece's rotation across a swap back;
   rejects an empty library.
-- `PlacementTests` (8, one of them a 6-case `TestCaseSource`): the legality table
+- `PlacementTests` (11 results: 6 methods, one of them a 6-case `TestCaseSource`): the legality table
   (off-map, static blocker, existing wall, spawn, core, valid) across all 4
   rotations of a 2-tile shape on a hand-verified map; every spawn is protected,
   not just the first; a successful placement spends the budget, sets
@@ -197,3 +196,264 @@ Unity MCP: run_tests EditMode, Thesis.Tests.EditMode           → Passed 90/90
 
 **Known issues:** none. Nothing from this session is committed — the user asked
 for WP2's implementation only, not a PR this time.
+
+---
+
+## 2026-09-29 — Docs: Jev review
+
+- `CLAUDE.md` §8: new "explicitly rejected" row for Jev (TypeSafe AI) and any
+  hosted/pretrained System-One decision model inside the director. It breaks I1 and
+  I3, doesn't learn per player, and would change what the I4 ablation measures.
+  §10: katgpt-rs's "10⁵–10⁷× faster than Jev" scoreboard added to the not-citable
+  list; the TypeSafe blog added as a related-work contrast case; Guo et al. 2017 and
+  Brier 1950 added for the calibration check.
+- `WORKPLAN` WP7 and `ARCHITECTURE` §3/§5.6: `CalibrationReport` (Brier score and 10-bin ECE of
+  posterior mean vs realised reward). It is reported next to G1 as a **diagnostic, not a
+  gate**, because the gates were fixed before implementation.
+- Corrected the WP2 test counts in this log: 29 results, 61 → 90 (it said 33/94).
+- WP0–WP2 are committed (`717ca5e`, then the student's `de350b1` "WP0-2"), so the
+  "nothing committed" notes in the entries above are out of date.
+
+---
+
+## 2026-09-29 — WP3 Wave lifecycle, planner seam, escalation baseline
+
+**Changed**
+- `Thesis.Sim`: `SimConfig.cs` (its field initialisers are SampleScene's serialized values,
+  not the scripts' C# defaults), `SimPhase.cs`, `SimState.cs` (+ internal `SpawnSlot`),
+  `Simulation.cs` (the §4.2 tick loop, `Enqueue`, `Clone`, `ComputeHash`, the mutation
+  guard, `ValidatePlan`), `Debug/StateHasher.cs`, and `Waves/`: `IWavePlanner`,
+  `IThreatPricer`, `WaveContext`, `WavePlan`, `AgentGroup`, `WaveOutcome`, `EscalationPlanner`.
+- Small additions to WP2 types: `AgentState.WaveIndex`, `AgentState.Leaked` (set by
+  `AgentSystem`), `AgentState.Clone()`; `ShapeBag.CloneWith()` / `AddToHash()`;
+  `OccupancyMap.Clone()` / `AddToHash()`.
+- `Fnv1a64.Add(uint)` now does its four bytes in one pass instead of four `AddByte`
+  calls. The output is byte-identical (the WP0 known-answer and little-endian tests
+  still pass). It is the hot path of per-tick hashing.
+
+**Deviations / decisions (all intentional)**
+- **D4 implemented**: the intermission starts when the wave's last agent resolves. The
+  stipend is paid at that moment, *after* `WaveOutcome.BudgetAfter` is recorded, so the
+  outcome measures only the wave.
+- **Core destroyed mid-wave**: the wave is closed with `CoreDestroyed = true`, the
+  planner gets `OnWaveResolved`, `WaveResolved` is emitted, and then `GameOver`. Step 5
+  (normal resolution) is skipped when `CoreHp <= 0`. After game over, `Tick()` is a
+  no-op and discards queued input, so the hash stays constant.
+- **The mutation guard is always on**, not DEBUG-only as ARCHITECTURE §4.4 first said. It
+  also wraps `OnWaveResolved`, because a planner can keep the `SimState` reference from
+  `PlanWave`. The cost is two state hashes per wave boundary, far inside G2's 16 ms.
+- **`IThreatPricer`**: an optional constructor argument (null in WP3). With a pricer,
+  `ValidatePlan` checks both `|ThreatSpent − budget| ≤ ε` and `|price − ThreatSpent| ≤ ε`,
+  so a plan can't misreport its own spend. The real cost table is WP9.
+- **`RebuildFieldForSetup()`**: a public hook so benchmark layouts and fixtures can put
+  walls on the grid before tick 0. It throws after the first tick, so commands remain
+  the only way in during play.
+- **Spawn timing**: `WaitForSeconds(delay)` becomes `round(delay / dt)` ticks, e.g.
+  0.15 s → 8 ticks = 0.16 s; the original was frame-quantised too. Agents enter at the
+  spawn transform's XZ, not the tile centre, exactly where `WaveSpawner` put them. They
+  act on the tick they spawn; life and movement start together, so there is no bias.
+- **`StateHasher` skips dead agents.** A dead agent is frozen (`AgentSystem` never
+  touches it again) and was hashed while it was alive. Hashing the ever-growing list every tick
+  would make the 20k-tick tests quadratic. `Agents.Count` is still hashed.
+- **Rewards (`DeathReward`, `WallBreakReward`) and `DigRate` live in `SimConfig`, not in the
+  plan**: rewards pay the player, and I11 keeps the director away from the budget.
+- `WaveOutcome` gained `CoreDestroyed`, `PressureCount` and `FirstAgentId`.
+  `PressureRadiusTiles = 5` is a placeholder until spec gap S5 is closed.
+
+**Findings**
+- In SampleScene, `FlowFieldManager.targetGoal` is `PlayerCore`'s own transform
+  (fileID 427945555), so `MapData.CoreWorld` is the right point for the lifetime
+  derivation. The SampleScene spawn (−32, 2, −32) to core (32, 2, 32) distance is √8192 = 90.51, so
+  the **base lifetime is 77.41 s** (the serialized 60 is overwritten at `Start()`).
+- **An idle player loses in wave 1**, at tick 5,871 (117.4 s = 45 s prep + 72.4 s of
+  travel): 10 of 100 agents leak and none stall. That is the game working as designed:
+  the lifetime is the straight-line travel time plus only 5 s.
+- The first determinism run (random input on an open board) passed but **never dug**:
+  0 breaches, 0 stalls, because scattered walls leave detours. I added a second run with five full
+  wall lines. It gives exactly 5 breaches, one per line, because once a line is holed
+  the field sends every later agent through that hole. It also has 30 stalls, and the hashes
+  match for all 20k ticks.
+- **Review probe** (Bench_Choke with ChokePoints, 25 waves, dt 0.02 vs 0.01): the stall/leak
+  counts are **identical**. Waves 1–7 all stall and 8–25 all leak, because every agent in an
+  escalation wave is the same. The informative measure is the first-exit time. Stall
+  times are identical, since they depend only on lifetime (60.20 s = Bench_Choke's base
+  lifetime, plus 4 s per wave). Leak times differ by **0.00–0.03 s** (at most 1.5 coarse ticks),
+  because movement is discretised. So the runs are close but not identical, and no rule counts ticks.
+  WORKPLAN's probe text was refined to match.
+
+**Tests added:** 36 headless results (90 → 126), plus the explicit probe (Unity runs it too: 127)
+- `EscalationPlannerTests` (11): the base-lifetime derivation; 7 hand-computed anchor waves
+  (1, 2, 4, 27, 28, 30, 32, covering the delay clamp, the speed cap and the life cap);
+  waves 1–30 against the `WaveSpawner` formulas written with SampleScene's *literal*
+  numbers, which also checks `SimConfig`; the pricer fills `ThreatSpent`; wave 0 is rejected.
+- `SimulationPhaseTests` (7): prep is exactly 2,250 ticks; no stipend before wave 1; D4
+  (a wave stays in Resolving while any agent lives); the intermission is 500 ticks and the
+  stipend is paid after the outcome closes; the intermission timer starts wave 2; `StartWaveNow` is
+  ignored mid-wave; groups interleave by tick with start delays; losing the core closes the
+  wave, tells the planner and freezes the hash; placing a shape spends, logs and consumes the piece.
+- `DeterminismTests` (8): **20k ticks with an identical hash on every tick** (random input, 4 waves,
+  30 walls, 430 agents); the same under forced digging (5 breaches, 30 stalls); different
+  seeds differ; a clone plus 5k ticks stays identical and independent; mutating a clone's grid
+  cost, an agent's position, the budget, or the RNG state each changes its hash and leaves the original's alone.
+- `PlannerContractTests` (9): the guard catches writes in `PlanWave` and in
+  `OnWaveResolved`; `ValidatePlan` rejects Count < 0, a bad spawn index, zero lifetime,
+  a spend that misses the budget, and a spend the cost table disagrees with; it accepts an exact
+  spend; a planner can't edit a plan after handing it over.
+- `SampleSceneRunTests` (1 + probe): an idle player loses in wave 1 at a plausible time.
+
+**Commands run**
+```
+dotnet test Tools/dotnet/Thesis.Headless.sln                         → Passed 126/126 (~6 s)
+dotnet test ... --filter ProbeTickLengthSensitivityOnBenchChoke       → table above
+Unity MCP: refresh_unity(force, compile) + read_console              → 0 errors, 0 warnings
+Unity MCP: run_tests EditMode, Thesis.Tests.EditMode                  → Passed 127/127 (~15 s)
+```
+
+**Known issues / next**
+- Unity (Mono) and `dotnet` (CoreCLR) both pass the determinism tests, but nobody has yet checked
+  whether they produce the **same** hash for the same run. That cross-runtime
+  check is WP5's done-when condition. *(Checked in WP4 below: they did NOT, now fixed.)*
+- Nothing from WP3 is committed.
+
+---
+
+## 2026-09-29 — WP4 Unity host rewire
+
+**Changed**
+- New (`Assets/Scripts`): `SimHost` (runs the `Simulation` from a scaled-`deltaTime`
+  accumulator in fixed 0.02 s ticks, at most 20 ticks per frame; execution order −100;
+  builds lazily, so any script can reach it from any `Awake`), `DirectorHost` (static
+  escalation only for now), `SceneMapBuilder` (the scene → `MapData` scan, shared by
+  `SimHost`, `ScenarioBenchmark` and `MapExporter`), and `Config/SimConfigAsset` plus
+  `Config/SimConfig.asset` (it wraps the `[Serializable]` `SimConfig` directly, so there
+  is no second copy of the field list).
+- Adapters, keeping the member names the HUD reads:
+  - `WaveSpawner`: wave read-outs, and the agent view pool driven by sim events.
+  - `BlockManager`: one stable `BlockShape` clone per simulation shape instance, so a new
+    piece is still a new reference and a rotation still bumps `shapeVersion`.
+  - `PlayerCore`: HP changes become the existing UnityEvents; still freezes `timeScale` on game over.
+  - `PlayerBuilder`: a click becomes a `PlaceShape` command. Walls are drawn from
+    `PlacementLog` and `WallBreached`, not from the click.
+  - `FlowAgent`: pure view, no `Update`, and interpolates between ticks.
+  - `FlowFieldManager`: binds to whichever `SimGrid` is running.
+  - `GridManager` and `Node`: slimmed to view data.
+- Ported to read the simulation grid: `PathPreviewer` (now only redraws when the field
+  changes) and `FlowFieldVisualizer` (arrows derived from `NextIndex`).
+- `ScenarioBenchmark` now runs on `SimGrid` + `AgentSystem` at the fixed 50 Hz step
+  and writes to **`Runs/`** instead of the project root.
+- `BenchmarkRunner` deleted. It was in no scene. Its two pure scenarios (the rebuild
+  sweep and the A* comparison) are now `Thesis.Harness.PathfindingBench` and the CLI
+  command `thesis bench`. The two Unity-only ones (the agent tiers and edits under load)
+  are covered by `ScenarioBenchmark`'s tiers; edits-under-load was not ported.
+- `Thesis.Sim`:
+  - `Simulation.FlushInput()` applies queued commands between ticks. This is needed
+    because rotate and hold must work while paused, when no ticks run.
+    `StartWaveRequested` moved into `SimState` so it survives a flush.
+  - `BenchScenarios` moved from `Thesis.Harness` (Editor-only) into `Thesis.Sim/Debug`,
+    because runtime code needs it. `RandomScatter` was restored on a seeded PCG.
+- **Cross-runtime float fix**: explicit `(float)` casts on every chained float
+  intermediate in `Vec2f`, `AgentSystem`, `SimGrid`, `EscalationPlanner`, `Simulation`,
+  `SimConfig.Ticks`, `BenchScenarios` and `AsciiMap`. The new rule is ARCHITECTURE §9 rule 3.
+
+**Deviations / decisions**
+- `CanvasDashboard`, `GhostPreviewer`, `GameSpeedController`, `CameraMovement`, `Billboard`,
+  `WallSpawnAnimator` and `BlockShape` have **no diff**, as planned.
+- Input goes through `SimHost.Submit` → `FlushInput`, so it applies at once, not at the next tick.
+  `InputTests.FlushInputEqualsApplyingAtTheNextTick` shows this is replay-equivalent
+  (6,000 ticks, identical hash every tick). This is the answer to "rotate and hold while
+  paused", which a tick-only model couldn't give.
+- `ScenarioBenchmark` output moved to `Runs/`, so the committed `Benchmark_*.json`
+  files stay the pre-port parity oracle.
+- `BenchScenario.RandomScatter` uses `Pcg32(12345)`. The original's `UnityEngine.Random`
+  layout can't be reproduced, so Bench_Stress's layout differs (it was already excluded from parity).
+- Serialized fields removed from SampleScene when re-saved: `WaveSpawner`'s 14 tuning values,
+  `PlayerCore.maxHealth` and `BlockManager.buildBudget`. **All 16 were checked against the
+  committed scene and equal the values in `SimConfig.asset`**. Refs that are no longer
+  needed were also dropped: `WaveSpawner.flowManager/blockManager/playerCore` and
+  `PlayerBuilder.flowManager/enemySpawnPoint`.
+- `SimHost` drops any tick backlog beyond one tick after a long hitch, so the game slows
+  down rather than trying to catch up. This never desyncs: the sim only ever sees whole ticks.
+
+**Findings**
+- **Cross-runtime divergence (I1), found and fixed.**
+  - What happened: a live SampleScene session played in the editor ended at tick 5036 with hash
+    `305650b7869ff480`. Unity's test runner (Mono) replaying the same input from a script gave the
+    same hash, which proves the script reproduces the session. `dotnet` (CoreCLR) gave `d88b7dfd957f0dcb`.
+  - Where: a per-tick bisect (`CrossRuntimeBisectTests`) put the first difference at **tick 2916**,
+    in agents only (grid, bag, occupancy and budget were equal): agent 0's `Position.Y`
+    `c0a36c3d` (Mono) vs `c0a36c3c` (CoreCLR), i.e. one bit.
+  - Why: a brute force over rounding choices reproduced Mono only when `toY / dist * step` and
+    the add were evaluated in double and rounded once. CoreCLR rounds each step. C# permits both.
+    A fingerprint of *single* float operations matched exactly under both runtimes, as
+    theory predicts (double rounding is harmless for one +, −, ×, ÷ or √). So only chains diverge.
+  - Fix: explicit casts, which the spec requires to round. After the fix, **all 5,036 ticks have
+    identical full-state and component hashes under Mono and CoreCLR**, and
+    `FloatDeterminismTests` pins the diverging step in both runners.
+  - Even the *test* `EscalationPlannerTests.Waves1To30…` failed under Mono at wave 14
+    (1.73750007 vs 1.73749995), because its own uncast formula ran in double. It was fixed the same way.
+- **The screenshot tool pauses the editor** (`EditorApplication.isPaused = true`), which froze
+  ticks and the wall pop animation in the smoke test. This is not a game bug. Unpause after capturing.
+- **Recompiling during play mode** (Unity's default when a script changes) left the old
+  session's wall visuals in the scene and restarted the simulation at tick 0. That rescan then
+  counted those walls as static blockers (62 tiles), because the wall prefab and the ghost tiles are
+  on the **Obstacle layer with colliders**. This is harmless in a real session, since the scan runs
+  once at start before any wall exists, but it is a trap. Set Preferences → General → Script
+  Changes While Playing → "Recompile After Finished Playing".
+- **The flow field charges the tile being LEFT, not entered**: `neighbor.TerrainCost` in the
+  outward flood. An agent standing on a wall pays for it; the goal tile is never charged.
+  The original `BenchmarkRunner` A* charged the entered tile, so its costs differed from the
+  field's whenever a start was a wall (258 vs 398 in the first cross-check). The ported A* now
+  matches the field, and `PathfindingBenchTests` checks A* = field on every tile.
+- **Performance, SampleScene-scale Maze, same machine, separate sessions, so indicative only.**
+  Per frame at 100/250/500/1000 agents: 5.59/8.37/13.61/37.61 ms before vs 5.35/8.38/11.27/29.64 ms after.
+  Field rebuild: 6.13 → 1.41 ms (the non-allocating neighbour buffer).
+
+**Automated smoke test (SampleScene, play mode, driven through Unity MCP)** ✅
+- `[Sim] Started: map 'SampleScene' 38x38, seed 1, planner 'escalation', config 'SimConfig'`, 0 errors.
+- The prep countdown tracks ticks exactly (tick 342 → 38.2 s left = 45 − 6.84).
+  The HUD showed HP 10/10, budget 60, the current piece and 3 previews with icons and costs.
+- Rotate keeps the same piece reference and bumps the version. Hold swaps. A second hold is ignored.
+- 5 placements: budget 60 → 40, 20 wall tiles, 5 field rebuilds, spawn route cost 434 → 452.
+  The route line bends and the walls pop to full size.
+- Wave 1 (via the Start handler) spawned 100 agents with exactly 100 views, each within 0.013 world units of its agent.
+- 10 leaks → HP 0 → game over. The Game Over panel reads "You reached Wave 1", `timeScale` froze at 0,
+  and the 10 leaked agents' views were released (90 live, 90 views).
+- Bench_Open / Bench_Maze / Bench_Choke in play mode reported **35/35, 198/207.2 and 59/67.8**,
+  identical to the committed pre-port files. Maze's full run wrote `Runs/Benchmark_Maze.json`.
+- `Thesis/Export All Maps` through `SceneMapBuilder`: 0 cross-check mismatches, and all 4 map
+  files are byte-identical to the committed ones.
+
+**Manual playtest — still to do by the student** (WP4's done-when; the automated test called the same
+methods the input calls, but no real mouse or keyboard was used):
+- [ ] Left-click places the current piece where the ghost shows it, and the ghost turns red where a click would fail
+- [ ] R rotates (the ghost and HUD icon agree), Shift holds (once per piece)
+- [ ] Space pauses: building is blocked, R and Shift still work
+- [ ] 1 / 2 / 3 and the speed button change speed; enemies move visibly faster
+- [ ] Enemies chew walls (the wall shrinks), a breach removes the wall and pays +1
+- [ ] A maze long enough to stall enemies pays +0.2 per stall
+- [ ] Movement looks smooth at x1 (interpolation) with no jitter
+- [ ] Restart after game over works
+
+**Tests added:** 13 headless results (126 → 135 with the WP4 changes; Unity 139 including 4 explicit diagnostics)
+- `InputTests` (4): flush equals tick (6k ticks); rotate/hold without time passing;
+  a flushed StartWaveNow is acted on by the next tick; a flushed placement raises its events at once.
+- `PathfindingBenchTests` (2): A* = flow field on every tile of a scattered map; bench JSON has every section and parses.
+- `FloatDeterminismTests` (3): the tick-2916 step, the same step through `AgentSystem`, and the base-lifetime bits.
+- `CrossRuntimeTests` (explicit), `CrossRuntimeBisectTests` (explicit), `FloatFingerprintTests` (explicit): diagnostics.
+
+**Commands run**
+```
+dotnet test Tools/dotnet/Thesis.Headless.sln                         → Passed 135/135
+dotnet run --project Tools/dotnet/Thesis.Cli -- bench --iterations 10 → Runs/BenchmarkResults_headless.json
+Unity MCP: run_tests EditMode Thesis.Tests.EditMode                  → Passed 139/139
+Unity MCP: play SampleScene + execute_code smoke test                → see above
+Unity MCP: play Bench_Open/Maze/Choke                                → parity with committed files
+diff Runs/xrt_mono.txt Runs/xrt_coreclr.txt                          → identical, 5,036 ticks
+```
+
+**Known issues**
+- The manual playtest checklist above is unchecked.
+- `SimHost` does not survive a play-mode recompile (see Findings). This is a dev-only issue.
+- The live-session cross-check was done by replaying a hand-written script. WP5 automates
+  it with real replay files recorded by `SimHost`.
+- Nothing from WP3/WP4 is committed.

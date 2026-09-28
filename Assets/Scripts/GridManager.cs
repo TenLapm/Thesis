@@ -1,11 +1,18 @@
-using System.Collections.Generic;
 using UnityEngine;
 
+// Scene-side grid: tile positions in the world and world-to-tile lookup, for input
+// and visuals. The simulation's grid (walkability, walls, costs, the flow field)
+// is Thesis.Sim.SimGrid, built from these same settings by SceneMapBuilder; the
+// two use identical arithmetic (MapExporter cross-checks it, 0 mismatches).
+//
+// Removed in WP4 with the gameplay fields of Node: the Physics.CheckSphere
+// walkability scan (now SceneMapBuilder) and GetNeighbors (now SimGrid).
 public class GridManager : MonoBehaviour
 {
     [Header("Grid Settings")]
     public Vector2 gridWorldSize = new Vector2(50, 50);
     public float nodeRadius = 0.5f;
+    [Tooltip("Static geometry layer. Read by SceneMapBuilder when the simulation starts.")]
     public LayerMask unwalkableMask;
 
     public Node[,] grid;
@@ -30,16 +37,13 @@ public class GridManager : MonoBehaviour
             for (int y = 0; y < gridSizeY; y++)
             {
                 Vector3 worldPoint = worldBottomLeft + Vector3.right * (x * nodeDiameter + nodeRadius) + Vector3.forward * (y * nodeDiameter + nodeRadius);
-
-                // Only STATIC geometry (map borders, rocks) is truly unwalkable.
-                // Player walls placed at runtime are tracked via Node.wallHealth
-                // and never touch this flag.
-                bool walkable = !(Physics.CheckSphere(worldPoint, nodeRadius, unwalkableMask));
-                grid[x, y] = new Node(walkable, worldPoint, x, y);
+                grid[x, y] = new Node(worldPoint, x, y);
             }
         }
     }
 
+    // Same math as SimGrid.NodeFromPosition (including its origin and rounding
+    // quirks, kept on purpose - see that method's comment).
     public Node NodeFromWorldPoint(Vector3 worldPosition)
     {
         if (grid == null) return null;
@@ -56,53 +60,26 @@ public class GridManager : MonoBehaviour
         return grid[x, y];
     }
 
-    public List<Node> GetNeighbors(Node node)
-    {
-        List<Node> neighbors = new List<Node>();
-
-        for (int x = -1; x <= 1; x++)
-        {
-            for (int y = -1; y <= 1; y++)
-            {
-                if (x == 0 && y == 0) continue;
-
-                int checkX = node.gridX + x;
-                int checkY = node.gridY + y;
-
-                if (checkX < 0 || checkX >= gridSizeX || checkY < 0 || checkY >= gridSizeY) continue;
-
-                // Corner-cut rule: never allow a diagonal move that squeezes
-                // between two solid tiles (static geometry OR standing walls).
-                // Entering a wall tile head-on is allowed - that's how digging
-                // starts - but slipping diagonally between two walls is not.
-                if (x != 0 && y != 0)
-                {
-                    if (grid[node.gridX + x, node.gridY].BlocksCorner ||
-                        grid[node.gridX, node.gridY + y].BlocksCorner)
-                    {
-                        continue;
-                    }
-                }
-
-                neighbors.Add(grid[checkX, checkY]);
-            }
-        }
-        return neighbors;
-    }
-
     void OnDrawGizmos()
     {
         Gizmos.DrawWireCube(transform.position, new Vector3(gridWorldSize.x, 1, gridWorldSize.y));
 
-        if (grid != null)
+        if (grid == null) return;
+
+        // In play mode, colour tiles from the simulation's grid.
+        FlowFieldManager flow = FindFirstObjectByType<FlowFieldManager>();
+        Thesis.Sim.SimGrid simGrid = flow != null ? flow.Grid : null;
+
+        foreach (Node n in grid)
         {
-            foreach (Node n in grid)
+            Gizmos.color = Color.white;
+            if (simGrid != null && simGrid.InBounds(n.gridX, n.gridY))
             {
-                if (!n.isWalkable) Gizmos.color = Color.red;                 // static blocker
-                else if (n.HasWall) Gizmos.color = new Color(1f, 0.6f, 0f);  // player wall (diggable)
-                else Gizmos.color = Color.white;
-                Gizmos.DrawCube(n.worldPosition, Vector3.one * (nodeDiameter - .1f));
+                Thesis.Sim.SimNode s = simGrid[n.gridX, n.gridY];
+                if (!s.IsWalkable) Gizmos.color = Color.red;                   // static blocker
+                else if (s.HasWall) Gizmos.color = new Color(1f, 0.6f, 0f);    // player wall (diggable)
             }
+            Gizmos.DrawCube(n.worldPosition, Vector3.one * (nodeDiameter - .1f));
         }
     }
 }

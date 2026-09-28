@@ -1,20 +1,26 @@
 using System.Collections.Generic;
+using Thesis.Core;
+using Thesis.Sim;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.EventSystems;
 
+// WP4: player input for building, plus the wall visuals.
+//
+// A click no longer places anything itself. It becomes a PlaceShape command; the
+// simulation checks legality and budget, spends, sets the terrain and rebuilds the
+// field (Thesis.Sim.Placement). Walls are then DRAWN from the simulation's own
+// record - new PlacementLog rows and WallBreached events - so what is on screen is
+// always what the simulation holds, whoever placed it (a click today, a replay in WP5).
 public class PlayerBuilder : MonoBehaviour
 {
     [Header("System References")]
     public GridManager gridManager;
-    public FlowFieldManager flowManager;
     public BlockManager blockManager;
     public PlayerCore playerCore;
-    [Tooltip("Used to forbid building while the game is paused - pause is now purely a look-and-think state, not a build-while-frozen state.")]
+    [Tooltip("Used to forbid building while the game is paused - pause is purely a look-and-think state, not a build-while-frozen state.")]
     public GameSpeedController speedController;
-
-    [Tooltip("The enemy spawn point. Its tile (and the goal's tile) can never be built on.")]
-    public Transform enemySpawnPoint;
+    public SimHost simHost;
 
     [Header("Prefabs & Layer")]
     public GameObject standardWallPrefab;
@@ -23,6 +29,12 @@ public class PlayerBuilder : MonoBehaviour
     // Reused across placements to avoid allocating a new block every wall.
     private MaterialPropertyBlock wallPropertyBlock;
     private bool isGameOver = false;
+
+    private int placementsDrawn;
+    private readonly List<Node> wallTiles = new List<Node>();
+    private readonly List<TileCoord> tileBuffer = new List<TileCoord>();
+
+    private SimHost Host => simHost != null ? simHost : (simHost = SimHost.Find());
 
     // True while the player is not allowed to build. Shared with GhostPreviewer
     // so the hover preview hides itself instead of dangling a "valid" ghost over
@@ -40,37 +52,45 @@ public class PlayerBuilder : MonoBehaviour
         }
     }
 
+    void OnEnable()
+    {
+        if (Host != null) Host.SimEventRaised += OnSimEvent;
+    }
+
+    void OnDisable()
+    {
+        if (simHost != null) simHost.SimEventRaised -= OnSimEvent;
+    }
+
     void Update()
     {
-        if (isGameOver) return;
-        if (Mouse.current == null || Keyboard.current == null) return;
-
-        if (Mouse.current.leftButton.wasPressedThisFrame)
+        if (!isGameOver && Mouse.current != null && Keyboard.current != null)
         {
-            // No building while paused - pause is a plan-and-look state now, not a
-            // build-while-frozen one. (Rotating/holding the piece still works, so
-            // the player can still line up their NEXT move while paused.)
-            if (speedController != null && speedController.IsPaused) return;
-
-            // Without this, clicking Start/Restart (or any other HUD button)
-            // would also raycast into the scene underneath and place a wall.
-            if (EventSystem.current == null || !EventSystem.current.IsPointerOverGameObject())
+            if (Mouse.current.leftButton.wasPressedThisFrame)
             {
-                HandlePlacement();
+                // No building while paused - pause is a plan-and-look state now, not a
+                // build-while-frozen one. (Rotating/holding the piece still works, so
+                // the player can still line up their NEXT move while paused.)
+                bool paused = speedController != null && speedController.IsPaused;
+
+                // Without the UI check, clicking Start/Restart (or any other HUD button)
+                // would also raycast into the scene underneath and place a wall.
+                if (!paused && (EventSystem.current == null || !EventSystem.current.IsPointerOverGameObject()))
+                {
+                    HandlePlacement();
+                }
+            }
+
+            if (Keyboard.current.leftShiftKey.wasPressedThisFrame)
+            {
+                blockManager.SwapHoldShape();
             }
         }
 
-        if (Keyboard.current.leftShiftKey.wasPressedThisFrame)
-        {
-            blockManager.SwapHoldShape();
-        }
+        DrawNewWalls();
+        DrawChewProgress();
     }
 
-    // Placement is fully synchronous now. Because walls are expensive terrain
-    // rather than absolute blockers, NO placement can ever disconnect the map -
-    // so there is nothing to validate asynchronously, nothing to revert, and no
-    // background thread to race against. Check-and-spend happens in one frame,
-    // which is what fixed the old double-click negative-budget exploit.
     private void HandlePlacement()
     {
         if (standardWallPrefab == null)
@@ -90,82 +110,101 @@ public class PlayerBuilder : MonoBehaviour
         Node originNode = gridManager.NodeFromWorldPoint(hit.point);
         if (originNode == null) return;
 
+        // Same messages as before. The simulation re-checks both and has the final
+        // say; these are only here to explain a click that does nothing.
         List<Vector2Int> targetTiles = blockManager.GetTargetGridPositions(originNode.gridX, originNode.gridY);
-
         if (!AreTilesPlaceable(targetTiles))
         {
             Debug.LogWarning("Placement blocked: out of bounds, overlapping a wall, or on a protected tile (spawn/core).");
             return;
         }
-
-        BlockShape shape = blockManager.currentShape;
-        int cost = shape.buildCost;
+        int cost = blockManager.currentShape.buildCost;
         if (blockManager.buildBudget < cost)
         {
             Debug.LogWarning($"Placement blocked: not enough build budget ({blockManager.buildBudget}/{cost}).");
             return;
         }
 
-        // Deduct BEFORE building - budget can never go negative.
-        blockManager.buildBudget -= cost;
-
-        float cellSize = gridManager.nodeRadius * 2f;
-
-        int tileIndex = 0;
-        foreach (Vector2Int pos in targetTiles)
-        {
-            Node node = gridManager.grid[pos.x, pos.y];
-
-            // Walls are diggable terrain, not blockers: raise the tile's path
-            // cost and give it chew-through health from the shape's material.
-            node.terrainCost = Mathf.Max(2, shape.digCost);
-            node.wallHealth = Mathf.Max(0.5f, shape.wallHealth);
-            node.maxWallHealth = node.wallHealth;
-
-            GameObject newWall = Instantiate(standardWallPrefab, node.worldPosition + new Vector3(0, cellSize / 2f, 0), Quaternion.identity);
-            newWall.transform.localScale = new Vector3(cellSize, cellSize, cellSize);
-            ApplyShapeColor(newWall, shape.shapeColor);
-
-            // Pop-in flourish, staggered per tile so a multi-tile shape ripples in.
-            // Added AFTER the final scale is set so the animator captures it as the
-            // pop's target.
-            WallSpawnAnimator anim = newWall.AddComponent<WallSpawnAnimator>();
-            anim.Play(tileIndex * 0.04f);
-
-            node.visualObject = newWall;
-            tileIndex++;
-        }
-
-        // Synchronous rebuild - by the time this frame's agents move, every
-        // cost, direction and nextNode on the map is already consistent.
-        flowManager.GenerateFlowField();
-
-        // true = destroy the consumed shape clone (fixes the ScriptableObject leak).
-        blockManager.PullNextShape(true);
+        Host.Submit(SimCommand.PlaceShape(originNode.gridX, originNode.gridY));
     }
 
-    // Single source of truth for placement legality. GhostPreviewer calls this
+    // CLAUDE.md I9: the single source of truth for placement legality is
+    // Thesis.Sim.Placement.CanPlace; this only wraps it. GhostPreviewer calls this
     // too, so the preview can never disagree with an actual click.
     public bool AreTilesPlaceable(List<Vector2Int> tiles)
     {
-        if (gridManager == null || gridManager.grid == null) return false;
+        if (Host == null) return false;
+        tileBuffer.Clear();
+        foreach (Vector2Int t in tiles) tileBuffer.Add(new TileCoord(t.x, t.y));
+        return Placement.CanPlace(Host.State.Grid, Host.Map, tileBuffer);
+    }
 
-        Node spawnNode = enemySpawnPoint != null ? gridManager.NodeFromWorldPoint(enemySpawnPoint.position) : null;
-        Node goalNode = (flowManager != null && flowManager.targetGoal != null)
-            ? gridManager.NodeFromWorldPoint(flowManager.targetGoal.position)
-            : null;
+    // --- wall visuals ---
 
-        foreach (Vector2Int pos in tiles)
+    private void DrawNewWalls()
+    {
+        List<PlacementRecord> log = Host.State.PlacementLog;
+        float cellSize = gridManager.nodeRadius * 2f;
+
+        for (; placementsDrawn < log.Count; placementsDrawn++)
         {
-            if (pos.x < 0 || pos.x >= gridManager.gridSizeX || pos.y < 0 || pos.y >= gridManager.gridSizeY)
-                return false;
+            PlacementRecord record = log[placementsDrawn];
+            BlockShape master = blockManager.MasterFor(record.ShapeName);
+            Color color = master != null ? master.shapeColor : Color.white;
 
-            Node node = gridManager.grid[pos.x, pos.y];
-            if (!node.isWalkable) return false;                       // static geometry
-            if (node.HasWall) return false;                           // existing wall
-            if (node == spawnNode || node == goalNode) return false;  // protected tiles (old spawn-sealing exploit)
+            for (int i = 0; i < record.Tiles.Length; i++)
+            {
+                Node node = gridManager.grid[record.Tiles[i].X, record.Tiles[i].Y];
+                GameObject wall = Instantiate(standardWallPrefab, node.worldPosition + new Vector3(0, cellSize / 2f, 0), Quaternion.identity);
+                wall.transform.localScale = new Vector3(cellSize, cellSize, cellSize);
+                ApplyShapeColor(wall, color);
+
+                // Pop-in flourish, staggered per tile so a multi-tile shape ripples in.
+                // Added AFTER the final scale is set so the animator captures it.
+                WallSpawnAnimator anim = wall.AddComponent<WallSpawnAnimator>();
+                anim.Play(i * 0.04f);
+
+                node.visualObject = wall;
+                wallTiles.Add(node);
+            }
         }
-        return true;
+    }
+
+    private void OnSimEvent(SimEvent e)
+    {
+        if (e.Kind != SimEventKind.WallBreached) return;
+
+        Node node = gridManager.grid[e.IntA, e.IntB];
+        if (node.visualObject != null)
+        {
+            Destroy(node.visualObject);
+            node.visualObject = null;
+        }
+        wallTiles.Remove(node);
+    }
+
+    // Shrink damaged walls so chew progress is readable at a glance. Untouched walls
+    // are skipped, which also leaves the placement pop animation alone.
+    private void DrawChewProgress()
+    {
+        SimGrid grid = Host.State.Grid;
+        for (int i = 0; i < wallTiles.Count; i++)
+        {
+            Node node = wallTiles[i];
+            SimNode sim = grid[node.gridX, node.gridY];
+            if (node.visualObject == null || sim.MaxWallHealth <= 0f || sim.WallHealth >= sim.MaxWallHealth) continue;
+
+            float frac = Mathf.Clamp01(sim.WallHealth / sim.MaxWallHealth);
+            Transform t = node.visualObject.transform;
+            Vector3 s = t.localScale;
+            float full = s.x; // walls are uniform cubes; x keeps the original size
+            s.y = full * Mathf.Lerp(0.15f, 1f, frac);
+            t.localScale = s;
+
+            Vector3 p = t.position;
+            p.y = node.worldPosition.y + s.y / 2f;
+            t.position = p;
+        }
     }
 
     // Tints a placed obstacle with its shape's color (base color for normal

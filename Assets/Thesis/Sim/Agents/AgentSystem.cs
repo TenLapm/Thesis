@@ -30,7 +30,7 @@ namespace Thesis.Sim
 
                 // THE CLOCK IS TICKING - and it keeps ticking while digging, which is
                 // the whole point: chewing a wall wastes the agent's time too.
-                agent.LifeTime -= dt;
+                agent.LifeTime = (float)(agent.LifeTime - dt);
                 if (agent.LifeTime <= 0f)
                 {
                     agent.IsAlive = false;
@@ -45,6 +45,7 @@ namespace Thesis.Sim
                 if (node.BestCost == 0)
                 {
                     agent.IsAlive = false;
+                    agent.Leaked = true;
                     coreHp -= 1;
                     events?.Add(SimEvent.AgentLeaked(agent.Id));
                     continue;
@@ -60,7 +61,9 @@ namespace Thesis.Sim
                 // agents fall through to the move branch below instead.
                 if (node.HasWall)
                 {
-                    node.WallHealth -= agent.DigRate * dt;
+                    // Explicit casts round every float intermediate so Mono and CoreCLR
+                    // agree bit for bit (ARCHITECTURE.md §9 rule 3).
+                    node.WallHealth = (float)(node.WallHealth - (float)(agent.DigRate * dt));
                     if (node.WallHealth <= 0f)
                     {
                         grid.ClearWall(node);
@@ -79,7 +82,7 @@ namespace Thesis.Sim
                 SimNode next = grid.NextOf(node);
                 if (next != null)
                 {
-                    agent.Position = Vec2f.MoveTowards(agent.Position, next.Position, agent.MoveSpeed * dt);
+                    agent.Position = Vec2f.MoveTowards(agent.Position, next.Position, (float)(agent.MoveSpeed * dt));
                 }
             }
 

@@ -1,6 +1,8 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.Globalization;
+using Thesis.Core;
+using Thesis.Sim;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using Diag = System.Diagnostics;
@@ -10,12 +12,19 @@ using Diag = System.Diagnostics;
 //   1) flow-field rebuild time on this exact layout,
 //   2) path metrics from spawn to goal (tiles + cost),
 //   3) frame time at increasing live agent counts.
-// Writes Benchmark_<label>.json to the project root and logs
-// "[Bench] COMPLETE" when done. One of these sits in every Bench_* scene;
-// the scenes double as stress demos because the agents keep marching after
-// the measurements finish.
+// Writes Runs/Benchmark_<label>.json and logs "[Bench] COMPLETE" when done. One of
+// these sits in every Bench_* scene; the scenes double as stress demos because the
+// agents keep marching after the measurements finish.
+//
+// WP4 port: the layout, the field and the agents are the simulation's
+// (Thesis.Sim.SimGrid / FlowField / AgentSystem, stepped at the game's fixed 50 Hz),
+// drawn by FlowAgent views. Output moved from the project root to Runs/ so a run
+// never overwrites the committed Benchmark_*.json files, which are the parity
+// oracle recorded by the pre-port code (BenchParityTests reads them).
 public class ScenarioBenchmark : MonoBehaviour
 {
+    // Values mirror Thesis.Sim.BenchScenario; kept as its own enum so the scenes'
+    // serialized "scenario: N" keeps its meaning.
     public enum ScenarioKind { OpenField, Maze, ChokePoints, RandomScatter }
 
     [Header("Scenario")]
@@ -43,17 +52,22 @@ public class ScenarioBenchmark : MonoBehaviour
     public static bool Done = false;
     public static string LastResultPath = "";
 
-    // Scenario walls are terrain nobody can afford to dig through: cost 200
-    // reads as "a 200-tile detour", and health 99999 means agents standing on
-    // one (never happens - the field routes around) could not chew through it
-    // during a run. This keeps the layout static so runs are comparable.
-    private const int WALL_COST = 200;
-    private const float WALL_HEALTH = 99999f;
+    private const float TickSeconds = 0.02f; // the game's fixed step
+    private const int MaxTicksPerFrame = 20;
 
-    private readonly List<GameObject> pool = new List<GameObject>();
+    private MapData map;
+    private SimGrid grid;
+    private readonly FlowField field = new FlowField();
+    private OccupancyMap occupancy;
+    private readonly List<AgentState> agents = new List<AgentState>();
+    private readonly List<FlowAgent> views = new List<FlowAgent>();
+    private readonly Pcg32 jitter = new Pcg32(20260915UL, RngStreams.Spawn);
+    private float accumulator;
+
     private System.Text.StringBuilder json;
     private bool running = false;
     private int wallCount = 0;
+    private Material wallSharedMaterial;
 
     void Start()
     {
@@ -75,99 +89,46 @@ public class ScenarioBenchmark : MonoBehaviour
     {
         Keyboard kb = Keyboard.current;
         if (!running && kb != null && kb[rerunKey].wasPressedThisFrame) StartCoroutine(RunAll());
+
+        StepAgents();
     }
 
-    // ================= scenario layouts =================
+    // ================= scenario layout =================
 
     void BuildScenario()
     {
-        int W = gridManager.gridSizeX, H = gridManager.gridSizeY;
-        Node spawnNode = gridManager.NodeFromWorldPoint(spawnPoint.position);
-        Node goalNode = gridManager.NodeFromWorldPoint(flowManager.targetGoal.position);
+        map = SceneMapBuilder.Build(gridManager, flowManager.targetGoal, new[] { spawnPoint }, gameObject.scene.name);
+        grid = new SimGrid(map);
+        occupancy = new OccupancyMap(grid.NodeCount);
+        wallCount = BenchScenarios.Apply(grid, map, (BenchScenario)scenario, scatterDensity);
+        field.Generate(grid, map.Core);
+        flowManager.Bind(grid);
 
-        switch (scenario)
+        // One cube per wall tile.
+        float d = gridManager.nodeRadius * 2f;
+        for (int i = 0; i < grid.NodeCount; i++)
         {
-            case ScenarioKind.OpenField:
-                break;
+            SimNode n = grid.ByIndex(i);
+            if (!n.HasWall) continue;
 
-            case ScenarioKind.Maze:
-                // Horizontal serpentine: a full wall row every 5 tiles with a
-                // 4-tile gap alternating between the left and right end.
-                bool gapLeft = true;
-                for (int y = 5; y <= H - 6; y += 5)
-                {
-                    for (int x = 0; x < W; x++)
-                    {
-                        bool inGap = gapLeft ? (x < 4) : (x >= W - 4);
-                        if (!inGap) TrySetWall(x, y, spawnNode, goalNode);
-                    }
-                    gapLeft = !gapLeft;
-                }
-                break;
-
-            case ScenarioKind.ChokePoints:
-                // Three full walls, each with a single 3-tile gap; the gaps are
-                // staggered so the crowd has to swing across the whole map.
-                int[] rows = { H / 4, H / 2, (3 * H) / 4 };
-                int[] gaps = { W / 2, W / 6, (5 * W) / 6 };
-                for (int i = 0; i < rows.Length; i++)
-                {
-                    for (int x = 0; x < W; x++)
-                    {
-                        if (Mathf.Abs(x - gaps[i]) > 1) TrySetWall(x, rows[i], spawnNode, goalNode);
-                    }
-                }
-                break;
-
-            case ScenarioKind.RandomScatter:
-                Random.InitState(12345); // deterministic layout across runs
-                int want = Mathf.RoundToInt(W * H * scatterDensity);
-                int placed = 0, guard = 0;
-                while (placed < want && guard++ < want * 30)
-                {
-                    if (TrySetWall(Random.Range(0, W), Random.Range(0, H), spawnNode, goalNode)) placed++;
-                }
-                break;
+            GameObject cube = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            cube.name = "BenchWall";
+            cube.transform.SetParent(transform, true);
+            cube.transform.position = SceneMapBuilder.ToWorld(n.Position, gridManager.transform.position.y) + Vector3.up * 0.5f;
+            cube.transform.localScale = new Vector3(d * 0.95f, 1f, d * 0.95f);
+            Destroy(cube.GetComponent<BoxCollider>()); // nothing uses physics against these
+            if (wallSharedMaterial == null)
+            {
+                wallSharedMaterial = new Material(cube.GetComponent<Renderer>().sharedMaterial);
+                wallSharedMaterial.color = new Color(0.65f, 0.3f, 0.25f);
+            }
+            cube.GetComponent<Renderer>().sharedMaterial = wallSharedMaterial;
+            gridManager.grid[n.X, n.Y].visualObject = cube;
         }
 
-        flowManager.GenerateFlowField();
-
-        if (spawnNode.bestCost == Node.INFINITY)
+        if (grid.Get(map.Spawns[0]).BestCost == SimNode.Infinity)
             Debug.LogError("[Bench] Scenario blocked the spawn off from the goal!");
     }
-
-    // Places a wall tile with a visual cube. Keeps a 2-tile clearance around
-    // spawn and goal so agents always have room to enter and leave the maze.
-    bool TrySetWall(int x, int y, Node spawnNode, Node goalNode)
-    {
-        Node n = gridManager.grid[x, y];
-        if (!n.isWalkable || n.HasWall) return false;
-        if (Mathf.Abs(x - spawnNode.gridX) <= 2 && Mathf.Abs(y - spawnNode.gridY) <= 2) return false;
-        if (Mathf.Abs(x - goalNode.gridX) <= 2 && Mathf.Abs(y - goalNode.gridY) <= 2) return false;
-
-        n.terrainCost = WALL_COST;
-        n.wallHealth = WALL_HEALTH;
-        n.maxWallHealth = WALL_HEALTH;
-
-        float d = gridManager.nodeRadius * 2f;
-        GameObject cube = GameObject.CreatePrimitive(PrimitiveType.Cube);
-        cube.name = "BenchWall";
-        cube.transform.SetParent(transform, true);
-        cube.transform.position = n.worldPosition + Vector3.up * 0.5f;
-        cube.transform.localScale = new Vector3(d * 0.95f, 1f, d * 0.95f);
-        Destroy(cube.GetComponent<BoxCollider>()); // nothing uses physics against these
-        if (wallSharedMaterial == null)
-        {
-            wallSharedMaterial = new Material(cube.GetComponent<Renderer>().sharedMaterial);
-            wallSharedMaterial.color = new Color(0.65f, 0.3f, 0.25f);
-        }
-        cube.GetComponent<Renderer>().sharedMaterial = wallSharedMaterial;
-        n.visualObject = cube;
-        wallCount++;
-        return true;
-    }
-
-    private Material wallSharedMaterial;
 
     // ================= benchmark =================
 
@@ -185,20 +146,20 @@ public class ScenarioBenchmark : MonoBehaviour
         json.Append("\"scenario\":\"" + scenario + "\",\n");
         json.Append("\"label\":\"" + label + "\",\n");
         AppendEnvironment();
-        json.Append("\"grid\":{\"x\":" + gridManager.gridSizeX + ",\"y\":" + gridManager.gridSizeY +
-                    ",\"nodes\":" + (gridManager.gridSizeX * gridManager.gridSizeY) +
+        json.Append("\"grid\":{\"x\":" + grid.Width + ",\"y\":" + grid.Height +
+                    ",\"nodes\":" + grid.NodeCount +
                     ",\"walls\":" + wallCount + ",\"scatterDensity\":" + F(scenario == ScenarioKind.RandomScatter ? scatterDensity : 0f) + "},\n");
 
         yield return null;
 
         // ---- 1) rebuild timing on this exact layout ----
         var sw = new Diag.Stopwatch();
-        for (int i = 0; i < 3; i++) flowManager.GenerateFlowField(); // warmup
+        for (int i = 0; i < 3; i++) field.Generate(grid, map.Core); // warmup
         double sum = 0, mn = double.MaxValue, mx = 0;
         for (int i = 0; i < rebuildIterations; i++)
         {
             sw.Restart();
-            flowManager.GenerateFlowField();
+            field.Generate(grid, map.Core);
             sw.Stop();
             double ms = sw.Elapsed.TotalMilliseconds;
             sum += ms; if (ms < mn) mn = ms; if (ms > mx) mx = ms;
@@ -208,28 +169,25 @@ public class ScenarioBenchmark : MonoBehaviour
         Debug.Log("[Bench] rebuild mean " + (sum / rebuildIterations).ToString("0.###") + " ms");
 
         // ---- 2) path metrics from spawn ----
-        Node spawnNode = gridManager.NodeFromWorldPoint(spawnPoint.position);
-        int hops = 0;
-        Node walk = spawnNode;
-        int guard = gridManager.gridSizeX * gridManager.gridSizeY + 5;
-        while (walk != null && walk.bestCost != 0 && guard-- > 0) { walk = walk.nextNode; hops++; }
-        json.Append("\"path\":{\"tiles\":" + hops + ",\"costTileUnits\":" +
-                    (spawnNode.bestCost == Node.INFINITY ? "-1" : F(spawnNode.bestCost / 10.0)) + "},\n");
+        SimNode spawnNode = grid.Get(map.Spawns[0]);
+        int hops = Route.CountHops(grid, spawnNode);
+        double cost = Route.CostInTiles(spawnNode);
+        json.Append("\"path\":{\"tiles\":" + hops + ",\"costTileUnits\":" + (cost < 0 ? "-1" : F(cost)) + "},\n");
+        Debug.Log("[Bench] path " + hops + " tiles, cost " + (cost < 0 ? "unreachable" : cost.ToString("0.#", CultureInfo.InvariantCulture)));
 
         // ---- 3) frame time vs live agent count ----
         json.Append("\"tiers\":[");
         bool first = true;
         foreach (int n in agentTiers)
         {
-            yield return StartCoroutine(EnsureAgents(n));
+            EnsureAgents(n);
             float w0 = Time.realtimeSinceStartup;
-            while (Time.realtimeSinceStartup - w0 < warmupSeconds) { KeepAliveAgents(); yield return null; }
+            while (Time.realtimeSinceStartup - w0 < warmupSeconds) yield return null;
 
             var s = new FrameSampler();
             float t0 = Time.realtimeSinceStartup;
             while (Time.realtimeSinceStartup - t0 < sampleSeconds)
             {
-                KeepAliveAgents();
                 yield return null;
                 s.Add(Time.unscaledDeltaTime);
             }
@@ -240,7 +198,9 @@ public class ScenarioBenchmark : MonoBehaviour
         }
         json.Append("],\n\"done\":true\n}");
 
-        string path = System.IO.Path.GetFullPath(System.IO.Path.Combine(Application.dataPath, "../Benchmark_" + label + ".json"));
+        string dir = System.IO.Path.GetFullPath(System.IO.Path.Combine(Application.dataPath, "../Runs"));
+        System.IO.Directory.CreateDirectory(dir);
+        string path = System.IO.Path.Combine(dir, "Benchmark_" + label + ".json");
         System.IO.File.WriteAllText(path, json.ToString());
         LastResultPath = path;
         Done = true;
@@ -248,47 +208,68 @@ public class ScenarioBenchmark : MonoBehaviour
         Debug.Log("[Bench] COMPLETE -> " + path);
     }
 
-    // ================= agent pool =================
+    // ================= agents (simulation + views) =================
 
-    IEnumerator EnsureAgents(int n)
+    // Keeps `n` agents alive: effectively immortal (life 999999) and respawned at
+    // the spawn when they reach the core, so the tier's count stays constant.
+    void EnsureAgents(int n)
     {
-        int spawnedThisFrame = 0;
-        while (ActiveCount() < n)
+        while (agents.Count < n)
         {
-            GameObject a = GetFromPool();
-            PlaceAtSpawn(a);
-            if (++spawnedThisFrame >= 50) { spawnedThisFrame = 0; yield return null; }
+            var agent = new AgentState(agents.Count, SpawnPosition(), agentSpeed, 999999f, 1f, 0f, 0f);
+            agents.Add(agent);
+
+            GameObject go = Instantiate(agentPrefab);
+            FlowAgent view = go.GetComponent<FlowAgent>();
+            view.Bind(agent);
+            views.Add(view);
         }
     }
 
-    int ActiveCount()
+    Vec2f SpawnPosition()
     {
-        int c = 0;
-        foreach (var a in pool) if (a != null && a.activeInHierarchy) c++;
-        return c;
+        // A ring of radius <= 2 around the spawn, as the original did, but seeded.
+        Vector3 p = spawnPoint.position;
+        double angle = jitter.NextDouble() * 2.0 * System.Math.PI;
+        double radius = 2.0 * System.Math.Sqrt(jitter.NextDouble());
+        return new Vec2f(p.x + (float)(radius * System.Math.Cos(angle)), p.z + (float)(radius * System.Math.Sin(angle)));
     }
 
-    GameObject GetFromPool()
+    void StepAgents()
     {
-        foreach (var a in pool) if (a != null && !a.activeInHierarchy) return a;
-        var fresh = Instantiate(agentPrefab);
-        fresh.SetActive(false);
-        pool.Add(fresh);
-        return fresh;
-    }
+        if (agents.Count == 0) return;
 
-    void PlaceAtSpawn(GameObject a)
-    {
-        Vector2 ring = Random.insideUnitCircle * 2f;
-        a.transform.position = spawnPoint.position + new Vector3(ring.x, 0, ring.y);
-        a.SetActive(true);
-        var fa = a.GetComponent<FlowAgent>();
-        if (fa != null) fa.Initialize(flowManager, null, 999999f, agentSpeed, null);
-    }
+        accumulator += Time.deltaTime;
+        int ticks = 0;
+        float budget = 0f;
+        int coreHp = int.MaxValue;
+        while (accumulator >= TickSeconds && ticks < MaxTicksPerFrame)
+        {
+            bool dirty = AgentSystem.Step(grid, agents, TickSeconds, occupancy, ref budget, ref coreHp, null);
+            if (dirty) field.Generate(grid, map.Core);
 
-    void KeepAliveAgents()
-    {
-        foreach (var a in pool) if (a != null && !a.activeInHierarchy) PlaceAtSpawn(a);
+            for (int i = 0; i < agents.Count; i++)
+            {
+                AgentState a = agents[i];
+                if (!a.IsAlive)
+                {
+                    // Reached the core: respawn (a fresh state object, same id/slot).
+                    a = new AgentState(a.Id, SpawnPosition(), agentSpeed, 999999f, 1f, 0f, 0f);
+                    agents[i] = a;
+                    views[i].Bind(a);
+                }
+                else
+                {
+                    views[i].OnSimTick(a);
+                }
+            }
+            accumulator -= TickSeconds;
+            ticks++;
+        }
+        if (accumulator > TickSeconds) accumulator = TickSeconds;
+
+        float alpha = accumulator / TickSeconds;
+        for (int i = 0; i < views.Count; i++) views[i].Render(alpha);
     }
 
     // ================= misc =================
@@ -302,7 +283,7 @@ public class ScenarioBenchmark : MonoBehaviour
         json.Append("\"cores\":" + SystemInfo.processorCount + ",");
         json.Append("\"ramMB\":" + SystemInfo.systemMemorySize + ",");
         json.Append("\"gpu\":\"" + Esc(SystemInfo.graphicsDeviceName) + "\",");
-        json.Append("\"mode\":\"Editor play mode (vSync off, uncapped)\"");
+        json.Append("\"mode\":\"Editor play mode (vSync off, uncapped), Thesis.Sim fixed 50 Hz\"");
         json.Append("},\n");
     }
 
@@ -326,7 +307,6 @@ public class ScenarioBenchmark : MonoBehaviour
         }
         public string Summary()
         {
-            var sorted = new List<float>(dts); sorted.Sort();
             double sum = 0; foreach (var d in dts) sum += d;
             double avg = sum / Mathf.Max(1, dts.Count);
             return dts.Count + " frames, avg " + (avg * 1000.0).ToString("0.00") + " ms (" + (1.0 / avg).ToString("0") + " fps)";

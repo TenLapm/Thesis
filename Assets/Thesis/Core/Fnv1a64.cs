@@ -37,12 +37,18 @@ namespace Thesis.Core
         // Multi-byte values are fed little-endian explicitly (not via
         // BitConverter.GetBytes) so the hash is the same on every platform and
         // allocates nothing.
+        // Byte-for-byte identical to four AddByte calls (MultiByteValuesAreLittleEndian
+        // pins that), but converts out of and back into the stored form once instead
+        // of four times. Simulation hashes its whole state every tick in the
+        // determinism tests, so this is the hot path.
         public void Add(uint value)
         {
-            AddByte((byte)value);
-            AddByte((byte)(value >> 8));
-            AddByte((byte)(value >> 16));
-            AddByte((byte)(value >> 24));
+            ulong h = stored ^ OffsetBasis;
+            h = unchecked((h ^ (byte)value) * Prime);
+            h = unchecked((h ^ (byte)(value >> 8)) * Prime);
+            h = unchecked((h ^ (byte)(value >> 16)) * Prime);
+            h = unchecked((h ^ (byte)(value >> 24)) * Prime);
+            stored = h ^ OffsetBasis;
         }
 
         public void Add(int value) { Add(unchecked((uint)value)); }

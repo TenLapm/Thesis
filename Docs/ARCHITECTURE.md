@@ -137,7 +137,7 @@ Assets/
       SimConfig.cs SimState.cs SimPhase.cs Simulation.cs
     Learning/    Thesis.Learning.asmdef
       IStrategyEstimator.cs DecisionContext.cs Correction.cs BetaSampler.cs
-      BinnedPosterior.cs KernelEstimator.cs EstimatorState.cs
+      BinnedPosterior.cs KernelEstimator.cs EstimatorState.cs CalibrationReport.cs
       Synthetic/   ThresholdBanditEnv.cs
     Director/    Thesis.Director.asmdef
       Profile/     BuildProfile.cs IBuildFeature.cs ProfileInput.cs BuildProfiler.cs   [after WP-C1]
@@ -289,9 +289,10 @@ public interface IWavePlanner
 | `WaveDirector` (`DirectorMode.HeuristicOnly`) | `Director/Decision` | Layers 1 and 2. This is the ablation condition. |
 | `WaveDirector` (`DirectorMode.Full`) | `Director/Decision` | Layers 1, 2 and 3. |
 
-The mutation guard: in tests and in `DEBUG` builds, `Simulation` hashes the
-state before and after `PlanWave` and throws `InvalidOperationException` if the
-hash changed.
+The mutation guard: `Simulation` hashes the state before and after `PlanWave`
+**and** `OnWaveResolved`, and throws `InvalidOperationException` if the hash
+changed. It is always on (it costs two hashes per wave boundary), not only in
+DEBUG as first planned. See DEVLOG WP3.
 
 ```csharp
 public sealed class WavePlan   { public int WaveIndex; public string StrategyId; public AgentGroup[] Groups;
@@ -532,6 +533,10 @@ public interface IStrategyEstimator                 // chosen by DirectorConfig.
 - `ThresholdBanditEnv`: a synthetic environment whose best arm flips at a
   threshold in the context. It is the known-answer test for G1 and G3 and runs 10⁶ episodes
   in seconds under `dotnet`.
+- `CalibrationReport`: Brier score and 10-bin ECE over `(posterior mean, realised reward)`
+  pairs. A diagnostic reported next to G1, not a gate. Added after reviewing Jev
+  (2026-09-29), whose one transferable idea is that a decision probability should be
+  checked against outcomes; see `CLAUDE.md` §8 for why Jev itself is not used.
 
 ### 5.7 Reward
 
@@ -648,6 +653,14 @@ Log prefixes: `[Sim]`, `[Director]`, `[Telemetry]`, `[Harness]`, `[Replay]`.
    - No `Dictionary` or `HashSet` iteration wherever order affects the result.
    - No static mutable state.
    - Every random draw takes an `IRandom` from a named stream.
+   - **Every float operation whose result feeds another operation is wrapped in an explicit `(float)` cast**,
+     for example `(float)(x + (float)((float)(dx / d) * step))`. This applies even when the intermediate goes
+     through a local variable. The reason: C# lets a runtime keep float intermediates at higher precision.
+     Unity's Mono evaluates a chain like `a + b / c * d` in double and rounds once, while .NET rounds after every step,
+     so the two produced different bits (WP4: first divergence at tick 2916, one bit of one agent's position). The spec
+     *requires* an explicit cast to round, so casts make the runtimes agree. A single operation that is stored straight
+     to a field needs no cast: double rounding is harmless for one +, −, ×, ÷ or √. `FloatDeterminismTests` pins the
+     known cases and runs in both test runners. Tower damage, splash and slow maths (WP-C1) must follow this rule.
 4. No LINQ and no allocation inside `Simulation.Tick`. LINQ is fine in the director (it runs once per wave) and in the harness.
 5. Invariant violations throw `InvalidOperationException` with context
    (wave, strategy, values). Only `SimHost` and `DirectorHost` catch them.

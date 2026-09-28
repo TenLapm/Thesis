@@ -2,7 +2,6 @@ using System.Globalization;
 using System.IO;
 using System.Text.RegularExpressions;
 using NUnit.Framework;
-using Thesis.Harness;
 using Thesis.Sim;
 
 namespace Thesis.Tests.Harness

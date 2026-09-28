@@ -50,6 +50,65 @@ namespace Thesis.Sim
             PullNextShape();
         }
 
+        // Deep copy for Simulation.Clone(). The rng passed in must already hold the
+        // same state as this bag's rng (SimState clones the Pcg32 and hands it in),
+        // so both bags draw the same sequence from here on. Held and queued shapes
+        // are cloned (they are mutable); bagDraws hold library masters, which are
+        // never mutated, so sharing those references is safe.
+        internal ShapeBag CloneWith(IRandom clonedRng)
+        {
+            return new ShapeBag(this, clonedRng);
+        }
+
+        private ShapeBag(ShapeBag source, IRandom clonedRng)
+        {
+            Library = source.Library;
+            rng = clonedRng ?? throw new ArgumentNullException(nameof(clonedRng));
+            CurrentShape = source.CurrentShape?.Clone();
+            HoldShape = source.HoldShape?.Clone();
+            CurrentRotationTurns = source.CurrentRotationTurns;
+            HoldRotationTurns = source.HoldRotationTurns;
+            Version = source.Version;
+            hasHeldThisTurn = source.hasHeldThisTurn;
+            isHoldSlotEmpty = source.isHoldSlotEmpty;
+            foreach (ShapeDef s in source.nextShapes) nextShapes.Enqueue(s.Clone());
+            bagDraws.AddRange(source.bagDraws);
+        }
+
+        internal void AddToHash(ref Fnv1a64 h)
+        {
+            AddShape(ref h, CurrentShape);
+            AddShape(ref h, HoldShape);
+            h.Add(CurrentRotationTurns);
+            h.Add(HoldRotationTurns);
+            h.Add(Version);
+            h.Add(hasHeldThisTurn);
+            h.Add(isHoldSlotEmpty);
+            h.Add(nextShapes.Count);
+            foreach (ShapeDef s in nextShapes) AddShape(ref h, s);
+            h.Add(bagDraws.Count);
+            for (int i = 0; i < bagDraws.Count; i++) h.Add(bagDraws[i].Name);
+        }
+
+        private static void AddShape(ref Fnv1a64 h, ShapeDef s)
+        {
+            if (s == null)
+            {
+                h.Add(-1);
+                return;
+            }
+            h.Add(s.Name);
+            h.Add(s.BuildCost);
+            h.Add(s.DigCost);
+            h.Add(s.WallHealth);
+            h.Add(s.LocalTiles.Length);
+            for (int i = 0; i < s.LocalTiles.Length; i++)
+            {
+                h.Add(s.LocalTiles[i].X);
+                h.Add(s.LocalTiles[i].Y);
+            }
+        }
+
         public IEnumerable<ShapeDef> Preview => nextShapes;
 
         public void PullNextShape()

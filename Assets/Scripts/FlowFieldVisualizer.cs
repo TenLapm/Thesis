@@ -1,4 +1,5 @@
 using System.Collections.Generic;
+using Thesis.Sim;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
@@ -13,6 +14,9 @@ using UnityEngine.InputSystem;
 // Geometry is rebuilt only when the field actually changes
 // (FlowFieldManager.FieldVersion) or the mode changes, so the steady-state
 // cost is a single int comparison per frame.
+//
+// WP4: reads the simulation's grid (FlowFieldManager.Grid, a Thesis.Sim.SimGrid).
+// Arrow directions are derived from each tile's next-tile pointer.
 public class FlowFieldVisualizer : MonoBehaviour
 {
     public enum Mode { Off = 0, Arrows = 1, Heatmap = 2, ArrowsAndHeatmap = 3 }
@@ -83,7 +87,7 @@ public class FlowFieldVisualizer : MonoBehaviour
         if (kb != null && kb[toggleKey].wasPressedThisFrame) CycleMode();
 
         if (CurrentMode == Mode.Off) return;
-        if (flowManager == null || flowManager.gridManager == null || flowManager.gridManager.grid == null) return;
+        if (flowManager == null || flowManager.gridManager == null || flowManager.Grid == null) return;
 
         if (builtVersion != flowManager.FieldVersion || builtMode != CurrentMode) Rebuild();
     }
@@ -101,7 +105,7 @@ public class FlowFieldVisualizer : MonoBehaviour
 
     void Rebuild()
     {
-        GridManager grid = flowManager.gridManager;
+        SimGrid grid = flowManager.Grid;
         builtVersion = flowManager.FieldVersion;
         builtMode = CurrentMode;
 
@@ -112,21 +116,25 @@ public class FlowFieldVisualizer : MonoBehaviour
         if (wantArrows) BuildArrows(grid); else arrowMesh.Clear();
     }
 
-    void BuildArrows(GridManager grid)
+    private float PlaneY => flowManager.gridManager.transform.position.y;
+
+    void BuildArrows(SimGrid grid)
     {
         verts.Clear(); cols.Clear(); tris.Clear();
-        float d = grid.nodeRadius * 2f;
+        float d = flowManager.gridManager.nodeRadius * 2f;
         float y = groundOffset + 0.02f; // arrows sit above the heatmap layer
         Color32 c = arrowColor;
 
-        foreach (Node n in grid.grid)
+        for (int i = 0; i < grid.NodeCount; i++)
         {
-            if (!n.isWalkable || n.bestCost == Node.INFINITY) continue;
+            SimNode n = grid.ByIndex(i);
+            if (!n.IsWalkable || n.BestCost == SimNode.Infinity) continue;
+            Vector3 world = SceneMapBuilder.ToWorld(n.Position, PlaneY);
 
-            if (n.bestCost == 0)
+            if (n.BestCost == 0)
             {
                 // Goal tile: diamond marker instead of an arrow.
-                Vector3 gc = n.worldPosition + Vector3.up * y;
+                Vector3 gc = world + Vector3.up * y;
                 float r = d * 0.28f;
                 int b0 = verts.Count;
                 verts.Add(gc + new Vector3(0, 0, r));
@@ -140,11 +148,12 @@ public class FlowFieldVisualizer : MonoBehaviour
             }
 
             // Arrows inside standing walls would be hidden by the wall cube.
-            if (n.HasWall || n.bestDirection == Vector3.zero) continue;
+            SimNode next = grid.NextOf(n);
+            if (n.HasWall || next == null) continue;
 
-            Vector3 dir = n.bestDirection;
+            Vector3 dir = (SceneMapBuilder.ToWorld(next.Position, PlaneY) - world).normalized;
             Vector3 perp = Vector3.Cross(Vector3.up, dir).normalized;
-            Vector3 center = n.worldPosition + Vector3.up * y;
+            Vector3 center = world + Vector3.up * y;
 
             Vector3 tail = center - dir * (d * 0.30f);
             Vector3 neck = center + dir * (d * 0.10f);
@@ -168,27 +177,29 @@ public class FlowFieldVisualizer : MonoBehaviour
         ApplyMesh(arrowMesh);
     }
 
-    void BuildHeatmap(GridManager grid)
+    void BuildHeatmap(SimGrid grid)
     {
         verts.Clear(); cols.Clear(); tris.Clear();
-        float half = grid.nodeRadius * 0.92f; // slight gap so tiles read as tiles
+        float half = flowManager.gridManager.nodeRadius * 0.92f; // slight gap so tiles read as tiles
         float y = groundOffset;
 
         // Normalize the color ramp over reachable open ground; walls and
         // unreachable tiles get their own fixed colors.
         int maxCost = 1;
-        foreach (Node n in grid.grid)
+        for (int i = 0; i < grid.NodeCount; i++)
         {
-            if (n.isWalkable && !n.HasWall && n.bestCost != Node.INFINITY && n.bestCost > maxCost)
-                maxCost = n.bestCost;
+            SimNode n = grid.ByIndex(i);
+            if (n.IsWalkable && !n.HasWall && n.BestCost != SimNode.Infinity && n.BestCost > maxCost)
+                maxCost = n.BestCost;
         }
 
         byte alpha = (byte)(Mathf.Clamp01(heatmapAlpha) * 255);
 
-        foreach (Node n in grid.grid)
+        for (int i = 0; i < grid.NodeCount; i++)
         {
+            SimNode n = grid.ByIndex(i);
             Color32 c;
-            if (!n.isWalkable)
+            if (!n.IsWalkable)
             {
                 c = new Color32(25, 25, 25, alpha);                    // static blocker
             }
@@ -196,19 +207,19 @@ public class FlowFieldVisualizer : MonoBehaviour
             {
                 c = new Color32(255, 140, 0, alpha);                   // player/scenario wall
             }
-            else if (n.bestCost == Node.INFINITY)
+            else if (n.BestCost == SimNode.Infinity)
             {
                 c = new Color32(120, 60, 160, alpha);                  // unreachable pocket
             }
             else
             {
                 // Green (cheap) -> red (expensive) hue ramp.
-                float t = Mathf.Clamp01((float)n.bestCost / maxCost);
+                float t = Mathf.Clamp01((float)n.BestCost / maxCost);
                 Color rgb = Color.HSVToRGB(Mathf.Lerp(0.334f, 0f, t), 0.85f, 0.9f);
                 c = new Color32((byte)(rgb.r * 255), (byte)(rgb.g * 255), (byte)(rgb.b * 255), alpha);
             }
 
-            Vector3 p = n.worldPosition + Vector3.up * y;
+            Vector3 p = SceneMapBuilder.ToWorld(n.Position, PlaneY) + Vector3.up * y;
             int v0 = verts.Count;
             verts.Add(p + new Vector3(-half, 0, -half));
             verts.Add(p + new Vector3(-half, 0, half));

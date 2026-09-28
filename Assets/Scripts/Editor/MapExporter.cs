@@ -1,6 +1,5 @@
 using System.Collections.Generic;
 using System.IO;
-using System.Text;
 using Thesis.Core;
 using Thesis.Sim;
 using UnityEditor;
@@ -78,13 +77,7 @@ public static class MapExporter
             return false;
         }
 
-        // Same derivation as GridManager.Awake / CreateGrid.
-        float nodeRadius = gridManager.nodeRadius;
-        float nodeDiameter = nodeRadius * 2;
-        int width = Mathf.RoundToInt(gridManager.gridWorldSize.x / nodeDiameter);
-        int height = Mathf.RoundToInt(gridManager.gridWorldSize.y / nodeDiameter);
         Vector3 origin = gridManager.transform.position;
-
         if (Mathf.Abs(origin.x) > 1e-4f || Mathf.Abs(origin.z) > 1e-4f)
         {
             // NodeFromWorldPoint ignores the origin; CreateGrid does not. Both are
@@ -92,68 +85,38 @@ public static class MapExporter
             Debug.LogWarning("[MapExporter] '" + scene.name + "': GridManager is not at world (0, 0) (" + origin + "). NodeFromWorldPoint ignores the origin, so tile lookups are offset in the original game too.");
         }
 
-        Physics.SyncTransforms();
+        // The same builder the running game uses (SimHost / ScenarioBenchmark), so
+        // an exported map is exactly what a play session simulates.
+        MapData map;
+        try
+        {
+            map = SceneMapBuilder.Build(gridManager, flowManager.targetGoal, spawnTransforms, scene.name);
+        }
+        catch (InvalidDataException e)
+        {
+            Debug.LogError("[MapExporter] '" + scene.name + "': " + e.Message);
+            return false;
+        }
+
+        int width = map.Width;
+        int height = map.Height;
+        string[] rows = map.Rows;
+        var grid = new SimGrid(map);
+
+        // Unity's own tile centres (GridManager.CreateGrid's formula, Unity Vector3
+        // math) for the cross-check below.
+        float nodeRadius = gridManager.nodeRadius;
+        float nodeDiameter = nodeRadius * 2;
         Vector3 worldBottomLeft = origin - Vector3.right * gridManager.gridWorldSize.x / 2 - Vector3.forward * gridManager.gridWorldSize.y / 2;
         var unityCentres = new Vector3[width, height];
-        var rows = new string[height];
-        var rowBuilders = new StringBuilder[height];
-        for (int r = 0; r < height; r++) rowBuilders[r] = new StringBuilder(width);
-
-        for (int y = height - 1; y >= 0; y--)
-        {
-            StringBuilder row = rowBuilders[height - 1 - y];
-            for (int x = 0; x < width; x++)
-            {
-                Vector3 worldPoint = worldBottomLeft + Vector3.right * (x * nodeDiameter + nodeRadius) + Vector3.forward * (y * nodeDiameter + nodeRadius);
-                unityCentres[x, y] = worldPoint;
-                bool walkable = !Physics.CheckSphere(worldPoint, nodeRadius, gridManager.unwalkableMask);
-                row.Append(walkable ? '.' : 'X');
-            }
-        }
-        for (int r = 0; r < height; r++) rows[r] = rowBuilders[r].ToString();
-
-        var map = new MapData
-        {
-            Name = scene.name,
-            Width = width,
-            Height = height,
-            WorldSizeX = gridManager.gridWorldSize.x,
-            WorldSizeY = gridManager.gridWorldSize.y,
-            NodeRadius = nodeRadius,
-            OriginX = origin.x,
-            OriginZ = origin.z,
-            Rows = rows,
-        };
-
-        // Tile lookups go through the pure port so the exported tiles are exactly
-        // what the simulation will compute.
-        var grid = new SimGrid(map);
-        Vector3 corePos = flowManager.targetGoal.position;
-        map.Core = Tile(grid, corePos);
-        map.CoreWorld = new WorldPoint(corePos.x, corePos.y, corePos.z);
-        map.Spawns = new TileCoord[spawnTransforms.Count];
-        map.SpawnWorlds = new WorldPoint[spawnTransforms.Count];
-        for (int i = 0; i < spawnTransforms.Count; i++)
-        {
-            Vector3 p = spawnTransforms[i].position;
-            map.Spawns[i] = Tile(grid, p);
-            map.SpawnWorlds[i] = new WorldPoint(p.x, p.y, p.z);
-        }
+        for (int x = 0; x < width; x++)
+            for (int y = 0; y < height; y++)
+                unityCentres[x, y] = worldBottomLeft + Vector3.right * (x * nodeDiameter + nodeRadius) + Vector3.forward * (y * nodeDiameter + nodeRadius);
 
         int mismatches = CrossCheckPort(scene.name, gridManager, grid, unityCentres, width, height);
         if (mismatches > 0)
         {
             Debug.LogError("[MapExporter] '" + scene.name + "': the pure port disagrees with Unity's math in " + mismatches + " checks. Not writing the map.");
-            return false;
-        }
-
-        try
-        {
-            map.Validate();
-        }
-        catch (InvalidDataException e)
-        {
-            Debug.LogError("[MapExporter] '" + scene.name + "': " + e.Message);
             return false;
         }
 
@@ -213,12 +176,6 @@ public static class MapExporter
         }
 
         return mismatches;
-    }
-
-    private static TileCoord Tile(SimGrid grid, Vector3 world)
-    {
-        SimNode n = grid.NodeFromPosition(new Vec2f(world.x, world.z));
-        return new TileCoord(n.X, n.Y);
     }
 
     private static List<Transform> FindSpawns(Scene scene)

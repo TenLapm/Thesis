@@ -114,8 +114,8 @@ namespace Thesis.Sim
                 Width = width,
                 Height = height,
                 NodeRadius = nodeRadius,
-                WorldSizeX = width * nodeRadius * 2f,
-                WorldSizeY = height * nodeRadius * 2f,
+                WorldSizeX = (float)((float)(width * nodeRadius) * 2f), // explicit casts: ARCHITECTURE.md §9 rule 3
+                WorldSizeY = (float)((float)(height * nodeRadius) * 2f),
                 OriginX = 0f,
                 OriginZ = 0f,
                 Rows = rows,

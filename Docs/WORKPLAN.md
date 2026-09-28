@@ -199,6 +199,7 @@ WP7 runs in a **parallel session** during W7–W9. It touches only `Assets/Thesi
 - The agent prefab SampleScene uses is `Assets/Scripts/Prefabs/Agent.prefab` (GUID `c089fd02…`), not `Assets/Resources/Agent.prefab` (which only the benchmarks load).
 
 **Review probe:** run the same 25 waves at tick lengths 0.02 and 0.01 and compare wave-by-wave stall and leak counts. They should be close but not identical. Wildly different counts mean something depends on the tick length where it shouldn't.
+*(Refined after running it in WP3: every agent in an escalation wave is identical, so a wave is all-stall or all-leak and the counts come out **identical** at both tick lengths, which says little. The informative measure is continuous: seconds from wave start to the first stall or leak. It is now printed next to the counts by `SampleSceneRunTests.ProbeTickLengthSensitivityOnBenchChoke`.)*
 
 ---
 
@@ -249,6 +250,7 @@ WP7 runs in a **parallel session** during W7–W9. It touches only `Assets/Thesi
 **Done when** the cross-check passes. Write it up as `Results/<date>_determinism/README.md`.
 
 **Traps:** repeat the cross-check once on a **Player build**, not just the Editor, before the S2 W6 build freeze. The IL2CPP and Mono float paths can differ, and this is the only test that would notice.
+*(Update from WP4: Mono vs CoreCLR **did** differ, by one bit from tick 2916 of a real session, because Mono evaluated chained float expressions in double. This is fixed by the explicit-cast rule, ARCHITECTURE §9 rule 3, and all 5,036 ticks now match. IL2CPP compiles to C++, where the compiler flags decide contraction/FMA, so it still needs its own check. `CrossRuntimeBisectTests` shows how to bisect a divergence to a tick and component.)*
 
 ---
 
@@ -379,6 +381,11 @@ This is a sanity check only. The real balancing happens in the S2 W4 balance pas
 - `Export` → `Import` → the same RNG seed gives identical `SampleCorrection` sequences.
 - `KernelEstimator`: a query at a stored point with σ → small returns that point's reward. The ring buffer overwrites the oldest entry at 129.
 - **G1-synthetic:** in `ThresholdBanditEnv` (the best arm flips at a context threshold), `BinnedPosterior` reaches ≥ 85% best-arm selection within 300 episodes, averaged over 20 seeds, and beats uniform-random and round-robin.
+- **Calibration diagnostic** *(added 2026-09-29, borrowed from the Jev review; a diagnostic, not a new gate)*: `CalibrationReport` takes
+  `(predicted p = posterior mean α/(α+β), realised reward)` pairs and returns the Brier score and a 10-bin ECE. Known-answer tests:
+  perfectly calibrated synthetic pairs give ECE ≈ 0 (≤ 0.02 over 10⁵ pairs); pairs where the prediction is always 0.9 but the true rate is 0.5 give ECE ≈ 0.4.
+  On `ThresholdBanditEnv`, report ECE after 300 episodes alongside the G1 number. It is written into the G1 results folder and never used to decide pass or fail,
+  because the gates were fixed before implementation (`CLAUDE.md` §6).
 
 **Done when** everything above is green and the `synth` command writes `Results/<date>_g1-synth/`.
 

@@ -22,6 +22,13 @@ namespace Thesis.Sim
 
         public bool IsAlive = true;
 
+        // How it died: true = reached the core, false = stalled (only meaningful
+        // once IsAlive is false). WaveOutcome's pressure count reads it.
+        public bool Leaked;
+
+        // The wave that spawned this agent (1-based). Set by Simulation at spawn.
+        public int WaveIndex;
+
         // Cheapest BestCost this agent has stood on so far this wave (SimNode.Infinity
         // until it takes its first live step). Not consumed until the reward's
         // `pressure` term (WP11); tracked from the first tick so no wave is missing
@@ -39,9 +46,20 @@ namespace Thesis.Sim
             WallBreakReward = wallBreakReward;
         }
 
+        internal AgentState Clone()
+        {
+            return new AgentState(Id, Position, MoveSpeed, LifeTime, DigRate, DeathReward, WallBreakReward)
+            {
+                IsAlive = IsAlive,
+                Leaked = Leaked,
+                WaveIndex = WaveIndex,
+                MinCostSeen = MinCostSeen,
+            };
+        }
+
         public override string ToString()
         {
-            return "Agent#" + Id + (IsAlive ? " alive" : " dead") + " life=" + LifeTime + " pos=" + Position;
+            return "Agent#" + Id + (IsAlive ? " alive" : (Leaked ? " leaked" : " stalled")) + " wave=" + WaveIndex + " life=" + LifeTime + " pos=" + Position;
         }
     }
 }

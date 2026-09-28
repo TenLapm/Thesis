@@ -35,5 +35,18 @@ namespace Thesis.Sim
             for (int i = 0; i < counts.Length; i++) sum += counts[i];
             return sum;
         }
+
+        internal OccupancyMap Clone()
+        {
+            var c = new OccupancyMap(counts.Length);
+            Array.Copy(counts, c.counts, counts.Length);
+            return c;
+        }
+
+        internal void AddToHash(ref Thesis.Core.Fnv1a64 h)
+        {
+            h.Add(counts.Length);
+            for (int i = 0; i < counts.Length; i++) h.Add(counts[i]);
+        }
     }
 }

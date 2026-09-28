@@ -1,10 +1,11 @@
 using System;
+using System.IO;
+using Thesis.Harness;
 
 namespace Thesis.Cli
 {
     // Entry point for headless runs, replays and gates (Docs/ARCHITECTURE.md §7).
-    // Commands are added by the work packages that need them; WP0 only proves the
-    // pure assemblies link into a runnable program.
+    // Commands are added by the work packages that need them.
     public static class Program
     {
         public static int Main(string[] args)
@@ -15,16 +16,64 @@ namespace Thesis.Cli
                 return 0;
             }
 
-            Console.Error.WriteLine("Unknown command: " + args[0]);
-            PrintUsage();
-            return 2;
+            try
+            {
+                switch (args[0])
+                {
+                    case "bench": return Bench(args);
+                    default:
+                        Console.Error.WriteLine("Unknown command: " + args[0]);
+                        PrintUsage();
+                        return 2;
+                }
+            }
+            catch (ArgumentException e)
+            {
+                Console.Error.WriteLine("error: " + e.Message);
+                return 2;
+            }
+        }
+
+        // bench [--out <file>] [--iterations N] [--seed S]
+        // Flow-field rebuild sweep + A* comparison (the two BenchmarkRunner scenarios
+        // that never needed Unity). Default output: Runs/BenchmarkResults_headless.json.
+        private static int Bench(string[] args)
+        {
+            var o = new PathfindingBench.Options();
+            string outPath = Path.Combine("Runs", "BenchmarkResults_headless.json");
+            for (int i = 1; i < args.Length; i++)
+            {
+                switch (args[i])
+                {
+                    case "--out": outPath = Value(args, ref i); break;
+                    case "--iterations": o.RebuildIterations = int.Parse(Value(args, ref i)); break;
+                    case "--seed": o.Seed = ulong.Parse(Value(args, ref i)); break;
+                    default: throw new ArgumentException("bench: unknown option " + args[i]);
+                }
+            }
+
+            string json = PathfindingBench.RunToJson(o);
+            string dir = Path.GetDirectoryName(Path.GetFullPath(outPath));
+            if (!string.IsNullOrEmpty(dir)) Directory.CreateDirectory(dir);
+            File.WriteAllText(outPath, json);
+            Console.WriteLine("[Harness] bench -> " + Path.GetFullPath(outPath));
+            return 0;
+        }
+
+        private static string Value(string[] args, ref int i)
+        {
+            if (i + 1 >= args.Length) throw new ArgumentException(args[i] + " needs a value");
+            return args[++i];
         }
 
         private static void PrintUsage()
         {
             Console.WriteLine("usage: thesis <command> [options]");
             Console.WriteLine();
-            Console.WriteLine("commands (added per work package, see Docs/WORKPLAN.md):");
+            Console.WriteLine("commands:");
+            Console.WriteLine("  bench    flow-field rebuild sweep + A* comparison   [--out f] [--iterations n] [--seed s]");
+            Console.WriteLine();
+            Console.WriteLine("planned (see Docs/WORKPLAN.md):");
             Console.WriteLine("  run      headless episode            (WP5)");
             Console.WriteLine("  replay   verify / bisect a replay    (WP5)");
             Console.WriteLine("  ascii    render map state as text    (WP5)");
@@ -33,7 +82,6 @@ namespace Thesis.Cli
             Console.WriteLine("  balance  tower roster sanity sweep   (WP-C5)");
             Console.WriteLine("  ladder   offline ladder              (WP12)");
             Console.WriteLine("  gate     G1 | G2 | G3                (WP13)");
-            Console.WriteLine("  bench    flow-field timing           (WP4)");
         }
     }
 }

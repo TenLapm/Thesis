@@ -340,6 +340,7 @@ semester 1.
 | Difficulty scaling as the objective | Wrong target. See §3. |
 | Hardcoding the layout→counter mapping | It is a *result* to be reported, not a rule. |
 | Option A: time-stall features without towers (`dig_share`, `funnel_reliance`, …) | The student chose towers on 2026-09-15 so the game is fun to play, not only a testbed. The tables are in git history. |
+| Jev (TypeSafe AI, 2026-09-15) or any hosted/pretrained "System One" decision model inside the director | Reviewed 2026-09-29. Cloud-only, sampled with no seed control, and versioned remotely → breaks I1. At 70–500 ms per call and a 1,200 req/min limit it cannot serve the ~10⁶ headless episodes I3 needs. It is a fixed prior that does not learn from the player, which is the whole thesis claim, and swapping it in for layer 2 would make the ablation test "Jev" instead of "authored rules" (I4). Open replications (CUA-S1, laya) remove the cloud dependency but not the other objections. What *was* borrowed: calibration as a checked property of the learner (WORKPLAN WP7). |
 
 ---
 
@@ -400,3 +401,13 @@ are not tasks here.
   figures are **not** citable evidence. Taken from it: the documented
   linear-bandit failure, the tier/layer architecture, per-decision reward
   shaping, recency credit, the novelty filter, and gates-with-fail-numbers.
+  This includes its Jev scoreboard (Research 562: "10⁵–10⁷× faster per
+  decision"), which compares a local dot product against a networked
+  transformer call and is self-run. Do not cite any "N× faster than Jev" figure.
+- TypeSafe AI, "Introducing System One Models & Jev" (blog, 2026-09-15) — a
+  contrast case for related work: a pretrained, stateless decision model that
+  reacts to the current state, versus this director, which learns online from
+  one player. No paper or weights exist; cite the blog, and treat its speed and
+  quality numbers as vendor claims.
+- Guo et al. (2017, temperature scaling / ECE) and Brier (1950) — the
+  calibration check on the learner's posteriors (WORKPLAN WP7).

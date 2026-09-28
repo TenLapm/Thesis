@@ -1,22 +1,24 @@
 using System;
 using Thesis.Core;
-using Thesis.Sim;
 
-namespace Thesis.Harness
+namespace Thesis.Sim
 {
+    // Values match ScenarioBenchmark.ScenarioKind, so the serialized "scenario: N"
+    // in the Bench_* scenes still means the same layout.
     public enum BenchScenario
     {
-        OpenField,
-        Maze,
-        ChokePoints,
-        // RandomScatter is deliberately absent: the original seeded
-        // UnityEngine.Random.InitState(12345), whose sequence cannot be reproduced
-        // outside Unity, so its layout (and Benchmark_Stress100.json) has no parity.
+        OpenField = 0,
+        Maze = 1,
+        ChokePoints = 2,
+        RandomScatter = 3,
     }
 
-    // Port of ScenarioBenchmark.BuildScenario's deterministic layouts. The committed
+    // Port of ScenarioBenchmark.BuildScenario's layouts. The committed
     // Benchmark_Open/Maze/Choke.json path metrics were produced from exactly these
     // layouts, which makes them a parity oracle for SimGrid + FlowField.
+    //
+    // Lives in Thesis.Sim (moved from Thesis.Harness in WP4) because the Unity-side
+    // ScenarioBenchmark needs it at runtime and Thesis.Harness is Editor-only.
     public static class BenchScenarios
     {
         // Scenario walls are terrain nobody can afford to dig through: cost 200 reads
@@ -25,9 +27,15 @@ namespace Thesis.Harness
         public const int WallCost = 200;
         public const float WallHealth = 99999f;
 
+        // Seed for RandomScatter. The original used UnityEngine.Random.InitState(12345),
+        // whose sequence can't be reproduced outside Unity, so the scatter LAYOUT differs
+        // from the pre-port one (and Benchmark_Stress100.json has no parity check). The
+        // density and the clearance rule are the same.
+        public const ulong ScatterSeed = 12345UL;
+
         // Returns the number of wall tiles placed (the benchmark's "walls" count).
         // Does NOT rebuild the flow field; the caller does.
-        public static int Apply(SimGrid grid, MapData map, BenchScenario scenario)
+        public static int Apply(SimGrid grid, MapData map, BenchScenario scenario, float scatterDensity = 0.10f)
         {
             if (map.Spawns.Length == 0) throw new InvalidOperationException("Bench scenarios need a spawn; map '" + map.Name + "' has none.");
 
@@ -68,6 +76,16 @@ namespace Thesis.Harness
                         {
                             if (Math.Abs(x - gaps[i]) > 1 && TrySetWall(grid, x, rows[i], spawn, goal)) placed++;
                         }
+                    }
+                    break;
+
+                case BenchScenario.RandomScatter:
+                    var rng = new Pcg32(ScatterSeed, 0UL);
+                    int want = (int)Math.Round((float)(w * h * scatterDensity));
+                    int guard = 0;
+                    while (placed < want && guard++ < want * 30)
+                    {
+                        if (TrySetWall(grid, rng.NextInt(w), rng.NextInt(h), spawn, goal)) placed++;
                     }
                     break;
 

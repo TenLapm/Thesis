@@ -32,16 +32,18 @@ namespace Thesis.Sim
             // Same arithmetic, in the same order, as GridManager.CreateGrid:
             //   worldBottomLeft = position - right * size.x / 2 - forward * size.y / 2
             //   worldPoint      = worldBottomLeft + right * (x * d + r) + forward * (y * d + r)
-            float d = map.NodeRadius * 2f;
+            // Explicit casts round every float intermediate (ARCHITECTURE.md §9 rule 3).
+            float d = (float)(map.NodeRadius * 2f);
             float r = map.NodeRadius;
-            float bottomLeftX = map.OriginX - map.WorldSizeX / 2f;
-            float bottomLeftZ = map.OriginZ - map.WorldSizeY / 2f;
+            float bottomLeftX = (float)(map.OriginX - (float)(map.WorldSizeX / 2f));
+            float bottomLeftZ = (float)(map.OriginZ - (float)(map.WorldSizeY / 2f));
 
             for (int x = 0; x < Width; x++)
             {
                 for (int y = 0; y < Height; y++)
                 {
-                    var position = new Vec2f(bottomLeftX + (x * d + r), bottomLeftZ + (y * d + r));
+                    var position = new Vec2f((float)(bottomLeftX + (float)((float)(x * d) + r)),
+                                             (float)(bottomLeftZ + (float)((float)(y * d) + r)));
                     int index = x * Height + y;
                     nodes[index] = new SimNode(x, y, index, map.IsWalkable(x, y), position);
                 }
@@ -106,14 +108,15 @@ namespace Thesis.Sim
         // anyone ever does.
         public SimNode NodeFromPosition(Vec2f worldXZ)
         {
-            float percentX = (worldXZ.X + worldSizeX / 2) / worldSizeX;
-            float percentY = (worldXZ.Y + worldSizeY / 2) / worldSizeY;
+            // Explicit casts round every float intermediate (ARCHITECTURE.md §9 rule 3).
+            float percentX = (float)((float)(worldXZ.X + (float)(worldSizeX / 2)) / worldSizeX);
+            float percentY = (float)((float)(worldXZ.Y + (float)(worldSizeY / 2)) / worldSizeY);
 
             percentX = Clamp01(percentX);
             percentY = Clamp01(percentY);
 
-            int x = RoundToInt((Width - 1) * percentX);
-            int y = RoundToInt((Height - 1) * percentY);
+            int x = RoundToInt((float)((Width - 1) * percentX));
+            int y = RoundToInt((float)((Height - 1) * percentY));
 
             return nodes[x * Height + y];
         }
