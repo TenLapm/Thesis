@@ -1,0 +1,174 @@
+{
+  "Schema": 1,
+  "Source": "SampleScene",
+  "Shapes": [
+    {
+      "Name": "I",
+      "BuildCost": 4,
+      "DigCost": 15,
+      "WallHealth": 6.0,
+      "LocalTiles": [
+        {
+          "X": 0,
+          "Y": 0
+        },
+        {
+          "X": 1,
+          "Y": 0
+        },
+        {
+          "X": 2,
+          "Y": 0
+        },
+        {
+          "X": 3,
+          "Y": 0
+        }
+      ]
+    },
+    {
+      "Name": "O",
+      "BuildCost": 7,
+      "DigCost": 15,
+      "WallHealth": 6.0,
+      "LocalTiles": [
+        {
+          "X": 0,
+          "Y": 0
+        },
+        {
+          "X": 1,
+          "Y": 0
+        },
+        {
+          "X": 0,
+          "Y": 1
+        },
+        {
+          "X": 1,
+          "Y": 1
+        }
+      ]
+    },
+    {
+      "Name": "T",
+      "BuildCost": 5,
+      "DigCost": 15,
+      "WallHealth": 6.0,
+      "LocalTiles": [
+        {
+          "X": 0,
+          "Y": 0
+        },
+        {
+          "X": 1,
+          "Y": 0
+        },
+        {
+          "X": 2,
+          "Y": 0
+        },
+        {
+          "X": 1,
+          "Y": 1
+        }
+      ]
+    },
+    {
+      "Name": "S",
+      "BuildCost": 3,
+      "DigCost": 15,
+      "WallHealth": 6.0,
+      "LocalTiles": [
+        {
+          "X": 1,
+          "Y": 0
+        },
+        {
+          "X": 2,
+          "Y": 0
+        },
+        {
+          "X": 0,
+          "Y": 1
+        },
+        {
+          "X": 1,
+          "Y": 1
+        }
+      ]
+    },
+    {
+      "Name": "Z",
+      "BuildCost": 3,
+      "DigCost": 15,
+      "WallHealth": 6.0,
+      "LocalTiles": [
+        {
+          "X": 0,
+          "Y": 0
+        },
+        {
+          "X": 1,
+          "Y": 0
+        },
+        {
+          "X": 1,
+          "Y": 1
+        },
+        {
+          "X": 2,
+          "Y": 1
+        }
+      ]
+    },
+    {
+      "Name": "J",
+      "BuildCost": 3,
+      "DigCost": 15,
+      "WallHealth": 6.0,
+      "LocalTiles": [
+        {
+          "X": 0,
+          "Y": 0
+        },
+        {
+          "X": 0,
+          "Y": 1
+        },
+        {
+          "X": 1,
+          "Y": 1
+        },
+        {
+          "X": 2,
+          "Y": 1
+        }
+      ]
+    },
+    {
+      "Name": "L",
+      "BuildCost": 3,
+      "DigCost": 15,
+      "WallHealth": 6.0,
+      "LocalTiles": [
+        {
+          "X": 2,
+          "Y": 0
+        },
+        {
+          "X": 0,
+          "Y": 1
+        },
+        {
+          "X": 1,
+          "Y": 1
+        },
+        {
+          "X": 2,
+          "Y": 1
+        }
+      ]
+    }
+  ]
+}

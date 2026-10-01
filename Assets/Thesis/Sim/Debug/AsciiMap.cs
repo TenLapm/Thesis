@@ -8,8 +8,10 @@ namespace Thesis.Sim
 {
     public enum AsciiLayer
     {
-        Terrain, // static blockers, walls, spawns, core
-        Route,   // Terrain plus '*' on the route from the first spawn to the core
+        Terrain,   // static blockers, walls, spawns, core
+        Route,     // Terrain plus '*' on the route from the first spawn to the core
+        Occupancy, // AsciiState only: where this wave's agents spent their time, 1-9
+        Cost,      // AsciiState only: flow-field cost to the core, 0-9
     }
 
     public sealed class AsciiFixture

@@ -55,6 +55,14 @@ namespace Thesis.Sim
             return result;
         }
 
+        // What one tile of this shape becomes on the grid. PlayerBuilder clamped both
+        // (a wall must cost more than open ground and must have health to be a wall);
+        // a scripted policy that tries a placement on a scratch grid uses the same two
+        // values, so its preview and the real placement cannot disagree.
+        public static int WallTerrainCost(ShapeDef shape) { return Math.Max(2, shape.DigCost); }
+
+        public static float WallHealth(ShapeDef shape) { return Math.Max(0.5f, shape.WallHealth); }
+
         // Port of PlayerBuilder.HandlePlacement's check-and-spend. Deduct BEFORE
         // building so the budget can never go negative (this is what fixed the
         // original's double-click negative-budget exploit), then rebuild the field
@@ -73,8 +81,8 @@ namespace Thesis.Sim
 
             buildBudget -= shape.BuildCost;
 
-            int terrainCost = Math.Max(2, shape.DigCost);
-            float wallHealth = Math.Max(0.5f, shape.WallHealth);
+            int terrainCost = WallTerrainCost(shape);
+            float wallHealth = WallHealth(shape);
             for (int i = 0; i < tiles.Length; i++)
             {
                 SimNode node = grid.Get(tiles[i]);

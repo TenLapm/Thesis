@@ -125,7 +125,7 @@ Assets/
       Map/         MapData.cs
       Grid/        SimNode.cs SimGrid.cs FlowField.cs
       Agents/      AgentState.cs AgentSystem.cs
-      Build/       ShapeDef.cs ShapeBag.cs Placement.cs PlacementRecord.cs
+      Build/       ShapeDef.cs ShapeBag.cs Placement.cs PlacementRecord.cs ShapeLibraryFile.cs
       Waves/       IWavePlanner.cs WaveContext.cs WavePlan.cs AgentGroup.cs WaveOutcome.cs EscalationPlanner.cs
       Combat/      DamageType.cs TowerDef.cs TowerState.cs TowerSystem.cs Targeting.cs DamageMap.cs   (WP-C1)
       Movement/    MovementClass.cs FlowFieldSet.cs FlyingMovement.cs                                (WP-C2)
@@ -133,7 +133,9 @@ Assets/
       Commands/    SimCommand.cs
       Events/      SimEvent.cs
       Stats/       OccupancyMap.cs
-      Debug/       AsciiMap.cs StateHasher.cs
+      Debug/       AsciiMap.cs AsciiState.cs StateHasher.cs StateDump.cs BenchScenarios.cs
+      Replay/      ReplayFile.cs ReplayCommand.cs WaveHash.cs ReplaySetup.cs ReplayRecorder.cs
+                   (in Sim, not Harness: SimHost records in player builds, and Harness is editor-only)
       SimConfig.cs SimState.cs SimPhase.cs Simulation.cs
     Learning/    Thesis.Learning.asmdef
       IStrategyEstimator.cs DecisionContext.cs Correction.cs BetaSampler.cs
@@ -155,9 +157,10 @@ Assets/
     Harness/     Thesis.Harness.asmdef
       Policies/    IPlayerPolicy.cs IdlePolicy.cs GreedyDetourPolicy.cs RepeatTemplatePolicy.cs
                    ChokepointPolicy.cs SpreadPolicy.cs ReactivePolicy.cs
-      Scenarios/   BenchScenarios.cs            (OpenField / Maze / ChokePoints, ported from ScenarioBenchmark)
-      Replay/      ReplayFile.cs ReplayRecorder.cs ReplayRunner.cs
-      EpisodeRunner.cs Ladder.cs Counterfactual.cs ResultWriter.cs
+      Bench/       PathfindingBench.cs
+      Replay/      ReplayRunner.cs ReplayReport.cs
+      EpisodeRunner.cs EpisodeOptions.cs EpisodeResult.cs Registry.cs   (Registry: planner and policy names → instances)
+      Ladder.cs Counterfactual.cs ResultWriter.cs
       Gates/       G1LearnerAccuracy.cs G2DirectorTiming.cs G3GradedVsBinary.cs
   Scripts/                     (Assembly-CSharp: Unity host and views; existing files stay here)
     SimHost.cs DirectorHost.cs  (new)
@@ -166,20 +169,22 @@ Assets/
              ThreatCostTableAsset.cs AnnouncementTableAsset.cs
              TowerDefAsset.cs EnemyArchetypeAsset.cs                  (ScriptableObjects → plain config)
     Debug/   DirectorOverlay.cs  (new, F9)
-    Editor/  MapExporter.cs HarnessMenu.cs ReplayMenu.cs
+    Editor/  MapExporter.cs ShapeExporter.cs ReplayMenu.cs HarnessMenu.cs
     Benchmark/ ...               (ported onto SimHost in WP4)
   Tests/EditMode/  Thesis.Tests.EditMode.asmdef
     Core/ Sim/ Learning/ Director/ Harness/   (mirrors Assets/Thesis)
     Fixtures/  TestMaps.cs  (ASCII map fixtures)
 Maps/        SampleScene.map.json Bench_Open.map.json ...   (exported static geometry)
+             Shapes.json                                    (exported wall-shape library, in bag order)
 Runs/        (gitignored) raw run output: telemetry.jsonl, replay.json
+             Runs/Sessions/<time>_seed<seed>/replay.json is what a Unity editor session writes
 Results/     (committed) one folder per reported result, per CLAUDE.md §7
 Docs/        ARCHITECTURE.md WORKPLAN.md DEVLOG.md
 Tools/dotnet/
   Directory.Build.props   LangVersion 9.0, netstandard2.1 for libraries, net9.0 for Cli/Tests
   Thesis.Headless.sln
   Thesis.Core/ Thesis.Sim/ Thesis.Learning/ Thesis.Director/ Thesis.Harness/   (csproj only, glob-include Assets sources)
-  Thesis.Cli/   Program.cs
+  Thesis.Cli/   Program.cs Args.cs RunCmd.cs ReplayCmd.cs AsciiCmd.cs
   Thesis.Tests/ (csproj glob-includes Assets/Tests/EditMode/**/*.cs; NUnit 3.x)
 ```
 
@@ -201,9 +206,16 @@ namespace Thesis.Sim
         public IReadOnlyList<SimEvent> LastTickEvents { get; }
 
         public void Enqueue(SimCommand command);        // applied at the start of the next Tick()
+        public void FlushInput();                       // apply queued commands now, without advancing time (WP4)
         public void Tick();                             // advances exactly config.TickSeconds
         public Simulation Clone(IWavePlanner planner);  // deep copy incl. RNG state; for counterfactuals
         public ulong ComputeHash();
+
+        public ulong RngSeed { get; }                   // what a replay needs to rebuild this run (WP5)
+        public ShapeDef[] ShapeLibrary { get; }
+        public SimConfig Config { get; }
+        public MapData Map { get; }
+        public IWavePlanner Planner { get; }
     }
 }
 ```
@@ -324,6 +336,28 @@ public sealed class AgentGroup { public int SpawnIndex; public int Count; public
   seeds a new `Pcg32` from `Fnv1a64(rngSeed, "shop", waveIndex, rerollCount)`. So the
   offers for wave 7 are the same no matter what the player bought earlier, which
   planner is running, or how many draws other systems have made. This is what makes I10 hold.
+
+**Replay file (WP5).** `Thesis.Sim.ReplayFile`, schema 1, written by `ReplayRecorder`:
+
+| Field | Meaning |
+|---|---|
+| `Build`, `Session`, `Policy` | Labels for people. `Policy` is `"human"` or a scripted policy's name. Never read by a replay. |
+| `Map`, `MapSeed`, `RngSeed`, `Planner` | What to rebuild. `MapSeed` is 0 until seeded mazes exist. `Planner` is `IWavePlanner.Name`, resolved by `Harness.Registry`. |
+| `Config`, `MapData`, `Shapes` | **Stored in full**, so the file is self-contained and still means the same thing after a retune or a re-export. |
+| `SetupHash` | `ReplaySetup.Hash(Config, MapData, Shapes)` taken when recording **started**. Loading recomputes it; a mismatch means a number did not survive JSON, the file was edited, or the config was changed in the inspector mid-session. The file is then refused. |
+| `InitialHash` | State hash before the first tick and the first command. A mismatch here means the seed or the rules differ. |
+| `Commands` | `[{Tick, Cmd, X, Y}]`. `Tick` is `State.Tick` when the command was applied; commands sharing a tick apply in file order. |
+| `WaveHashes` | `[{Wave, Tick, Hash}]`, taken right after the tick that raised `WaveResolved`. |
+| `FinalTick`, `FinalHash` | Where the recording stops, after any commands applied at that tick. A session quit mid-wave is still checked up to here. |
+| `TickHashes` | Optional. One hash per tick, 8 bytes little-endian each, base64. Entry `i` is the state right after tick `i` ran. Needed to pin a divergence to a tick. |
+
+Hashes are 16 hex digits in strings, not JSON numbers, because readers that go through
+`double` cannot hold 64 bits. The estimator snapshot planned for this file arrives with the
+director (WP11); `MissingMemberHandling.Ignore` makes adding it non-breaking.
+
+Rule for anything that ends up in a replay's setup: **no negative zeros**. JSON drops the
+sign, so the file would describe a different input from the one that ran (found in WP5;
+`SceneMapBuilder` strips them).
 
 ### 4.6 Combat, movement classes and shop (WP-C1…C3)
 
@@ -575,7 +609,7 @@ fields set to `null`, so every condition can be analysed with the same code.
 
 | Class | Becomes |
 |---|---|
-| `SimHost` (new) | Builds `MapData` (from the `GridManager` scan plus spawn and core transforms) and `ShapeDef[]` (from `BlockShape` assets), and creates the `Simulation`. In `Update` it adds `Time.deltaTime` to an accumulator and runs ticks, at most `maxTicksPerFrame` per frame. It then drains events into C# events for the views. It writes the replay file to `persistentDataPath/Sessions/<session>/`. `GameSpeedController` needs no change, because scaled `deltaTime` already means more ticks per frame. |
+| `SimHost` (new) | Builds `MapData` (from the `GridManager` scan plus spawn and core transforms) and `ShapeDef[]` (from `BlockShape` assets), and creates the `Simulation`. In `Update` it adds `Time.deltaTime` to an accumulator and runs ticks, at most `maxTicksPerFrame` per frame. It then drains events into C# events for the views. It records every session with a `ReplayRecorder` and writes `Sessions/<session>/replay.json` at each wave boundary and when the session ends: under the project's `Runs/` in the editor, under `persistentDataPath` in a build. A failed write is logged once and never stops the game. `GameSpeedController` needs no change, because scaled `deltaTime` already means more ticks per frame. |
 | `DirectorHost` (new) | Turns config assets into a planner according to the session condition and owns the `TelemetryWriter`. If the director throws, it logs `[Director]`, uses `EscalationPlanner` for that wave, and writes `"fallback":"Exception"`. **A participant session never crashes because of the director.** |
 | `WaveSpawner`, `BlockManager`, `PlayerCore` | Thin adapters that **keep the member names the HUD already reads**: `currentWave`, `isIntermission`, `intermissionTimeRemaining`, `ActiveAgentCount`, `StartWave()`, `buildBudget`, `currentShape`, `holdShape`, `nextShapes`, `shapeVersion`, `OnHealthChanged`, `OnGameOver`. Fields turn into forwarding properties, and actions become enqueued commands. `CanvasDashboard` should compile unchanged. |
 | `FlowAgent` | Visual only. Reads `AgentState` by id, interpolates between the previous and current tick positions, and draws the life bar (an HP bar after WP-C1). No game rules, so I8 holds trivially. |
@@ -590,8 +624,9 @@ fields set to `null`, so every condition can be analysed with the same code.
 
 ```
 dotnet run --project Tools/dotnet/Thesis.Cli -- run     --map Maps/SampleScene.map.json --planner escalation --policy greedy --seed 1 --waves 25 --out Runs/<name>
-dotnet run --project Tools/dotnet/Thesis.Cli -- replay  Runs/<name>/replay.json [--per-tick]
-dotnet run --project Tools/dotnet/Thesis.Cli -- ascii   Runs/<name>/replay.json --wave 7 [--tick 44000] [--layer route|occupancy|cost]
+                                                         [--shapes Maps/Shapes.json] [--config overrides.json] [--per-tick] [--wait]
+dotnet run --project Tools/dotnet/Thesis.Cli -- replay  Runs/<name>/replay.json [--per-tick] [--dump-tick T] [--dump-out file]
+dotnet run --project Tools/dotnet/Thesis.Cli -- ascii   Runs/<name>/replay.json [--wave 7 | --tick 44000] [--layer route|terrain|occupancy|cost]
 dotnet run --project Tools/dotnet/Thesis.Cli -- trace   Runs/<name>/telemetry.jsonl --wave 7
 dotnet run --project Tools/dotnet/Thesis.Cli -- ladder  --map Maps/SampleScene.map.json --seeds 20 --out Results/<yyyy-MM-dd>_ladder
 dotnet run --project Tools/dotnet/Thesis.Cli -- synth   --episodes 1000000 --estimator binned --out Results/<yyyy-MM-dd>_g1-synth
@@ -599,7 +634,15 @@ dotnet run --project Tools/dotnet/Thesis.Cli -- gate    G1|G2|G3 ...
 dotnet run --project Tools/dotnet/Thesis.Cli -- bench   --map Maps/Bench_Maze.map.json
 ```
 
-- `IPlayerPolicy.OnIntermission(SimState view, Action<SimCommand> send, IRandom rng)`.
+- `run`, `replay` and `ascii` exist as of WP5; `bench` since WP4; the rest are planned.
+  `run --config` takes a JSON file listing only the `SimConfig` fields to change, and
+  rejects a field name `SimConfig` does not have. `--wait` lets build-phase countdowns
+  run out instead of sending `StartWaveNow`. `replay` exits 1 on a divergence.
+- `IPlayerPolicy.OnIntermission(Simulation sim, Action<SimCommand> send, IRandom rng)`,
+  called once at the start of every build phase by `EpisodeRunner`. `sim` is for reading
+  (`State`, `Map`, `Config`); input goes only through `send`, which records the command and
+  applies it at once. *(WP5: `Simulation` instead of the `SimState` first planned, because a
+  policy needs the map and config to check legality.)*
   Every policy both builds walls and buys from the shop. The policies are `Idle`;
   `GreedyDetour` (maximise spawn cost per unit of budget, and buy the offer with the
   best damage per cost); `RepeatTemplate` (the "competent player who repeats" from
@@ -620,9 +663,9 @@ dotnet run --project Tools/dotnet/Thesis.Cli -- bench   --map Maps/Bench_Maze.ma
 | Symptom | First tool |
 |---|---|
 | The director picked something odd | `cli trace <telemetry> --wave N`: per-strategy veto, heuristic, θ, correction, score |
-| Two runs that should match don't | `cli replay <file>` finds the first divergent **wave**, then `--per-tick` finds the first divergent **tick**. `--dump-tick T` writes both states as JSON to diff. |
+| Two runs that should match don't | `cli replay <file>` finds the first divergent **wave**, then `--per-tick` finds the first divergent **tick** (the file must carry `TickHashes`; Unity sessions do by default). `--dump-tick T` writes the re-run's state at `State.Tick == T` as JSON with float bit patterns; dump the same tick from the other run or the other runtime and `diff` the two. |
 | Agents behave strangely | `cli ascii <replay> --wave N --tick T` renders the map, route, agents and occupancy as text |
-| Unity and headless disagree | Unity writes the same replay format. If it verifies headless, the bug is in the view layer. |
+| Unity and headless disagree | Unity writes the same replay format. If it verifies headless, the bug is in the view layer. The menu **Thesis → Replay → Verify Latest Session** re-runs a file under Unity's Mono. `PinnedReplayTests` re-runs committed Unity and .NET recordings on both runtimes on every test run. |
 | The learner doesn't converge | `cli synth --dump-every 1000` writes α/β for each cell over time as CSV |
 | Frame spike at a wave boundary | `directorMicros` in telemetry, plus a `ProfilerMarker("Director.PlanWave")` in `DirectorHost` |
 | Compile error in Unity only | Unity MCP `read_console`. If `dotnet build` passed, it is almost always the asmdef or meta layer. |
@@ -630,7 +673,7 @@ dotnet run --project Tools/dotnet/Thesis.Cli -- bench   --map Maps/Bench_Maze.ma
 ASCII render format (also used as the fixture format in tests):
 
 ```
-wave 7  tick 44000  budget 31.0  core 8/10  layer=route
+wave 7  tick 44000  phase Resolving  budget 31.0  core 8/10  live 42  layer=route
      0         1         2         3
      01234567890123456789012345678901234567
   0  XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX

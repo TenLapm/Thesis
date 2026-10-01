@@ -457,3 +457,155 @@ diff Runs/xrt_mono.txt Runs/xrt_coreclr.txt                          → identic
 - The live-session cross-check was done by replaying a hand-written script. WP5 automates
   it with real replay files recorded by `SimHost`.
 - Nothing from WP3/WP4 is committed.
+
+---
+
+## 2026-10-02 — WP5 Replay, determinism proof, CLI basics
+
+**Status:** built; all "must pass" items pass. I1 holds in the Unity editor and headless.
+Two things remain open: a session played by hand, and the IL2CPP player-build check.
+Result write-up: `Results/2026-10-02_determinism/README.md`.
+
+**What changed**
+- `Thesis.Sim/Replay` (new): `ReplayFile` (schema 1), `ReplayCommand`, `WaveHash`,
+  `ReplaySetup` (one fingerprint of config + map + shapes) and `ReplayRecorder`.
+- `Thesis.Sim/Debug`: `StateDump` (a state as JSON, every float also as its bit pattern) and
+  `AsciiState` (header, agents and the route / occupancy / cost layers). `AsciiLayer` gained
+  `Occupancy` and `Cost`.
+- `Thesis.Sim/Build/ShapeLibraryFile` and `Maps/Shapes.json`: the wall-shape library exported
+  from the scene, so headless runs use the game's shapes in the game's bag order.
+- `Simulation`: `RngSeed` and `ShapeLibrary` are now readable (a replay needs both).
+  `Placement.WallTerrainCost` / `WallHealth` factor out the two clamps `TryPlace` applied, so a
+  policy's scratch placement and the real one use the same values.
+- `Thesis.Harness`: `EpisodeRunner` (+ `EpisodeOptions`, `EpisodeResult`), `Registry`
+  (planner and policy names), `IPlayerPolicy`, `IdlePolicy`, `GreedyDetourPolicy`,
+  `ReplayRunner` (verify, first divergent wave, per-tick bisect, run-to-tick) and `ReplayReport`.
+- `Thesis.Cli`: `run`, `replay`, `ascii` (and a small `Args` parser). `run --config` takes a JSON
+  file of `SimConfig` overrides and rejects unknown field names.
+- Unity: `SimHost` records every session and writes `Sessions/<time>_seed<seed>/replay.json` at
+  each wave boundary and when play stops (project `Runs/` in the editor, `persistentDataPath` in
+  a build). New inspector toggles: `recordReplay`, `recordTickHashes` (both on).
+  Editor menus: **Thesis → Export Shapes (Active Scene)** and **Thesis → Replay → Verify Latest
+  Session / Verify File… / Open Sessions Folder**.
+- `SceneMapBuilder` strips negative zeros (see Findings).
+
+**Deviations / decisions**
+- **`ReplayFile` and `ReplayRecorder` are in `Thesis.Sim`, not `Thesis.Harness`** as the folder
+  layout said. The harness assembly is editor-only, and `SimHost` must record in player builds
+  (the study runs on one). `ReplayRunner` stays in the harness.
+- **The file stores `Config`, `MapData` and `Shapes` in full**, plus a `SetupHash` over them,
+  instead of only a map name and a config hash. A Unity recording then verifies headless with
+  nothing else on disk, and keeps its meaning after a retune or a map re-export. Cost: about
+  10 KB per file.
+- **Per-tick hashes are stored in the file** (optional; base64, 8 bytes per tick). WORKPLAN asked
+  for a per-tick bisect but only listed wave hashes, and a recording cannot be bisected to a
+  tick without a reference hash for every tick. On by default in `SimHost`, because a
+  participant session cannot be recorded again; off by default in `run` (add `--per-tick`),
+  because a headless run can.
+- **`FinalTick` / `FinalHash` added.** Without them a session that ends mid-wave, or input after
+  the last wave boundary, would go unchecked.
+- **`IPlayerPolicy.OnIntermission` takes `Simulation`, not `SimState`**: a policy needs the map
+  and config to check legality. `send` applies each command at once, so the policy reads the
+  result of its own input.
+- **`EpisodeRunner` sends `StartWaveNow` after the policy builds** (`StartWavesEarly`, on by
+  default). Nothing moves during a build phase, so the countdown is about 15,000 empty ticks over
+  25 waves. The command is recorded like any other. `--wait` turns it off.
+- **No estimator snapshot field yet.** There is no estimator. Adding the field later does not
+  break old files.
+- **The 25-wave "must pass" run uses `CoreMaxHp` 100,000.** With SampleScene's real settings the
+  greedy policy is dead by wave 2 (see Findings), so 25 waves need a core that cannot die.
+  The rules are otherwise unchanged.
+
+**Findings**
+- **I1 holds across runtimes, in both directions.** A 25-wave headless recording (111,861 ticks,
+  466 commands) replays with every tick hash equal under .NET and under Unity's Mono. Two sessions
+  recorded by `SimHost` in play mode (x1, x2, x3, `timeScale` 20, pause, input while paused,
+  mid-wave builds, game over; and one quit mid-wave) replay with every tick hash equal under .NET.
+- **Negative zero broke the first Unity recording.** SampleScene's `GridManager` sits at Z = −0.0.
+  The simulation ran with −0.0; the JSON writer stores it as `0.0` (on both runtimes), so the
+  file's setup fingerprint did not match the run and the file was refused when loaded. No effect
+  on gameplay (−0.0 and +0.0 behave the same in the grid's sums, and WP4's cross-runtime hash
+  matched with it), but the file did not describe what ran. `SceneMapBuilder` now strips
+  negative zeros. This is the setup check doing its job on its first real file.
+- **`InvalidDataException` is not an `IOException`** (it derives from `SystemException`). The
+  CLI's `catch (IOException)` let a refused file through as an unhandled crash. Fixed; the CLI
+  now prints the reason and exits 2.
+- **`AsciiMap.Parse` walls do not reach a `Simulation`.** `'#'` tiles live on the fixture's own
+  grid; a simulation builds a fresh grid from the map. `TestSims.AsciiWithWalls` copies them
+  across. Existing tests were unaffected (they set walls by hand); my new ones tripped on it.
+- **The greedy policy is a weak player, and why is informative.**
+  - Version 1 judged a piece by flow-field cost alone. On open ground there are millions of
+    equally short routes, so no single piece raises the cost: it placed 6 pieces near the spawn
+    and then nothing, with 83 budget unspent. It stalled all of wave 1 and died in wave 2.
+  - Version 2 (kept) breaks ties by the **number of shortest routes** left, so it keeps
+    building. It builds every phase (194 placements over 25 waves) but walls in the core, and
+    a swarm chews one wall tile almost at once: wall health is shared, 6 s for one agent is
+    0.06 s for a hundred. It leaks most of wave 1.
+  - Reason: cost is a poor stand-in for **time**, and time is what wins in the current game.
+    This is not worth fixing now. WP-C1 replaces the clock with HP, which changes what a good
+    policy is. WP12 has a note.
+  - It also says something about balance: by wave 25 an enemy can cover about 370 world units in
+    its lifetime, four times the direct route. Whether a human can hold that is for the
+    balance pass, not this package.
+- **Writing the replay costs about 11 ms at wave 25** under Mono (1.2 MB with per-tick hashes),
+  on the main thread, in the same frame the wave resolves. That is inside one frame today but it
+  shares the wave-boundary frame with `OnWaveResolved`, which G2 budgets at 16 ms. Measure in
+  WP13; if it shows, move the file write to a background thread (the snapshot is already a copy).
+- **Per-tick hashing costs under 82 µs per tick under Mono** (9.1 s for 111,861 ticks,
+  simulation included). At x3 speed that is about 12 ms per second of play.
+- **Bash heredocs in this environment fail when the text contains non-ASCII characters**
+  (`→`, `…`). Write the script to a file instead. (Tooling note, not a project issue.)
+
+**Unity sessions recorded (SampleScene, play mode, driven through Unity MCP)**
+- Session A, `Runs/Sessions/20261002-034123_seed1`: 22 commands, 4,709 ticks, game over in wave 1.
+- Session B, `Runs/Sessions/20261002-034230_seed1`: 18 commands, 882 ticks, stopped mid-wave
+  while paused with input after the last tick.
+- Both copied to `Results/2026-10-02_determinism/` and pinned by `PinnedReplayTests`.
+- 0 console errors or warnings in either session.
+
+**Tests added:** 59 (135 → 194 headless; Unity 198 including the 4 explicit diagnostics)
+- `ReplayFileTests` (13): JSON round trip; base64 tick hashes; refused when config, map or shape
+  is edited, when commands are out of order, on an unknown command, on garbage; negative zero is
+  kept or refused, never silently changed; the setup hash covers **every** `SimConfig` field
+  (by reflection, so a new tunable cannot be forgotten) and depends on shape order.
+- `ReplayRunnerTests` (9): a recording verifies, also after a JSON round trip; **a command moved
+  by one tick is pinned to its wave and its exact tick**; without tick hashes only the wave is
+  named; a dropped command; a changed seed fails before tick 1; an unknown planner is named;
+  run-to-tick lands on the recorded hashes; a session cut off mid-wave with trailing input.
+- `EpisodeRunnerTests` (7): **the 25-wave greedy run records and replays with every wave hash
+  matching**; same seed gives a byte-identical file; the idle player loses wave 1; one policy
+  call per build phase; `--wait` behaviour; the tick limit; bad options.
+- `GreedyDetourPolicyTests` (6), `ReplayRecorderTests` (8), `AsciiStateTests` (6),
+  `StateDumpTests` (3), `ShapeLibraryFileTests` (3: the exported `Maps/Shapes.json` equals the
+  hand-copied `TestShapes`).
+- `PinnedReplayTests` (4 cases): the committed Unity and .NET recordings still replay exactly.
+  Runs in both test runners, so each file is re-run on the runtime that did not record it.
+
+**Commands run**
+```
+dotnet test Tools/dotnet/Thesis.Headless.sln                         → Passed 194/194
+Unity MCP: run_tests EditMode                                        → Passed 194, 4 explicit skipped
+Unity MCP: Thesis/Export Shapes (Active Scene)                       → Maps/Shapes.json (7 shapes: I O T S Z J L)
+thesis run --policy greedy --seed 1 --waves 25 --per-tick --config Results/2026-10-02_determinism/long-core.config.json --out Runs/wp5_greedy_25waves
+                                                                     → 25 waves, 111,861 ticks, final hash a1dc9171e8fd33f0
+thesis replay Runs/wp5_greedy_25waves/replay.json --per-tick         → OK, every tick hash (also under Mono)
+thesis replay Runs/wp5_tampered/replay.json --per-tick               → DIVERGED, wave 8, tick 32435
+thesis replay Results/2026-10-02_determinism/unity-session-a.replay.json --per-tick   → OK, 4,709 ticks
+thesis replay Results/2026-10-02_determinism/unity-session-b.replay.json --per-tick   → OK, 882 ticks
+thesis ascii  Runs/wp5_greedy_25waves/replay.json --wave 25 --layer occupancy
+```
+(`thesis` = `dotnet run --project Tools/dotnet/Thesis.Cli --`)
+
+**Known issues**
+- **No session has been played by hand yet.** The WP4 playtest checklist is still unchecked, and
+  WP5's cross-check was driven through the editor by script. Doing the WP4 checklist once now
+  covers both: play, stop, then `thesis replay` on the file the console names (or the menu
+  **Thesis → Replay → Verify Latest Session**).
+- **IL2CPP player build not checked** (WORKPLAN WP5 trap). Needed before the build freeze.
+- Both Unity recordings end in wave 1. The intermission path under Unity's frame loop is covered
+  by tests and by replaying the headless 25-wave file under Mono, not by a Unity-recorded file.
+- Editing the `SimConfig` asset in the inspector **during play** changes the running game and
+  makes that session's replay invalid. The file is refused on load with a message that says so.
+- `SimHost.Dispatch` iterates `LastTickEvents`; a view that calls `Submit` from inside an event
+  handler would clear that list mid-loop. No view does today. (Present since WP4, noticed now.)
+- `PinnedReplayTests` will fail at WP-C1 by design; WORKPLAN WP-C1 says what to do.

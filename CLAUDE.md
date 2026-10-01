@@ -167,7 +167,7 @@ the principle stays the same.
 
 | # | Invariant | Why |
 |---|---|---|
-| I1 | Deterministic runs: same `{mapSeed, rngSeed, inputLog}` → identical outcome. Replace `UnityEngine.Random` (used in `BlockManager.RefillBag`) and any `System.Random` with a seeded PCG/xorshift. Fixed timestep. | Replay, regression benchmarks, and the answer to "did both study conditions see comparable waves". Currently **not** satisfied. |
+| I1 | Deterministic runs: same `{mapSeed, rngSeed, inputLog}` → identical outcome. Replace `UnityEngine.Random` (used in `BlockManager.RefillBag`) and any `System.Random` with a seeded PCG/xorshift. Fixed timestep. | Replay, regression benchmarks, and the answer to "did both study conditions see comparable waves". **Satisfied since WP5 (2026-10-02)** in the Unity editor (Mono) and headless (.NET): every session is recorded and replays to the same state hash on every tick (`Results/2026-10-02_determinism/`). Not yet checked on an IL2CPP player build. |
 | I2 | All strategies spend an identical threat budget at a given wave number. Only the shared cost table is tuned. | Otherwise "the adaptive condition was harder" explains the entire result. |
 | I3 | The estimator classes have **zero** Unity dependencies. No `MonoBehaviour`, no `UnityEngine` imports. | They must run headless at ~10⁶ episodes and be unit-testable. |
 | I4 | The learned term is an **additive correction bounded to ±1** on an authored heuristic score. It never selects directly. | Cold-start safety, debuggability, and it gives the ablation for free. |

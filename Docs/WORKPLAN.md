@@ -234,6 +234,13 @@ WP7 runs in a **parallel session** during W7–W9. It touches only `Assets/Thesi
 
 **Reads:** §4.5, §7, §8 · **Depends:** WP4
 
+**Status (2026-10-02):** built and passing; result in `Results/2026-10-02_determinism/README.md`.
+Still open: (a) one session played **by hand** with mouse and keyboard and verified with
+`thesis replay` (the sessions so far were driven through the editor by script);
+(b) the Player-build check in Traps below. As built, `ReplayFile` and `ReplayRecorder` live in
+`Thesis.Sim/Replay` (the harness assembly is editor-only and `SimHost` records in builds), and
+the file stores config, map and shapes in full instead of a config hash. See DEVLOG WP5.
+
 **Creates**
 - `Harness/Replay/ReplayFile.cs` (`schema`, `build`, `map`, `mapSeed`, `rngSeed`, `simConfigHash`, `planner`, optional estimator snapshot,
   `commands: [{tick, cmd}]`, `waveHashes: [{wave, hash}]`), `ReplayRecorder.cs`, `ReplayRunner.cs` (verify, first divergent wave,
@@ -297,6 +304,12 @@ Schema 1 covers the ported game, which has no towers. WP-C3 bumps the schema to 
 **Done when** a headless run with a hand-placed tower layout survives clearly longer than the same map with no towers.
 
 **Review probe:** place a range-0 tower (it can never hit) on the only route. Check that enemies dig through it, `TowerDestroyed` fires once, and the flow field rebuilds.
+
+**Traps:** `PinnedReplayTests` will fail here, **on purpose**. It re-runs recordings of the
+pre-tower game (`Results/2026-10-02_determinism/`), and once HP replaces the clock they no longer
+describe the game. Record new ones (a Unity session and a headless run, as that folder's README
+describes), replace the files, bump `ReplayFile.CurrentSchema` if the command set changed, and
+note it in DEVLOG. Do not delete the test: it is the only standing Mono-vs-.NET check.
 
 ---
 
@@ -463,6 +476,12 @@ multi-spawn support in `MapData` / `Placement` / `SimHost`, and the extra spawn 
 **Reads:** §7 · **Depends:** WP5, WP11
 
 **Creates** the rest of `Harness/Policies/*`, `Counterfactual.cs`, `Ladder.cs`, `ResultWriter.cs`, and the CLI command `ladder`.
+
+*(From WP5: `GreedyDetourPolicy` as built is a weak player. On SampleScene's real settings it loses
+in wave 1 or 2, because it maximises flow-field **cost** and a swarm chews through one wall tile
+almost at once, so cost is a poor stand-in for time. The ladder needs policies that actually
+survive; judge them after WP-C1, when damage, not time, decides a wave. `Registry` is where new
+policies and planners get their names.)*
 
 **Must pass**
 - A counterfactual on a cloned state leaves the original simulation's hash unchanged.

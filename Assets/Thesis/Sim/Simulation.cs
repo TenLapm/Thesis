@@ -34,6 +34,7 @@ namespace Thesis.Sim
             library = shapeLibrary ?? throw new ArgumentNullException(nameof(shapeLibrary));
             this.planner = planner ?? throw new ArgumentNullException(nameof(planner));
             this.pricer = pricer;
+            RngSeed = rngSeed;
 
             config.Validate();
             map.Validate();
@@ -62,6 +63,7 @@ namespace Thesis.Sim
             map = source.map;
             library = source.library;
             pricer = source.pricer;
+            RngSeed = source.RngSeed;
             this.planner = planner ?? throw new ArgumentNullException(nameof(planner));
             State = source.State.Clone();
             events.AddRange(source.events);
@@ -76,6 +78,13 @@ namespace Thesis.Sim
         public MapData Map => map;
 
         public IWavePlanner Planner => planner;
+
+        // The seed every RNG stream was derived from, and the shape masters the bag
+        // draws from. A replay stores both; the masters are never mutated (the bag
+        // only ever hands out clones), so this array is the library as constructed.
+        public ulong RngSeed { get; }
+
+        public ShapeDef[] ShapeLibrary => library;
 
         // Everything that happened during the most recent Tick(), in order.
         public IReadOnlyList<SimEvent> LastTickEvents => events;

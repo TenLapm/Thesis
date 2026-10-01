@@ -26,6 +26,8 @@ namespace Thesis.Tests
 
         public static string MapFile(string name) { return Path.Combine(Maps, name + ".map.json"); }
 
+        public static string ShapesFile => Path.Combine(Maps, "Shapes.json");
+
         private static string FindFrom(string start)
         {
             var dir = new DirectoryInfo(start);

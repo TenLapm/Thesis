@@ -21,6 +21,23 @@ namespace Thesis.Tests
             return new Simulation(config ?? new SimConfig(), f.Map, TestShapes.SampleSceneLibrary(), seed, planner);
         }
 
+        // Ascii() gives the simulation the fixture's MAP only: '#' and 'H' walls are
+        // run-time state, not map data, so a fresh simulation starts without them.
+        // This copies them onto the simulation's grid as scenario setup.
+        public static Simulation AsciiWithWalls(string text, IWavePlanner planner, SimConfig config = null, ulong seed = 1)
+        {
+            AsciiFixture f = AsciiMap.Parse(text);
+            var sim = new Simulation(config ?? new SimConfig(), f.Map, TestShapes.SampleSceneLibrary(), seed, planner);
+            SimGrid grid = sim.State.Grid;
+            for (int i = 0; i < grid.NodeCount; i++)
+            {
+                SimNode from = f.Grid.ByIndex(i);
+                if (from.HasWall) grid.SetWall(grid.ByIndex(i), from.TerrainCost, from.WallHealth);
+            }
+            sim.RebuildFieldForSetup();
+            return sim;
+        }
+
         public static void Run(Simulation sim, int ticks)
         {
             for (int i = 0; i < ticks; i++) sim.Tick();

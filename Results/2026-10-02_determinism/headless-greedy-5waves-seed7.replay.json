@@ -1,0 +1,792 @@
+{
+  "Schema": 1,
+  "Build": "headless .NET 9.0.10",
+  "Session": "wp5_greedy_5waves_seed7",
+  "Policy": "greedy",
+  "Map": "SampleScene",
+  "MapSeed": 0,
+  "RngSeed": 7,
+  "Planner": "escalation",
+  "Config": {
+    "TickSeconds": 0.02,
+    "StartBudget": 60.0,
+    "CoreMaxHp": 100000,
+    "StipendPerWave": 20,
+    "PrepSeconds": 45.0,
+    "IntermissionSeconds": 10.0,
+    "DigRate": 1.0,
+    "DeathReward": 0.2,
+    "WallBreakReward": 1.0,
+    "AgentsPerWave": 100,
+    "AgentsPerWaveIncrement": 5,
+    "SpawnDelay": 0.2,
+    "SpawnDelayDecrement": 0.02,
+    "MinSpawnDelay": 0.15,
+    "LifeTimeIncrementPerWave": 4.0,
+    "MaxLifeTime": 200.0,
+    "BaseMoveSpeed": 1.25,
+    "MoveSpeedIncrementPerWave": 0.0375,
+    "MaxMoveSpeed": 2.25,
+    "LifeTimeSafetyMargin": 5.0,
+    "PressureRadiusTiles": 5.0,
+    "ThreatEpsilon": 0.001
+  },
+  "MapData": {
+    "Schema": 1,
+    "Name": "SampleScene",
+    "Width": 38,
+    "Height": 38,
+    "WorldSizeX": 75.0,
+    "WorldSizeY": 75.0,
+    "NodeRadius": 1.0,
+    "OriginX": 0.0,
+    "OriginZ": 0.0,
+    "Rows": [
+      "......................................",
+      "......................................",
+      "......................................",
+      "......................................",
+      "......................................",
+      "......................................",
+      "......................................",
+      "......................................",
+      "......................................",
+      "......................................",
+      "......................................",
+      "......................................",
+      "......................................",
+      "......................................",
+      "......................................",
+      "......................................",
+      "......................................",
+      "......................................",
+      "......................................",
+      "......................................",
+      "......................................",
+      "......................................",
+      "......................................",
+      "......................................",
+      "......................................",
+      "......................................",
+      "......................................",
+      "......................................",
+      "......................................",
+      "......................................",
+      "......................................",
+      "......................................",
+      "......................................",
+      "......................................",
+      "......................................",
+      "......................................",
+      "......................................",
+      "......................................"
+    ],
+    "Core": {
+      "X": 34,
+      "Y": 34
+    },
+    "Spawns": [
+      {
+        "X": 3,
+        "Y": 3
+      }
+    ],
+    "CoreWorld": {
+      "X": 32.0,
+      "Y": 2.0,
+      "Z": 32.0
+    },
+    "SpawnWorlds": [
+      {
+        "X": -32.0,
+        "Y": 2.0,
+        "Z": -32.0
+      }
+    ],
+    "NodeDiameter": 2.0
+  },
+  "Shapes": [
+    {
+      "Name": "I",
+      "BuildCost": 4,
+      "DigCost": 15,
+      "WallHealth": 6.0,
+      "LocalTiles": [
+        {
+          "X": 0,
+          "Y": 0
+        },
+        {
+          "X": 1,
+          "Y": 0
+        },
+        {
+          "X": 2,
+          "Y": 0
+        },
+        {
+          "X": 3,
+          "Y": 0
+        }
+      ]
+    },
+    {
+      "Name": "O",
+      "BuildCost": 7,
+      "DigCost": 15,
+      "WallHealth": 6.0,
+      "LocalTiles": [
+        {
+          "X": 0,
+          "Y": 0
+        },
+        {
+          "X": 1,
+          "Y": 0
+        },
+        {
+          "X": 0,
+          "Y": 1
+        },
+        {
+          "X": 1,
+          "Y": 1
+        }
+      ]
+    },
+    {
+      "Name": "T",
+      "BuildCost": 5,
+      "DigCost": 15,
+      "WallHealth": 6.0,
+      "LocalTiles": [
+        {
+          "X": 0,
+          "Y": 0
+        },
+        {
+          "X": 1,
+          "Y": 0
+        },
+        {
+          "X": 2,
+          "Y": 0
+        },
+        {
+          "X": 1,
+          "Y": 1
+        }
+      ]
+    },
+    {
+      "Name": "S",
+      "BuildCost": 3,
+      "DigCost": 15,
+      "WallHealth": 6.0,
+      "LocalTiles": [
+        {
+          "X": 1,
+          "Y": 0
+        },
+        {
+          "X": 2,
+          "Y": 0
+        },
+        {
+          "X": 0,
+          "Y": 1
+        },
+        {
+          "X": 1,
+          "Y": 1
+        }
+      ]
+    },
+    {
+      "Name": "Z",
+      "BuildCost": 3,
+      "DigCost": 15,
+      "WallHealth": 6.0,
+      "LocalTiles": [
+        {
+          "X": 0,
+          "Y": 0
+        },
+        {
+          "X": 1,
+          "Y": 0
+        },
+        {
+          "X": 1,
+          "Y": 1
+        },
+        {
+          "X": 2,
+          "Y": 1
+        }
+      ]
+    },
+    {
+      "Name": "J",
+      "BuildCost": 3,
+      "DigCost": 15,
+      "WallHealth": 6.0,
+      "LocalTiles": [
+        {
+          "X": 0,
+          "Y": 0
+        },
+        {
+          "X": 0,
+          "Y": 1
+        },
+        {
+          "X": 1,
+          "Y": 1
+        },
+        {
+          "X": 2,
+          "Y": 1
+        }
+      ]
+    },
+    {
+      "Name": "L",
+      "BuildCost": 3,
+      "DigCost": 15,
+      "WallHealth": 6.0,
+      "LocalTiles": [
+        {
+          "X": 2,
+          "Y": 0
+        },
+        {
+          "X": 0,
+          "Y": 1
+        },
+        {
+          "X": 1,
+          "Y": 1
+        },
+        {
+          "X": 2,
+          "Y": 1
+        }
+      ]
+    }
+  ],
+  "SetupHash": "d1f0e322c8d0f858",
+  "InitialHash": "57fd84293afe7d72",
+  "Commands": [
+    {
+      "Tick": 0,
+      "Cmd": "Rotate",
+      "X": 0,
+      "Y": 0
+    },
+    {
+      "Tick": 0,
+      "Cmd": "PlaceShape",
+      "X": 32,
+      "Y": 34
+    },
+    {
+      "Tick": 0,
+      "Cmd": "Rotate",
+      "X": 0,
+      "Y": 0
+    },
+    {
+      "Tick": 0,
+      "Cmd": "Rotate",
+      "X": 0,
+      "Y": 0
+    },
+    {
+      "Tick": 0,
+      "Cmd": "Rotate",
+      "X": 0,
+      "Y": 0
+    },
+    {
+      "Tick": 0,
+      "Cmd": "PlaceShape",
+      "X": 4,
+      "Y": 3
+    },
+    {
+      "Tick": 0,
+      "Cmd": "PlaceShape",
+      "X": 5,
+      "Y": 2
+    },
+    {
+      "Tick": 0,
+      "Cmd": "Rotate",
+      "X": 0,
+      "Y": 0
+    },
+    {
+      "Tick": 0,
+      "Cmd": "Rotate",
+      "X": 0,
+      "Y": 0
+    },
+    {
+      "Tick": 0,
+      "Cmd": "PlaceShape",
+      "X": 3,
+      "Y": 3
+    },
+    {
+      "Tick": 0,
+      "Cmd": "Rotate",
+      "X": 0,
+      "Y": 0
+    },
+    {
+      "Tick": 0,
+      "Cmd": "Rotate",
+      "X": 0,
+      "Y": 0
+    },
+    {
+      "Tick": 0,
+      "Cmd": "Rotate",
+      "X": 0,
+      "Y": 0
+    },
+    {
+      "Tick": 0,
+      "Cmd": "PlaceShape",
+      "X": 5,
+      "Y": 4
+    },
+    {
+      "Tick": 0,
+      "Cmd": "PlaceShape",
+      "X": 2,
+      "Y": 6
+    },
+    {
+      "Tick": 0,
+      "Cmd": "PlaceShape",
+      "X": 8,
+      "Y": 2
+    },
+    {
+      "Tick": 0,
+      "Cmd": "PlaceShape",
+      "X": 1,
+      "Y": 8
+    },
+    {
+      "Tick": 0,
+      "Cmd": "StartWaveNow",
+      "X": 0,
+      "Y": 0
+    },
+    {
+      "Tick": 4861,
+      "Cmd": "Rotate",
+      "X": 0,
+      "Y": 0
+    },
+    {
+      "Tick": 4861,
+      "Cmd": "PlaceShape",
+      "X": 9,
+      "Y": 2
+    },
+    {
+      "Tick": 4861,
+      "Cmd": "PlaceShape",
+      "X": 3,
+      "Y": 1
+    },
+    {
+      "Tick": 4861,
+      "Cmd": "Rotate",
+      "X": 0,
+      "Y": 0
+    },
+    {
+      "Tick": 4861,
+      "Cmd": "PlaceShape",
+      "X": 0,
+      "Y": 11
+    },
+    {
+      "Tick": 4861,
+      "Cmd": "PlaceShape",
+      "X": 6,
+      "Y": 4
+    },
+    {
+      "Tick": 4861,
+      "Cmd": "Rotate",
+      "X": 0,
+      "Y": 0
+    },
+    {
+      "Tick": 4861,
+      "Cmd": "PlaceShape",
+      "X": 0,
+      "Y": 7
+    },
+    {
+      "Tick": 4861,
+      "Cmd": "PlaceShape",
+      "X": 34,
+      "Y": 31
+    },
+    {
+      "Tick": 4861,
+      "Cmd": "PlaceShape",
+      "X": 32,
+      "Y": 35
+    },
+    {
+      "Tick": 4861,
+      "Cmd": "PlaceShape",
+      "X": 35,
+      "Y": 33
+    },
+    {
+      "Tick": 4861,
+      "Cmd": "StartWaveNow",
+      "X": 0,
+      "Y": 0
+    },
+    {
+      "Tick": 9335,
+      "Cmd": "Rotate",
+      "X": 0,
+      "Y": 0
+    },
+    {
+      "Tick": 9335,
+      "Cmd": "Rotate",
+      "X": 0,
+      "Y": 0
+    },
+    {
+      "Tick": 9335,
+      "Cmd": "PlaceShape",
+      "X": 4,
+      "Y": 5
+    },
+    {
+      "Tick": 9335,
+      "Cmd": "PlaceShape",
+      "X": 31,
+      "Y": 33
+    },
+    {
+      "Tick": 9335,
+      "Cmd": "PlaceShape",
+      "X": 34,
+      "Y": 29
+    },
+    {
+      "Tick": 9335,
+      "Cmd": "PlaceShape",
+      "X": 32,
+      "Y": 36
+    },
+    {
+      "Tick": 9335,
+      "Cmd": "Rotate",
+      "X": 0,
+      "Y": 0
+    },
+    {
+      "Tick": 9335,
+      "Cmd": "PlaceShape",
+      "X": 36,
+      "Y": 29
+    },
+    {
+      "Tick": 9335,
+      "Cmd": "Rotate",
+      "X": 0,
+      "Y": 0
+    },
+    {
+      "Tick": 9335,
+      "Cmd": "Rotate",
+      "X": 0,
+      "Y": 0
+    },
+    {
+      "Tick": 9335,
+      "Cmd": "Rotate",
+      "X": 0,
+      "Y": 0
+    },
+    {
+      "Tick": 9335,
+      "Cmd": "PlaceShape",
+      "X": 7,
+      "Y": 7
+    },
+    {
+      "Tick": 9335,
+      "Cmd": "Rotate",
+      "X": 0,
+      "Y": 0
+    },
+    {
+      "Tick": 9335,
+      "Cmd": "Rotate",
+      "X": 0,
+      "Y": 0
+    },
+    {
+      "Tick": 9335,
+      "Cmd": "PlaceShape",
+      "X": 10,
+      "Y": 7
+    },
+    {
+      "Tick": 9335,
+      "Cmd": "PlaceShape",
+      "X": 4,
+      "Y": 8
+    },
+    {
+      "Tick": 9335,
+      "Cmd": "StartWaveNow",
+      "X": 0,
+      "Y": 0
+    },
+    {
+      "Tick": 13749,
+      "Cmd": "Rotate",
+      "X": 0,
+      "Y": 0
+    },
+    {
+      "Tick": 13749,
+      "Cmd": "Rotate",
+      "X": 0,
+      "Y": 0
+    },
+    {
+      "Tick": 13749,
+      "Cmd": "Rotate",
+      "X": 0,
+      "Y": 0
+    },
+    {
+      "Tick": 13749,
+      "Cmd": "PlaceShape",
+      "X": 34,
+      "Y": 31
+    },
+    {
+      "Tick": 13749,
+      "Cmd": "PlaceShape",
+      "X": 8,
+      "Y": 4
+    },
+    {
+      "Tick": 13749,
+      "Cmd": "PlaceShape",
+      "X": 4,
+      "Y": 3
+    },
+    {
+      "Tick": 13749,
+      "Cmd": "PlaceShape",
+      "X": 5,
+      "Y": 0
+    },
+    {
+      "Tick": 13749,
+      "Cmd": "Rotate",
+      "X": 0,
+      "Y": 0
+    },
+    {
+      "Tick": 13749,
+      "Cmd": "Rotate",
+      "X": 0,
+      "Y": 0
+    },
+    {
+      "Tick": 13749,
+      "Cmd": "PlaceShape",
+      "X": 5,
+      "Y": 10
+    },
+    {
+      "Tick": 13749,
+      "Cmd": "PlaceShape",
+      "X": 11,
+      "Y": 0
+    },
+    {
+      "Tick": 13749,
+      "Cmd": "Rotate",
+      "X": 0,
+      "Y": 0
+    },
+    {
+      "Tick": 13749,
+      "Cmd": "Rotate",
+      "X": 0,
+      "Y": 0
+    },
+    {
+      "Tick": 13749,
+      "Cmd": "Rotate",
+      "X": 0,
+      "Y": 0
+    },
+    {
+      "Tick": 13749,
+      "Cmd": "PlaceShape",
+      "X": 30,
+      "Y": 30
+    },
+    {
+      "Tick": 13749,
+      "Cmd": "PlaceShape",
+      "X": 28,
+      "Y": 33
+    },
+    {
+      "Tick": 13749,
+      "Cmd": "StartWaveNow",
+      "X": 0,
+      "Y": 0
+    },
+    {
+      "Tick": 18115,
+      "Cmd": "Rotate",
+      "X": 0,
+      "Y": 0
+    },
+    {
+      "Tick": 18115,
+      "Cmd": "PlaceShape",
+      "X": 8,
+      "Y": 9
+    },
+    {
+      "Tick": 18115,
+      "Cmd": "Rotate",
+      "X": 0,
+      "Y": 0
+    },
+    {
+      "Tick": 18115,
+      "Cmd": "Rotate",
+      "X": 0,
+      "Y": 0
+    },
+    {
+      "Tick": 18115,
+      "Cmd": "Rotate",
+      "X": 0,
+      "Y": 0
+    },
+    {
+      "Tick": 18115,
+      "Cmd": "PlaceShape",
+      "X": 33,
+      "Y": 32
+    },
+    {
+      "Tick": 18115,
+      "Cmd": "PlaceShape",
+      "X": 32,
+      "Y": 29
+    },
+    {
+      "Tick": 18115,
+      "Cmd": "PlaceShape",
+      "X": 26,
+      "Y": 34
+    },
+    {
+      "Tick": 18115,
+      "Cmd": "Rotate",
+      "X": 0,
+      "Y": 0
+    },
+    {
+      "Tick": 18115,
+      "Cmd": "Rotate",
+      "X": 0,
+      "Y": 0
+    },
+    {
+      "Tick": 18115,
+      "Cmd": "PlaceShape",
+      "X": 35,
+      "Y": 28
+    },
+    {
+      "Tick": 18115,
+      "Cmd": "PlaceShape",
+      "X": 25,
+      "Y": 36
+    },
+    {
+      "Tick": 18115,
+      "Cmd": "PlaceShape",
+      "X": 3,
+      "Y": 4
+    },
+    {
+      "Tick": 18115,
+      "Cmd": "Rotate",
+      "X": 0,
+      "Y": 0
+    },
+    {
+      "Tick": 18115,
+      "Cmd": "PlaceShape",
+      "X": 31,
+      "Y": 29
+    },
+    {
+      "Tick": 18115,
+      "Cmd": "StartWaveNow",
+      "X": 0,
+      "Y": 0
+    }
+  ],
+  "WaveHashes": [
+    {
+      "Wave": 1,
+      "Tick": 4861,
+      "Hash": "5171dbadc98d8d6d"
+    },
+    {
+      "Wave": 2,
+      "Tick": 9335,
+      "Hash": "1585fb40859d1f22"
+    },
+    {
+      "Wave": 3,
+      "Tick": 13749,
+      "Hash": "c26ed2d34db79096"
+    },
+    {
+      "Wave": 4,
+      "Tick": 18115,
+      "Hash": "d49df8003e6d03c3"
+    },
+    {
+      "Wave": 5,
+      "Tick": 22914,
+      "Hash": "f943a7f5cc60a499"
+    }
+  ],
+  "FinalTick": 22914,
+  "FinalHash": "f943a7f5cc60a499",
+  "TickHashes": null
+}

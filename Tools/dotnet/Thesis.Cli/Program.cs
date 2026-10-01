@@ -21,6 +21,9 @@ namespace Thesis.Cli
                 switch (args[0])
                 {
                     case "bench": return Bench(args);
+                    case "run": return RunCmd.Run(args);
+                    case "replay": return ReplayCmd.Run(args);
+                    case "ascii": return AsciiCmd.Run(args);
                     default:
                         Console.Error.WriteLine("Unknown command: " + args[0]);
                         PrintUsage();
@@ -29,6 +32,13 @@ namespace Thesis.Cli
             }
             catch (ArgumentException e)
             {
+                Console.Error.WriteLine("error: " + e.Message);
+                return 2;
+            }
+            catch (Exception e) when (e is IOException || e is InvalidDataException)
+            {
+                // A missing or malformed map, shape library, config or replay file.
+                // (InvalidDataException is not an IOException, hence both.)
                 Console.Error.WriteLine("error: " + e.Message);
                 return 2;
             }
@@ -71,12 +81,16 @@ namespace Thesis.Cli
             Console.WriteLine("usage: thesis <command> [options]");
             Console.WriteLine();
             Console.WriteLine("commands:");
+            Console.WriteLine("  run      one headless episode, recorded as <out>/replay.json");
+            Console.WriteLine("             [--map f] [--shapes f] [--config f] [--planner escalation] [--policy greedy|idle]");
+            Console.WriteLine("             [--seed s] [--waves n] [--out dir] [--per-tick] [--wait]");
+            Console.WriteLine("  replay   run a recording again and check its hashes (exit 1 on divergence)");
+            Console.WriteLine("             <replay.json> [--per-tick] [--dump-tick T] [--dump-out f]");
+            Console.WriteLine("  ascii    render a recording's state as text");
+            Console.WriteLine("             <replay.json> [--wave N | --tick T] [--layer route|terrain|occupancy|cost]");
             Console.WriteLine("  bench    flow-field rebuild sweep + A* comparison   [--out f] [--iterations n] [--seed s]");
             Console.WriteLine();
             Console.WriteLine("planned (see Docs/WORKPLAN.md):");
-            Console.WriteLine("  run      headless episode            (WP5)");
-            Console.WriteLine("  replay   verify / bisect a replay    (WP5)");
-            Console.WriteLine("  ascii    render map state as text    (WP5)");
             Console.WriteLine("  trace    print one director decision (WP6)");
             Console.WriteLine("  synth    synthetic bandit runs       (WP7)");
             Console.WriteLine("  balance  tower roster sanity sweep   (WP-C5)");

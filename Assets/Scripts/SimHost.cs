@@ -1,4 +1,5 @@
 using System;
+using System.IO;
 using Thesis.Sim;
 using UnityEngine;
 using UnityEngine.SceneManagement;
@@ -11,6 +12,11 @@ using UnityEngine.SceneManagement;
 // Time: scaled Time.deltaTime fills an accumulator that is drained in fixed
 // SimConfig.TickSeconds steps. GameSpeedController needs no change - x3 speed is
 // simply three times as many ticks per frame, and pause (timeScale 0) is no ticks.
+//
+// Replay: every session is recorded (seed, every command with its tick, a state
+// hash per wave and per tick) and written to Sessions/<session>/replay.json. The
+// headless CLI re-runs that file and checks the hashes, which is the proof that
+// Unity and the headless build play the same game (CLAUDE.md I1).
 //
 // Runs before every view (execution order -100) so they all see this frame's state.
 // The simulation is created lazily on first access, so any script may touch it from
@@ -27,6 +33,12 @@ public class SimHost : MonoBehaviour
     public bool randomSeed = false;
     [Tooltip("Upper bound on ticks per rendered frame. After a long hitch the game slows down instead of freezing to catch up.")]
     public int maxTicksPerFrame = 20;
+
+    [Header("Replay")]
+    [Tooltip("Record this session to Sessions/<session>/replay.json (project Runs/ folder in the editor, persistentDataPath in a build).")]
+    public bool recordReplay = true;
+    [Tooltip("Also store one state hash per tick. Costs one hash per tick and about 1 MB per 25 minutes; without it a divergence can only be narrowed to a wave, not a tick.")]
+    public bool recordTickHashes = true;
 
     [Header("Scene references (auto-found when empty)")]
     public GridManager gridManager;
@@ -45,6 +57,12 @@ public class SimHost : MonoBehaviour
     private MapData map;
     private SimConfig fallbackConfig;
     private float accumulator;
+    private ReplayRecorder recorder;
+    private string replayPath;
+    private bool replayWriteFailed;
+
+    // Where this session's replay is written, or null when recording is off.
+    public string ReplayPath => replayPath;
 
     public Simulation Sim
     {
@@ -107,6 +125,62 @@ public class SimHost : MonoBehaviour
 
         Debug.Log("[Sim] Started: map '" + map.Name + "' " + map.Width + "x" + map.Height + ", seed " + Seed + ", planner '" + planner.Name
                   + "', " + (configAsset != null ? "config '" + configAsset.name + "'" : "default config") + ".");
+
+        if (recordReplay) StartRecording();
+    }
+
+    // Must run before the first command and the first tick: the recorder takes the
+    // initial state hash here.
+    private void StartRecording()
+    {
+        // Wall-clock time only names the folder; it never reaches the simulation.
+        // Invariant culture: a machine set to a non-Gregorian calendar would otherwise
+        // name the folder with a different year.
+        string session = DateTime.Now.ToString("yyyyMMdd-HHmmss", System.Globalization.CultureInfo.InvariantCulture) + "_seed" + Seed;
+        recorder = new ReplayRecorder(sim, recordTickHashes)
+        {
+            Build = "Unity " + Application.unityVersion + (Application.isEditor ? " editor" : " player " + Application.version),
+            Session = session,
+            Policy = "human",
+        };
+        replayPath = Path.Combine(SessionsRoot(), session, "replay.json");
+        Debug.Log("[Replay] Recording to " + replayPath);
+    }
+
+    // In the editor the project's Runs/ folder (gitignored), next to the headless
+    // runs, so `cli replay` can be pointed at it directly. In a build there is no
+    // project folder, so persistentDataPath.
+    public static string SessionsRoot()
+    {
+#if UNITY_EDITOR
+        return Path.GetFullPath(Path.Combine(Application.dataPath, "..", "Runs", "Sessions"));
+#else
+        return Path.Combine(Application.persistentDataPath, "Sessions");
+#endif
+    }
+
+    // Rewrites the whole file with the recording so far. Called at every wave
+    // boundary, so a crash loses at most the wave in progress, and once more when
+    // the session ends. A failed write is logged once and never stops the game.
+    private void WriteReplay()
+    {
+        if (recorder == null || replayWriteFailed) return;
+        try
+        {
+            recorder.Snapshot().Save(replayPath);
+        }
+        catch (Exception e) when (e is IOException || e is UnauthorizedAccessException)
+        {
+            replayWriteFailed = true;
+            Debug.LogError("[Replay] Could not write " + replayPath + ": " + e.Message + " This session will not be recorded.");
+        }
+    }
+
+    void OnDestroy()
+    {
+        if (recorder == null) return;
+        WriteReplay();
+        if (!replayWriteFailed) Debug.Log("[Replay] Session saved: " + sim.State.Tick + " ticks, " + recorder.CommandCount + " commands, " + recorder.WaveCount + " waves -> " + replayPath);
     }
 
     // Player input. Applied at once (FlushInput), not at the next tick, so it feels
@@ -115,6 +189,7 @@ public class SimHost : MonoBehaviour
     public void Submit(SimCommand command)
     {
         Simulation s = Sim;
+        recorder?.OnCommand(command); // stamped with the tick it is applied at
         s.Enqueue(command);
         s.FlushInput();
         Dispatch();
@@ -137,6 +212,10 @@ public class SimHost : MonoBehaviour
             sim.Tick();
             accumulator -= dt;
             ticks++;
+            // Before Dispatch: a view reacting to an event may Submit(), which
+            // replaces LastTickEvents, and the recorder reads them.
+            bool waveBoundary = recorder != null && recorder.AfterTick();
+            if (waveBoundary) WriteReplay();
             Dispatch();
             Ticked?.Invoke();
             if (sim.State.IsGameOver)
