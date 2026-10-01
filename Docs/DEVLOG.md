@@ -609,3 +609,134 @@ thesis ascii  Runs/wp5_greedy_25waves/replay.json --wave 25 --layer occupancy
 - `SimHost.Dispatch` iterates `LastTickEvents`; a view that calls `Submit` from inside an event
   handler would clear that list mid-loop. No view does today. (Present since WP4, noticed now.)
 - `PinnedReplayTests` will fail at WP-C1 by design; WORKPLAN WP-C1 says what to do.
+
+---
+
+## 2026-10-02 — Review, decisions D5–D9, and WP-H hardening
+
+**Status:** done. No game rule changed: every recording made before this package still
+replays bit for bit after it.
+
+**Why this happened.** Before starting the next package the student asked for the
+architecture to be re-checked. The review is `Docs/REVIEW-2026-10-02.md`: the structure is
+sound, five problems needed designing in before they bite, and five decisions were open.
+The student chose one (walls can be sold) and delegated the other four.
+
+**Decisions** (recorded in `ARCHITECTURE.md` §0)
+- **D5 Study build:** Windows 64-bit, Mono, managed stripping off. Checked in Player Settings:
+  that is already how the project is set (only Android is IL2CPP). It is the runtime WP5
+  verified, so the IL2CPP risk is closed. The player-build replay check moves to before the pilot.
+- **D6 Walls can be sold** (the student's choice): a whole piece at once, a partial refund,
+  build phases only. Specified in §4.6, built in WP-C3. The default for selling *towers*
+  changed with it, from "at any time" to "build phases only": selling mid-wave lets a player
+  open and close gaps to walk enemies back and forth under fire. One switch
+  (`SellDuringWave`) governs both; S11 can flip it.
+- **D7 The primary metric (S7)** is defined in §5.9: entropy of the session's built tiles over
+  a 6×6 partition, walls and towers pooled, from wave 1, both sessions cut to the shorter one.
+  Provisional until frozen before the pilot; the supervisor should confirm it. It is computed
+  offline from replays, so changing it before the freeze is free.
+- **D8 Order of work:** WP-H now, then WP-C1; WP6 folded into WP-C3; WP7 in parallel; Flying
+  is cut if WP-C3 is not finished by the end of W9.
+- **D9 Seeds:** two seed sets crossed with condition and order (four groups). Built in WP14.
+
+**What changed (code)**
+- `Simulation`: `BeginWave` asks the planner and validates the plan before it writes anything;
+  `CloseWave` finishes the outcome on a copy and commits it only after `OnWaveResolved` returns;
+  the prep countdown is only written when no wave starts. A planner that throws, or a refused
+  plan, now leaves the state exactly as it was.
+- `Thesis.Sim/Waves/PlanValidator` (the plan rules, public) and `SafePlanner` (fallback wrapper).
+  `DirectorHost` wraps every planner.
+- `Thesis.Core/DetMath`: `Log` and `Exp`, ported line for line from fdlibm, constants as bit patterns.
+- `ReplayFile.Save` writes a temp file and swaps it in. `SimConfig.Clone()`.
+- `SimHost`: runs on a copy of the config asset; event dispatch goes through a queue, so a view
+  that calls `Submit` from inside an event handler no longer invalidates the loop.
+- `Thesis.Harness/Replay/PinnedEpisodes`, the CLI command `pin`, and the Unity menu
+  **Thesis → Replay → Record Pinned Episodes (Mono)**.
+- `Editor/BuildGuard`: a player build that is not Mono with stripping off fails with an explanation.
+- `.gitattributes` (LF in the repository on every machine; `*.jsonl` always LF) and
+  `.github/workflows/headless-tests.yml` (`dotnet test` on Linux and Windows, on every push).
+- `Results/pinned-replays/`: three episodes recorded under .NET, the same three under Mono, and the
+  two played Unity sessions. `PinnedReplayTests` now reads this folder.
+
+**What changed (documents)**
+- `CLAUDE.md`: status line; §1 rewritten for the code as it is (rules in `Thesis.Sim`, a new file
+  map); walls sellable; I1 and I8 wording; the maths rule; the re-plan note.
+- `ARCHITECTURE.md`: D5–D9; the tick order as built; `SafePlanner`; replay schema 2 (planned);
+  wall selling; "every wave must end"; §5.9 the metric; session setup and build settings; the
+  `DetMath` rule; spec gaps S7, S9, S11, S13.
+- `WORKPLAN.md`: the re-plan; WP-H; WP6 folded into WP-C3; additions to WP-C1, WP-C3, WP-C4, WP7,
+  WP10, WP11, WP12, WP14; a pre-pilot checklist.
+
+**Findings**
+- **A throwing planner corrupted the game** (shown before the fix): three throws in `PlanWave`
+  made the first real wave "wave 4"; one throw in `OnWaveResolved` made every later tick die on a
+  null reference. Nothing triggered it yet, because the escalation planner cannot throw.
+- **`Math.Pow` differs between Unity's Mono and .NET 9 on this machine** (a fingerprint over one
+  million inputs). `Math.Log`, `Exp`, `Sin`, `Cos` and `Sqrt` agreed here. `Thesis.*` used none of
+  them, so the rule could be set before the first use.
+- **`DetMath` is bit-identical on both runtimes**: one million `Log` and one million `Exp` results
+  hash to the same value under .NET and under Mono (`ecae23c8f3ec7547`, `83dd88a47b9a8422`), and
+  both stay within 1 ulp of the runtime's own functions over 400,000 random inputs. All 20 fdlibm
+  constants were checked bit pattern against decimal.
+- **The JSON library prints floats differently per runtime** (`0.20000458` under .NET,
+  `0.200004578` under Mono; a double third is `0.3333333333333333` against `0.33333333333333331`).
+  Both read back to the same bits and member order is the same, so replays are unaffected. A
+  byte-identical telemetry golden file cannot use it (WP-C3).
+- **The scripted player decides identically on both runtimes.** The greedy policy counts shortest
+  routes in `double`; its episodes recorded under Mono and under .NET have the same commands and the
+  same hash on every tick (`PinnedReplayTests.TheTwoRuntimesRecordedIdenticalRuns`).
+- **Measured costs on a late-game board:** a flow-field rebuild is 0.32 ms under .NET and 0.88 ms in
+  Unity (the documents said "microseconds"); a state hash is about 50 µs on both; `Simulation.Clone`
+  is 0.15 ms and 0.39 ms.
+- **No map has a static blocker.** The `X` tile path is exercised only by test fixtures. No agent
+  was ever stuck on SampleScene: 0 of 12.5 million agent-ticks in the 25-wave run.
+- **The Windows build is already Mono** with managed stripping disabled.
+- **Every session uses seed 1** (`SimHost.seed`, `randomSeed` off). Right for development; D9 covers
+  the study.
+
+**Deviations**
+- Wrapping the *baseline* planner in `SafePlanner` too was not asked for by anything. It was done so
+  that the wrapper runs in every session from now on instead of first appearing with the director.
+  `SafePlannerTests.AWrappedEscalationPlannerPlaysTheSameGameAsABareOne` shows it changes nothing.
+- During `PlanWave`, `State.WaveIndex` is now the previous wave's number (it used to be already
+  incremented). Planners must read `context.WaveIndex`. No existing planner read the other one.
+- `BuildGuard` goes beyond recording D5: it enforces it. The define
+  `THESIS_ALLOW_UNVERIFIED_RUNTIME` turns it off for a build that will never record study data.
+
+**Tests added:** 50 (194 → 244 headless; Unity 248 including the 4 explicit diagnostics)
+- `PlannerFailureTests` (5): a failed tick leaves the hash unchanged and the next one retries; a
+  `StartWaveNow` request survives a failure; an invalid plan is refused without a change; a throw in
+  `OnWaveResolved` leaves the wave open and the retry closes it once; what the state shows during `PlanWave`.
+- `SafePlannerTests` (9): exception, invalid plan and null plan each become a fallback wave; a
+  planner that always throws still gives four numbered waves; `OnWaveResolved` exceptions are
+  reported; the name; wrapped equals bare for 3,000 ticks; a planner that writes the state still
+  fails loudly; constructor arguments.
+- `DetMathTests` (7): the constants; accuracy against the runtime; edge cases; `Exp(Log(x))`; **the
+  cross-runtime fingerprint**.
+- `ForbiddenApiTests` (20): the scan of `Assets/Thesis`, 18 cases proving the scan catches what it
+  should and nothing else, and the waiver rule.
+- `SimConfigTests` (2), `ReplayFileTests` (+1: atomic save).
+- `PinnedReplayTests`: now 8 recordings from the folder, plus "both runtimes recorded the same
+  episodes" and "the two runtimes recorded identical runs" (10 results, was 4).
+
+**Commands run**
+```
+dotnet test Tools/dotnet/Thesis.Headless.sln                          → Passed 244/244
+Unity MCP: run_tests EditMode                                         → Passed 244, 4 explicit skipped
+thesis pin                                                            → Results/pinned-replays/dotnet-*.replay.json (3)
+Unity MCP: Thesis/Replay/Record Pinned Episodes (Mono)                → Results/pinned-replays/mono-*.replay.json (3)
+Unity MCP: play SampleScene, 4 placements, wave 1 to game over        → 0 console errors; planner is SafePlanner 'escalation';
+                                                                        config is a copy; no .tmp left behind
+thesis replay Runs/Sessions/20261002-062303_seed1/replay.json --per-tick   → OK, 3,670 ticks
+```
+(`thesis` = `dotnet run --project Tools/dotnet/Thesis.Cli --`)
+
+**Known issues**
+- **The CI workflow has never run.** It takes effect on the next push. The Linux job is the first
+  time this code runs on Linux; a failure there is information, not necessarily a bug in the game.
+- **`BuildGuard` has not been exercised by a real build**, only compiled.
+- **The proposal is not in the repository.** WP8 and WP9 (spec gaps S9, S10) need its §6.2 and §6.3.
+- **The metric in §5.9 is provisional** until the supervisor has seen it.
+- The week numbers in the re-plan assume W5 began on 14 September.
+- Still open from before: a session played by hand; the pre-pilot checklist at the end of `WORKPLAN.md`.
+- `main` on GitHub is still the first commit; all work is on `sim-core/wp0-wp1`.

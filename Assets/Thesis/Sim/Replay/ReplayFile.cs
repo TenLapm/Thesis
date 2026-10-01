@@ -147,11 +147,20 @@ namespace Thesis.Sim
             return file;
         }
 
+        // Writes to a temporary file next to the target and then swaps it in. A
+        // session's replay is rewritten at every wave boundary; writing straight over
+        // the old file would leave a truncated one - the whole session lost - if the
+        // game or the machine died halfway through.
         public void Save(string path)
         {
-            string dir = Path.GetDirectoryName(Path.GetFullPath(path));
+            string full = Path.GetFullPath(path);
+            string dir = Path.GetDirectoryName(full);
             if (!string.IsNullOrEmpty(dir)) Directory.CreateDirectory(dir);
-            File.WriteAllText(path, ToJson());
+
+            string temp = full + ".tmp";
+            File.WriteAllText(temp, ToJson());
+            if (File.Exists(full)) File.Replace(temp, full, null);
+            else File.Move(temp, full);
         }
 
         public static ReplayFile Load(string path)

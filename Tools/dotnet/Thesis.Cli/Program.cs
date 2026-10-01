@@ -24,6 +24,7 @@ namespace Thesis.Cli
                     case "run": return RunCmd.Run(args);
                     case "replay": return ReplayCmd.Run(args);
                     case "ascii": return AsciiCmd.Run(args);
+                    case "pin": return PinCmd.Run(args);
                     default:
                         Console.Error.WriteLine("Unknown command: " + args[0]);
                         PrintUsage();
@@ -88,6 +89,8 @@ namespace Thesis.Cli
             Console.WriteLine("             <replay.json> [--per-tick] [--dump-tick T] [--dump-out f]");
             Console.WriteLine("  ascii    render a recording's state as text");
             Console.WriteLine("             <replay.json> [--wave N | --tick T] [--layer route|terrain|occupancy|cost]");
+            Console.WriteLine("  pin      re-record the pinned episodes under .NET (after a deliberate rule change)");
+            Console.WriteLine("             [--out dir] [--map f] [--shapes f]");
             Console.WriteLine("  bench    flow-field rebuild sweep + A* comparison   [--out f] [--iterations n] [--seed s]");
             Console.WriteLine();
             Console.WriteLine("planned (see Docs/WORKPLAN.md):");

@@ -38,6 +38,31 @@ namespace Thesis.Tests.Harness
             Assert.AreEqual(a.SetupHash, ReplayFile.Hex(ReplaySetup.Hash(b.Config, b.MapData, b.Shapes)));
         }
 
+        // The replay is rewritten at every wave boundary. Save() must swap the new
+        // file in whole: no half-written file, no leftover temporary.
+        [Test]
+        public void SavingOverAnExistingFileReplacesItAndLeavesNoTemporary()
+        {
+            string dir = Path.Combine(Path.GetTempPath(), "thesis-replay-save-" + System.Guid.NewGuid().ToString("N"));
+            string path = Path.Combine(dir, "replay.json");
+            try
+            {
+                ReplayFile first = TestEpisodes.SmallReplay(waves: 1);
+                ReplayFile second = TestEpisodes.SmallReplay(waves: 2);
+
+                first.Save(path);
+                Assert.AreEqual(first.FinalHash, ReplayFile.Load(path).FinalHash, "a new file");
+
+                second.Save(path);
+                Assert.AreEqual(second.FinalHash, ReplayFile.Load(path).FinalHash, "replaced");
+                CollectionAssert.AreEqual(new[] { path }, Directory.GetFiles(dir), "nothing else left in the folder");
+            }
+            finally
+            {
+                if (Directory.Exists(dir)) Directory.Delete(dir, true);
+            }
+        }
+
         [Test]
         public void TickHashesRoundTripThroughBase64()
         {

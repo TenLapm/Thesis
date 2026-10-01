@@ -31,6 +31,32 @@ public static class ReplayMenu
         if (!string.IsNullOrEmpty(path)) Verify(path);
     }
 
+    // The Mono half of the pinned episodes (the .NET half is the CLI command `pin`).
+    // It runs the scripted episodes right here in the editor, with no play mode:
+    // what is being pinned is how Mono does the arithmetic, not the frame loop.
+    [MenuItem("Thesis/Replay/Record Pinned Episodes (Mono)")]
+    public static void RecordPinnedEpisodes()
+    {
+        string root = Path.GetFullPath(Path.Combine(Application.dataPath, ".."));
+        MapData map;
+        ShapeDef[] shapes;
+        try
+        {
+            map = MapData.Load(Path.Combine(root, "Maps", "SampleScene.map.json"));
+            shapes = ShapeLibraryFile.Load(Path.Combine(root, "Maps", "Shapes.json"));
+        }
+        catch (System.Exception e) when (e is IOException || e is InvalidDataException)
+        {
+            Debug.LogError("[Replay] Cannot record pinned episodes: " + e.Message);
+            return;
+        }
+
+        string dir = Path.Combine(root, PinnedEpisodes.Folder);
+        var written = PinnedEpisodes.RecordAll(dir, PinnedEpisodes.MonoTag, "Unity " + Application.unityVersion + " editor (Mono)", map, shapes);
+        Debug.Log("[Replay] Recorded " + written.Count + " pinned episodes under Mono into " + dir
+                  + ". Record the .NET half with `thesis pin`, then run the tests in both runners.");
+    }
+
     [MenuItem("Thesis/Replay/Open Sessions Folder")]
     public static void OpenSessionsFolder()
     {

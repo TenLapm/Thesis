@@ -1,0 +1,8 @@
+# Line endings are normalised to LF inside the repository on every machine,
+# whatever that machine's own git settings are. (Without this file the result
+# depends on each PC's core.autocrlf.)
+* text=auto
+
+# Files whose exact BYTES matter: golden files that tests compare byte for byte.
+# Always LF in the working tree too, on every OS.
+*.jsonl text eol=lf

@@ -1,15 +1,19 @@
 # CLAUDE.md — Thesis project (`E:\Thesis`)
 
 Unity / C# / URP. Maze tower-defense with a flow-field pathfinder. The thesis
-work — an adaptive wave director driven by a contextual bandit — **has not been
-started yet.** What exists is the finished base game from a month ago.
+work is an adaptive wave director driven by a contextual bandit.
 
-Read §1 and §2 before writing any code. §2 contains a design gap that has to be
-resolved before the director can be built at all.
+**Status (2026-10-02).** The base game now runs on a deterministic, headless
+simulation core (`Assets/Thesis`), with Unity as a thin host around it
+(`Docs/WORKPLAN.md` WP0–WP5 and the hardening pass WP-H are done). Towers and the
+director itself are **not built yet**. Next package: WP-C1.
 
-Code structure and work packages: `Docs/ARCHITECTURE.md` and `Docs/WORKPLAN.md`
-(2026-09-15; decisions D1–D4 made, with D1 = Option B, towers. The revised
-semester-1 schedule in WORKPLAN is approved).
+Read §1 and §2 before writing any code.
+
+- Code structure: `Docs/ARCHITECTURE.md` (decisions D1–D9 are in its §0).
+- Work packages and their order: `Docs/WORKPLAN.md` (re-planned 2026-10-02).
+- What was done and found, package by package: `Docs/DEVLOG.md`.
+- The review after WP5 and what became of each finding: `Docs/REVIEW-2026-10-02.md`.
 
 ---
 
@@ -24,76 +28,108 @@ semester-1 schedule in WORKPLAN is approved).
 This is **not** a conventional tower defense. There are no towers, no projectiles
 and no damage-dealing structures anywhere in the project.
 
-- The player places **tetromino-shaped walls** (I, J, L, O, S, T, Z, Cube, Wall)
-  from a budget, using a 7-bag randomiser with a hold slot and rotation.
+- The player places **tetromino-shaped walls** from a budget, using a 7-bag
+  randomiser with a hold slot and rotation. SampleScene's library is I, O, T, S, Z,
+  J, L in that order (`Cube` and `Wall` assets exist but are not in the library).
 - Walls are **not** obstacles. They are expensive, destructible *terrain*:
-  `Node.terrainCost` (the shape's `digCost`, default 15) plus `Node.wallHealth`
+  `SimNode.TerrainCost` (the shape's `DigCost`, default 15) plus `SimNode.WallHealth`
   (seconds of chewing). A path to the core therefore **always exists**.
 - Enemies follow the flow field. When standing on a wall tile they **chew
   through it** instead of walking. The field's cost model means enemies
   automatically trade "walk around" against "dig through" — nobody scripts that
   choice.
-- Every enemy carries a **lifetime clock** (`FlowAgent.currentLifeTime`) that
+- Every enemy carries a **lifetime clock** (`AgentState.LifeTime`) that
   ticks down while walking *and* while digging. The player wins an enemy by
   making the route take longer than that clock.
   - Clock expires → **stalled** (the game's equivalent of a kill), player gains
-    `deathReward` = 0.2 build budget.
-  - Enemy reaches the core → `PlayerCore.TakeDamage(1)`; core has 10 HP.
-  - Enemy fully breaches a wall tile → player gains `wallBreakReward` = 1.0
+    `DeathReward` = 0.2 build budget.
+  - Enemy reaches the core → core HP − 1; the core has 10 HP.
+  - Enemy fully breaches a wall tile → player gains `WallBreakReward` = 1.0
     build budget (yes, the player is *paid* when walls are destroyed).
 
 So the player's lever is **time**, not damage. Keep that in mind: every instinct
 imported from normal TD ("place towers", "damage per second", "damage types")
 does not apply here.
 
+### Where the rules live
+
+All of the above is `Thesis.Sim`: plain C# with no `UnityEngine`, advancing in fixed
+ticks of 0.02 s. The MonoBehaviours in `Assets/Scripts` are a **host and views**:
+`SimHost` runs the simulation, passes player input in as commands and hands events
+out; `FlowAgent`, `PlayerBuilder`, `WaveSpawner` and the rest only draw state and
+forward clicks. **A game rule never goes into a MonoBehaviour.** The same simulation
+runs headless under `dotnet` (`Tools/dotnet`), which is how tests, replays and the
+offline harness work.
+
 ### Flow field — read this before touching pathfinding
 
-`FlowFieldManager.GenerateFlowField()` is a **synchronous, whole-map, weighted
-flood fill (SPFA) on the main thread.** The previous chunked/background-threaded
-version, along with `isCalculating`, `ValidatePath`, sinkhole detection and the
-global fallback, was **deliberately deleted**. On this grid size a full rebuild
-costs microseconds. Do not reintroduce chunking, threading or incremental
-invalidation without a measured reason.
+`Thesis.Sim.FlowField.Generate()` is a **synchronous, whole-map, weighted flood fill
+(SPFA).** The previous chunked/background-threaded version, along with
+`isCalculating`, `ValidatePath`, sinkhole detection and the global fallback, was
+**deliberately deleted**. On this grid a full rebuild costs well under a
+millisecond (measured 2026-10-02 on a late-game board: 0.3 ms under .NET, 0.9 ms
+in Unity). Do not reintroduce chunking, threading or incremental invalidation
+without a measured reason.
 
-- Costs are **integers ×10**: `CARDINAL_COST = 10`, `DIAGONAL_COST = 14`,
-  multiplied by the destination tile's `terrainCost`. So `bestCost / 10f` is in
-  tile units. Any feature derived from `bestCost` must divide by 10.
-- `GenerateFlowField()` resets `bestCost`, `bestDirection` **and** `nextNode` for
-  every node up front. Call it after any map mutation; it is cheap.
-- `GridManager.GetNeighbors` enforces a corner-cut rule via `Node.BlocksCorner`:
+- Costs are **integers ×10**: `CardinalCost = 10`, `DiagonalCost = 14`, multiplied
+  by the `TerrainCost` of the tile being **left** (the flood runs outward from the
+  core and prices "neighbour → current" by the neighbour's terrain). So
+  `BestCost / 10f` is in tile units. Any feature derived from `BestCost` must divide by 10.
+- `Generate()` resets `BestCost` and `NextIndex` for every node up front. The
+  simulation calls it after every placement, and once at the end of a tick in which
+  a wall was breached.
+- `SimGrid.GetNeighbors` enforces a corner-cut rule via `SimNode.BlocksCorner`:
   an agent may enter a wall tile head-on (that is how digging starts) but may not
-  slip diagonally between two solid tiles.
-- `Node.isWalkable` is **static geometry only**, scanned once from
-  `unwalkableMask` at `Awake`. Player walls never touch it.
+  slip diagonally between two solid tiles. Its iteration order decides ties, so it
+  is part of the rules.
+- `SimNode.IsWalkable` is **static geometry only**: the map's `X` tiles, scanned
+  once from `unwalkableMask` by `SceneMapBuilder`. Player walls never touch it.
+  (No current map has a single static blocker.)
 
 ### File map
 
 ```
-Assets/Scripts/
-  GridManager.cs           grid, NodeFromWorldPoint, GetNeighbors (corner-cut rule)
-  Node.cs                  plain C# cell: terrainCost, wallHealth, bestCost, nextNode
-  FlowFieldManager.cs      synchronous SPFA rebuild; FieldVersion bump
-  FlowFieldVisualizer.cs   runtime arrow overlay, rebuilds on FieldVersion change
-  FlowAgent.cs             movement, digging, lifetime clock, stall/leak outcomes
-  WaveSpawner.cs           wave escalation, intermission, agent pool, budget stipend
-  BlockManager.cs          shape library, 7-bag randomiser, hold slot, buildBudget
-  BlockShape.cs            ScriptableObject: buildCost, digCost, wallHealth, localTiles
-  PlayerBuilder.cs         placement, AreTilesPlaceable (single source of truth)
-  GhostPreviewer.cs        hover preview; calls PlayerBuilder.AreTilesPlaceable
-  PathPreviewer.cs         LineRenderer trace of the nextNode chain from spawn
-  PlayerCore.cs            10 HP, OnHealthChanged / OnGameOver, Time.timeScale = 0
-  CanvasDashboard.cs       HUD
+Assets/Thesis/                pure C#, no UnityEngine; each folder is one assembly
+  Core/       Pcg32, RngStreams, Fnv1a64, Vec2f, TileCoord, Json, DetMath
+  Sim/        the game rules
+    Simulation.cs SimState.cs SimConfig.cs   tick loop, all mutable state, all tunables
+    Grid/     SimGrid (GetNeighbors, corner-cut rule), SimNode, FlowField, Route
+    Agents/   AgentState, AgentSystem          movement, digging, lifetime clock
+    Build/    ShapeDef, ShapeBag (7-bag, hold, rotate), Placement (CanPlace = I9)
+    Waves/    IWavePlanner, EscalationPlanner (static baseline), SafePlanner,
+              PlanValidator, WavePlan, WaveOutcome
+    Replay/   ReplayFile, ReplayRecorder, ReplaySetup
+    Debug/    StateHasher, StateDump, AsciiMap, AsciiState, BenchScenarios
+    Map/ Commands/ Events/ Stats/
+  Learning/   empty until WP7        Director/   empty until WP8
+  Harness/    editor and headless only: EpisodeRunner, scripted policies,
+              ReplayRunner, PinnedEpisodes, PathfindingBench
+Assets/Scripts/               Unity host and views
+  SimHost.cs               runs the Simulation: fixed ticks, input in, events out, records the replay
+  DirectorHost.cs          picks the planner (the study condition), wraps it in SafePlanner
+  SceneMapBuilder.cs       scene → MapData
+  WaveSpawner.cs BlockManager.cs PlayerCore.cs PlayerBuilder.cs
+                           thin adapters that keep the member names the HUD reads
+  FlowAgent.cs             view only: interpolates one AgentState
+  GridManager.cs Node.cs FlowFieldManager.cs   view data and bindings, no rules
+  FlowFieldVisualizer.cs PathPreviewer.cs GhostPreviewer.cs CanvasDashboard.cs
   GameSpeedController.cs   pause / speed; pause blocks building
-  CameraMovement.cs, Billboard.cs, WallSpawnAnimator.cs
-  Benchmark/
-    BenchmarkRunner.cs     grid/density/agent sweeps + A* comparison → BenchmarkResults.json
-    ScenarioBenchmark.cs   OpenField / Maze / ChokePoints / RandomScatter → Benchmark_<label>.json
-Assets/Scenes/             SampleScene + Bench_Open / Bench_Maze / Bench_Choke / Bench_Stress
-Assets/Scripts/BlockS/     the tetromino .asset files
+  CameraMovement.cs Billboard.cs WallSpawnAnimator.cs BlockShape.cs
+  Config/SimConfigAsset.cs inspector home of SimConfig
+  Benchmark/ScenarioBenchmark.cs   the Unity-only frame-time scenarios
+  Editor/                  MapExporter, ShapeExporter, ReplayMenu, BuildGuard
+Assets/Tests/EditMode/        one set of tests, run by Unity and by `dotnet test`
+Tools/dotnet/                 headless build of Assets/Thesis, and Thesis.Cli
+                              (run, replay, ascii, pin, bench)
+Maps/                         exported maps and Shapes.json
+Results/                      committed results; Results/pinned-replays is re-run by tests
+Runs/                         (gitignored) raw output and Unity session replays
+Assets/Scenes/                SampleScene + Bench_Open / Bench_Maze / Bench_Choke / Bench_Stress
+Assets/Scripts/BlockS/        the tetromino .asset files
 ```
 
-`Benchmark/` already writes structured JSON from headless-ish scenario runs.
-**Reuse it** for the offline harness rather than starting a new one.
+The offline harness is `Thesis.Harness` plus `Thesis.Cli`. `ScenarioBenchmark`
+keeps only the scenarios that need Unity's frame loop.
 
 ---
 
@@ -112,11 +148,13 @@ in §8, and its feature and strategy tables are in git history.
 | How enemies lose | **Damage replaces the lifetime clock.** Enemies have HP and the clock is removed. Walls shape and lengthen the path, which means more time under fire. |
 | Placement | **Open tiles, acts like a wall.** A tower occupies one tile as expensive diggable terrain. Enemies route around it or chew through it, which destroys the tower. |
 | Persistence | **Towers persist and can be sold** for a partial refund. |
+| Walls | **Walls can be sold too** *(student, 2026-10-02)*. A whole placed piece is sold at once for a partial refund, in build phases. Before this a wall could only leave the board by being breached. |
 
 Consequences to keep in mind:
 
-- Walls stay exactly as they are: tetromino bag, diggable terrain, and a path
-  always exists. Everything in §8 about the flow field still applies.
+- Walls stay as they are: tetromino bag, diggable terrain, and a path always
+  exists. Everything in §8 about the flow field still applies. The one addition is
+  that the player can sell them (`Docs/ARCHITECTURE.md` §4.6).
 - The proposal's five features now describe the game: `maze_length`,
   `breach_vulnerability`, `chokepoint_reliance` (entropy of damage per path tile),
   `tower_concentration` and `damage_type_mix`. Their exact formulas are spec gaps
@@ -145,7 +183,9 @@ Consequences to keep in mind:
 A competent player finds one strong maze within a few waves and then repeats it.
 The hypothesis is that a wave director responding to the specific weakness of the
 current maze keeps the player making structural decisions — measured as the
-Shannon entropy of their wall-placement distribution across waves.
+Shannon entropy of their wall-placement distribution across waves. The exact
+definition is in `Docs/ARCHITECTURE.md` §5.9; it is provisional until it is frozen
+before the pilot.
 
 Therefore:
 
@@ -167,14 +207,14 @@ the principle stays the same.
 
 | # | Invariant | Why |
 |---|---|---|
-| I1 | Deterministic runs: same `{mapSeed, rngSeed, inputLog}` → identical outcome. Replace `UnityEngine.Random` (used in `BlockManager.RefillBag`) and any `System.Random` with a seeded PCG/xorshift. Fixed timestep. | Replay, regression benchmarks, and the answer to "did both study conditions see comparable waves". **Satisfied since WP5 (2026-10-02)** in the Unity editor (Mono) and headless (.NET): every session is recorded and replays to the same state hash on every tick (`Results/2026-10-02_determinism/`). Not yet checked on an IL2CPP player build. |
+| I1 | Deterministic runs: same `{mapSeed, rngSeed, inputLog}` → identical outcome. Replace `UnityEngine.Random` (used in `BlockManager.RefillBag`) and any `System.Random` with a seeded PCG/xorshift. Fixed timestep. | Replay, regression benchmarks, and the answer to "did both study conditions see comparable waves". **Satisfied since WP5 (2026-10-02)** in the Unity editor (Mono) and headless (.NET): every session is recorded and replays to the same state hash on every tick (`Results/2026-10-02_determinism/`). The study build is Windows, Mono (D5), the runtime this was verified on; `BuildGuard` refuses any other. A session recorded by a built player must still be replayed headless before the pilot. |
 | I2 | All strategies spend an identical threat budget at a given wave number. Only the shared cost table is tuned. | Otherwise "the adaptive condition was harder" explains the entire result. |
 | I3 | The estimator classes have **zero** Unity dependencies. No `MonoBehaviour`, no `UnityEngine` imports. | They must run headless at ~10⁶ episodes and be unit-testable. |
 | I4 | The learned term is an **additive correction bounded to ±1** on an authored heuristic score. It never selects directly. | Cold-start safety, debuggability, and it gives the ablation for free. |
 | I5 | Hard constraints veto with `float.NegativeInfinity` **before** the learner is consulted. | Legality and fairness sit above learning, not beside it. |
 | I6 | After the threshold freeze, bin boundaries and normalisation centres are immutable. | A threshold tuned against outcome data invalidates the comparison. |
 | I7 | After the build freeze, no code changes except crash fixes. | Otherwise the participants did not play the same game. |
-| I8 | No director logic on the per-frame path. | `FlowAgent.Update` runs for every agent every frame. |
+| I8 | No director logic on the per-frame path. | The simulation ticks 50 to 150 times a second. The director runs once per wave boundary and has 16 ms there (G2). |
 | I9 | `Thesis.Sim.Placement.CanPlace` is the single source of truth for placement legality, for walls and towers. `PlayerBuilder.AreTilesPlaceable` only wraps it, and `GhostPreviewer` keeps calling that wrapper. *(Reworded 2026-09-15, D3.)* | The preview can never disagree with a real click, and the harness uses the same rule. |
 | I10 | Shop offers are a pure function of `(rngSeed, waveIndex, rerollCount)`. They never depend on the study condition, the director, or the player's board. *(Added 2026-09-15.)* | Both conditions must see the same tower offers, or shop luck could explain the result. |
 | I11 | The director shapes enemy waves only. It never touches the shop, tower stats, prices, or the player's budget. *(Added 2026-09-15.)* | Otherwise the director changes the player's power, and difficulty is no longer held constant (§3). |
@@ -320,6 +360,10 @@ semester 1.
 - **Deviations**: record them as they happen, in the same file. They become the
   limitations chapter.
 - **Persistence**: JSON. Not raw byte reinterpretation.
+- **Maths**: nothing in `Thesis.*` calls `Math.Log`, `Math.Exp`, `Math.Pow` or the
+  trig functions (they differ in the last bit between runtimes). Use
+  `Thesis.Core.DetMath`. Chained float arithmetic is cast step by step. Both rules
+  are in `Docs/ARCHITECTURE.md` §9 rule 3, and tests enforce the first.
 - **Estimator selection**: one interface behind a config asset. Not compile-time
   flags with exclusivity enforced by comments.
 - Keep the existing code's habit of explaining *why* in comments, especially
@@ -331,7 +375,7 @@ semester 1.
 
 | Thing | Why |
 |---|---|
-| Chunked / background-threaded flow field | Deliberately deleted. The synchronous rebuild is microseconds here and removed an entire bug class. |
+| Chunked / background-threaded flow field | Deliberately deleted. The synchronous rebuild is under a millisecond here and removed an entire bug class. |
 | Walls as `isWalkable = false` | Deliberately changed. Diggable terrain is what guarantees a path always exists and killed the sinkhole/validate/revert machinery. |
 | Linear contextual bandit (LinUCB-style) | Cannot represent the thresholds this domain is built around. Documented failure in an inspected implementation. |
 | Deep RL / policy network | ~25 episodes per session cannot train one. Out of scope, on record, with the reason. |
@@ -377,6 +421,11 @@ S2 W14-W15 writing + artifact release
 tower work is in `Docs/WORKPLAN.md`. It shortens the old W8–W9 because the damage
 logging moved into the combat package. The student accepted this explicitly. The
 semester-2 rows above still apply.
+
+**Re-planned 2026-10-02 (D8):** WP6 is folded into WP-C3, WP7 runs in parallel, and
+Flying is cut if WP-C3 is not finished by the end of W9. The order and the reason
+are in `Docs/WORKPLAN.md`. If W5 began on 14 September the plan is one week behind,
+which is the W15 reserve.
 
 Cut order: (1) generated-strategies stretch goal, (2) the transfer condition,
 (3) the second pilot, (4) n from 24 to 18. **Never cut** determinism, the balance

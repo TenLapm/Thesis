@@ -55,7 +55,9 @@ public class SimHost : MonoBehaviour
 
     private Simulation sim;
     private MapData map;
-    private SimConfig fallbackConfig;
+    private SimConfig runConfig;
+    private readonly System.Collections.Generic.List<SimEvent> dispatchQueue = new System.Collections.Generic.List<SimEvent>();
+    private bool dispatching;
     private float accumulator;
     private ReplayRecorder recorder;
     private string replayPath;
@@ -84,7 +86,17 @@ public class SimHost : MonoBehaviour
         }
     }
 
-    public SimConfig Config => configAsset != null ? configAsset.config : fallbackConfig ?? (fallbackConfig = new SimConfig());
+    // The running session's own copy of the config, taken when the simulation
+    // starts. Editing the asset in the inspector during play therefore changes the
+    // NEXT session, never the one in progress (which would make it unreproducible).
+    public SimConfig Config
+    {
+        get
+        {
+            if (runConfig == null) EnsureStarted();
+            return runConfig;
+        }
+    }
 
     public ulong Seed { get; private set; }
 
@@ -119,8 +131,9 @@ public class SimHost : MonoBehaviour
 
         Seed = randomSeed ? (ulong)(uint)Environment.TickCount : (ulong)(uint)seed;
         map = SceneMapBuilder.Build(gridManager, flowManager.targetGoal, new[] { waveSpawner.spawnPoint }, SceneManager.GetActiveScene().name);
-        IWavePlanner planner = directorHost != null ? directorHost.CreatePlanner(Config, map) : new EscalationPlanner(Config, map);
-        sim = new Simulation(Config, map, blockManager.BuildShapeLibrary(), Seed, planner);
+        runConfig = (configAsset != null ? configAsset.config : new SimConfig()).Clone();
+        IWavePlanner planner = directorHost != null ? directorHost.CreatePlanner(runConfig, map) : new EscalationPlanner(runConfig, map);
+        sim = new Simulation(runConfig, map, blockManager.BuildShapeLibrary(), Seed, planner);
         flowManager.Bind(sim.State.Grid);
 
         Debug.Log("[Sim] Started: map '" + map.Name + "' " + map.Width + "x" + map.Height + ", seed " + Seed + ", planner '" + planner.Name
@@ -204,7 +217,7 @@ public class SimHost : MonoBehaviour
             return;
         }
 
-        float dt = Config.TickSeconds;
+        float dt = runConfig.TickSeconds;
         accumulator += Time.deltaTime;
         int ticks = 0;
         while (accumulator >= dt && ticks < maxTicksPerFrame)
@@ -232,10 +245,29 @@ public class SimHost : MonoBehaviour
         TickAlpha = Mathf.Clamp01(accumulator / dt);
     }
 
+    // Hands the simulation's latest events to the views, in order.
+    //
+    // The events are copied into a queue first. A view may answer an event by
+    // calling Submit(), which makes the simulation replace LastTickEvents while this
+    // loop is still walking it. With the queue, such a nested call only appends its
+    // own events behind the ones in progress, and the outer loop delivers them.
     private void Dispatch()
     {
         if (SimEventRaised == null) return;
+
         var events = sim.LastTickEvents;
-        for (int i = 0; i < events.Count; i++) SimEventRaised(events[i]);
+        for (int i = 0; i < events.Count; i++) dispatchQueue.Add(events[i]);
+        if (dispatching) return;
+
+        dispatching = true;
+        try
+        {
+            for (int i = 0; i < dispatchQueue.Count; i++) SimEventRaised?.Invoke(dispatchQueue[i]);
+        }
+        finally
+        {
+            dispatchQueue.Clear();
+            dispatching = false;
+        }
     }
 }

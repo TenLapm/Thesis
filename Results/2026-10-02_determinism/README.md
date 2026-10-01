@@ -35,9 +35,13 @@ divergent wave and tick.
 | 6 | Unity session B | Unity editor (Mono) | 882 | 0 | 18 | all match | OK |
 | 7 | .NET CLI, greedy policy, seed 7, 5 waves | .NET CLI and both test runners | 22,914 | 5 | 80 | not recorded; wave hashes match | OK |
 
-Rows 3–7 are committed in this folder and re-checked on every test run by
-`PinnedReplayTests`, in both `dotnet test` and Unity's test runner. Each file is
-therefore re-run on the runtime that did not record it.
+Rows 3–7 are committed in this folder. Rows 3–6 (the two Unity sessions) are also in
+`Results/pinned-replays/`, which is the folder `PinnedReplayTests` re-runs on every test
+run, in both `dotnet test` and Unity's test runner; each file is therefore re-run on the
+runtime that did not record it. *(Updated 2026-10-02, WP-H: the test used to read this
+folder. Row 7's role was taken over by the `dotnet-*` and `mono-*` episodes there. The
+files here stay as the evidence for this result and will stop verifying once the rules
+change in WP-C1; that is expected.)*
 
 Row 1's final hash is `a1dc9171e8fd33f0`.
 

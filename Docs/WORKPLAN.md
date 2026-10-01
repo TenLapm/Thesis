@@ -25,21 +25,22 @@ Finish with: dotnet test green → Unity refresh + read_console zero errors → 
 ## Dependency graph
 
 ```
-Port the current game faithfully
-WP0 ─┬─ WP1 ── WP2 ── WP3 ─┬─ WP4 ── WP5          (I1 proven on the known game)
-     │                     └─ WP6                  (telemetry schema 1)
-     └─ WP7                                        (Learning: independent; run it in a parallel session)
+Port the current game faithfully                                  (all done)
+WP0 ─┬─ WP1 ── WP2 ── WP3 ── WP4 ── WP5 ── WP-H   (I1 proven on the known game; hardening after the review)
+     └─ WP7                                        (Learning: independent; run it in a parallel session; needs DetMath from WP-H)
 
 Then change the rules (towers)
-WP5 ── WP-C1 combat core ─┬─ WP-C2 movement classes ─┐
-                          ├─ WP-C3 shop (+schema 2) ──┼─ WP-C4 Unity towers + shop UI
-                          └──────────────────────────┴─ WP-C5 roster v1 + balance sanity
+WP-H ── WP-C1 combat core ─┬─ WP-C2 movement classes ───────────────┐
+                           ├─ WP-C3 shop + telemetry + wall selling ─┼─ WP-C4 Unity towers + shop UI
+                           └────────────────────────────────────────┴─ WP-C5 roster v1 + balance sanity
 
 Director
-WP-C1 + WP-C3 + WP6 ── WP8 profile
+WP-C1 + WP-C3 ──────── WP8 profile
 WP-C2 + WP-C3 ──────── WP9 strategies ── WP10 layers ── WP11 full director ── WP12 harness ── WP13 gates
-                                           WP10 + WP-C4 ── WP14 Unity director UX
+                                           WP10 + WP-C4 ── WP14 Unity director UX + session setup
 ```
+
+WP6 (telemetry) no longer exists as its own package: it is part of WP-C3 (D8).
 
 ### Revised semester-1 schedule (approved 2026-09-15)
 
@@ -69,6 +70,46 @@ WP7 runs in a **parallel session** during W7–W9. It touches only `Assets/Thesi
   stays in the S2 W4 balance pass, which is now larger. In S1, WP-C5 only checks that nothing is broken or absurd.
 - If anything slips, the W15 reserve is used up. A new cut candidate to consider
   inserting after cut (1): **`flying_bypass` and the Flying movement class**, replaced by a ground-only strategy.
+
+### Re-plan, 2026-10-02 (D8)
+
+WP0–WP5 are done. By the table above, WP6, WP-C1 and WP-C2 were also due by the end of W7,
+and they are not done. **If W5 began on 14 September, the plan is about one week behind,
+and that week is the W15 reserve.** (If your W5 started on a different date, shift the
+"Week" column below; the order does not change.)
+
+Three changes:
+
+1. **WP6 is folded into WP-C3.** Nothing on the way to WP-C1 or WP-C2 needs telemetry, and a
+   schema for the game without towers would never see a participant. Telemetry is built once,
+   for the tower game, so `WaveRecord` schema 1 already has towers and the shop.
+2. **WP7 runs in a parallel session, starting now.** It needs only WP0 and `DetMath` (WP-H).
+3. **A fixed checkpoint for the first cut.** If WP-C3 is not finished by the end of W9, cut
+   Flying: the movement class, the anti-air tower, `flying_bypass` and the `Uncounterable`
+   veto, replaced by a fourth ground-only strategy. `WORKPLAN` already named this cut; the
+   rule only fixes *when*, so it is not decided under pressure.
+
+| Order | Package | Week, if W5 = 14 Sep | Note |
+|---|---|---|---|
+| done | WP0–WP5 | W5–W7 | |
+| done | **WP-H** hardening | W7 | 2026-10-02, after the review |
+| 1 | **WP-C1** combat core | W8 | includes "every wave must end" (§4.6) |
+| 1, parallel | **WP7** learning | W8–W9 | separate session |
+| 2 | **WP-C2** movement classes | W9 | |
+| 3 | **WP-C3** shop, telemetry, wall selling | W9 | checkpoint at the end of this week |
+| 4 | **WP-C4** Unity towers and shop UI | W10 | |
+| 5 | **WP-C5** roster and balance check | W10 | |
+| 6 | **WP8** profile | W11 | needs the proposal's §6.2 in the repo |
+| 7 | **WP9** strategies | W11 | needs the proposal's §6.3 in the repo |
+| 8 | **WP10** layers, replay schema 2 | W12 | |
+| 9 | **WP14** director UX and session setup | W12 | needed before the pilot |
+| 10 | **WP11** full director | W13 | |
+| 11 | **WP12** harness and ladder | W14 | |
+| 12 | **WP13** gates G1–G3 | W15 | this was the reserve week |
+| | report and session prep | W16 | unchanged |
+
+There is no slack left in this table. Cutting Flying at the checkpoint buys back roughly
+half a week across WP-C2, WP-C4, WP-C5, WP9 and WP10.
 
 ---
 
@@ -240,6 +281,7 @@ Still open: (a) one session played **by hand** with mouse and keyboard and verif
 (b) the Player-build check in Traps below. As built, `ReplayFile` and `ReplayRecorder` live in
 `Thesis.Sim/Replay` (the harness assembly is editor-only and `SimHost` records in builds), and
 the file stores config, map and shapes in full instead of a config hash. See DEVLOG WP5.
+Since WP-H the standing recordings live in `Results/pinned-replays/`.
 
 **Creates**
 - `Harness/Replay/ReplayFile.cs` (`schema`, `build`, `map`, `mapSeed`, `rngSeed`, `simConfigHash`, `planner`, optional estimator snapshot,
@@ -256,26 +298,53 @@ the file stores config, map and shapes in full instead of a config hash. See DEV
 
 **Done when** the cross-check passes. Write it up as `Results/<date>_determinism/README.md`.
 
-**Traps:** repeat the cross-check once on a **Player build**, not just the Editor, before the S2 W6 build freeze. The IL2CPP and Mono float paths can differ, and this is the only test that would notice.
+**Traps:** repeat the cross-check once on a **Player build**, not just the Editor, **before the pilot** (the pilot's data is recorded by a build, and it comes before the S2 W6 freeze). Decision D5 makes the study build Windows + Mono, the runtime already verified, and `BuildGuard` refuses anything else; the check is still needed once, on the built player.
 *(Update from WP4: Mono vs CoreCLR **did** differ, by one bit from tick 2916 of a real session, because Mono evaluated chained float expressions in double. This is fixed by the explicit-cast rule, ARCHITECTURE §9 rule 3, and all 5,036 ticks now match. IL2CPP compiles to C++, where the compiler flags decide contraction/FMA, so it still needs its own check. `CrossRuntimeBisectTests` shows how to bisect a divergence to a tick and component.)*
 
 ---
 
-## WP6 — Telemetry v1 and placement entropy
+## WP-H — Hardening after the review  ✅ done 2026-10-02
 
-**Reads:** §5.1, §5.8 · **Depends:** WP3 (can run in parallel with WP4 and WP5), **S7**
+**Why:** the review after WP5 (`Docs/REVIEW-2026-10-02.md`) found problems that are cheap now
+and expensive once the director exists. This package fixed the ones that do not depend on towers.
 
-Schema 1 covers the ported game, which has no towers. WP-C3 bumps the schema to 2 (shop, tower placements, kills, damage by type).
+**Built**
+- **A planner can no longer break the simulation.** `BeginWave` and `CloseWave` call the planner
+  before committing anything; `PlanValidator` (public) holds the plan rules; `SafePlanner` turns a
+  throw or an invalid plan into a fallback wave; `DirectorHost` wraps every planner.
+- **`Thesis.Core.DetMath`**: `Log` and `Exp` that give the same bits on every runtime, and
+  `ForbiddenApiTests`, which fails on `Math.Log/Exp/Pow`, trig, `System.Random` or the wall clock
+  anywhere in `Thesis.*`.
+- **Replay writes are atomic** (temp file, then swap). `SimHost` runs on a **copy** of the config
+  asset and dispatches events through a queue that tolerates a nested `Submit`.
+- **Pinned replays are one command and one click to re-record:** `thesis pin` (.NET) and
+  **Thesis → Replay → Record Pinned Episodes (Mono)**. `PinnedReplayTests` now replays whatever is in
+  `Results/pinned-replays/` and checks the two runtimes recorded identical runs.
+- `.gitattributes`, a GitHub Actions job that runs `dotnet test` on Linux and Windows, and
+  `BuildGuard` (the study build must be Mono, D5).
+- Documents brought up to date (`CLAUDE.md` §1, decisions D5–D9, this re-plan).
 
-**Creates** `Director/Telemetry/WaveRecord.cs` (schema 1; director fields nullable), `TelemetryWriter.cs`
-(append, flush each line, never rewrite), `PlacementEntropy.cs`, and the CLI command `trace`.
+**Not in this package** (folded into the packages below): the "every wave must end" rules
+(WP-C1); wall selling, telemetry and its float writer (WP-C3); the planner factory and replay
+schema 2 (WP10); the director's config and snapshot in the replay (WP11); parallel episodes
+(WP12); session setup (WP14); the pre-pilot checklist at the end of this file.
 
-**Must pass**
-- A golden-file test: a fixed escalation run produces byte-identical JSONL. Timestamps are excluded or injected through an `IClock`.
-- Rows for escalation-condition waves parse with the same `WaveRecord` class as director waves.
-- Entropy: a uniform placement distribution gives maximum entropy, and a single repeated placement gives 0.
+---
 
-**Review probe:** open a JSONL file produced by a Unity session and run `trace` on it.
+## WP6 — Telemetry v1 and placement entropy  → folded into WP-C3 (D8, 2026-10-02)
+
+Its requirements moved to WP-C3 unchanged in substance: an append-only JSONL writer, a
+golden-file test, rows that parse with one `WaveRecord` class in every condition,
+`PlacementEntropy`, and the CLI command `trace`. Three things changed on the way:
+
+- **The primary metric is now defined** (§5.9, D7), so `PlacementEntropy` implements that table.
+- **The golden file needs its own float writer.** The JSON library prints the same `float`
+  differently on the two runtimes (`0.20000458` under .NET, `0.200004578` under Mono; both read
+  back to the same bits). A golden file that must be byte-identical in both test runners cannot
+  use it. Telemetry writes floats through one formatter in `Thesis.Core.Json`.
+- **Telemetry is recorded the way replays are:** by one host-agnostic recorder that Unity and
+  `EpisodeRunner` both call, never by host code. `thesis telemetry <replay>` regenerates the rows
+  from a replay, and "live rows equal regenerated rows" becomes a test.
 
 ---
 
@@ -289,9 +358,15 @@ Schema 1 covers the ported game, which has no towers. WP-C3 bumps the schema to 
 - `SimNode`: add `Occupant { None, Wall, Tower }` and `TowerId`. `Placement.CanPlace` covers a single tower tile (I9). `Placement.PlaceTower(state, def, tile)`
   is internal: tests use it now, and the player-facing command arrives in WP-C3.
 - `EscalationPlanner` v2: HP escalation replaces lifetime escalation (placeholder numbers until WP-C5).
-- `WaveOutcome`: `Killed` replaces `Stalled`; add `DamageByType[]` and `TowersDestroyed`.
+- `WaveOutcome`: `Killed` replaces `Stalled`; add `DamageByType[]`, `TowersDestroyed` and `TimedOut`.
+- **Every wave must end** (§4.6): `PlanValidator` requires `MoveSpeed > 0`; `SimConfig.MinSlowFactor` and
+  `SimConfig.MaxWaveSeconds`; `MapData.Validate` checks that every spawn reaches the core.
 
 **Must pass**
+- **Termination:** a plan with `MoveSpeed` 0 is refused. A slow never takes an enemy below `MinSlowFactor`.
+  A map whose spawn is walled off from the core by static blockers fails `MapData.Validate` with a message
+  naming the spawn. With an enemy that can neither move nor die (forced in a test), the wave still
+  resolves at `MaxWaveSeconds` with `TimedOut` set. In a normal 25-wave run `TimedOut` is never set.
 - Range: a tower with range 3 hits an agent at 2.9 tiles and not at 3.1.
 - Cadence: with a target always present, a tower with `FireIntervalTicks` 25 fires exactly 40 times in 1,000 ticks.
 - Damage equals `Damage × Resist[type]`, and `Resist` 0 means immune.
@@ -305,11 +380,14 @@ Schema 1 covers the ported game, which has no towers. WP-C3 bumps the schema to 
 
 **Review probe:** place a range-0 tower (it can never hit) on the only route. Check that enemies dig through it, `TowerDestroyed` fires once, and the flow field rebuilds.
 
-**Traps:** `PinnedReplayTests` will fail here, **on purpose**. It re-runs recordings of the
-pre-tower game (`Results/2026-10-02_determinism/`), and once HP replaces the clock they no longer
-describe the game. Record new ones (a Unity session and a headless run, as that folder's README
-describes), replace the files, bump `ReplayFile.CurrentSchema` if the command set changed, and
+**Traps:** `PinnedReplayTests` will fail here, **on purpose**. It re-runs the recordings in
+`Results/pinned-replays/`, and once HP replaces the clock they no longer describe the game.
+Re-record both halves: `thesis pin` under .NET, and **Thesis → Replay → Record Pinned Episodes
+(Mono)** in Unity. Delete the two `unity-session-*` files there (they are play sessions of the old
+game) or replace them with a new played session. Update the episodes in `PinnedEpisodes` if the
+policies need different settings, bump `ReplayFile.CurrentSchema` if the command set changed, and
 note it in DEVLOG. Do not delete the test: it is the only standing Mono-vs-.NET check.
+All tower maths follows §9 rule 3: casts on chained floats, and no `Math.Pow` for a squared distance.
 
 ---
 
@@ -329,12 +407,22 @@ note it in DEVLOG. Do not delete the test: it is the only standing Mono-vs-.NET 
 
 ---
 
-## WP-C3 — Shop and telemetry schema 2
+## WP-C3 — Shop, wall selling and telemetry
 
-**Reads:** §4.5 (counter-based shop RNG), §4.6 (shop defaults), `CLAUDE.md` I10 and I11 · **Depends:** WP-C1, WP6. S11 can start with the §4.6 defaults.
+**Reads:** §4.5 (counter-based shop RNG), §4.6 (shop defaults, wall selling), §5.1, §5.8, §5.9, `CLAUDE.md` I10 and I11 · **Depends:** WP-C1. S11 can start with the §4.6 defaults.
 
-**Creates** `Sim/Shop/ShopState.cs`, `ShopRoller.cs`, `TowerOffer.cs`; the commands `PlaceTower`, `SellTower` and `RerollShop`; the events `ShopRolled`, `TowerPlaced` and `TowerSold`;
-and `WaveRecord` schema 2 (`shop`, `placements[].kind`, `outcome.killed`, `outcome.damageByType`).
+This package now also contains what was WP6 (see the note above WP-C1). If it grows past one
+session, split it as **C3a** (shop, `SellTower`, `SellWall`) and **C3b** (telemetry, entropy, `trace`).
+
+**Creates**
+- `Sim/Shop/ShopState.cs`, `ShopRoller.cs`, `TowerOffer.cs`; the commands `PlaceTower`, `SellTower`, `SellWall` and `RerollShop`;
+  the events `ShopRolled`, `TowerPlaced`, `TowerSold` and `WallSold`.
+- **Wall selling (D6):** `SimNode.PieceId`; `SellWall(x, y)` as specified in §4.6; `SimConfig.WallSellRefund`
+  and `SimConfig.SellDuringWave`; sales appended to the build log.
+- **Telemetry (was WP6):** `Director/Telemetry/WaveRecord.cs` (schema 1, towers and shop included; director
+  fields nullable), `TelemetryRecorder.cs` (host-agnostic, driven like `ReplayRecorder`), `TelemetryWriter.cs`
+  (append, flush each line, never rewrite), the float formatter in `Thesis.Core.Json`, `PlacementEntropy.cs`
+  (exactly §5.9), and the CLI commands `trace` and `telemetry <replay>`.
 
 **Must pass**
 - **I10:** with the same seed, offers for waves 1–30 are identical across (a) the Idle and GreedyDetour policies,
@@ -343,9 +431,19 @@ and `WaveRecord` schema 2 (`shop`, `placements[].kind`, `outcome.killed`, `outco
 - Buying the same slot twice fails the second time. Buying without enough budget is a no-op and emits nothing.
 - A sale refunds `price × SellRefund`, clears the tile, and rebuilds the fields. Selling from an empty tile is a no-op.
 - With rerolls off, `RerollShop` is a no-op. With rerolls on, `RerollCount` increases and the offers match the counter-based expectation.
-- Schema 2 golden file. Rows from schema 1 still load.
+- **Wall selling:** selling a whole piece refunds `cost × WallSellRefund`. After two of its four tiles were
+  breached, it refunds half of that. Selling clears only the tiles that still belong to that piece (a tile
+  re-built by a later piece is not touched). A sale during a wave is a no-op while `SellDuringWave` is off.
+  After a sale the flow field is rebuilt and the route can get shorter. Selling an empty tile is a no-op.
+- **Telemetry golden file:** a fixed escalation run produces byte-identical JSONL **in both test runners**.
+  Timestamps are excluded or injected through an `IClock`.
+- Rows for escalation-condition waves parse with the same `WaveRecord` class as director waves.
+- `thesis telemetry <replay>` reproduces the rows a live run wrote, byte for byte.
+- **Entropy (§5.9):** tiles spread evenly over all regions give 1; every tile in one region gives 0; nothing
+  built gives 0; tiles built before wave 1 are not counted; two sessions of different length are cut to the
+  shorter one.
 
-**Review probe:** record a headless replay that includes purchases and sales, then verify it.
+**Review probe:** record a headless replay that includes purchases, tower sales and wall sales, then verify it.
 
 ---
 
@@ -354,12 +452,14 @@ and `WaveRecord` schema 2 (`shop`, `placements[].kind`, `outcome.killed`, `outco
 **Reads:** §6 · **Depends:** WP4, WP-C2, WP-C3
 
 **Creates** `Towers/TowerView.cs`, `ShopPanel.cs`, `EnemyHealthBar.cs`, `Config/TowerDefAsset.cs`, `EnemyArchetypeAsset.cs`, primitive placeholder prefabs,
-the range ring in `GhostPreviewer`, a sell-mode input, and an HP bar replacing the life bar on `FlowAgent`.
+the range ring in `GhostPreviewer`, a sell-mode input for towers **and walls** (hovering a wall tile highlights
+the whole piece that would be sold and shows the refund), and an HP bar replacing the life bar on `FlowAgent`.
 
 **Must pass (manual playtest, logged in DEVLOG)**
 - Buy each offer and place it, with the ghost agreeing with the click (I9) and the range ring matching the real range.
 - Towers turn and fire cosmetic projectiles, and enemies lose HP and die. Only anti-air towers shoot flyers.
-- Selling refunds the budget. Offers refresh at intermission start and stay unchanged during a wave.
+- Selling a tower or a wall piece refunds the budget; during a wave the sell input is visibly disabled.
+  Offers refresh at intermission start and stay unchanged during a wave.
 - A Unity session with towers, recorded as a replay, verifies headless.
 
 **Out of scope:** art, VFX, sound, and UI styling. Those belong to the S2 W1–W3 UX pass.
@@ -387,11 +487,17 @@ This is a sanity check only. The real balancing happens in the S2 W4 balance pas
 
 **Creates** everything under `Assets/Thesis/Learning/`, plus the CLI command `synth`.
 
+**Maths rule (WP-H):** every `log` and `exp` is `Thesis.Core.DetMath`; no `Math.Log`, `Math.Exp`, `Math.Pow`
+or trig (`ForbiddenApiTests` fails the build's tests otherwise). Normal draws use the polar method (`DetMath.Log`
+and `Math.Sqrt` only). Compute in `double`, round to `float` once at the end.
+
 **Must pass**
 - `BetaSampler`: at 200k draws, the sample mean and variance for (1,1), (2,5) and (30,10) are within 1% of the analytic values. It throws when either shape is below 1.
 - `BinnedPosterior`: after 10⁵ random updates with G = 0.95, every α and β is ≥ 1. A strategy with no updates reports `Cold` and a correction of exactly 0.
   `Value` stays within [−1, +1] for any θ.
 - `Export` → `Import` → the same RNG seed gives identical `SampleCorrection` sequences.
+- **Cross-runtime fingerprint:** a fixed sequence of 10⁵ `SampleCorrection` and `Update` calls hashes to one
+  pinned value in both test runners (the same idea as `DetMathTests.AMillionResultsHaveTheSameBitsOnEveryRuntime`).
 - `KernelEstimator`: a query at a stored point with σ → small returns that point's reward. The ring buffer overwrites the oldest entry at 129.
 - **G1-synthetic:** in `ThresholdBanditEnv` (the best arm flips at a context threshold), `BinnedPosterior` reaches ≥ 85% best-arm selection within 300 episodes, averaged over 20 seeds, and beats uniform-random and round-robin.
 - **Calibration diagnostic** *(added 2026-09-29, borrowed from the Jev review; a diagnostic, not a new gate)*: `CalibrationReport` takes
@@ -408,7 +514,7 @@ This is a sanity check only. The real balancing happens in the S2 W4 balance pas
 
 ## WP8 — Build profile
 
-**Reads:** §5.3, `CLAUDE.md` §2 · **Depends:** WP-C1, WP-C3 (shop log), WP6, **S9**
+**Reads:** §5.3, `CLAUDE.md` §2 · **Depends:** WP-C1, WP-C3 (shop log, telemetry), **S9** (needs the proposal in the repo)
 
 - **WP8a (W9):** `IBuildFeature`, `ProfileInput`, `BuildProfile`, `BuildProfiler`, `MazeLength`, `TowerConcentration`, `DamageTypeMix`
 - **WP8b (W10):** `BreachVulnerability`, `ChokepointReliance` (uses the `DamageMap` from WP-C1)
@@ -446,12 +552,20 @@ multi-spawn support in `MapData` / `Placement` / `SimHost`, and the extra spawn 
 **Creates** `Director/Layers/*`, `Director/Context/ContextBucketizer.cs`, `Director/Decision/*` (with `DirectorMode.HeuristicOnly`),
 `Baselines/RandomPlanner.cs`, `RoundRobinPlanner.cs`, `Announce/AnnouncementTable.cs`, `DirectorConfig.cs`
 
+Also, from the 2026-10-02 review:
+- **One planner factory.** `Director/PlannerFactory.cs` builds every planner from a name and its config.
+  `DirectorHost` (Unity) and `Harness.Registry` (headless) both call it; neither keeps its own list.
+- **Replay schema 2 (§4.5):** `ReplayRecorder` stores each wave's `WavePlan`; `RecordedPlanner` plays them back;
+  `ReplayRunner` uses it by default. `replay --rerun-director` rebuilds the planner and compares its plans.
+
 **Must pass**
 - A vetoed strategy scores `NegativeInfinity`, and a spy estimator that **throws when called** is never called for it (I5).
 - When everything is vetoed, the director falls back to escalation and the trace records `fallback: "AllVetoed"`.
 - Ties go to the lowest id. The trace contains one row per strategy, in id order.
 - `TooSimilarToPrevious` vetoes a plan identical to the previous wave's and allows a plan above the threshold.
 - `Uncounterable` vetoes `flying_bypass` when the player owns no anti-air tower and none is on offer, and allows it as soon as one is on offer.
+- A session run with the random planner replays exactly from its recorded plans **with the planner removed
+  from `PlannerFactory`** (the simulation replay must not need the planner). Schema 1 replays still load.
 
 ---
 
@@ -466,6 +580,10 @@ multi-spawn support in `MapData` / `Placement` / `SimHost`, and the extra spawn 
 - The `binary` reward equals `(restructure >= tau) && survived` in all four combinations.
 - The final correction is always within [−1, +1]. Cold strategies get 0.
 - `DirectorMode.HeuristicOnly` and `DirectorMode.Full` with an always-cold estimator choose identically (I4 ablation sanity check).
+- The replay stores the `DirectorConfig` and the estimator snapshot the session started from, and
+  `replay --rerun-director` reproduces every recorded plan from them on the same runtime.
+- A director run recorded under .NET is re-run under Mono (and the reverse) with identical plans: the
+  pinned-episode set gains one full-director episode.
 
 **Review probe:** use the CLI `trace` on a 25-wave headless run and read three rows by hand. Check that the numbers in the rows are consistent with each other.
 
@@ -483,8 +601,18 @@ almost at once, so cost is a poor stand-in for time. The ladder needs policies t
 survive; judge them after WP-C1, when damage, not time, decides a wave. `Registry` is where new
 policies and planners get their names.)*
 
+*(From the 2026-10-02 review.)*
+- **Episodes run in parallel.** They are independent and `Thesis.*` has no static mutable state, so the
+  ladder runs one episode per core. A search-based policy is slow (the greedy one took about 15 s per
+  25-wave episode), and the ladder is policies × rungs × seeds.
+- **Each clone gets its own planner.** Never pass the live director to `Simulation.Clone` (§4.4).
+- **A limit to state in the results:** a scripted policy acts only at the start of a build phase. People
+  also build and sell in the middle of a wave.
+
 **Must pass**
-- A counterfactual on a cloned state leaves the original simulation's hash unchanged.
+- A counterfactual on a cloned state leaves the original simulation's hash unchanged, **and leaves the real
+  director's estimator digest unchanged**.
+- Running the ladder on 1 core and on all cores gives identical result files.
 - `ResultWriter` refuses to write a table when the hypothesis section is still empty.
 
 **Done when** `ladder` writes `Results/<date>_ladder/README.md` with the rungs random, escalation, heuristic and full, for every policy.
@@ -502,5 +630,28 @@ from `CLAUDE.md` §6 **before** the run and the decision the result implies afte
 ## WP14 — Director UX in Unity
 
 **Depends:** WP-C4, WP10 · The announcement line shown before each wave (`AnnouncementTableAsset`), the `DirectorOverlay` on F9
-(the latest `DirectorTrace` as a table), a session-condition selector, estimator snapshot import, and the director exception
-fallback (§6). **Must pass:** throwing inside `WaveDirector` during play shows the fallback in telemetry and does not crash the session.
+(the latest `DirectorTrace` as a table), estimator snapshot import, and **session setup (D9, §6)**: a start screen that takes a
+participant code and looks up that participant's two sessions (condition and seed set for each) in an assignment table
+shipped with the build; participant, session number, condition and seed are written into the replay and telemetry.
+The exception fallback itself exists since WP-H (`SafePlanner`); this package surfaces it.
+**Must pass:** throwing inside `WaveDirector` during play shows the fallback in telemetry and does not crash the session.
+The four groups of §6 each give the two sessions the table says. A development run with no participant code still
+uses seed 1.
+
+---
+
+## Before the pilot — checklist
+
+None of these is a package; each is small, and each protects the pilot's data.
+
+- [ ] **Player-build replay check (D5).** Build the Windows player, play a session to at least wave 3, copy
+      its `replay.json` out of `persistentDataPath/Sessions/`, and run `thesis replay <file> --per-tick`. Also
+      open the file and check that every field has a value: a stripped build would write empty objects.
+- [ ] **S7 frozen (D7).** The metric in §5.9 confirmed with the supervisor and marked frozen.
+- [ ] **A session played by hand** in the editor verifies headless (the WP4 playtest checklist in DEVLOG).
+- [ ] **Company and product name set** (still `DefaultCompany/InternProj`): they decide where the data is written.
+- [ ] **Exports are current.** `Maps/*.map.json`, `Maps/Shapes.json` and the config the harness uses match
+      the scene and the `SimConfig` asset. (Today the game reads the asset and headless reads the C# defaults;
+      they are equal, but nothing checks it. Add an export for the config and a check before the S2 balance pass.)
+- [ ] **Session setup works** for all four groups (WP14).
+- [ ] **Telemetry and the replay agree:** `thesis telemetry <replay>` reproduces the pilot build's own rows.

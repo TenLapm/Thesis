@@ -59,6 +59,58 @@ namespace Thesis.Tests
         }
     }
 
+    // Wraps a well-behaved planner and fails on demand, to prove that neither the
+    // simulation nor SafePlanner is broken by a broken director.
+    public sealed class FlakyPlanner : IWavePlanner
+    {
+        private readonly IWavePlanner inner;
+
+        public FlakyPlanner(IWavePlanner inner) { this.inner = inner; }
+
+        // PlanWave / OnWaveResolved throw this many times, then behave.
+        public int PlanThrowsLeft;
+        public int ResolveThrowsLeft;
+
+        // PlanWave throws for these waves every time it is asked.
+        public Func<int, bool> ThrowOnWave = _ => false;
+
+        // PlanWave answers these waves with a plan for the wrong wave, or with null.
+        public Func<int, bool> WrongWaveOnWave = _ => false;
+        public Func<int, bool> NullOnWave = _ => false;
+
+        public int PlanCalls;
+        public int ResolveCalls;
+
+        public string Name => "flaky";
+
+        public WavePlan PlanWave(WaveContext context)
+        {
+            PlanCalls++;
+            if (PlanThrowsLeft > 0)
+            {
+                PlanThrowsLeft--;
+                throw new InvalidOperationException("director bug in PlanWave");
+            }
+            if (ThrowOnWave(context.WaveIndex)) throw new InvalidOperationException("director bug in PlanWave, wave " + context.WaveIndex);
+            if (NullOnWave(context.WaveIndex)) return null;
+
+            WavePlan plan = inner.PlanWave(context);
+            if (WrongWaveOnWave(context.WaveIndex)) plan.WaveIndex += 7;
+            return plan;
+        }
+
+        public void OnWaveResolved(WaveOutcome outcome)
+        {
+            ResolveCalls++;
+            if (ResolveThrowsLeft > 0)
+            {
+                ResolveThrowsLeft--;
+                throw new InvalidOperationException("director bug in OnWaveResolved");
+            }
+            inner.OnWaveResolved(outcome);
+        }
+    }
+
     // A threat cost table for ValidatePlan tests: budget = 10 * wave, price = total agents.
     public sealed class FakePricer : IThreatPricer
     {

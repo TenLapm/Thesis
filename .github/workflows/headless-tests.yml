@@ -1,0 +1,27 @@
+# Builds the pure Thesis.* assemblies without Unity and runs their tests
+# (Docs/ARCHITECTURE.md §2.2). The same test files run inside Unity's test runner;
+# this job is the .NET half, on two operating systems.
+#
+# Linux is here on purpose: the pinned replays were recorded on Windows, so a pass
+# on Linux is one more independent machine reproducing the game bit for bit
+# (CLAUDE.md I1).
+name: headless tests
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.0.x'
+      - name: Test
+        run: dotnet test Tools/dotnet/Thesis.Headless.sln --nologo

@@ -152,11 +152,15 @@ namespace Thesis.Sim
             // 1. Player input.
             ApplyPending(s);
 
-            // 2. Phase machine.
+            // 2. Phase machine. The countdown is only written when no wave starts:
+            // BeginWave asks the planner first and may throw, and a tick that throws
+            // there must leave the state as it found it, so the next Tick() can try
+            // again (see BeginWave). When the wave does start, BeginWave zeroes the
+            // countdown itself, so the result is the same as decrementing first.
             if (s.Phase == SimPhase.Prep || s.Phase == SimPhase.Intermission)
             {
-                s.PhaseTicksRemaining--;
-                if (s.PhaseTicksRemaining <= 0 || s.StartWaveRequested) BeginWave(s);
+                if (s.PhaseTicksRemaining - 1 <= 0 || s.StartWaveRequested) BeginWave(s);
+                else s.PhaseTicksRemaining--;
             }
             s.StartWaveRequested = false; // consumed, or meaningless mid-wave
             if (s.Phase == SimPhase.Spawning) SpawnDue(s);
@@ -230,14 +234,21 @@ namespace Thesis.Sim
 
         private void BeginWave(SimState s)
         {
-            s.WaveIndex++;
-
-            var context = new WaveContext(s.WaveIndex, s, map, config);
+            // Ask for the plan and check it BEFORE changing anything. If the planner
+            // throws or hands back a bad plan, the state is exactly as it was and the
+            // next Tick() asks again. WaveIndex used to be incremented first; a
+            // planner that threw three times then made the first real wave "wave 4".
+            //
+            // So during PlanWave, State.WaveIndex is still the previous wave's number.
+            // The wave being planned is context.WaveIndex.
+            int wave = s.WaveIndex + 1;
+            var context = new WaveContext(wave, s, map, config);
             ulong before = StateHasher.Compute(s);
             WavePlan plan = planner.PlanWave(context);
-            GuardUnchanged(s, before, "PlanWave");
-            ValidatePlan(plan, s.WaveIndex);
+            GuardUnchanged(s, before, "PlanWave", wave);
+            ValidatePlan(plan, wave);
 
+            s.WaveIndex = wave;
             s.CurrentPlan = plan.Copy(); // our own copy: the planner cannot edit a running wave
             BuildSchedule(s, s.CurrentPlan);
             s.Occupancy.Reset();
@@ -316,7 +327,12 @@ namespace Thesis.Sim
 
         private void CloseWave(SimState s, bool coreDestroyed)
         {
-            WaveOutcome o = s.CurrentOutcome;
+            // Finish the outcome on a COPY and tell the planner before committing it.
+            // If OnWaveResolved throws, the wave is still open in the state and the
+            // next Tick() closes it again. It used to be committed first; one throw
+            // then left a wave that was "resolving" with no outcome, and every later
+            // tick died on a null reference.
+            WaveOutcome o = s.CurrentOutcome.Copy();
             o.TickResolved = s.Tick;
             o.CoreHpAfter = s.CoreHp;
             o.BudgetAfter = s.BuildBudget;
@@ -331,13 +347,12 @@ namespace Thesis.Sim
             o.PressureCount = pressured;
             o.PressureShare = o.Spawned == 0 ? 0f : (float)pressured / o.Spawned;
 
-            s.LastOutcome = o;
-            s.CurrentOutcome = null;
-
             ulong before = StateHasher.Compute(s);
             planner.OnWaveResolved(o.Copy());
-            GuardUnchanged(s, before, "OnWaveResolved");
+            GuardUnchanged(s, before, "OnWaveResolved", o.WaveIndex);
 
+            s.LastOutcome = o;
+            s.CurrentOutcome = null;
             events.Add(SimEvent.WaveResolved(o.WaveIndex));
         }
 
@@ -345,46 +360,21 @@ namespace Thesis.Sim
         // only in DEBUG as first planned: it costs one state hash per wave boundary,
         // well inside G2's 16 ms, and a planner that writes to the state would
         // silently break I2 and I11.
-        private void GuardUnchanged(SimState s, ulong before, string call)
+        private void GuardUnchanged(SimState s, ulong before, string call, int wave)
         {
             if (StateHasher.Compute(s) != before)
             {
                 throw new InvalidOperationException("[Sim] Planner '" + planner.Name + "' changed the simulation state inside " + call
-                                                    + " (wave " + s.WaveIndex + ", tick " + s.Tick + "). Planners may only read WaveContext.State.");
+                                                    + " (wave " + wave + ", tick " + s.Tick + "). Planners may only read WaveContext.State.");
             }
         }
 
+        // The rules live in PlanValidator so SafePlanner can apply the same ones
+        // without an exception; here a bad plan is a hard error.
         private void ValidatePlan(WavePlan plan, int wave)
         {
-            string who = "[Sim] Planner '" + planner.Name + "', wave " + wave + ": ";
-            if (plan == null) throw new InvalidOperationException(who + "PlanWave returned null.");
-            if (plan.WaveIndex != wave) throw new InvalidOperationException(who + "plan is for wave " + plan.WaveIndex + ".");
-            if (plan.Groups == null) throw new InvalidOperationException(who + "Groups is null.");
-
-            for (int i = 0; i < plan.Groups.Length; i++)
-            {
-                AgentGroup g = plan.Groups[i];
-                string at = who + "group " + i + " ";
-                if (g == null) throw new InvalidOperationException(at + "is null.");
-                if (g.Count < 0) throw new InvalidOperationException(at + "has Count " + g.Count + ".");
-                if (g.SpawnIndex < 0 || g.SpawnIndex >= map.Spawns.Length)
-                    throw new InvalidOperationException(at + "uses spawn " + g.SpawnIndex + " but map '" + map.Name + "' has " + map.Spawns.Length + ".");
-                if (g.SpawnIntervalTicks < 0 || g.StartDelayTicks < 0)
-                    throw new InvalidOperationException(at + "has a negative interval (" + g.SpawnIntervalTicks + ") or start delay (" + g.StartDelayTicks + ").");
-                if (g.Count > 0 && !(g.LifeTime > 0f)) throw new InvalidOperationException(at + "has LifeTime " + g.LifeTime + "; agents would stall on spawn.");
-                if (!(g.MoveSpeed >= 0f) || !(g.DigRate >= 0f))
-                    throw new InvalidOperationException(at + "has MoveSpeed " + g.MoveSpeed + " / DigRate " + g.DigRate + "; both must be >= 0 and not NaN.");
-            }
-
-            if (pricer != null)
-            {
-                float budget = pricer.BudgetForWave(wave);
-                float price = pricer.Price(plan);
-                if (Math.Abs(plan.ThreatSpent - budget) > config.ThreatEpsilon)
-                    throw new InvalidOperationException(who + "spends " + plan.ThreatSpent + " but the wave's threat budget is " + budget + " (I2).");
-                if (Math.Abs(price - plan.ThreatSpent) > config.ThreatEpsilon)
-                    throw new InvalidOperationException(who + "claims ThreatSpent " + plan.ThreatSpent + " but the cost table prices it at " + price + ".");
-            }
+            string problem = PlanValidator.Check(plan, wave, map, config, pricer);
+            if (problem != null) throw new InvalidOperationException("[Sim] Planner '" + planner.Name + "', wave " + wave + ": " + problem);
         }
 
         private static bool AnyLiveAgentOfWave(SimState s, int wave)

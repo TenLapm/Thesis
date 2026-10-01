@@ -66,6 +66,12 @@ namespace Thesis.Sim
             return (int)MathF.Round((float)(seconds / TickSeconds));
         }
 
+        // Every field is a plain number, so a shallow copy is a full copy. A host
+        // gives the simulation its own copy, so that editing the source object later
+        // (the config asset in Unity's inspector, during play) cannot change a
+        // running game.
+        public SimConfig Clone() { return (SimConfig)MemberwiseClone(); }
+
         public void Validate()
         {
             if (!(TickSeconds > 0f)) throw new InvalidOperationException("SimConfig.TickSeconds must be positive, was " + TickSeconds + ".");
