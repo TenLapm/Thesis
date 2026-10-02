@@ -29,6 +29,7 @@ namespace Thesis.Harness
             public string Name;
             public Func<SimConfig> Config;
             public Func<IPlayerPolicy> Policy;
+            public string Planner = EscalationPlanner.Id;
             public ulong Seed;
             public int MaxWaves;
             public bool TickHashes;
@@ -36,8 +37,8 @@ namespace Thesis.Harness
 
         // Small on purpose: every file is re-run on every test run, twice. Between
         // them they cover towers of every kind (single target, splash, slow), kills,
-        // leaks, wall building, digging and breaches, several waves, and a game over.
-        // Two carry a hash for every tick.
+        // leaks, wall building, digging and breaches, several waves, a game over, and
+        // (WP-C2) all three movement classes. Three carry a hash for every tick.
         private static readonly Spec[] Specs =
         {
             new Spec
@@ -67,6 +68,23 @@ namespace Thesis.Harness
                 MaxWaves = 25,
                 TickHashes = true,
             },
+            // Sappers and flyers: a ground wave, a sapper wave, a flyer wave, all three
+            // together, and round again. This is the only recording in which the
+            // sapper field, straight-line flight and anti-air targeting run on both
+            // runtimes. The core is given enough hit points to see all six waves, and
+            // the player few enough towers that every class is both killed and let
+            // through: sappers breach walls and a tower, flyers are shot down and leak.
+            // (Chosen by trying a few seeds; `thesis replay <file> --outcomes` shows it.)
+            new Spec
+            {
+                Name = "class-cycle-6waves",
+                Config = () => new SimConfig { CoreMaxHp = 1000 },
+                Policy = () => SequencePolicy.Mixed(wallsPerPhase: 2, towersPerPhase: 3, wallSearchOrigins: 12),
+                Planner = ClassCyclePlanner.Id,
+                Seed = 7,
+                MaxWaves = 6,
+                TickHashes = true,
+            },
         };
 
         // A narrower search than the default keeps recording to a few seconds.
@@ -91,6 +109,7 @@ namespace Thesis.Harness
                     Shapes = shapes,
                     Towers = towers,
                     Seed = spec.Seed,
+                    Planner = spec.Planner,
                     Policy = spec.Policy(),
                     MaxWaves = spec.MaxWaves,
                     RecordTickHashes = spec.TickHashes,

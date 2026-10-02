@@ -21,6 +21,22 @@ namespace Thesis.Tests.Harness
             StringAssert.Contains("OK", report.Describe());
         }
 
+        // A replay stores hashes, not outcomes; running it again gives them back.
+        [Test]
+        public void TheOutcomesOfARecordingAreWhatTheOriginalRunSaw()
+        {
+            EpisodeResult run = EpisodeRunner.Run(TestEpisodes.Small(seed: 2, waves: 4, planner: ClassCyclePlanner.Id));
+            System.Collections.Generic.List<WaveOutcome> again = ReplayRunner.Outcomes(TestEpisodes.Reload(run.Replay));
+
+            Assert.AreEqual(run.Outcomes.Count, again.Count);
+            for (int i = 0; i < again.Count; i++)
+            {
+                Assert.AreEqual(run.Outcomes[i].ToString(), again[i].ToString(), "wave " + (i + 1));
+                CollectionAssert.AreEqual(run.Outcomes[i].LeakedByClass, again[i].LeakedByClass);
+                CollectionAssert.AreEqual(run.Outcomes[i].DamageByType, again[i].DamageByType);
+            }
+        }
+
         [Test]
         public void ItStillVerifiesAfterBeingWrittenAndReadBack()
         {

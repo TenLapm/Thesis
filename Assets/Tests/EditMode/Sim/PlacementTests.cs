@@ -87,7 +87,7 @@ namespace Thesis.Tests.Sim
             float budget = 10f;
             var log = new List<PlacementRecord>();
             var events = new List<SimEvent>();
-            var field = new FlowField();
+            var field = new FlowFieldSet(new SimConfig().SapperDigCostFactor);
             field.Generate(f.Grid, f.Map.Core);
             int versionBefore = f.Grid.FieldVersion;
 
@@ -126,7 +126,7 @@ namespace Thesis.Tests.Sim
             var f = TestMaps.Parse(Map);
             var shape = new ShapeDef { Name = "Weak", BuildCost = 1, DigCost = 0, WallHealth = 0f, LocalTiles = new[] { new TileCoord(0, 0) } };
             float budget = 10f;
-            var field = new FlowField();
+            var field = new FlowFieldSet(new SimConfig().SapperDigCostFactor);
             field.Generate(f.Grid, f.Map.Core);
 
             Placement.TryPlace(f.Grid, f.Map, field, shape, 0, new TileCoord(3, 4), ref budget, 0, null, null);
@@ -140,7 +140,7 @@ namespace Thesis.Tests.Sim
         public void TryPlaceFailsWithoutSideEffectsWhenIllegalOrUnaffordable()
         {
             var f = TestMaps.Parse(Map);
-            var field = new FlowField();
+            var field = new FlowFieldSet(new SimConfig().SapperDigCostFactor);
             field.Generate(f.Grid, f.Map.Core);
 
             // Illegal (lands on the static blocker).
@@ -166,7 +166,7 @@ namespace Thesis.Tests.Sim
                 . . . . . . . . . .
                 . . . . . . . . . .
                 S . . . . . . . . C");
-            var field = new FlowField();
+            var field = new FlowFieldSet(new SimConfig().SapperDigCostFactor);
             field.Generate(f.Grid, f.Map.Core);
             float budget = 9f; // exactly two 4-cost placements, with 1 left over
 

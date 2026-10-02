@@ -12,9 +12,13 @@ namespace Thesis.Sim
         // the numbers below are what the simulation uses.
         public string Archetype = "basic";
 
+        // How they get to the core: on the ground field, on the sapper field, or in
+        // a straight line through the air (WP-C2). Ground unless a planner says otherwise.
+        public MovementClass Movement = MovementClass.Ground;
+
         public float MoveSpeed;         // world units / second; must be > 0
         public float Hp;                // hit points; must be > 0
-        public float DigRate;           // structure health chewed per second
+        public float DigRate;           // structure health chewed per second; unused by Flying
 
         // One damage multiplier per DamageType (1 = normal, 0 = immune).
         // Null means "1 for every type"; Copy() always fills it in.
@@ -34,7 +38,7 @@ namespace Thesis.Sim
 
         public override string ToString()
         {
-            return Count + " " + Archetype + " @spawn" + SpawnIndex + " speed=" + MoveSpeed + " hp=" + Hp + " dig=" + DigRate + " every " + SpawnIntervalTicks + "t (+" + StartDelayTicks + "t)";
+            return Count + " " + Archetype + " (" + Movement + ") @spawn" + SpawnIndex + " speed=" + MoveSpeed + " hp=" + Hp + " dig=" + DigRate + " every " + SpawnIntervalTicks + "t (+" + StartDelayTicks + "t)";
         }
     }
 }

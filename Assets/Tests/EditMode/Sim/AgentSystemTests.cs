@@ -11,7 +11,7 @@ namespace Thesis.Tests.Sim
     {
         // Common rig: "C # S", a wall tile between the core and a single spawn, one
         // straight row so the agent can sit exactly on the wall tile without
-        // needing the flow field generated (dig logic never reads BestCost).
+        // needing the flow field generated (dig logic never reads a field).
         private static AsciiFixture Rig()
         {
             return TestMaps.Parse("C # S");
@@ -29,10 +29,11 @@ namespace Thesis.Tests.Sim
             return Agent(id, f.Grid[1, 0].Position, speed: 1f, digRate: digRate, wallBreakReward: wallBreakReward);
         }
 
+        // Every rig here has its core at tile (0, 0).
         private static bool Step(SimGrid grid, IList<AgentState> agents, float dt, OccupancyMap occ, ref float budget, ref int coreHp,
                                  IList<SimEvent> events, IList<TowerState> towers = null, float towerBreachReward = 0f)
         {
-            return AgentSystem.Step(grid, agents, towers ?? NoTowers, dt, occ, towerBreachReward, ref budget, ref coreHp, events);
+            return AgentSystem.Step(grid, grid[0, 0], agents, towers ?? NoTowers, dt, occ, towerBreachReward, ref budget, ref coreHp, events);
         }
 
         private static int TicksUntilBreach(SimGrid grid, List<AgentState> agents)
@@ -138,7 +139,7 @@ namespace Thesis.Tests.Sim
         public void LeakedAgentDamagesCoreAndEmitsEvent()
         {
             var f = TestMaps.Parse("C . S");
-            new FlowField().Generate(f.Grid, f.Map.Core); // needed so the core tile's BestCost is actually 0
+            new FlowField().Generate(f.Grid, f.Map.Core);
 
             var agent = Agent(3, f.Grid.Get(f.Map.Core).Position);
             var agents = new List<AgentState> { agent };

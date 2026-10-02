@@ -1,3 +1,4 @@
+using System;
 using Thesis.Core;
 
 namespace Thesis.Sim
@@ -37,12 +38,20 @@ namespace Thesis.Sim
         public Occupant Occupant;
         public int TowerId = -1;
 
-        // Integer cost x10 to the goal (so diagonals can cost ~sqrt(2) without floats).
+        // The GROUND flow field. Integer cost x10 to the goal (so diagonals can cost
+        // ~sqrt(2) without floats).
         public int BestCost = Infinity;
 
         // Index of the next node toward the goal, or -1. An int rather than a node
         // reference so SimGrid.Clone() and state hashing need no pointer remapping.
         public int NextIndex = -1;
+
+        // The SAPPER flow field (WP-C2): the same two values when a built tile costs
+        // only SimConfig.SapperDigCostFactor of its price. FlowFieldSet fills it
+        // together with the ground field; a grid that only ever went through
+        // FlowField.Generate (a policy's scratch copy, a map check) leaves it unset.
+        public int SapperCost = Infinity;
+        public int SapperNextIndex = -1;
 
         public SimNode(int x, int y, int index, bool isWalkable, Vec2f position)
         {
@@ -61,6 +70,29 @@ namespace Thesis.Sim
         // Corner-cut rule input: agents may enter a wall tile head-on (that is how
         // digging starts) but may not slip diagonally BETWEEN two solid tiles.
         public bool BlocksCorner => !IsWalkable || HasWall;
+
+        // The cost to the goal on the field a movement class follows. Flying follows
+        // none: its distance is a straight line (FlyingMovement), so asking for it
+        // here is a bug in the caller.
+        public int CostFor(MovementClass movement)
+        {
+            switch (movement)
+            {
+                case MovementClass.Ground: return BestCost;
+                case MovementClass.Sapper: return SapperCost;
+                default: throw new InvalidOperationException("[Sim] " + movement + " has no flow field.");
+            }
+        }
+
+        public int NextIndexFor(MovementClass movement)
+        {
+            switch (movement)
+            {
+                case MovementClass.Ground: return NextIndex;
+                case MovementClass.Sapper: return SapperNextIndex;
+                default: throw new InvalidOperationException("[Sim] " + movement + " has no flow field.");
+            }
+        }
 
         public override string ToString()
         {

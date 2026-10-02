@@ -11,6 +11,12 @@ public class DirectorHost : MonoBehaviour
     {
         // The game as it exists today: WaveSpawner's escalation, ported verbatim.
         StaticEscalation = 0,
+
+        // NOT a study condition. A development planner that sends sappers and
+        // flyers in a fixed four-wave cycle (ground, sappers, flyers, all three), so
+        // the movement classes of WP-C2 can be played before the director's
+        // strategies exist. See Thesis.Sim.ClassCyclePlanner.
+        DevClassCycle = 100,
     }
 
     public Condition condition = Condition.StaticEscalation;
@@ -20,6 +26,11 @@ public class DirectorHost : MonoBehaviour
         IWavePlanner planner;
         switch (condition)
         {
+            case Condition.DevClassCycle:
+                planner = new ClassCyclePlanner(config, map);
+                Debug.Log("[Director] DEVELOPMENT planner 'class-cycle': waves cycle ground, sappers (orange, dig through walls), flyers (blue, fly over everything; "
+                          + "only the archer can hit them), then all three. Not a study condition. Set DirectorHost.condition back to StaticEscalation for the baseline.");
+                break;
             case Condition.StaticEscalation:
             default:
                 planner = new EscalationPlanner(config, map);

@@ -4,14 +4,19 @@ using Thesis.Core;
 namespace Thesis.Sim
 {
     // The agent pass: every live enemy acts once per tick, in ascending id
-    // (ARCHITECTURE.md §4.6 step 4). An enemy on the core tile leaks; an enemy on a
-    // built tile chews it; otherwise it walks one step along the flow field.
+    // (ARCHITECTURE.md §4.6 step 4). An enemy on the core tile leaks. Otherwise
+    // what it does depends on its movement class (WP-C2):
     //
-    // There is no lifetime clock any more (WP-C1): an enemy now ends by being
-    // killed in the tower pass, which runs before this one, or by leaking here.
+    //   Ground, Sapper   on a built tile it chews the tile; otherwise it walks one
+    //                    step along ITS flow field (ground or sapper).
+    //   Flying           one step in a straight line toward the core. It never digs
+    //                    and nothing on the board is in its way.
     //
-    // A breach rebuilds the flow field once, at the end of the tick, not in the
-    // middle of this loop: every agent in a tick sees the SAME field. AgentSystem
+    // There is no lifetime clock any more (WP-C1): an enemy ends by being killed in
+    // the tower pass, which runs before this one, or by leaking here.
+    //
+    // A breach rebuilds the flow fields once, at the end of the tick, not in the
+    // middle of this loop: every agent in a tick sees the SAME fields. AgentSystem
     // only reports that a rebuild is needed; the caller does it.
     public static class AgentSystem
     {
@@ -19,7 +24,10 @@ namespace Thesis.Sim
         // part of the contract: it decides which agent's dig call is the one that
         // actually takes a tile's health to zero when several share it, and that
         // agent is the only one credited with the breach.
-        public static bool Step(SimGrid grid, IList<AgentState> agents, IList<TowerState> towers, float dt, OccupancyMap occupancy,
+        //
+        // `core` is the grid's node for the core tile: where every enemy is heading,
+        // and the one tile on which an enemy leaks.
+        public static bool Step(SimGrid grid, SimNode core, IList<AgentState> agents, IList<TowerState> towers, float dt, OccupancyMap occupancy,
                                  float towerBreachReward, ref float buildBudget, ref int coreHp, IList<SimEvent> events)
         {
             bool fieldDirty = false;
@@ -42,8 +50,11 @@ namespace Thesis.Sim
 
                 SimNode node = grid.NodeFromPosition(agent.Position);
 
-                // Reached the core?
-                if (node.BestCost == 0)
+                // Reached the core? The same test for every class: a walker standing
+                // on the core tile, or a flyer over it. (Until WP-C2 this read
+                // "node.BestCost == 0", which is the same tile: only the goal of the
+                // ground field costs nothing.)
+                if (node == core)
                 {
                     agent.IsAlive = false;
                     agent.Leaked = true;
@@ -52,7 +63,18 @@ namespace Thesis.Sim
                     continue;
                 }
 
-                if (node.BestCost < agent.MinCostSeen) agent.MinCostSeen = node.BestCost;
+                int cost = RouteCost.ToCore(agent, node, core, grid.TileSize);
+                if (cost < agent.MinCostSeen) agent.MinCostSeen = cost;
+
+                if (agent.Movement == MovementClass.Flying)
+                {
+                    // Not counted in the occupancy map: that is traffic on the
+                    // ground, the thing the player's building shapes. A flyer's line
+                    // is the same whatever is built.
+                    agent.Position = FlyingMovement.Step(agent.Position, core.Position, (float)(speed * dt));
+                    continue;
+                }
+
                 occupancy.Increment(node);
 
                 // DIGGING: standing on a built tile (wall or tower) means chewing it
@@ -89,11 +111,11 @@ namespace Thesis.Sim
                 }
 
                 // Flow-field movement, one tile at a time toward the cheapest
-                // neighbour. MoveTowards clamps at the target, so no matter how
-                // fast the agent is or how large dt is, it can never overshoot past
-                // a tile in a single step - it always stops at Next and re-samples
-                // next tick, so no built tile is ever skipped.
-                SimNode next = grid.NextOf(node);
+                // neighbour on this agent's own field. MoveTowards clamps at the
+                // target, so no matter how fast the agent is or how large dt is, it
+                // can never overshoot past a tile in a single step - it always stops
+                // at Next and re-samples next tick, so no built tile is ever skipped.
+                SimNode next = grid.NextOf(node, agent.Movement);
                 if (next != null)
                 {
                     agent.Position = Vec2f.MoveTowards(agent.Position, next.Position, (float)(speed * dt));

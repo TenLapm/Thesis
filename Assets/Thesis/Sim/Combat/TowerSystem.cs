@@ -12,13 +12,18 @@ namespace Thesis.Sim
     // victims in ascending id. An enemy killed by one tower is dead for every later
     // tower in the same tick, so a kill is paid for exactly once.
     //
+    // Who a tower may hit is Targeting.CanHit: a tower without CanHitFlying never
+    // touches a flyer, as a target or with its splash (WP-C2).
+    //
     // Damage everywhere means EFFECTIVE damage: the hit points actually removed.
     // A 6-damage shot at an enemy with 2 HP deals 2. Otherwise the damage map and
     // the per-type totals would reward overkill, and the director's features read both.
     public static class TowerSystem
     {
         // damageByType may be null when no wave is open (nothing is alive to hit then).
-        public static void Step(SimGrid grid, IList<TowerState> towers, IList<AgentState> live, DamageMap damage,
+        // `core` is the grid's node for the core tile: target choice ranks enemies
+        // by how far they still have to go to it.
+        public static void Step(SimGrid grid, SimNode core, IList<TowerState> towers, IList<AgentState> live, DamageMap damage,
                                 float[] damageByType, float minSlowFactor, ref float buildBudget, IList<SimEvent> events)
         {
             for (int t = 0; t < towers.Count; t++)
@@ -30,7 +35,7 @@ namespace Thesis.Sim
                 if (tower.Cooldown > 0) continue;
 
                 // Nothing in range: keep the shot and fire the tick a target appears.
-                int index = Targeting.Pick(tower.Def.Mode, tower, grid, live);
+                int index = Targeting.Pick(tower.Def.Mode, tower, grid, core, live);
                 if (index < 0) continue;
 
                 AgentState target = live[index];
@@ -43,6 +48,7 @@ namespace Thesis.Sim
                     {
                         AgentState other = live[i];
                         if (i == index || !other.IsAlive) continue;
+                        if (!Targeting.CanHit(tower.Def, other)) continue;
                         if (!Targeting.InRange(other.Position, centre, tower.SplashSquared)) continue;
                         Hit(tower, other, grid, damage, damageByType, minSlowFactor, ref buildBudget, events);
                     }

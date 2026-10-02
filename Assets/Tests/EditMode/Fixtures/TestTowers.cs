@@ -11,14 +11,14 @@ namespace Thesis.Tests
     {
         public static TowerDef[] Roster() { return TowerRoster.Placeholder(); }
 
-        public static TowerDef Gun(float damage = 1f, float range = 3f, int interval = 25, DamageType type = DamageType.Physical, int cost = 0, string id = "gun")
+        public static TowerDef Gun(float damage = 1f, float range = 3f, int interval = 25, DamageType type = DamageType.Physical, int cost = 0, string id = "gun", bool canHitFlying = false)
         {
-            return new TowerDef { Id = id, Cost = cost, DamageType = type, Damage = damage, RangeTiles = range, FireIntervalTicks = interval };
+            return new TowerDef { Id = id, Cost = cost, DamageType = type, Damage = damage, RangeTiles = range, FireIntervalTicks = interval, CanHitFlying = canHitFlying };
         }
 
-        public static TowerDef Splash(float damage, float range, float splashTiles, int interval = 25)
+        public static TowerDef Splash(float damage, float range, float splashTiles, int interval = 25, bool canHitFlying = false)
         {
-            return new TowerDef { Id = "splash", Cost = 0, DamageType = DamageType.Fire, Damage = damage, RangeTiles = range, FireIntervalTicks = interval, SplashRadiusTiles = splashTiles };
+            return new TowerDef { Id = "splash", Cost = 0, DamageType = DamageType.Fire, Damage = damage, RangeTiles = range, FireIntervalTicks = interval, SplashRadiusTiles = splashTiles, CanHitFlying = canHitFlying };
         }
 
         public static TowerDef Slower(int slowTicks, float slowFactor, float range = 3f, float damage = 0f, int interval = 25)
@@ -33,9 +33,10 @@ namespace Thesis.Tests
             return new TowerState(id, def, new TileCoord(x, y), f.Grid[x, y].Position, f.Map.NodeDiameter, 0);
         }
 
-        public static AgentState Agent(int id, Vec2f position, float hp = 10f, float speed = 1f, float[] resist = null, float killReward = 0.2f)
+        public static AgentState Agent(int id, Vec2f position, float hp = 10f, float speed = 1f, float[] resist = null, float killReward = 0.2f,
+                                       MovementClass movement = MovementClass.Ground)
         {
-            return new AgentState(id, position, speed, hp, resist ?? DamageTypes.AllOnes(), 1f, killReward, 1f);
+            return new AgentState(id, position, speed, hp, resist ?? DamageTypes.AllOnes(), 1f, killReward, 1f, movement);
         }
 
         public static int Count(IList<SimEvent> events, SimEventKind kind)

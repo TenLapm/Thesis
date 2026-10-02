@@ -31,9 +31,25 @@ namespace Thesis.Tests
         // An enemy must be able to move (PlanValidator), so there is no "stand
         // still" group any more: a test that wants a wave to end quickly gives its
         // agents speed and lets them reach the core, or shoots them.
-        public static AgentGroup Group(int count, float hp = 10f, float speed = 5f, int intervalTicks = 1, int spawnIndex = 0, int startDelayTicks = 0, float[] resist = null)
+        public static AgentGroup Group(int count, float hp = 10f, float speed = 5f, int intervalTicks = 1, int spawnIndex = 0, int startDelayTicks = 0, float[] resist = null,
+                                       MovementClass movement = MovementClass.Ground, float digRate = 1f)
         {
-            return new AgentGroup { SpawnIndex = spawnIndex, Count = count, Hp = hp, MoveSpeed = speed, DigRate = 1f, Resist = resist, SpawnIntervalTicks = intervalTicks, StartDelayTicks = startDelayTicks };
+            return new AgentGroup
+            {
+                SpawnIndex = spawnIndex, Count = count, Hp = hp, MoveSpeed = speed, DigRate = digRate, Resist = resist,
+                SpawnIntervalTicks = intervalTicks, StartDelayTicks = startDelayTicks,
+                Movement = movement, Archetype = movement == MovementClass.Ground ? "basic" : movement.ToString().ToLowerInvariant(),
+            };
+        }
+
+        public static AgentGroup Sappers(int count, float hp = 10f, float speed = 5f, float digRate = 1f, int intervalTicks = 1)
+        {
+            return Group(count, hp, speed, intervalTicks, movement: MovementClass.Sapper, digRate: digRate);
+        }
+
+        public static AgentGroup Flyers(int count, float hp = 10f, float speed = 5f, int intervalTicks = 1)
+        {
+            return Group(count, hp, speed, intervalTicks, movement: MovementClass.Flying, digRate: 0f);
         }
     }
 

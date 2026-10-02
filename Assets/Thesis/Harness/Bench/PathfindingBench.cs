@@ -10,7 +10,8 @@ using Thesis.Sim;
 namespace Thesis.Harness
 {
     // Port of BenchmarkRunner's two scenarios that never needed Unity (WP4):
-    //   A) flow-field rebuild time vs grid size x wall density
+    //   A) flow-field rebuild time vs grid size x wall density: the ground field
+    //      alone, and (WP-C2) both fields, which is what the simulation rebuilds
     //   B) one shared flow field vs per-agent A* on the same grid and cost model
     // The Unity-only scenarios (frame time vs live agents, edits under load) stay
     // with ScenarioBenchmark in the Bench_* scenes.
@@ -44,11 +45,12 @@ namespace Thesis.Harness
             {
                 foreach (float density in o.WallDensities)
                 {
-                    double mean, min, max;
-                    BenchRebuild(size, density, o.RebuildIterations, rng, out mean, out min, out max);
+                    double mean, min, max, bothMean;
+                    BenchRebuild(size, density, o.RebuildIterations, rng, out mean, out min, out max, out bothMean);
                     if (!first) json.Append(",");
                     first = false;
-                    json.Append("\n {\"size\":" + size + ",\"density\":" + F(density) + ",\"meanMs\":" + F(mean) + ",\"minMs\":" + F(min) + ",\"maxMs\":" + F(max) + "}");
+                    json.Append("\n {\"size\":" + size + ",\"density\":" + F(density) + ",\"meanMs\":" + F(mean) + ",\"minMs\":" + F(min) + ",\"maxMs\":" + F(max)
+                                + ",\"bothFieldsMeanMs\":" + F(bothMean) + "}");
                 }
             }
             json.Append("],\n");
@@ -95,7 +97,10 @@ namespace Thesis.Harness
             }
         }
 
-        private static void BenchRebuild(int size, float density, int iterations, Pcg32 rng, out double mean, out double min, out double max)
+        // mean/min/max time the ground field alone, as before WP-C2, so the numbers
+        // stay comparable with earlier results. bothMean times FlowFieldSet: ground
+        // and sapper field together, which is one rebuild in the game.
+        private static void BenchRebuild(int size, float density, int iterations, Pcg32 rng, out double mean, out double min, out double max, out double bothMean)
         {
             SimGrid grid = OpenGrid(size, size * 0.8f, out TileCoord goal);
             Scatter(grid, goal, density, rng);
@@ -117,6 +122,18 @@ namespace Thesis.Harness
                 if (ms > max) max = ms;
             }
             mean = sum / iterations;
+
+            var both = new FlowFieldSet(new SimConfig().SapperDigCostFactor);
+            for (int i = 0; i < 3; i++) both.Generate(grid, goal); // warmup
+            sum = 0;
+            for (int i = 0; i < iterations; i++)
+            {
+                sw.Restart();
+                both.Generate(grid, goal);
+                sw.Stop();
+                sum += sw.Elapsed.TotalMilliseconds;
+            }
+            bothMean = sum / iterations;
         }
 
         // 38x38 with 10% walls - mirrors the game map scale, as in the original.

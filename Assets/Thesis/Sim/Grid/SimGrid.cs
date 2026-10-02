@@ -11,6 +11,10 @@ namespace Thesis.Sim
         public readonly int Width;
         public readonly int Height;
 
+        // World units per tile (MapData.NodeDiameter). Turns a world distance into
+        // tiles, which is how a flyer's distance to the core is measured.
+        public readonly float TileSize;
+
         private readonly float worldSizeX;
         private readonly float worldSizeY;
         private readonly SimNode[] nodes;
@@ -35,6 +39,7 @@ namespace Thesis.Sim
             // Explicit casts round every float intermediate (ARCHITECTURE.md §9 rule 3).
             float d = (float)(map.NodeRadius * 2f);
             float r = map.NodeRadius;
+            TileSize = d;
             float bottomLeftX = (float)(map.OriginX - (float)(map.WorldSizeX / 2f));
             float bottomLeftZ = (float)(map.OriginZ - (float)(map.WorldSizeY / 2f));
 
@@ -54,6 +59,7 @@ namespace Thesis.Sim
         {
             Width = source.Width;
             Height = source.Height;
+            TileSize = source.TileSize;
             worldSizeX = source.worldSizeX;
             worldSizeY = source.worldSizeY;
             FieldVersion = source.FieldVersion;
@@ -71,6 +77,8 @@ namespace Thesis.Sim
                     TowerId = s.TowerId,
                     BestCost = s.BestCost,
                     NextIndex = s.NextIndex,
+                    SapperCost = s.SapperCost,
+                    SapperNextIndex = s.SapperNextIndex,
                 };
             }
         }
@@ -91,7 +99,15 @@ namespace Thesis.Sim
         public SimNode ByIndex(int index) { return nodes[index]; }
 
         // The node NextIndex points to, or null at the goal / in unreachable pockets.
+        // This is the GROUND field's next tile; the overload names the class.
         public SimNode NextOf(SimNode node) { return node.NextIndex < 0 ? null : nodes[node.NextIndex]; }
+
+        // The next tile on the field a movement class follows (Ground or Sapper).
+        public SimNode NextOf(SimNode node, MovementClass movement)
+        {
+            int next = node.NextIndexFor(movement);
+            return next < 0 ? null : nodes[next];
+        }
 
         public bool InBounds(int x, int y) { return x >= 0 && x < Width && y >= 0 && y < Height; }
 

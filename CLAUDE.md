@@ -5,10 +5,10 @@ work is an adaptive wave director driven by a contextual bandit.
 
 **Status (2026-10-02).** The game runs on a deterministic, headless simulation core
 (`Assets/Thesis`), with Unity as a thin host around it (`Docs/WORKPLAN.md` WP0–WP5,
-the hardening pass WP-H and the combat core WP-C1 are done). Enemies have hit points
-and towers shoot them. **Not built yet:** flying and sapper enemies (WP-C2), the shop
-and selling (WP-C3), the tower UI (WP-C4), balance (WP-C5), and the director itself.
-Next package: WP-C2.
+the hardening pass WP-H, the combat core WP-C1 and the movement classes WP-C2 are
+done). Enemies have hit points, towers shoot them, and an enemy can be a ground
+walker, a sapper or a flyer. **Not built yet:** the shop and selling (WP-C3), the
+tower UI (WP-C4), balance (WP-C5), and the director itself. Next package: WP-C3.
 
 Read §1 and §2 before writing any code.
 
@@ -48,9 +48,25 @@ lifetime clock that made a long route lethal in the original game was removed in
 WP-C1 (§2). The static baseline escalates every wave: more enemies, faster, closer
 together, with more hit points.
 
+Since WP-C2 an enemy has a **movement class** (`MovementClass`), which is what the
+director's strategies will vary:
+
+- **Ground**: the above. Every enemy of the static baseline is this.
+- **Sapper**: follows a second flow field in which built tiles are cheap
+  (`SimConfig.SapperDigCostFactor`, 0.2), so it digs through walls that everyone
+  else walks round.
+- **Flying**: no field. A straight line to the core over everything; never digs;
+  only a tower with `CanHitFlying` can shoot it.
+
+No study condition sends sappers or flyers yet: the strategies that will are WP9.
+To play them now, set `DirectorHost.condition` to `DevClassCycle` in SampleScene
+(headless: `--planner class-cycle`). That planner is a development aid, not a condition.
+
 What is still a placeholder: three unbalanced tower types (`TowerRoster`: a
-single-target, a splash and a slowing tower, one per damage type), bought in Unity
-with the Z / X / C keys. There is no shop, no selling, no real tower UI yet.
+single-target, a splash and a slowing tower, one per damage type; only the first
+can hit flyers), bought in Unity with the Z / X / C keys; the sapper and flyer
+numbers; and how the classes look (a tint, and height for flyers). There is no
+shop, no selling, no real tower UI yet.
 
 ### Where the rules live
 
@@ -64,21 +80,28 @@ offline harness work.
 
 ### Flow field — read this before touching pathfinding
 
-`Thesis.Sim.FlowField.Generate()` is a **synchronous, whole-map, weighted flood fill
-(SPFA).** The previous chunked/background-threaded version, along with
+`Thesis.Sim.FlowField` is a **synchronous, whole-map, weighted flood fill (SPFA).**
+The previous chunked/background-threaded version, along with
 `isCalculating`, `ValidatePath`, sinkhole detection and the global fallback, was
-**deliberately deleted**. On this grid a full rebuild costs well under a
-millisecond (measured 2026-10-02 on a late-game board: 0.3 ms under .NET, 0.9 ms
-in Unity). Do not reintroduce chunking, threading or incremental invalidation
-without a measured reason.
+**deliberately deleted**. On this grid a full rebuild costs about a millisecond
+(measured 2026-10-02 on 38×38 with up to a quarter of the tiles built, both fields
+together: 0.3 to 0.6 ms under .NET, 0.8 to 1.1 ms in the Unity editor). Do not
+reintroduce chunking, threading or incremental invalidation without a measured reason.
+
+Since WP-C2 there are **two fields**, built by the same flood: the ground field
+(`SimNode.BestCost` / `NextIndex`, exactly the field described below) and the sapper
+field (`SapperCost` / `SapperNextIndex`), which differs only in what a built tile
+costs. The simulation rebuilds both together through `FlowFieldSet` and never one
+without the other. `FlowField.Generate()` on its own builds the ground field only;
+that is for a caller with a grid of its own (a policy's scratch copy).
 
 - Costs are **integers ×10**: `CardinalCost = 10`, `DiagonalCost = 14`, multiplied
   by the `TerrainCost` of the tile being **left** (the flood runs outward from the
   core and prices "neighbour → current" by the neighbour's terrain). So
   `BestCost / 10f` is in tile units. Any feature derived from `BestCost` must divide by 10.
-- `Generate()` resets `BestCost` and `NextIndex` for every node up front. The
-  simulation calls it after every placement, and once at the end of a tick in which
-  a wall was breached.
+- A rebuild resets cost and next pointer for every node up front. The simulation
+  rebuilds after every placement, and once at the end of a tick in which a wall or a
+  tower was breached.
 - `SimGrid.GetNeighbors` enforces a corner-cut rule via `SimNode.BlocksCorner`:
   an agent may enter a wall tile head-on (that is how digging starts) but may not
   slip diagonally between two solid tiles. Its iteration order decides ties, so it
@@ -95,12 +118,15 @@ Assets/Thesis/                pure C#, no UnityEngine; each folder is one assemb
   Sim/        the game rules
     Simulation.cs SimState.cs SimConfig.cs   tick loop, all mutable state, all tunables
     Grid/     SimGrid (GetNeighbors, corner-cut rule), SimNode, FlowField, Route
-    Agents/   AgentState, AgentSystem          hit points, movement, digging, slow
+    Agents/   AgentState, AgentSystem          hit points, movement by class, digging, slow
+    Movement/ MovementClass (Ground, Sapper, Flying), FlowFieldSet (both fields,
+              rebuilt together), FlyingMovement, RouteCost (way left, per class)
     Combat/   TowerDef, TowerState, TowerSystem (the tower pass), Targeting,
               DamageMap, DamageType, TowerRoster (placeholder roster)
     Build/    ShapeDef, ShapeBag (7-bag, hold, rotate), Placement (CanPlace = I9)
     Waves/    IWavePlanner, EscalationPlanner (static baseline), SafePlanner,
-              PlanValidator, WavePlan, WaveOutcome
+              PlanValidator, WavePlan, WaveOutcome, ClassCyclePlanner (development
+              only: sends sappers and flyers until the strategies exist)
     Replay/   ReplayFile, ReplayRecorder, ReplaySetup
     Debug/    StateHasher, StateDump, AsciiMap, AsciiState, BenchScenarios
     Map/ Commands/ Events/ Stats/
@@ -113,7 +139,7 @@ Assets/Scripts/               Unity host and views
   SceneMapBuilder.cs       scene → MapData
   WaveSpawner.cs BlockManager.cs PlayerCore.cs PlayerBuilder.cs
                            thin adapters that keep the member names the HUD reads
-  FlowAgent.cs             view only: interpolates one AgentState, shows its HP bar
+  FlowAgent.cs             view only: interpolates one AgentState, shows its HP bar and its class
   GridManager.cs Node.cs FlowFieldManager.cs   view data and bindings, no rules
   FlowFieldVisualizer.cs PathPreviewer.cs GhostPreviewer.cs CanvasDashboard.cs
   GameSpeedController.cs   pause / speed; pause blocks building
@@ -168,10 +194,13 @@ Consequences to keep in mind:
   bought and sold, and features must describe what the player *chose*, not what
   the roll happened to offer.
 - The proposal's strategy pool applies: `breach_thin_wall`, `swarm_chokepoint`,
-  `split_groups` and `flying_bypass`. Flying units need a movement mode that ignores
-  the flow field, and `flying_bypass` must be vetoed in layer 1 whenever the player
-  has no way to hit flyers. `split_groups` probably needs multi-spawn support;
-  `WaveSpawner` currently has a single `spawnPoint`.
+  `split_groups` and `flying_bypass`. The movement classes they need exist since
+  WP-C2 (sappers for the first, flyers for the last). `flying_bypass` must be vetoed
+  in layer 1 whenever the player has no way to hit flyers. `split_groups` probably
+  needs multi-spawn support; `WaveSpawner` currently has a single `spawnPoint`.
+- **Income must not depend on the strategy** (I11). Today it does: the kill reward
+  is paid per enemy, so a wave of fewer, stronger enemies pays less. Spec gap S14 in
+  `Docs/ARCHITECTURE.md` §10; to be closed with the threat cost table (WP9).
 - A wall breach currently pays the player +1.0 budget. Whether that stays under
   the tower economy is a balance question, not a given.
 
@@ -378,7 +407,7 @@ semester 1.
 
 | Thing | Why |
 |---|---|
-| Chunked / background-threaded flow field | Deliberately deleted. The synchronous rebuild is under a millisecond here and removed an entire bug class. |
+| Chunked / background-threaded flow field | Deliberately deleted. The synchronous rebuild is about a millisecond here (both fields) and removed an entire bug class. |
 | Walls as `isWalkable = false` | Deliberately changed. Diggable terrain is what guarantees a path always exists and killed the sinkhole/validate/revert machinery. |
 | Linear contextual bandit (LinUCB-style) | Cannot represent the thresholds this domain is built around. Documented failure in an inspected implementation. |
 | Deep RL / policy network | ~25 episodes per session cannot train one. Out of scope, on record, with the reason. |

@@ -5,8 +5,8 @@ namespace Thesis.Sim
 {
     // One enemy. Until WP-C1 it carried a lifetime clock and "stalled" when the
     // clock ran out; now it has hit points and dies when towers have removed them
-    // all (CLAUDE.md §2: damage replaces the clock). It still walks the flow field
-    // and still chews through anything built in its way.
+    // all (CLAUDE.md §2: damage replaces the clock). How it gets to the core is its
+    // MovementClass (WP-C2): on the ground field, on the sapper field, or flying.
     //
     // An enemy ends in exactly one of three ways:
     //   Killed   towers took its last hit point       -> the player is paid KillReward
@@ -16,6 +16,9 @@ namespace Thesis.Sim
     public sealed class AgentState
     {
         public readonly int Id;
+
+        // Ground, Sapper or Flying. Fixed for the enemy's whole life.
+        public readonly MovementClass Movement;
 
         public Vec2f Position;
         public float MoveSpeed;
@@ -46,16 +49,21 @@ namespace Thesis.Sim
         // The wave that spawned this agent (1-based). Set by Simulation at spawn.
         public int WaveIndex;
 
-        // Cheapest BestCost this agent has stood on so far this wave (SimNode.Infinity
-        // until it takes its first live step). Feeds WaveOutcome.PressureShare.
+        // The nearest this agent has come to the core so far, in flow-field units
+        // (tiles x 10), measured the way it travels: see RouteCost. SimNode.Infinity
+        // until it takes its first live step. Feeds WaveOutcome.PressureShare.
         public int MinCostSeen = SimNode.Infinity;
 
-        public AgentState(int id, Vec2f position, float moveSpeed, float hp, float[] resist, float digRate, float killReward, float wallBreakReward)
+        public AgentState(int id, Vec2f position, float moveSpeed, float hp, float[] resist, float digRate, float killReward, float wallBreakReward,
+                          MovementClass movement = MovementClass.Ground)
         {
             if (resist == null || resist.Length != DamageTypes.Count)
                 throw new ArgumentException("An agent needs one resistance per damage type (" + DamageTypes.Count + ").", nameof(resist));
+            if (!MovementClasses.IsDefined(movement))
+                throw new ArgumentOutOfRangeException(nameof(movement), movement, "Not a movement class.");
 
             Id = id;
+            Movement = movement;
             Position = position;
             MoveSpeed = moveSpeed;
             Hp = hp;
@@ -69,6 +77,7 @@ namespace Thesis.Sim
         private AgentState(AgentState source)
         {
             Id = source.Id;
+            Movement = source.Movement;
             Position = source.Position;
             MoveSpeed = source.MoveSpeed;
             DigRate = source.DigRate;
@@ -91,7 +100,7 @@ namespace Thesis.Sim
         public override string ToString()
         {
             string end = IsAlive ? "alive" : Leaked ? "leaked" : Killed ? "killed" : "removed";
-            return "Agent#" + Id + " " + end + " wave=" + WaveIndex + " hp=" + Hp + "/" + MaxHp + " pos=" + Position;
+            return "Agent#" + Id + " " + Movement + " " + end + " wave=" + WaveIndex + " hp=" + Hp + "/" + MaxHp + " pos=" + Position;
         }
     }
 }

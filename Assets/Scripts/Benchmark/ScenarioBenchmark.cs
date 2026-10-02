@@ -246,7 +246,7 @@ public class ScenarioBenchmark : MonoBehaviour
         int coreHp = int.MaxValue;
         while (accumulator >= TickSeconds && ticks < MaxTicksPerFrame)
         {
-            bool dirty = AgentSystem.Step(grid, agents, noTowers, TickSeconds, occupancy, 0f, ref budget, ref coreHp, null);
+            bool dirty = AgentSystem.Step(grid, grid.Get(map.Core), agents, noTowers, TickSeconds, occupancy, 0f, ref budget, ref coreHp, null);
             if (dirty) field.Generate(grid, map.Core);
 
             for (int i = 0; i < agents.Count; i++)

@@ -107,6 +107,59 @@ namespace Thesis.Tests.Sim
             Assert.Greater(row[1], row[5], "cost falls toward the core");
         }
 
+        // WORKPLAN WP-C2 review probe: the ground route and the sapper route of the same
+        // board, side by side.
+        [Test]
+        public void TheSapperRouteCanBeDrawnInsteadOfTheGroundRoute()
+        {
+            // Straight through costs a wall; the way round goes over the top.
+            const string corridor = @"
+                . . . . . . .
+                . X X X X X .
+                . X X X X X .
+                S . . # . . C";
+            Simulation sim = TestSims.AsciiWithWalls(corridor, new FixedPlanner(FixedPlanner.Group(1, 1f)));
+
+            string[] ground = Lines(AsciiState.Render(sim, AsciiLayer.Route));
+            Assert.AreEqual("  3  *******", ground[3], "the ground route runs along the top");
+            Assert.AreEqual("  0  S..#..C", ground[6], "and not through the corridor");
+            Assert.IsFalse(ground[0].Contains("class="), "a ground render reads as it always did");
+            StringAssert.Contains("* route", ground[ground.Length - 1]);
+
+            string[] sapper = Lines(AsciiState.Render(sim, AsciiLayer.Route, MovementClass.Sapper));
+            Assert.AreEqual("  3  .......", sapper[3]);
+            Assert.AreEqual("  0  S**+**C", sapper[6], "the sapper route goes through the wall: '+' marks where");
+            StringAssert.EndsWith("layer=route  class=sapper", sapper[0]);
+            StringAssert.Contains("* sapper route", sapper[sapper.Length - 1]);
+
+            // The cost layer follows the class too. Its scale tops out at the dearest
+            // tile: for a walker the wall itself (15 tiles to leave it, 2 more to the
+            // core), for a sapper the far corner of the way round.
+            string[] groundCost = Lines(AsciiState.Render(sim, AsciiLayer.Cost));
+            string[] sapperCost = Lines(AsciiState.Render(sim, AsciiLayer.Cost, MovementClass.Sapper));
+            StringAssert.Contains("9 = 17 tiles", groundCost[groundCost.Length - 1]);
+            StringAssert.Contains("9 = 10 tiles", sapperCost[sapperCost.Length - 1]);
+            Assert.AreEqual('7', groundCost[6].Substring(5)[2], "two tiles into the corridor a walker is 14 tiles from the core (back out and round)");
+            Assert.AreEqual('5', sapperCost[6].Substring(5)[2], "and a sapper 6 (on through the wall)");
+
+            Assert.Throws<System.ArgumentException>(() => AsciiState.Render(sim, AsciiLayer.Route, MovementClass.Flying));
+        }
+
+        [Test]
+        public void AFlyerIsDrawnAsF()
+        {
+            Simulation sim = TestSims.AsciiWithWalls(Map, new FixedPlanner(FixedPlanner.Flyers(count: 1, hp: 100f, speed: 2f)), new SimConfig { PrepSeconds = 0.02f });
+            TestSims.Run(sim, 150);
+            Assert.AreEqual(1, sim.State.LiveAgentCount, "rig: the flyer is still on its way");
+
+            // 150 steps of 0.04 is 6 world units: three tiles along the middle row,
+            // which is where the wall stands. It is over the wall, not digging it.
+            string[] lines = Lines(AsciiState.Render(sim, AsciiLayer.Route));
+            Assert.AreEqual('f', lines[4].Substring(5)[3], lines[4]);
+            Assert.IsFalse((lines[3] + lines[4] + lines[5]).Contains("d"), "a flyer over a wall is not digging");
+            StringAssert.Contains("f flying agent", lines[lines.Length - 1]);
+        }
+
         [Test]
         public void ATowerIsDrawnAsTAndCountedInTheHeader()
         {

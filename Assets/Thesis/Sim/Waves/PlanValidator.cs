@@ -32,6 +32,7 @@ namespace Thesis.Sim
                 if (g.Count > 0 && (!(g.MoveSpeed > 0f) || float.IsInfinity(g.MoveSpeed)))
                     return at + "has MoveSpeed " + g.MoveSpeed + "; every enemy must be able to move, or its wave could never end.";
                 if (!(g.DigRate >= 0f)) return at + "has DigRate " + g.DigRate + "; it must be >= 0 and not NaN.";
+                if (!MovementClasses.IsDefined(g.Movement)) return at + "has Movement " + (int)g.Movement + ", which is not a movement class.";
                 if (g.Resist != null)
                 {
                     if (g.Resist.Length != DamageTypes.Count)

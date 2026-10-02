@@ -28,14 +28,16 @@ determinism bug. `thesis replay <file> --per-tick` names the tick.
 
 ## Recorded
 
-2026-10-02, at the WP-C1 commit: the game with hit points and towers (replay schema 2).
+2026-10-02, at the WP-C2 commit: the game with movement classes (replay schema 3).
 
 | Episode | What it covers |
 |---|---|
 | `sentry-6waves` | Towers only, six waves: all three tower types, kills, splash, slow. |
 | `mixed-3waves` | Walls, then towers, three waves, with a hash for every tick. |
 | `walls-only-to-gameover` | Walls and no towers: nothing is killed, the enemies leak, game over in wave 1, with a hash for every tick. |
-| `unity-session-towers` | Played in the Unity editor through `SimHost`: towers placed through the same call the keys make (one refused, on the spawn), a wall piece, input while paused, a build in the middle of a wave, speeds x3 and `timeScale` 12, three waves, game over. |
+| `class-cycle-6waves` | The development planner's cycle: a ground wave, a sapper wave, a flyer wave, all three together, and two more. Walls, then towers; the core has 1,000 HP so all six waves are played. Every class is both killed and let through: sappers breach walls and chew through a tower, flyers are shot down by the one tower type that can hit them and leak past the rest. A hash for every tick. (`thesis replay <file> --outcomes` prints what happened in a recording.) |
+| `unity-session-classes` | Played in the Unity editor through `SimHost` with `DirectorHost.condition = DevClassCycle` and a 1,000-HP core: towers placed through the same call the keys make (one refused, on the spawn), wall pieces, two towers and a wall built in the middle of the flyer-and-sapper wave, input while paused, speeds x12, x3, x1 and a pause. This file is the first five waves (23,295 ticks) of a 13-wave session: the recording as `SimHost` had written it when wave 5 resolved. The whole session (57,899 ticks) verified headless too; it is not committed, to keep the test run short. |
 
-The recordings of the game before towers were deleted here when the rules changed. They are still in
-`Results/2026-10-02_determinism/`, as the evidence for that result; they are schema 1 and are refused now.
+Earlier sets were deleted here when the rules changed: the game before towers (schema 1; still in
+`Results/2026-10-02_determinism/` as the evidence for that result) and the game with towers but one
+movement class (schema 2; in git history at the WP-C1 commit). Both are refused now.

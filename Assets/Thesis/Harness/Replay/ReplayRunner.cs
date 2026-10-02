@@ -44,6 +44,29 @@ namespace Thesis.Harness
             return sim;
         }
 
+        // Runs the recording again and returns how each of its waves went, in order.
+        // A replay stores hashes, not outcomes: this is how to read what happened in
+        // one (kills, leaks, breaches, per movement class). It checks nothing; use
+        // Verify for that.
+        public static List<WaveOutcome> Outcomes(ReplayFile file)
+        {
+            var outcomes = new List<WaveOutcome>();
+            Simulation sim = NewSimulation(file);
+            int cursor = 0;
+            while (sim.State.Tick < file.FinalTick && !sim.State.IsGameOver)
+            {
+                Feed(file, sim, ref cursor);
+                sim.Tick();
+
+                IReadOnlyList<SimEvent> events = sim.LastTickEvents;
+                for (int i = 0; i < events.Count; i++)
+                {
+                    if (events[i].Kind == SimEventKind.WaveResolved) outcomes.Add(sim.State.LastOutcome.Copy());
+                }
+            }
+            return outcomes;
+        }
+
         // Without perTick: checks every wave hash and the final hash, and stops at
         // the first wave that differs. With perTick (and a file that has them): also
         // checks one hash per tick, so a divergence is pinned to the tick that ran

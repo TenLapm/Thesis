@@ -67,6 +67,24 @@ namespace Thesis.Tests.Sim
         }
 
         [Test]
+        public void ARouteThatGoesThroughAWallIsMarkedWhereItDoes()
+        {
+            // One row: no way round, so the route digs.
+            var f = TestMaps.Parse("S . # . H C");
+            new FlowField().Generate(f.Grid, f.Map.Core);
+            Assert.AreEqual("S*+*+C\n", AsciiMap.Render(f.Grid, f.Map, AsciiLayer.Route, labels: false).Replace("\r", ""));
+            Assert.AreEqual("S.#.HC\n", AsciiMap.Render(f.Grid, f.Map, AsciiLayer.Terrain, labels: false).Replace("\r", ""), "the terrain layer still says what stands there");
+
+            // The sapper's route, once its field is built.
+            var g = TestFields.Built(@"
+                . . . . . . .
+                . X X X X X .
+                S . . # . . C");
+            Assert.AreEqual(".......\n.XXXXX.\nS**+**C\n", AsciiMap.Render(g.Grid, g.Map, AsciiLayer.Route, labels: false, movement: MovementClass.Sapper).Replace("\r", ""));
+            Assert.AreEqual("*******\n*XXXXX*\nS..#..C\n", AsciiMap.Render(g.Grid, g.Map, AsciiLayer.Route, labels: false).Replace("\r", ""));
+        }
+
+        [Test]
         public void RenderWithLabelsShowsRulers()
         {
             var f = TestMaps.Parse(Sample);

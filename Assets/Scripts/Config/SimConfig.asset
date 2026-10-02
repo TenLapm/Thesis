@@ -33,6 +33,7 @@ MonoBehaviour:
     MaxMoveSpeed: 2.25
     BaseHp: 10
     HpIncrementPerWave: 2
+    SapperDigCostFactor: 0.2
     MinSlowFactor: 0.25
     MaxWaveSeconds: 600
     PressureRadiusTiles: 5

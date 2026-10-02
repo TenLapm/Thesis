@@ -23,7 +23,7 @@ namespace Thesis.Tests
             return new SimConfig { AgentsPerWave = 12, AgentsPerWaveIncrement = 2, PrepSeconds = 2f, IntermissionSeconds = 1f, CoreMaxHp = 1000 };
         }
 
-        public static EpisodeOptions Small(ulong seed = 1, int waves = 3, bool tickHashes = true, IPlayerPolicy policy = null)
+        public static EpisodeOptions Small(ulong seed = 1, int waves = 3, bool tickHashes = true, IPlayerPolicy policy = null, string planner = EscalationPlanner.Id)
         {
             return new EpisodeOptions
             {
@@ -31,6 +31,7 @@ namespace Thesis.Tests
                 Map = AsciiMap.Parse(SmallMap, "small").Map,
                 Shapes = TestShapes.SampleSceneLibrary(),
                 Seed = seed,
+                Planner = planner,
                 Policy = policy ?? SequencePolicy.Mixed(wallsPerPhase: 2, towersPerPhase: 3),
                 MaxWaves = waves,
                 RecordTickHashes = tickHashes,

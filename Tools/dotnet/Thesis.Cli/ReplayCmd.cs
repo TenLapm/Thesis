@@ -5,15 +5,16 @@ using Thesis.Sim;
 
 namespace Thesis.Cli
 {
-    // replay <file> [--per-tick] [--dump-tick T] [--dump-out f]
+    // replay <file> [--per-tick] [--outcomes] [--dump-tick T] [--dump-out f]
     // Runs a recorded session again and checks every recorded hash. Exit code 0 when
-    // it matches, 1 when it diverges. --dump-tick T also writes the re-run's state at
-    // State.Tick == T as JSON, to diff against the same tick from another run.
+    // it matches, 1 when it diverges. --outcomes also prints how each wave went
+    // (a replay stores hashes, not outcomes). --dump-tick T also writes the re-run's
+    // state at State.Tick == T as JSON, to diff against the same tick from another run.
     internal static class ReplayCmd
     {
         public static int Run(string[] argv)
         {
-            var args = new Args(argv, new[] { "--dump-tick", "--dump-out" }, new[] { "--per-tick" });
+            var args = new Args(argv, new[] { "--dump-tick", "--dump-out" }, new[] { "--per-tick", "--outcomes" });
             string path = args.Positional(0, "the replay file");
             args.NoMorePositionals(1);
 
@@ -25,6 +26,11 @@ namespace Thesis.Cli
 
             ReplayReport report = ReplayRunner.Verify(file, args.Flag("--per-tick"));
             Console.WriteLine(report.Describe());
+
+            if (args.Flag("--outcomes"))
+            {
+                foreach (WaveOutcome o in ReplayRunner.Outcomes(file)) Console.WriteLine("  " + o);
+            }
 
             if (args.Has("--dump-tick"))
             {

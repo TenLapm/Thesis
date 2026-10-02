@@ -94,18 +94,18 @@ Three changes:
 | done | WP0–WP5 | W5–W7 | |
 | done | **WP-H** hardening | W7 | 2026-10-02, after the review |
 | done | **WP-C1** combat core | W7 | 2026-10-02; includes "every wave must end" (§4.6) |
+| done | **WP-C2** movement classes | W7 | 2026-10-02; Ground, Sapper, Flying |
 | 1, parallel | **WP7** learning | W8–W9 | separate session |
-| 2 | **WP-C2** movement classes | W9 | |
-| 3 | **WP-C3** shop, telemetry, wall selling | W9 | checkpoint at the end of this week |
-| 4 | **WP-C4** Unity towers and shop UI | W10 | |
-| 5 | **WP-C5** roster and balance check | W10 | |
-| 6 | **WP8** profile | W11 | needs the proposal's §6.2 in the repo |
-| 7 | **WP9** strategies | W11 | needs the proposal's §6.3 in the repo |
-| 8 | **WP10** layers, replay schema 2 | W12 | |
-| 9 | **WP14** director UX and session setup | W12 | needed before the pilot |
-| 10 | **WP11** full director | W13 | |
-| 11 | **WP12** harness and ladder | W14 | |
-| 12 | **WP13** gates G1–G3 | W15 | this was the reserve week |
+| 2 | **WP-C3** shop, telemetry, wall selling | W9 | checkpoint at the end of this week |
+| 3 | **WP-C4** Unity towers and shop UI | W10 | |
+| 4 | **WP-C5** roster and balance check | W10 | |
+| 5 | **WP8** profile | W11 | needs the proposal's §6.2 in the repo |
+| 6 | **WP9** strategies | W11 | needs the proposal's §6.3 in the repo; S14 (income per wave shape) |
+| 7 | **WP10** layers, recorded plans in the replay | W12 | |
+| 8 | **WP14** director UX and session setup | W12 | needed before the pilot |
+| 9 | **WP11** full director | W13 | |
+| 10 | **WP12** harness and ladder | W14 | |
+| 11 | **WP13** gates G1–G3 | W15 | this was the reserve week |
 | | report and session prep | W16 | unchanged |
 
 There is no slack left in this table. Cutting Flying at the checkpoint buys back roughly
@@ -403,9 +403,23 @@ All tower maths follows §9 rule 3: casts on chained floats, and no `Math.Pow` f
 
 ---
 
-## WP-C2 — Movement classes: Ground, Sapper, Flying
+## WP-C2 — Movement classes: Ground, Sapper, Flying  ✅ done 2026-10-02
 
 **Reads:** §4.6 · **Depends:** WP-C1
+
+**Status:** built; every "must pass" item below has a test, in both runners. As built it differs
+from the list below in five ways (DEVLOG WP-C2 has the reasons):
+- **A development planner, `ClassCyclePlanner` (`--planner class-cycle`, `DirectorHost.Condition.DevClassCycle`).**
+  The package listed no way to send a sapper or a flyer; the strategies that will are WP9. Without one,
+  nothing could be played, recorded or compared across runtimes. It cycles ground, sappers, flyers, all
+  three. It is not a study condition, and its archetype numbers are placeholders (S12).
+- **The must-pass fixture has a 10-tile detour, not 20.** With the real wall cost of 15 a wall reads
+  as a 14-tile detour, so at 20 even a ground enemy digs. A second test pins that case.
+- **Extra files:** `MovementClasses.cs` (array size), `RouteCost.cs` (how far an enemy still has to go,
+  per class).
+- **`WaveOutcome` counts every class** (`SpawnedByClass[]`, `KilledByClass[]`, `LeakedByClass[]`), where
+  §4.6 planned `FlyersSpawned` and `FlyersLeaked`.
+- **Replay schema 3.** The layout is unchanged; the hashes cover more state. Older recordings are refused.
 
 **Creates** `Sim/Movement/MovementClass.cs`, `FlowFieldSet.cs`, `FlyingMovement.cs`, and the class branches in the agent pass.
 
@@ -416,6 +430,8 @@ All tower maths follows §9 rule 3: casts on chained floats, and no `Math.Pow` f
 - A tower with `CanHitFlying = false` never targets a flyer, even when it is the only agent in range.
 
 **Review probe:** use `cli ascii --layer route` to render the Ground and Sapper routes on Bench_Maze side by side.
+As built: `thesis ascii --map Maps/Bench_Maze.map.json --scenario maze --class ground` and the same with
+`--class sapper` (86 tiles against 198; `+` marks where the sapper route goes through a wall).
 
 ---
 
@@ -431,6 +447,10 @@ the tower roster in the simulation and in the replay, `PlacementRecord.Kind` and
 events `TowerPlaced` and `TowerDestroyed`. This package changes what `PlaceTower`'s first argument
 means (an offer slot, checked against the shop) and adds the rest. That changes the command set, so
 bump `ReplayFile.CurrentSchema` and re-record the pinned episodes.
+
+**From WP-C2:** a sale must rebuild **both** flow fields: call `FlowFieldSet.Generate`, as placement does,
+never `FlowField.Generate`. Telemetry's `outcome` gets the per-class counts (`SpawnedByClass` and friends),
+and `plan.groups[]` gets `movement`. The pinned set has a fourth episode, `class-cycle-6waves`.
 
 **Creates**
 - `Sim/Shop/ShopState.cs`, `ShopRoller.cs`, `TowerOffer.cs`; the commands `PlaceTower`, `SellTower`, `SellWall` and `RerollShop`;
@@ -484,6 +504,11 @@ the whole piece that would be sold and shows the refund), and an HP bar replacin
 tinted wall cube, and the console hint. `FlowAgent`'s bar already shows HP (its field is still
 called `lifeBarFill`, because the prefab refers to it).
 
+**Replaces from WP-C2:** `FlowAgent`'s placeholder look for the movement classes (a sapper tinted orange, a
+flyer tinted blue and drawn 2.6 units up). `EnemyArchetypeAsset` gives each enemy type its own prefab.
+Also worth adding here: the route preview (`PathPreviewer`) draws the ground route only, so nothing on
+screen shows where sappers will dig or that flyers ignore the maze.
+
 **Out of scope:** art, VFX, sound, and UI styling. Those belong to the S2 W1–W3 UX pass.
 
 ---
@@ -496,7 +521,10 @@ called `lifeBarFill`, because the prefab refers to it).
 - 4–6 `TowerDef` assets, covering at least single-target, splash, slow and anti-air across at least 3 damage types.
   They replace `TowerRoster.Placeholder()`: export them to `Maps/Towers.json` the way shapes are exported, load
   that file in the CLI and the tests, and delete the placeholder class.
-- 3–4 enemy archetypes: basic, sapper, swarm and flyer
+- 3–4 enemy archetypes: basic, sapper, swarm and flyer. The sapper and flyer numbers are placeholders inside
+  `ClassCyclePlanner` today (half the count; sapper 1.5× HP, 0.8× speed, 4× dig rate; flyer 0.5× HP, 1.2×
+  speed), and `SimConfig.SapperDigCostFactor` is 0.2. `thesis ascii --map … --class sapper --sapper-factor F`
+  shows what a factor does to the route.
 - HP escalation numbers
 - The CLI command `balance`: policies × 10 seeds × 25 waves, reporting damage per budget spent on each tower, how often each policy buys each tower, and the wave each policy reaches
 
@@ -561,6 +589,12 @@ and `Math.Sqrt` only). Compute in `double`, round to `float` once at the end.
 **Creates** `Director/Strategies/` (`BreachThinWall`, `SwarmChokepoint`, `SplitGroups`, `FlyingBypass`), `Config/ThreatCostTableAsset.cs`,
 multi-spawn support in `MapData` / `Placement` / `SimHost`, and the extra spawn points in SampleScene.
 
+**From WP-C2:** the movement classes these strategies need exist (`AgentGroup.Movement`). Once a strategy sends
+sappers and one sends flyers, `ClassCyclePlanner` has done its job: delete it and its `DevClassCycle` condition,
+or keep it as a test planner only, and re-record the `class-cycle-6waves` pinned episode with a real strategy.
+**Close S14 first:** `KillReward` is per enemy, so strategies that buy fewer, stronger enemies with the same
+threat budget pay the player less (measured in WP-C2). The cost table and the kill reward have to be designed together.
+
 **Must pass**
 - **I2:** for waves 1–40 and every strategy, `|plan.ThreatSpent − BudgetForWave(w)| ≤ ε`.
 - `BudgetForWave(w)` equals the price of the `EscalationPlanner` plan for wave w.
@@ -579,8 +613,9 @@ multi-spawn support in `MapData` / `Placement` / `SimHost`, and the extra spawn 
 Also, from the 2026-10-02 review:
 - **One planner factory.** `Director/PlannerFactory.cs` builds every planner from a name and its config.
   `DirectorHost` (Unity) and `Harness.Registry` (headless) both call it; neither keeps its own list.
-- **Replay schema 2 (§4.5):** `ReplayRecorder` stores each wave's `WavePlan`; `RecordedPlanner` plays them back;
+- **The next replay schema (§4.5):** `ReplayRecorder` stores each wave's `WavePlan`; `RecordedPlanner` plays them back;
   `ReplayRunner` uses it by default. `replay --rerun-director` rebuilds the planner and compares its plans.
+  *(This was written as "schema 2" before WP-C1 and WP-C2 each took a number; it is whatever comes after WP-C3's.)*
 
 **Must pass**
 - A vetoed strategy scores `NegativeInfinity`, and a spy estimator that **throws when called** is never called for it (I5).
@@ -589,7 +624,8 @@ Also, from the 2026-10-02 review:
 - `TooSimilarToPrevious` vetoes a plan identical to the previous wave's and allows a plan above the threshold.
 - `Uncounterable` vetoes `flying_bypass` when the player owns no anti-air tower and none is on offer, and allows it as soon as one is on offer.
 - A session run with the random planner replays exactly from its recorded plans **with the planner removed
-  from `PlannerFactory`** (the simulation replay must not need the planner). Schema 1 replays still load.
+  from `PlannerFactory`** (the simulation replay must not need the planner). Replays of the schema before
+  it still load, with their planner rebuilt by name as today: that step changes the file, not the rules.
 
 ---
 
@@ -618,6 +654,12 @@ Also, from the 2026-10-02 review:
 **Reads:** §7 · **Depends:** WP5, WP11
 
 **Creates** the rest of `Harness/Policies/*`, `Counterfactual.cs`, `Ladder.cs`, `ResultWriter.cs`, and the CLI command `ladder`.
+
+*(From WP-C2: none of the stand-in players knows about movement classes. Against the development planner's
+cycle, `Sentry` clears the sapper, flyer and mixed waves (its towers stand beside the straight line, which on
+an open board is also the flyers' line) and then loses in wave 5, five waves earlier than against the
+escalation, because half-size waves pay half the kill rewards (S14). `mixed` loses to the first sapper wave.
+A policy for the ladder needs to buy anti-air when flyers come and to stop relying on a wall when sappers do.)*
 
 *(From WP-C1: three stand-in players exist. `Sentry` (towers beside the route) clears nine waves of the
 placeholder numbers; `GreedyDetour` (walls only) and `Idle` lose in wave 1, because walls alone no longer

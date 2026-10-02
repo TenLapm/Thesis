@@ -85,12 +85,15 @@ namespace Thesis.Sim
                 h.Add(n.TowerId);
                 h.Add(n.BestCost);
                 h.Add(n.NextIndex);
+                h.Add(n.SapperCost);
+                h.Add(n.SapperNextIndex);
             }
         }
 
         private static void AddAgent(ref Fnv1a64 h, AgentState a)
         {
             h.Add(a.Id);
+            h.Add((int)a.Movement);
             h.Add(a.Position.X);
             h.Add(a.Position.Y);
             h.Add(a.MoveSpeed);
@@ -161,6 +164,7 @@ namespace Thesis.Sim
                 h.Add(g.SpawnIndex);
                 h.Add(g.Count);
                 h.Add(g.Archetype);
+                h.Add((int)g.Movement);
                 h.Add(g.MoveSpeed);
                 h.Add(g.Hp);
                 h.Add(g.DigRate);
@@ -182,6 +186,12 @@ namespace Thesis.Sim
             h.Add(o.Spawned);
             h.Add(o.Killed);
             h.Add(o.Leaked);
+            for (int i = 0; i < MovementClasses.Count; i++)
+            {
+                h.Add(o.SpawnedByClass[i]);
+                h.Add(o.KilledByClass[i]);
+                h.Add(o.LeakedByClass[i]);
+            }
             h.Add(o.Removed);
             h.Add(o.TimedOut);
             h.Add(o.WallsBreached);

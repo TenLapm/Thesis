@@ -30,8 +30,12 @@ namespace Thesis.Sim
     //   #  wall (cost 15, 6 s)    H  heavy wall (cost 200, 99999 s: the benchmark walls)
     //   S  spawn (open ground)    C  core / goal (open ground), exactly one
     //   *  route (render only; parsed as open ground)
+    //   +  the route goes THROUGH this wall or tower (render only; not parsed: a
+    //      Route render with a '+' in it is for reading. Round-trip the Terrain layer.)
     public static class AsciiMap
     {
+        public const char RouteThroughBuilt = '+';
+
         // BlockShape defaults: digCost 15, wallHealth 6.
         public const int WallCost = 15;
         public const float WallHealth = 6f;
@@ -143,13 +147,15 @@ namespace Thesis.Sim
 
         // labels: false renders exactly the fixture format (round-trips through Parse);
         // true adds x/y rulers for reading large maps in a terminal.
-        public static string Render(SimGrid grid, MapData map, AsciiLayer layer = AsciiLayer.Terrain, bool labels = true)
+        // movement: whose route the Route layer draws (Ground, or Sapper once
+        // FlowFieldSet has built that field on this grid).
+        public static string Render(SimGrid grid, MapData map, AsciiLayer layer = AsciiLayer.Terrain, bool labels = true, MovementClass movement = MovementClass.Ground)
         {
             var onRoute = new bool[grid.NodeCount];
             if (layer == AsciiLayer.Route && map.Spawns.Length > 0)
             {
                 var route = new List<SimNode>();
-                Route.Collect(grid, grid.Get(map.Spawns[0]), route);
+                Route.Collect(grid, grid.Get(map.Spawns[0]), route, movement);
                 foreach (SimNode n in route) onRoute[n.Index] = true;
             }
 
@@ -183,7 +189,7 @@ namespace Thesis.Sim
             for (int i = 0; i < map.Spawns.Length; i++)
                 if (t == map.Spawns[i]) return 'S';
             if (!n.IsWalkable) return 'X';
-            if (n.HasWall) return n.TerrainCost >= HeavyWallCost ? 'H' : '#';
+            if (n.HasWall) return onRoute[n.Index] ? RouteThroughBuilt : n.TerrainCost >= HeavyWallCost ? 'H' : '#';
             if (onRoute[n.Index]) return '*';
             return '.';
         }

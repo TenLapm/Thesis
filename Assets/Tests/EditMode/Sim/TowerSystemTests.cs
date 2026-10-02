@@ -36,7 +36,7 @@ namespace Thesis.Tests.Sim
 
             public void Step(int times = 1)
             {
-                for (int i = 0; i < times; i++) TowerSystem.Step(F.Grid, Towers, Agents, Damage, ByType, MinSlow, ref Budget, Events);
+                for (int i = 0; i < times; i++) TowerSystem.Step(F.Grid, F.Grid.Get(F.Map.Core), Towers, Agents, Damage, ByType, MinSlow, ref Budget, Events);
             }
         }
 

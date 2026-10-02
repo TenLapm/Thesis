@@ -53,6 +53,15 @@ namespace Thesis.Sim
         public float BaseHp = 10f;
         public float HpIncrementPerWave = 2f;
 
+        // --- movement classes (WP-C2) ---
+        // The share of a built tile's price that a SAPPER pays when it chooses a
+        // route. A wall of cost 15 reads as a 15-tile detour to an ordinary enemy
+        // and, at 0.2, as a 3-tile detour to a sapper, so sappers go through walls
+        // that everyone else walks around. 1 = sappers route like everyone else;
+        // 0 = they ignore what is built. It changes only the ROUTE: how fast a sapper
+        // chews is its DigRate. PLACEHOLDER until the balance check (spec gap S12).
+        public float SapperDigCostFactor = 0.2f;
+
         // --- every wave must end (ARCHITECTURE.md §4.6) ---
         // The lifetime clock used to guarantee that every enemy resolves. Without
         // it, two things do. A slow can never take an enemy below this share of its
@@ -93,6 +102,7 @@ namespace Thesis.Sim
             if (HpIncrementPerWave < 0f) throw new InvalidOperationException("SimConfig.HpIncrementPerWave must not be negative, was " + HpIncrementPerWave + ".");
             if (!(MinSlowFactor > 0f) || MinSlowFactor > 1f) throw new InvalidOperationException("SimConfig.MinSlowFactor must be in (0, 1], was " + MinSlowFactor + ".");
             if (!(MaxWaveSeconds > 0f)) throw new InvalidOperationException("SimConfig.MaxWaveSeconds must be positive, was " + MaxWaveSeconds + ".");
+            if (!(SapperDigCostFactor >= 0f) || SapperDigCostFactor > 1f) throw new InvalidOperationException("SimConfig.SapperDigCostFactor must be in [0, 1], was " + SapperDigCostFactor + ".");
         }
     }
 }

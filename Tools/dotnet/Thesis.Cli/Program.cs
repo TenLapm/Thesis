@@ -83,12 +83,13 @@ namespace Thesis.Cli
             Console.WriteLine();
             Console.WriteLine("commands:");
             Console.WriteLine("  run      one headless episode, recorded as <out>/replay.json");
-            Console.WriteLine("             [--map f] [--shapes f] [--config f] [--planner escalation] [--policy sentry|mixed|greedy|idle]");
+            Console.WriteLine("             [--map f] [--shapes f] [--config f] [--planner escalation|class-cycle] [--policy sentry|mixed|greedy|idle]");
             Console.WriteLine("             [--seed s] [--waves n] [--out dir] [--per-tick] [--wait]");
             Console.WriteLine("  replay   run a recording again and check its hashes (exit 1 on divergence)");
-            Console.WriteLine("             <replay.json> [--per-tick] [--dump-tick T] [--dump-out f]");
-            Console.WriteLine("  ascii    render a recording's state as text");
-            Console.WriteLine("             <replay.json> [--wave N | --tick T] [--layer route|terrain|occupancy|cost]");
+            Console.WriteLine("             <replay.json> [--per-tick] [--outcomes] [--dump-tick T] [--dump-out f]");
+            Console.WriteLine("  ascii    render a recording's state as text, or a bare map and the route across it");
+            Console.WriteLine("             <replay.json> [--wave N | --tick T] [--layer route|terrain|occupancy|cost] [--class ground|sapper]");
+            Console.WriteLine("             --map f [--scenario open|maze|choke|scatter] [--layer route|terrain] [--class ground|sapper] [--sapper-factor 0..1]");
             Console.WriteLine("  pin      re-record the pinned episodes under .NET (after a deliberate rule change)");
             Console.WriteLine("             [--out dir] [--map f] [--shapes f]");
             Console.WriteLine("  bench    flow-field rebuild sweep + A* comparison   [--out f] [--iterations n] [--seed s]");

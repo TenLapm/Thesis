@@ -13,6 +13,9 @@ namespace Thesis.Cli
     //     [--waves n] [--out dir] [--per-tick] [--wait]
     // One headless episode. Writes <out>/replay.json and prints one line per wave.
     //
+    // --planner is escalation (the static baseline, the default) or class-cycle (a
+    // development planner that sends sappers and flyers; see ClassCyclePlanner).
+    //
     // --config is a JSON file of SimConfig fields. It may list only the fields to
     // change, e.g. {"CoreMaxHp": 100000}; everything else keeps SimConfig's value.
     internal static class RunCmd

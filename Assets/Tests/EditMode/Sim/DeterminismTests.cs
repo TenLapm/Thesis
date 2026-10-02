@@ -91,6 +91,77 @@ namespace Thesis.Tests.Sim
             return sim;
         }
 
+        // Every movement class in one long run (WP-C2). The class-cycle planner sends a
+        // ground wave, a sapper wave, a flyer wave and a mixed one, over and over; a
+        // long wall with a gap at one end gives sappers something to dig through that
+        // everyone else walks round; walls and towers come from the script.
+        [Test]
+        public void DeterminismHoldsWithSappersAndFlyers()
+        {
+            const int ticks = 20000;
+            Simulation a = ClassCycleRig(seed: 9);
+            Simulation b = ClassCycleRig(seed: 9);
+            var script = new CommandScript(seed: 41, ticks: ticks, every: 19, mapWidth: 38, mapHeight: 38);
+
+            int breaches = 0;
+            var spawned = new int[MovementClasses.Count];
+            var killed = new int[MovementClasses.Count];
+            var leaked = new int[MovementClasses.Count];
+            for (int i = 0; i < ticks; i++)
+            {
+                script.Feed(a);
+                script.Feed(b);
+                a.Tick();
+                b.Tick();
+                foreach (SimEvent e in a.LastTickEvents)
+                {
+                    if (e.Kind == SimEventKind.WallBreached) breaches++;
+                    if (e.Kind != SimEventKind.WaveResolved) continue;
+                    for (int c = 0; c < MovementClasses.Count; c++)
+                    {
+                        spawned[c] += a.State.LastOutcome.SpawnedByClass[c];
+                        killed[c] += a.State.LastOutcome.KilledByClass[c];
+                        leaked[c] += a.State.LastOutcome.LeakedByClass[c];
+                    }
+                }
+                if (a.ComputeHash() != b.ComputeHash())
+                    Assert.Fail("hashes diverged at tick " + a.State.Tick + " (wave " + a.State.WaveIndex + ", phase " + a.State.Phase + ")");
+            }
+
+            // The run must actually have exercised the rules, or this proves little.
+            Assert.GreaterOrEqual(a.State.WaveIndex, 5, "a full cycle and the start of the next");
+            for (int c = 0; c < MovementClasses.Count; c++) Assert.Greater(spawned[c], 30, (MovementClass)c + " enemies spawned");
+            Assert.Greater(breaches, 0, "something was dug through");
+            Assert.Greater(leaked[(int)MovementClass.Flying], 0, "flyers reached the core");
+            Assert.Greater(killed[(int)MovementClass.Flying], 0, "and anti-air towers shot some down");
+            Assert.Greater(killed[(int)MovementClass.Sapper], 0, "sappers were shot");
+            TestContext.WriteLine("class-cycle run: waves=" + a.State.WaveIndex + " breaches=" + breaches + " towers=" + a.State.Towers.Count
+                                  + " spawned g/s/f=" + string.Join("/", spawned) + " killed=" + string.Join("/", killed) + " leaked=" + string.Join("/", leaked));
+        }
+
+        private static Simulation ClassCycleRig(ulong seed)
+        {
+            // Short build phases and small waves: a wave on this map is about 4,000
+            // ticks (the walk alone is 70 seconds), so 20,000 ticks hold five of them.
+            var config = new SimConfig { CoreMaxHp = 100000, PrepSeconds = 5f, IntermissionSeconds = 2f, AgentsPerWave = 40 };
+            MapData map = TestSims.SampleSceneMap();
+            var sim = new Simulation(config, map, TestShapes.SampleSceneLibrary(), TestTowers.Roster(), seed, new ClassCyclePlanner(config, map));
+
+            // The straight line from the spawn (3,3) to the core (34,34) crosses row 18
+            // near x = 18. The gap at x >= 28 is about six tiles out of the way: worth
+            // it to a walker (a wall is 14), not to a sapper (to whom it is 2).
+            SimGrid g = sim.State.Grid;
+            for (int x = 0; x < 28; x++) g.SetWall(g[x, 18], 15, 6f);
+            sim.RebuildFieldForSetup();
+
+            // One archer (the roster's anti-air tower) beside that same line, which is
+            // also the line the flyers take: enough to shoot some of them down and let
+            // the rest through. The script's own towers land anywhere.
+            TestSims.Send(sim, SimCommand.PlaceTower(0, 22, 24));
+            if (sim.State.Towers.Count != 1) throw new System.InvalidOperationException("rig: the archer was not placed");
+            return sim;
+        }
+
         [Test]
         public void DifferentSeedsDiffer()
         {

@@ -49,7 +49,7 @@ namespace Thesis.Sim
             {
                 SimNode n = s.Grid.ByIndex(i);
                 if (!n.HasWall && n.TerrainCost == 1) continue;
-                d.Walls.Add(new Wall { X = n.X, Y = n.Y, Occupant = n.Occupant.ToString(), TowerId = n.TowerId, TerrainCost = n.TerrainCost, Health = n.WallHealth, HealthBits = Bits(n.WallHealth), BestCost = n.BestCost });
+                d.Walls.Add(new Wall { X = n.X, Y = n.Y, Occupant = n.Occupant.ToString(), TowerId = n.TowerId, TerrainCost = n.TerrainCost, Health = n.WallHealth, HealthBits = Bits(n.WallHealth), BestCost = n.BestCost, SapperCost = n.SapperCost });
             }
 
             for (int i = 0; i < s.Towers.Count; i++)
@@ -78,6 +78,7 @@ namespace Thesis.Sim
                 d.LiveAgents.Add(new Agent
                 {
                     Id = a.Id,
+                    Movement = a.Movement.ToString(),
                     Wave = a.WaveIndex,
                     X = a.Position.X,
                     Y = a.Position.Y,
@@ -176,11 +177,13 @@ namespace Thesis.Sim
             public float Health;
             public string HealthBits;
             public int BestCost;
+            public int SapperCost;
         }
 
         private sealed class Agent
         {
             public int Id;
+            public string Movement;
             public int Wave;
             public float X;
             public float Y;

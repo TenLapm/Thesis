@@ -21,9 +21,11 @@ namespace Thesis.Sim
     public sealed class ReplayFile
     {
         // 1: the game before towers (WP5). 2: adds the tower roster and the
-        // PlaceTower command (WP-C1). A file of another schema is refused: its
+        // PlaceTower command (WP-C1). 3: movement classes (WP-C2); the file's layout
+        // is the same as 2, but the state every hash covers now includes the sapper
+        // field and each enemy's class. A file of another schema is refused: its
         // commands and hashes describe a different game.
-        public const int CurrentSchema = 2;
+        public const int CurrentSchema = 3;
 
         public int Schema = CurrentSchema;
 

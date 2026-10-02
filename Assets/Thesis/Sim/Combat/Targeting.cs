@@ -19,21 +19,33 @@ namespace Thesis.Sim
             return distanceSquared <= radiusSquared;
         }
 
+        // Whether a tower of this type can affect this enemy at all. The one rule so
+        // far: only a tower with CanHitFlying reaches a flyer (WP-C2). It covers the
+        // whole shot, not just the aim: such a tower never picks a flyer as its
+        // target, and its splash and its slow pass a flyer by.
+        public static bool CanHit(TowerDef def, AgentState agent)
+        {
+            return agent.Movement != MovementClass.Flying || def.CanHitFlying;
+        }
+
         // The index in `live` of the enemy this tower shoots, or -1 for none.
-        // `live` must be in ascending id order (SimState.Live is).
-        public static int Pick(TargetingMode mode, TowerState tower, SimGrid grid, IList<AgentState> live)
+        // `live` must be in ascending id order (SimState.Live is). `core` is the
+        // grid's node for the core tile.
+        public static int Pick(TargetingMode mode, TowerState tower, SimGrid grid, SimNode core, IList<AgentState> live)
         {
             switch (mode)
             {
-                case TargetingMode.First: return PickFirst(tower, grid, live);
+                case TargetingMode.First: return PickFirst(tower, grid, core, live);
                 default: throw new InvalidOperationException("[Sim] Unknown targeting mode " + mode + ".");
             }
         }
 
-        // The enemy with the lowest route cost to the core, i.e. the one that will
-        // leak soonest. Ties go to the lowest id: with a strict '<' the first one
-        // found keeps the shot, and the list is in id order.
-        private static int PickFirst(TowerState tower, SimGrid grid, IList<AgentState> live)
+        // The enemy with the least way left to the core, i.e. the one that will leak
+        // soonest. "Way left" is measured the way each enemy travels (RouteCost), so
+        // a flyer is ranked by its straight line and a sapper by the sapper field.
+        // Ties go to the lowest id: with a strict '<' the first one found keeps the
+        // shot, and the list is in id order.
+        private static int PickFirst(TowerState tower, SimGrid grid, SimNode core, IList<AgentState> live)
         {
             int best = -1;
             int bestCost = int.MaxValue;
@@ -41,9 +53,10 @@ namespace Thesis.Sim
             {
                 AgentState a = live[i];
                 if (!a.IsAlive) continue; // killed earlier this tick, not yet removed
+                if (!CanHit(tower.Def, a)) continue;
                 if (!InRange(a.Position, tower.Position, tower.RangeSquared)) continue;
 
-                int cost = grid.NodeFromPosition(a.Position).BestCost;
+                int cost = RouteCost.ToCore(a, grid.NodeFromPosition(a.Position), core, grid.TileSize);
                 if (best < 0 || cost < bestCost)
                 {
                     best = i;

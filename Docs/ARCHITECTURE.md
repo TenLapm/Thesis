@@ -1,7 +1,7 @@
 # ARCHITECTURE.md — code structure for the wave director
 
-**Status: 2026-10-02.** WP0–WP5, the hardening pass (WP-H) and the combat core (WP-C1) are built. Decisions
-D1–D9 are made (D1 = Option B, towers). Nothing here overrides `CLAUDE.md`. The order
+**Status: 2026-10-02.** WP0–WP5, the hardening pass (WP-H), the combat core (WP-C1) and the movement
+classes (WP-C2) are built. Decisions D1–D9 are made (D1 = Option B, towers). Nothing here overrides `CLAUDE.md`. The order
 of work was re-planned on 2026-10-02 (D8, `Docs/WORKPLAN.md`).
 
 Companion file: `Docs/WORKPLAN.md` (ordered work packages, each with its tests
@@ -140,10 +140,10 @@ Assets/
       Agents/      AgentState.cs AgentSystem.cs
       Build/       ShapeDef.cs ShapeBag.cs Placement.cs PlacementRecord.cs ShapeLibraryFile.cs
       Waves/       IWavePlanner.cs WaveContext.cs WavePlan.cs AgentGroup.cs WaveOutcome.cs EscalationPlanner.cs
-                   PlanValidator.cs SafePlanner.cs
+                   PlanValidator.cs SafePlanner.cs ClassCyclePlanner.cs (development only, until WP9)
       Combat/      DamageType.cs DamageTypes.cs TargetingMode.cs TowerDef.cs TowerState.cs TowerSystem.cs
                    Targeting.cs DamageMap.cs TowerRoster.cs (placeholder roster until WP-C5)             (WP-C1, built)
-      Movement/    MovementClass.cs FlowFieldSet.cs FlyingMovement.cs                                (WP-C2)
+      Movement/    MovementClass.cs MovementClasses.cs FlowFieldSet.cs FlyingMovement.cs RouteCost.cs    (WP-C2, built)
       Shop/        ShopState.cs ShopRoller.cs TowerOffer.cs                                          (WP-C3)
       Commands/    SimCommand.cs
       Events/      SimEvent.cs
@@ -255,7 +255,9 @@ entropy of wall placement, and three of the five Option-A features read it.
 This is the order of the **faithful port** (WP3), kept here because the phase machine,
 the field rebuild and the wave boundary are unchanged. **Step 3 below is no longer what
 runs:** since WP-C1 there is a tower pass, the agents have hit points and the lifetime
-clock is gone. The tower and agent passes as built are in §4.6.
+clock is gone, and since WP-C2 an agent moves by its movement class. The tower and agent
+passes as built are in §4.6. "The field" in steps 1 and 4 is now two fields, rebuilt
+together by `FlowFieldSet`.
 
 ```
 0. if IsGameOver: return                        (Tick does not advance)
@@ -330,7 +332,8 @@ public interface IWavePlanner
 
 | Planner | Where | Role |
 |---|---|---|
-| `EscalationPlanner` | `Thesis.Sim` | Today's `WaveSpawner` math, ported verbatim. It is the static baseline condition and the default when no director is present. |
+| `EscalationPlanner` | `Thesis.Sim` | Today's `WaveSpawner` math, ported verbatim. It is the static baseline condition and the default when no director is present. Ground enemies only. |
+| `ClassCyclePlanner` | `Thesis.Sim` | **Development only, not a condition.** Turns the escalation wave into sappers, flyers or a mix, in a fixed four-wave cycle, so the movement classes can be played, recorded and compared across runtimes before the strategies of WP9 exist. Its archetype numbers are placeholders (S12). Remove it, or keep it as a test planner, once the strategies send sappers and flyers. |
 | `RandomPlanner`, `RoundRobinPlanner` | `Director/Decision/Baselines` | Rungs of the ladder and the G1 comparison baselines. They spend the same threat budget as everything else. |
 | `WaveDirector` (`DirectorMode.HeuristicOnly`) | `Director/Decision` | Layers 1 and 2. This is the ablation condition. |
 | `WaveDirector` (`DirectorMode.Full`) | `Director/Decision` | Layers 1, 2 and 3. |
@@ -360,19 +363,24 @@ fixed-strategy planner.
 public sealed class WavePlan   { public int WaveIndex; public string StrategyId; public AgentGroup[] Groups;
                                  public float ThreatSpent; public string AnnouncementId; }
 public sealed class AgentGroup { public int SpawnIndex; public int Count; public string Archetype;
+                                 public MovementClass Movement;  // Ground (default), Sapper or Flying (WP-C2)
                                  public float MoveSpeed; public float Hp; public float DigRate;
                                  public float[] Resist;          // one multiplier per DamageType; null = all 1
                                  public int SpawnIntervalTicks; public int StartDelayTicks; }
 ```
 
 `PlanValidator` refuses a group with `Count > 0` whose `Hp` or `MoveSpeed` is not a
-positive number, or whose `Resist` has the wrong length or a negative entry.
+positive number, whose `Resist` has the wrong length or a negative entry, or whose
+`Movement` is not one of the three classes.
 
-`WaveOutcome` contains `WaveIndex`, `StrategyId`, `Spawned`, `Killed`, `Leaked`,
+`WaveOutcome` contains `WaveIndex`, `StrategyId`, `Spawned`, `Killed`, `Leaked` (and the
+same three per movement class: `SpawnedByClass[]`, `KilledByClass[]`, `LeakedByClass[]`),
 `Removed` and `TimedOut` (the backstop of §4.6), `WallsBreached`, `TowersDestroyed`,
 `DamageByType[]`, `CoreHpBefore/After`, `BudgetBefore/After`,
 `TickStarted/Resolved`, and `PressureShare` (the fraction of agents whose
 `MinCostSeen / 10f` fell to `≤ config.PressureRadiusTiles` or below; see spec gap S5).
+`MinCostSeen` is each enemy's own measure of the way left (`RouteCost`, §4.6): its
+field's cost for a walker or a sapper, the straight line for a flyer.
 
 ### 4.5 Commands, events, RNG
 
@@ -396,9 +404,11 @@ positive number, or whose `Resist` has the wrong length or a negative entry.
   offers for wave 7 are the same no matter what the player bought earlier, which
   planner is running, or how many draws other systems have made. This is what makes I10 hold.
 
-**Replay file (WP5).** `Thesis.Sim.ReplayFile`, written by `ReplayRecorder`. Schema 2
-since WP-C1 (the tower roster and the `PlaceTower` command); a file of another schema is
-refused, because its commands and hashes describe a different game:
+**Replay file (WP5).** `Thesis.Sim.ReplayFile`, written by `ReplayRecorder`. Schema 3
+since WP-C2. (Schema 2, WP-C1, added the tower roster and the `PlaceTower` command.
+Schema 3 has the same layout; the number went up because every hash now also covers the
+sapper field and each enemy's movement class.) A file of another schema is refused,
+because its commands and hashes describe a different game:
 
 | Field | Meaning |
 |---|---|
@@ -433,15 +443,15 @@ sign, so the file would describe a different input from the one that ran (found 
 
 ### 4.6 Combat, movement classes and shop (WP-C1…C3)
 
-**Built so far: the combat core (WP-C1).** Movement classes are WP-C2; the shop and
+**Built so far: the combat core (WP-C1) and the movement classes (WP-C2).** The shop and
 selling are WP-C3. Until the shop exists, `PlaceTower` buys any tower of the roster at its
 cost, and the roster is `TowerRoster.Placeholder()`: three unbalanced towers (single
 target, splash, slow), one per damage type.
 
 **Enemies.** `AgentState` has `Hp`, `MaxHp`, `Resist[]` (one damage multiplier per
-`DamageType`; 1 means normal, 0 means immune), `SlowTicks` and `SlowFactor`, and no
-lifetime. (`MovementClass` comes with WP-C2.) The stats come from `AgentGroup`, which
-names an enemy archetype and carries its numbers. An enemy ends in one of three ways:
+`DamageType`; 1 means normal, 0 means immune), `SlowTicks` and `SlowFactor`, a
+`MovementClass`, and no lifetime. The stats come from `AgentGroup`, which names an enemy
+archetype and carries its numbers. An enemy ends in one of three ways:
 **killed** (the player is paid `KillReward`), **leaked** (the core loses 1 HP), or
 **removed** by the wave backstop below.
 
@@ -450,20 +460,33 @@ names an enemy archetype and carries its numbers. An enemy ends in one of three 
 shop weight) plus `TowerState` (id, tile, cooldown). On the grid it occupies **one
 tile as diggable terrain**. `SimNode` gains `Occupant { None, Wall, Tower }`,
 `TowerId` and, for a wall tile, `PieceId` (the index of the placement that built it,
-which is how `SellWall` finds the rest of the piece). `terrainCost`/`wallHealth` work
+which is how `SellWall` finds the rest of the piece; WP-C3). `terrainCost`/`wallHealth` work
 exactly as they do for walls. When
 an enemy chews through the tile, the tower is destroyed.
 
-**Movement classes.** `Ground` uses the normal flow field. `Sapper` uses a second field
-in which wall and tower tiles cost `terrainCost × config.SapperDigCostFactor`, so
-sappers prefer to dig. `Flying` uses no field: it moves in a straight line to the
-core, ignores terrain, and never digs. `FlowFieldSet` rebuilds both fields together.
-Each rebuild costs under a millisecond per field (measured 2026-10-02 on a late-game
-board: 0.3 ms under .NET, 0.9 ms in Unity), so do not add caching (the reasoning is the
-same as in `CLAUDE.md` §8). A strategy or policy that *searches* by rebuilding the field
-must count those rebuilds against G2's 16 ms.
+**Movement classes (WP-C2).** `AgentGroup.Movement` says how a group gets to the core:
 
-**Tick order since WP-C1** (replaces step 3 of §4.2; the other steps are unchanged):
+| Class | Route | Digs | Towers |
+|---|---|---|---|
+| `Ground` | The ground flow field (`SimNode.BestCost` / `NextIndex`): the field the game has always had. | Chews whatever built tile it stands on. | Every tower can hit it. |
+| `Sapper` | A second flow field (`SimNode.SapperCost` / `SapperNextIndex`) in which a built tile costs `max(1, round(terrainCost × SimConfig.SapperDigCostFactor))`. With the default 0.2, a wall of cost 15 reads as a 3-tile detour, not 15, so a sapper goes **through** what a walker goes round. | The same way. How fast is the group's `DigRate`; the class only chooses the route. | Every tower can hit it. |
+| `Flying` | No field. A straight line to the centre of the core tile, over walls, towers and static blockers. | Never. | Only a tower with `CanHitFlying`. |
+
+`FlowFieldSet` rebuilds both fields together, and the simulation rebuilds only through
+it, so the two can never be out of step. One flood-fill implementation (`FlowField`)
+fills either field. A rebuild of both fields costs about a millisecond (measured
+2026-10-02 on 38×38 with 0%, 10% and 25% of the tiles built, the last far denser than a
+real game: 0.29 / 0.46 / 0.58 ms under .NET, 0.76 / 0.91 / 1.13 ms in the Unity editor;
+the ground field alone is a little under half of that). It happens once per placement
+and at most once per tick, so there is still no caching and no "skip the sapper field
+while no sapper is alive" (the reasoning is the same as in `CLAUDE.md` §8). A strategy
+or policy that *searches* by rebuilding the field must count those rebuilds against G2's
+16 ms: about 30 ground-only rebuilds in Unity. `FlowField.Generate` on its own builds
+the ground field only: that is what a policy trying a wall on a scratch grid wants, and
+it is never called on the simulation's own grid.
+
+**Tick order since WP-C1 and WP-C2.** These three steps replace steps 3 and 4 of §4.2.
+The wave backstop (below), the wave boundary and the core check follow them, as there:
 
 ```
 3. Tower pass, ascending tower id
@@ -478,10 +501,16 @@ must count those rebuilds against G2's 16 ms.
      cooldown = def.FireIntervalTicks; emit TowerFired(towerId, targetId)
      every agent with Hp <= 0 → Killed, BuildBudget += killReward, emit AgentKilled
 4. Agent pass, ascending agent id (no lifetime clock)
-     Flying:          move toward the core; Leaked once inside the core tile
-     Ground / Sapper: exactly as in §4.2, using the field for its class and speed × slow.
-                      Chewing through a tower tile → emit TowerDestroyed
-                      (no breach reward by default; see S12)
+     speed = MoveSpeed × SlowFactor while slowed; the slow counts down
+     on the core tile → Leaked, CoreHp -= 1               (every class; a flyer over it counts)
+     MinCostSeen = min(MinCostSeen, RouteCost of this agent)
+     Flying:          MoveTowards(core tile centre, speed × dt); nothing else
+     Ground / Sapper: Occupancy[node]++
+                      on a built tile → chew it; at 0 health clear it, fieldDirty = true,
+                          wall → BuildBudget += wallBreakReward, emit WallBreached
+                          tower → destroy it, emit TowerDestroyed (no reward by default; S12)
+                      otherwise → MoveTowards(next tile on ITS field, speed × dt)
+5. if fieldDirty → FlowFieldSet.Generate once (ground field, then sapper field)
 ```
 
 Decided while building it (WP-C1), and pinned by tests:
@@ -503,6 +532,37 @@ Decided while building it (WP-C1), and pinned by tests:
   the start of every wave, like `Occupancy`. A tower's own totals run across waves.
 - **Targeting** has one mode, `First`: the lowest route cost to the core, ties to the lowest id.
 - **A destroyed tower stays in `SimState.Towers`** with `IsAlive` false, so ids never shift.
+
+Decided while building the movement classes (WP-C2), and pinned by tests:
+
+- **The ground field is exactly the WP1 field.** `FlowFieldSetTests` compares it, tile for
+  tile, with the WP1 flood fill on 60 random boards, and every recording made before WP-C2
+  replayed to the same hash on every tick, on both runtimes, with the two-field code in place.
+- **The class chooses the route, not the speed of digging.** A sapper is `Movement = Sapper`
+  plus a high `DigRate` in its group. The corner-cut rule holds for sappers too: they enter a
+  wall head-on, never diagonally between two built tiles.
+- **A sapper still walks round when that is cheaper.** On open ground a single built tile
+  costs two diagonal steps to pass (0.8 tile more), which beats even the discounted price
+  of chewing it. Sappers dig where the way round is long: a wall line, a sealed corridor.
+- **A flyer leaks when it is over the core tile**, the same test as for a walker standing on
+  it. It flies at `MoveSpeed`, and a slow from a tower that can hit it slows it like anyone.
+- **`CanHitFlying` covers the whole shot** (`Targeting.CanHit`): a tower without it never
+  picks a flyer as its target, and its splash and its slow pass a flyer by even when the
+  flyer is at the centre of the blast.
+- **"Nearest the core" is measured the way each enemy travels** (`RouteCost.ToCore`): the
+  ground field's cost of its tile for `Ground`, the sapper field's for `Sapper`, and the
+  straight line in tenths of a tile for `Flying`. `Targeting.First` and
+  `AgentState.MinCostSeen` (the pressure statistic) both use it. Ranking a flyer by the
+  ground under it would be wrong exactly when it matters: above a thick maze a flyer is
+  close to the core and the ground below it is a long walk away.
+- **Flyers are not in the occupancy map.** It counts traffic on the ground, which is what
+  the player's building shapes; a flyer's line is the same whatever is built. Damage to a
+  flyer is booked in the `DamageMap` like any other, on the tile under it.
+- **The fields count as one rebuild.** `SimGrid.FieldVersion` goes up once per
+  `FlowFieldSet.Generate`.
+- **`WaveOutcome` counts each class:** `SpawnedByClass[]`, `KilledByClass[]`,
+  `LeakedByClass[]`, indexed by `MovementClass`. They replace the `FlyersSpawned` and
+  `FlyersLeaked` first planned, and give the same numbers for sappers.
 
 **Every wave must end** *(2026-10-02 review; built in WP-C1)*. The lifetime clock used
 to guarantee it. Without the clock, an enemy that cannot move would stand forever, the
@@ -540,8 +600,8 @@ New commands: `PlaceTower`, `SellTower`, `SellWall`, `RerollShop`. New events: `
 `TowerSold`, `WallSold`, `TowerDestroyed`, `TowerFired`, `AgentKilled`, `ShopRolled`.
 `PlacementLog` becomes a build log: sales are appended to it as well, because the
 primary metric (§5.9) and the profile both need to know what left the board.
-`WaveOutcome` replaces `Stalled` with `Killed` and adds `DamageByType[]`,
-`TowersDestroyed`, `FlyersSpawned` and `FlyersLeaked`. `EscalationPlanner` v2 raises
+`WaveOutcome` replaced `Stalled` with `Killed` and added `DamageByType[]` and
+`TowersDestroyed` (WP-C1) and the per-class counts (WP-C2). `EscalationPlanner` v2 raises
 HP instead of lifetime each wave (formula in S12).
 
 ---
@@ -764,9 +824,9 @@ are the cross-check.
 | Class | Becomes |
 |---|---|
 | `SimHost` (new) | Builds `MapData` (from the `GridManager` scan plus spawn and core transforms) and `ShapeDef[]` (from `BlockShape` assets), and creates the `Simulation`, giving it a **copy** of the config asset (an inspector edit during play changes the next session, never the running one). In `Update` it adds `Time.deltaTime` to an accumulator and runs ticks, at most `maxTicksPerFrame` per frame. It then drains events into C# events for the views. It records every session with a `ReplayRecorder` and writes `Sessions/<session>/replay.json` at each wave boundary and when the session ends: under the project's `Runs/` in the editor, under `persistentDataPath` in a build. A failed write is logged once and never stops the game. `GameSpeedController` needs no change, because scaled `deltaTime` already means more ticks per frame. |
-| `DirectorHost` (new) | Turns config assets into a planner according to the session condition and owns the `TelemetryWriter`. It wraps every planner in `SafePlanner` (§4.4): if the director throws or returns an invalid plan, that wave uses `EscalationPlanner`, the host logs `[Director]`, and telemetry gets `"fallback":"Exception"` or `"InvalidPlan"`. **A participant session never crashes because of the director.** The wrapper exists since WP-H; the planner factory itself moves into `Thesis.Director` in WP10, so that Unity and the headless `Registry` build planners from one place. |
+| `DirectorHost` (new) | Turns config assets into a planner according to the session condition and owns the `TelemetryWriter`. It wraps every planner in `SafePlanner` (§4.4): if the director throws or returns an invalid plan, that wave uses `EscalationPlanner`, the host logs `[Director]`, and telemetry gets `"fallback":"Exception"` or `"InvalidPlan"`. **A participant session never crashes because of the director.** The wrapper exists since WP-H; the planner factory itself moves into `Thesis.Director` in WP10, so that Unity and the headless `Registry` build planners from one place. Its `Condition` list has one entry that is **not** a study condition: `DevClassCycle` runs `ClassCyclePlanner` (§4.4), to play sappers and flyers before the strategies exist. |
 | `WaveSpawner`, `BlockManager`, `PlayerCore` | Thin adapters that **keep the member names the HUD already reads**: `currentWave`, `isIntermission`, `intermissionTimeRemaining`, `ActiveAgentCount`, `StartWave()`, `buildBudget`, `currentShape`, `holdShape`, `nextShapes`, `shapeVersion`, `OnHealthChanged`, `OnGameOver`. Fields turn into forwarding properties, and actions become enqueued commands. `CanvasDashboard` should compile unchanged. |
-| `FlowAgent` | Visual only. Reads `AgentState` by id, interpolates between the previous and current tick positions, and draws the life bar (an HP bar after WP-C1). No game rules, so I8 holds trivially. |
+| `FlowAgent` | Visual only. Reads `AgentState` by id, interpolates between the previous and current tick positions, and draws the life bar (an HP bar after WP-C1). No game rules, so I8 holds trivially. Since WP-C2 a sapper is tinted and a flyer is tinted and drawn above the walls; that is a placeholder until WP-C4 gives each enemy type a prefab. |
 | `TowerView`, `ShopPanel` (new, WP-C4) | `TowerView` spawns on `TowerPlaced`, turns toward its target and fires a cosmetic projectile on `TowerFired`, and is destroyed on `TowerSold`/`TowerDestroyed`. `ShopPanel` shows the offers and prices; clicking an offer arms the ghost for tower placement, and the ghost shows the range ring. Sell mode sends `SellTower`. |
 | `Node` | Slimmed down to view data only (`worldPosition`, `gridX`, `gridY`, `visualObject`). **Delete the gameplay fields first**, and the compiler errors become the exact list of code to migrate (`PathPreviewer`, `FlowFieldVisualizer`, `Benchmark/`). |
 | `PlayerBuilder` | Mouse input becomes `PlaceShape` commands, and wall visuals spawn on `WallPlaced` events. `AreTilesPlaceable` wraps `Placement.CanPlace` (D3). |
@@ -800,10 +860,12 @@ records data, because they decide where `persistentDataPath` is.
 ## 7. Harness and CLI
 
 ```
-dotnet run --project Tools/dotnet/Thesis.Cli -- run     --map Maps/SampleScene.map.json --planner escalation --policy greedy --seed 1 --waves 25 --out Runs/<name>
+dotnet run --project Tools/dotnet/Thesis.Cli -- run     --map Maps/SampleScene.map.json --planner escalation|class-cycle --policy greedy --seed 1 --waves 25 --out Runs/<name>
                                                          [--shapes Maps/Shapes.json] [--config overrides.json] [--per-tick] [--wait]
 dotnet run --project Tools/dotnet/Thesis.Cli -- replay  Runs/<name>/replay.json [--per-tick] [--dump-tick T] [--dump-out file]
-dotnet run --project Tools/dotnet/Thesis.Cli -- ascii   Runs/<name>/replay.json [--wave 7 | --tick 44000] [--layer route|terrain|occupancy|cost]
+dotnet run --project Tools/dotnet/Thesis.Cli -- ascii   Runs/<name>/replay.json [--wave 7 | --tick 44000] [--layer route|terrain|occupancy|cost] [--class ground|sapper]
+dotnet run --project Tools/dotnet/Thesis.Cli -- ascii   --map Maps/Bench_Maze.map.json [--scenario open|maze|choke|scatter] [--layer route|terrain]
+                                                         [--class ground|sapper] [--sapper-factor 0.2]
 dotnet run --project Tools/dotnet/Thesis.Cli -- trace   Runs/<name>/telemetry.jsonl --wave 7
 dotnet run --project Tools/dotnet/Thesis.Cli -- ladder  --map Maps/SampleScene.map.json --seeds 20 --out Results/<yyyy-MM-dd>_ladder
 dotnet run --project Tools/dotnet/Thesis.Cli -- synth   --episodes 1000000 --estimator binned --out Results/<yyyy-MM-dd>_g1-synth
@@ -818,6 +880,10 @@ dotnet run --project Tools/dotnet/Thesis.Cli -- pin     [--out Results/pinned-re
   `run --config` takes a JSON file listing only the `SimConfig` fields to change, and
   rejects a field name `SimConfig` does not have. `--wait` lets build-phase countdowns
   run out instead of sending `StartWaveNow`. `replay` exits 1 on a divergence.
+  `ascii --class sapper` draws the sapper's route and cost field instead of the ground
+  one. `ascii --map` needs no recording: it draws a bare map (optionally with a benchmark
+  wall layout) and the route of one class across it, which is the quick way to see what a
+  value of `SapperDigCostFactor` does (`--sapper-factor`).
 - `IPlayerPolicy.OnIntermission(Simulation sim, Action<SimCommand> send, IRandom rng)`,
   called once at the start of every build phase by `EpisodeRunner`. `sim` is for reading
   (`State`, `Map`, `Config`); input goes only through `send`, which records the command and
@@ -863,7 +929,8 @@ wave 7  tick 44000  phase Resolving  budget 31.0  core 8/10  live 42  layer=rout
   0  XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
   1  XS****....####........................X
   2  X....*....#..#.....a..................X
-legend  X static  # wall  T tower  S spawn  C core  * route  a agent  d digging agent
+legend  X static  # wall  T tower  S spawn  C core  * route  + route through a wall or tower
+        a agent  d digging agent  f flying agent
 ```
 
 Log prefixes: `[Sim]`, `[Director]`, `[Telemetry]`, `[Harness]`, `[Replay]`.
@@ -926,3 +993,4 @@ Log prefixes: `[Sim]`, `[Director]`, `[Telemetry]`, `[Harness]`, `[Replay]`.
 | S11 | Shop rules (§4.6 defaults): offers per roll, single-use slots, rerolls and their cost, sell refund for towers and for walls (D6), whether selling is allowed during a wave (`SellDuringWave`, default off), and whether the shop stays open during waves | WP-C3 |
 | S12 | Tower roster v1 (types, damage types, range, fire rate, splash, slow, anti-air); enemy archetypes and the HP escalation formula; `SapperDigCostFactor`; whether wall and tower breaches pay the player under the tower economy | WP-C5 |
 | S13 | Study design with a shop: a participant who plays both conditions on the same seed sees the same offers twice and may remember them. **Decided (D9, §6): two seed sets crossed with condition and order.** | Done |
+| S14 | **Income depends on the wave's shape.** `KillReward` is paid per enemy. A strategy that spends the same threat budget on fewer, stronger enemies therefore pays the player less, and flyers the player cannot hit pay nothing; so the director's choice changes the player's budget, which I11 forbids. *(Found in WP-C2: against the development planner's half-size sapper and flyer waves the tower bot runs out of money and loses in wave 5; against the escalation it lasts to wave 10.)* Options: pay a kill in proportion to the enemy's price in the threat table, so a wave that is wiped out pays the same whatever its shape; or pay per wave, not per kill. | WP9 |

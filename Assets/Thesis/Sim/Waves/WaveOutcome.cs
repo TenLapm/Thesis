@@ -13,6 +13,13 @@ namespace Thesis.Sim
         public int Killed;
         public int Leaked;
 
+        // The same three counts per MovementClass (index = (int)MovementClass), so a
+        // wave of flyers can be told from a wave of walkers: "how many of the flyers
+        // got through" is LeakedByClass[Flying] / SpawnedByClass[Flying].
+        public int[] SpawnedByClass = new int[MovementClasses.Count];
+        public int[] KilledByClass = new int[MovementClasses.Count];
+        public int[] LeakedByClass = new int[MovementClasses.Count];
+
         // Agents taken off the board by the MaxWaveSeconds backstop: no core damage,
         // no reward. 0 in any healthy wave; TimedOut says the backstop fired.
         public int Removed;
@@ -56,22 +63,33 @@ namespace Thesis.Sim
             return sum;
         }
 
-        // Deep: the damage array is copied, so a planner holding an old outcome
-        // never sees a later wave's numbers.
+        // Deep: the arrays are copied, so a planner holding an old outcome never
+        // sees a later wave's numbers.
         public WaveOutcome Copy()
         {
             var c = (WaveOutcome)MemberwiseClone();
             c.DamageByType = (float[])DamageByType.Clone();
+            c.SpawnedByClass = (int[])SpawnedByClass.Clone();
+            c.KilledByClass = (int[])KilledByClass.Clone();
+            c.LeakedByClass = (int[])LeakedByClass.Clone();
             return c;
         }
 
         public override string ToString()
         {
-            return "wave " + WaveIndex + " [" + StrategyId + "] spawned=" + Spawned + " killed=" + Killed + " leaked=" + Leaked
+            return "wave " + WaveIndex + " [" + StrategyId + "] spawned=" + Spawned + ByClass(SpawnedByClass)
+                   + " killed=" + Killed + ByClass(KilledByClass) + " leaked=" + Leaked + ByClass(LeakedByClass)
                    + " breaches=" + WallsBreached + (TowersDestroyed > 0 ? " towersLost=" + TowersDestroyed : "")
                    + " core " + CoreHpBefore + "->" + CoreHpAfter
                    + (CoreDestroyed ? " (DESTROYED)" : "") + (TimedOut ? " (TIMED OUT, " + Removed + " removed)" : "")
                    + " pressure=" + PressureShare.ToString("0.###");
+        }
+
+        // " (g/s/f 50/25/25)" when the wave had anything but ground enemies, else "".
+        private string ByClass(int[] counts)
+        {
+            if (SpawnedByClass[(int)MovementClass.Sapper] == 0 && SpawnedByClass[(int)MovementClass.Flying] == 0) return "";
+            return " (g/s/f " + counts[(int)MovementClass.Ground] + "/" + counts[(int)MovementClass.Sapper] + "/" + counts[(int)MovementClass.Flying] + ")";
         }
     }
 }

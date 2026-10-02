@@ -878,3 +878,171 @@ thesis replay Runs/Sessions/20261002-070116_seed1/replay.json --per-tick   → O
 - The recordings in `Results/2026-10-02_determinism/` are schema 1 and are refused now. That is
   expected; they stay as the evidence for that result.
 - Enemies still all share one movement class; flying and sapper enemies are WP-C2.
+
+---
+
+## 2026-10-02 — WP-C2 Movement classes: Ground, Sapper, Flying
+
+**Status:** done. Every "must pass" item has a test, and all tests pass in both runners.
+**This package adds rules but changes none for ground enemies:** the static baseline plays
+exactly as it did after WP-C1 (shown three ways, under Findings). The recordings were re-made
+all the same, because the state hash covers more than it did.
+
+**What changed**
+- `Thesis.Sim/Movement` (new): `MovementClass` (Ground, Sapper, Flying), `MovementClasses`,
+  `FlowFieldSet` (both fields, rebuilt together), `FlyingMovement`, `RouteCost`.
+- `FlowField`: the same flood now fills either field. `Generate` is the ground field (as before);
+  `GenerateSapper` is the sapper field; `SapperTerrainCost` is what a sapper pays for a tile.
+- `SimNode`: `SapperCost`, `SapperNextIndex`, `CostFor(class)`, `NextIndexFor(class)`.
+  `SimGrid`: `NextOf(node, class)`, `TileSize`. `Route`: every method takes a class (default Ground).
+- `AgentGroup.Movement` and `AgentState.Movement`. `AgentSystem.Step` takes the core's node:
+  an enemy leaks on that tile whatever its class; a flyer steps straight at it; a walker or a
+  sapper follows its own field.
+- `Targeting.CanHit` (the anti-air rule) and `Targeting.Pick` ranking by `RouteCost`.
+  `TowerSystem.Step` takes the core's node and applies `CanHit` to the splash as well.
+- `Simulation` rebuilds through `FlowFieldSet`; `Placement.TryPlace` and `TryPlaceTower` take one.
+- `SimConfig.SapperDigCostFactor` (0.2, placeholder), validated to [0, 1].
+- `WaveOutcome`: `SpawnedByClass[]`, `KilledByClass[]`, `LeakedByClass[]`. `PlanValidator` refuses
+  an undefined class.
+- `ClassCyclePlanner` (`Thesis.Sim/Waves`): a development planner, see Deviations.
+- `StateHasher`, `StateDump`, `AsciiState` and `AsciiMap` cover the new state. A render can show
+  the sapper's route or cost field; `+` marks where a route goes through a wall or a tower; `f` is
+  a flying agent.
+- Replay **schema 3**. `ReplayRunner.Outcomes(file)` re-runs a recording and returns how each wave went.
+- CLI: `run --planner class-cycle`; `ascii --class ground|sapper`; `ascii --map <map> [--scenario …]
+  [--sapper-factor F]` (a bare map and a route, no recording needed); `replay --outcomes`.
+  `bench` also times the two-field rebuild.
+- Harness: `Registry` knows `class-cycle`; `PinnedEpisodes` has a fourth episode, `class-cycle-6waves`.
+- Unity: `FlowAgent` tints a sapper orange and draws a flyer blue and 2.6 units up; `DirectorHost` has
+  `Condition.DevClassCycle`; `ScenarioBenchmark` adapted; `SimConfig.asset` re-saved with the new field.
+
+**Deviations from WORKPLAN, and why**
+- **`ClassCyclePlanner`, a development planner.** The package listed no way to send a sapper or a
+  flyer; the strategies that will are WP9. With nothing sending them, no replay could contain one,
+  so the Mono-versus-.NET check would not have run any of the new arithmetic, and nobody could
+  see them in Unity. It turns each escalation wave into another class in a fixed cycle: ground,
+  sappers (half as many; 1.5× HP, 0.8× speed, 4× dig rate), flyers (half as many; 0.5× HP, 1.2×
+  speed), then all three (a half, a quarter, a quarter). It is not a study condition and the numbers
+  are placeholders (S12). Same reasoning as making `PlaceTower` a command in WP-C1.
+- **The must-pass fixture has a 10-tile detour, not the plan's 20.** A wall of cost 15 reads as a
+  14-tile detour to a walker, so with 20 extra tiles even Ground digs. One test has the 10-tile
+  corridor (Ground round, Sapper through) and one the 20-tile corridor (both through).
+- **`WaveOutcome` counts all three classes** where §4.6 planned `FlyersSpawned` and `FlyersLeaked`.
+  The same numbers, and the sapper ones come free.
+- **Extra files:** `MovementClasses` (array size, one type per file), `RouteCost`, `ClassCyclePlanner`.
+- **Replay schema 3**, although the file layout did not change: the hashes cover the sapper field and
+  each enemy's class, so an older file's hashes describe less. The number says so plainly, instead
+  of an older file failing on its setup hash with a misleading message.
+- **`replay --outcomes`, `ascii --map` and the `+` route marker** were not in the plan. The first was
+  needed to choose a pinned episode that covers every case; the other two are the review probe.
+
+**Decided while building** (all in `ARCHITECTURE.md` §4.6 and pinned by tests)
+- A sapper pays `max(1, round(cost × factor))` for a built tile and what anyone pays for open ground.
+- The class chooses the route only. How fast a sapper digs is its group's `DigRate`.
+- A flyer flies to the centre of the core tile and leaks when it is over that tile.
+- `CanHitFlying` covers the whole shot: target, splash and slow.
+- "Nearest the core" is measured the way each enemy travels: its field's cost for a walker or a
+  sapper, the straight line in tenths of a tile for a flyer. Target choice and the pressure
+  statistic both use it.
+- Flyers are not counted in the occupancy map (traffic on the ground). Damage to them is booked
+  in the damage map like any other.
+- Both fields are one rebuild: `FieldVersion` goes up by one.
+- `FlowField.Generate` alone builds the ground field only, for a caller with its own grid.
+
+**Findings**
+- **Ground play is unchanged**, shown three ways. (1) Before anything else was touched, the
+  two-field flow field replaced the old one and all seven WP-C1 recordings replayed to the same
+  hash on every tick, under .NET and under Mono. (2) `FlowFieldSetTests` compares the ground field,
+  tile for tile, with the WP1 flood fill on 60 random boards. (3) The three ground-only pinned
+  episodes, recorded again, have the same commands, the same length and the same wave timings as
+  at WP-C1; only the hashes differ.
+- **The new arithmetic is bit-identical on both runtimes.** The class-cycle episode (26,607 ticks:
+  sappers breaching walls and a tower, flyers shot down and leaking) was recorded under .NET and
+  under Mono with identical commands and tick hashes. The float pins for a flyer's step and its
+  distance to the core were worked out by hand or under .NET and pass under Mono.
+- **A session played in the Unity editor verifies headless:** 57,899 ticks, 13 waves, 50 commands,
+  with the class cycle, speeds x12, x3 and x1, a pause, an editor pause, and builds in mid-wave.
+  Every tick hash matches. Its first five waves are the pinned `unity-session-classes`.
+- **Income depends on the shape of the wave (new spec gap S14).** `KillReward` is paid per enemy.
+  The cycle's sapper and flyer waves have half as many enemies, so over waves 2 to 4 the player
+  earns 44 in kill rewards where the escalation pays 66. The tower bot then meets the same wave 5
+  with 16 towers instead of 17, and that is the difference between clearing it and losing in it
+  (it clears the escalation up to wave 9). A director that spends its budget on fewer, stronger
+  enemies would do this to the player every time, which is what I11 forbids. It has to be settled
+  with the threat cost table (WP9): pay a kill in proportion to the enemy's price, or pay per wave.
+- **On open ground a sapper walks round a single tile.** Passing one built tile costs two diagonal
+  steps (0.8 tile more), cheaper than chewing it even at the sapper's price. Sappers dig where the
+  way round is long. On the benchmark maze (walls of cost 200) a share of 0.2 takes the sapper
+  through two of the five rows (86 tiles against 198); at 0.3 it digs nothing; at 0.1 it goes
+  through four (54 tiles). So the share needs tuning together with the wall costs (S12).
+- **The scripted players, real settings, seed 1, against the class cycle:**
+
+  | Player | Result |
+  |---|---|
+  | idle | lost in wave 1 |
+  | walls only (greedy) | lost in wave 1 |
+  | towers (sentry) | waves 1–4 with no leak, lost in wave 5 (16 towers) |
+  | walls, then towers (mixed) | lost in wave 2, the first sapper wave: 5 of 52 killed |
+
+  The tower bot stops all 55 flyers of wave 3: on an open board the ground route is the straight
+  line, so towers beside the route are also under the flight path, and a third of its towers are
+  archers. That will not hold once a maze bends the route away from the line.
+- **Rebuild cost, both fields, 38×38 with 0 / 10 / 25% of the tiles built:** 0.29 / 0.46 / 0.58 ms
+  under .NET 9 (release), 0.76 / 0.91 / 1.13 ms in the Unity editor. The ground field alone is
+  0.13 / 0.17 / 0.26 ms and 0.39 / 0.46 / 0.55 ms. Two floods cost a little more than twice one.
+- **The tests notice a broken rule.** Sixteen deliberate breakages (a sapper on the ground field,
+  splash ignoring the anti-air rule, a flyer ranked by the ground under it, a clone dropping the
+  sapper field, and so on) were each applied in turn; every one failed at least one test.
+- **Tooling:** the Unity MCP screenshot tool leaves the editor paused; un-pause it afterwards or the
+  session stands still. A slow `execute_code` call can time out and still have run.
+
+**Unity play-mode check (SampleScene, driven through Unity MCP)**
+- `DirectorHost.condition` set to `DevClassCycle` and the core to 1,000 HP, both in memory only; the
+  scene and the config asset on disk were not changed (checked afterwards).
+- `[Director] DEVELOPMENT planner 'class-cycle' …`, `[Sim] Started … planner 'class-cycle'`. 0 errors.
+- Wave 3, flyers: 46 alive, 46 views, all tinted blue and drawn at height 2.75.
+  Wave 5, ground: 116 views, none tinted, none raised, although the pooled objects had been flyers
+  and sappers. Wave 6, sappers: 50 views, all orange, on the ground.
+  Wave 12, all three: 47 plain, 38 orange, 38 blue and raised; no view disagreed with its agent.
+- Screenshots: the flyers are a straight line of pale-blue cubes above the board, each with its
+  HP bar; the sappers are orange cubes in the stream on the route.
+- Two archers and a wall piece were placed in the middle of wave 4; rotate and hold were sent
+  while paused; the wall bot placed eight pieces in the middle of wave 8.
+- The core fell in wave 13. The replay verified headless (above).
+
+**Tests:** 301 → 356 headless; Unity 358 including 2 explicit diagnostics.
+- New: `FlowFieldSetTests` (16), `MovementClassTests` (22), `ClassCyclePlannerTests` (7).
+- Added to existing files: three float pins (a flyer's step, its distance to the core, the
+  sapper's rounding), two ASCII state renders, one ASCII map render, a 20,000-tick determinism run
+  with every class, `ReplayRunner.Outcomes`.
+- `PinnedReplayTests`: 9 recordings (4 .NET, 4 Mono, 1 Unity session).
+- Fixtures: `TestFields`; `FixedPlanner.Sappers` / `Flyers`; `TestTowers` can make anti-air towers
+  and agents of a class.
+
+**Commands run**
+```
+dotnet test Tools/dotnet/Thesis.Headless.sln                               → Passed 356/356
+Unity MCP: run_tests EditMode                                              → Passed 356, 2 explicit skipped
+thesis run --planner class-cycle --policy idle|greedy|sentry|mixed --seed 1 --waves 12   → the table above
+thesis ascii --map Maps/Bench_Maze.map.json --scenario maze --class ground|sapper [--sapper-factor F]
+thesis bench --iterations 200          (release build)                     → the rebuild times above
+thesis pin                                                                 → Results/pinned-replays/dotnet-*.replay.json (4)
+Unity MCP: Thesis/Replay/Record Pinned Episodes (Mono)                     → Results/pinned-replays/mono-*.replay.json (4)
+Unity MCP: play SampleScene with DevClassCycle                             → see above
+thesis replay Runs/Sessions/20261002-084648_seed1/replay.json --per-tick --outcomes   → OK, 57,899 ticks, 13 waves
+```
+(`thesis` = `dotnet run --project Tools/dotnet/Thesis.Cli --`)
+
+**Known issues**
+- **No study condition sends sappers or flyers.** Only the development planner does. The static
+  baseline is ground only, as it should be.
+- **Nothing is balanced:** the sapper and flyer numbers, `SapperDigCostFactor`, and which towers can
+  hit flyers (only the archer) are placeholders (WP-C5).
+- **Nothing on screen explains the classes.** The route preview draws the ground route only, so it
+  does not show where sappers will dig, and nothing says that only the archer reaches a flyer.
+  The looks are a tint and a height (WP-C4).
+- **The scripted players do not know the classes exist** (WP12).
+- **S14 is open:** income depends on the wave's shape. It must be closed before the strategies are priced.
+- **Still not played by hand.** To see the classes: select `GameManager` in SampleScene, set
+  `DirectorHost > Condition` to `DevClassCycle`, and play. Set it back for the baseline.
+- The recordings of WP-C1 (schema 2) are refused now; they are in git history at that commit.

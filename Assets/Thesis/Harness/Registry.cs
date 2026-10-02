@@ -8,7 +8,9 @@ namespace Thesis.Harness
     // the ladder all mean the same thing by X.
     public static class Registry
     {
-        public static readonly string[] PlannerNames = { EscalationPlanner.Id };
+        // class-cycle is a development planner, not a study condition: it sends
+        // sappers and flyers until the director's strategies exist (WP9).
+        public static readonly string[] PlannerNames = { EscalationPlanner.Id, ClassCyclePlanner.Id };
 
         public static readonly string[] PolicyNames = { IdlePolicy.Id, GreedyDetourPolicy.Id, SentryPolicy.Id, SequencePolicy.MixedId };
 
@@ -19,6 +21,7 @@ namespace Thesis.Harness
             switch (name)
             {
                 case EscalationPlanner.Id: return new EscalationPlanner(config, map);
+                case ClassCyclePlanner.Id: return new ClassCyclePlanner(config, map);
                 default: throw new ArgumentException("Unknown planner '" + name + "'. Known: " + string.Join(", ", PlannerNames) + ".");
             }
         }

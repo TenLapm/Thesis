@@ -49,7 +49,7 @@ namespace Thesis.Tests.Core
             var agent = new AgentState(0, new Vec2f(F("c06bd584"), F("c0a392dd")), 1.25f, 100f, DamageTypes.AllOnes(), 1f, 0f, 0f);
             float budget = 0f;
             int hp = 10;
-            AgentSystem.Step(grid, new[] { agent }, new TowerState[0], 0.02f, new OccupancyMap(grid.NodeCount), 0f, ref budget, ref hp, null);
+            AgentSystem.Step(grid, grid[0, 0], new[] { agent }, new TowerState[0], 0.02f, new OccupancyMap(grid.NodeCount), 0f, ref budget, ref hp, null);
 
             Assert.AreEqual(Hex(target.Position.X), Hex(-0.5f), "rig: target centre");
             Assert.AreEqual("c06a4344", Hex(agent.Position.X));
@@ -73,7 +73,7 @@ namespace Thesis.Tests.Core
             agent.SlowFactor = 0.7f;
             float budget = 0f;
             int hp = 10;
-            AgentSystem.Step(grid, new[] { agent }, new TowerState[0], 0.02f, new OccupancyMap(grid.NodeCount), 0f, ref budget, ref hp, null);
+            AgentSystem.Step(grid, grid[0, 0], new[] { agent }, new TowerState[0], 0.02f, new OccupancyMap(grid.NodeCount), 0f, ref budget, ref hp, null);
 
             Assert.AreEqual(PinnedSlowedX, Hex(agent.Position.X));
             Assert.AreEqual(PinnedSlowedY, Hex(agent.Position.Y));
@@ -95,8 +95,67 @@ namespace Thesis.Tests.Core
             Assert.IsFalse(Targeting.InRange(new Vec2f(ax, ay), new Vec2f(tx, ty), justUnder), "one bit less reach and it is out");
         }
 
+        // A flyer's step (WP-C2): straight at the core, with the slow in the chain, and
+        // the straight-line distance it reports. The direction is a diagonal with no
+        // round numbers in it, so both divisions inside MoveTowards have to round.
+        [Test]
+        public void AFlyersStepGivesTheSameBitsEverywhere()
+        {
+            var grid = new SimGrid(TestMaps.Open(38, 38, 75f, 75f, 1f));
+            SimNode core = grid[34, 31];
+            var flyer = new AgentState(0, new Vec2f(F("c06bd584"), F("c0a392dd")), 1.59f, 100f, DamageTypes.AllOnes(), 0f, 0f, 0f, MovementClass.Flying);
+            flyer.SlowTicks = 10;
+            flyer.SlowFactor = 0.7f;
+            float budget = 0f;
+            int hp = 10;
+            AgentSystem.Step(grid, core, new[] { flyer }, new TowerState[0], 0.02f, new OccupancyMap(grid.NodeCount), 0f, ref budget, ref hp, null);
+
+            Assert.AreEqual(PinnedFlyerX, Hex(flyer.Position.X));
+            Assert.AreEqual(PinnedFlyerY, Hex(flyer.Position.Y));
+            Assert.AreEqual(PinnedFlyerCost, flyer.MinCostSeen, "the distance before the step, in tenths of a tile");
+        }
+
+        // FlyingMovement.CostToCore: a square root, a division and a rounding to a
+        // whole number. The first three are worked by hand; the rest pin awkward inputs.
+        [Test]
+        public void AFlyersDistanceToTheCoreIsTheSameWholeNumberEverywhere()
+        {
+            Assert.AreEqual(0, FlyingMovement.CostToCore(new Vec2f(3f, 4f), new Vec2f(3f, 4f), 2f));
+            Assert.AreEqual(25, FlyingMovement.CostToCore(new Vec2f(0f, 0f), new Vec2f(3f, 4f), 2f), "5 world units = 2.5 tiles");
+            Assert.AreEqual(5, FlyingMovement.CostToCore(new Vec2f(0f, 0f), new Vec2f(1f, 0f), 2f), "half a tile");
+
+            float ax = 1.3f, ay = -2.7f, bx = 34.1f, by = 33.9f, tile = 2f; // variables, not constants: no compile-time folding
+            Assert.AreEqual(PinnedCostFar, FlyingMovement.CostToCore(new Vec2f(ax, ay), new Vec2f(bx, by), tile));
+            Assert.AreEqual(PinnedCostNear, FlyingMovement.CostToCore(new Vec2f(F("c06bd584"), F("c0a392dd")), new Vec2f(-0.5f, -4.5f), tile));
+            float odd = 1.9736842f; // SampleScene's 75 / 38 would be this tile size
+            Assert.AreEqual(PinnedCostOddTile, FlyingMovement.CostToCore(new Vec2f(ax, ay), new Vec2f(bx, by), odd));
+        }
+
+        // The sapper's price for a built tile: one float product, rounded to a whole
+        // number (half goes to the even neighbour on every runtime).
+        [Test]
+        public void TheSapperDiscountRoundsTheSameWayEverywhere()
+        {
+            var f = TestMaps.Parse("C . . . . . . S");
+            int[] terrain = { 15, 20, 25, 35, 200, 7 };
+            float[] factor = { 0.2f, 0.2f, 0.1f, 0.1f, 0.2f, 0.5f };
+            int[] expected = { 3, 4, 2, 4, 40, 4 };   // 2.5 -> 2 and 3.5 -> 4: to the even neighbour
+            for (int i = 0; i < terrain.Length; i++)
+            {
+                SimNode node = f.Grid[1 + i, 0];
+                f.Grid.SetWall(node, terrain[i], 6f);
+                Assert.AreEqual(expected[i], FlowField.SapperTerrainCost(node, factor[i]), terrain[i] + " x " + factor[i]);
+            }
+        }
+
         private const string PinnedSlowedX = "c06aa29a";
         private const string PinnedSlowedY = "c0a37564";
         private const string PinnedDistanceSquared = "425b3334";
+        private const string PinnedFlyerX = "c06ac25e";
+        private const string PinnedFlyerY = "c0a31b2c";
+        private const int PinnedFlyerCost = 233;
+        private const int PinnedCostFar = 246;
+        private const int PinnedCostNear = 16;
+        private const int PinnedCostOddTile = 249;
     }
 }

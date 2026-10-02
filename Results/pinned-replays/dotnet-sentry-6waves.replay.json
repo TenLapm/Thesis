@@ -1,5 +1,5 @@
 {
-  "Schema": 2,
+  "Schema": 3,
   "Build": "headless .NET 9.0.10",
   "Session": "dotnet-sentry-6waves",
   "Policy": "sentry",
@@ -28,6 +28,7 @@
     "MaxMoveSpeed": 2.25,
     "BaseHp": 10.0,
     "HpIncrementPerWave": 2.0,
+    "SapperDigCostFactor": 0.2,
     "MinSlowFactor": 0.25,
     "MaxWaveSeconds": 600.0,
     "PressureRadiusTiles": 5.0,
@@ -327,8 +328,8 @@
       "ShopWeight": 1.0
     }
   ],
-  "SetupHash": "fd9fee2c163f597f",
-  "InitialHash": "1aba65ddd49a5b70",
+  "SetupHash": "0a3b807e2602ad87",
+  "InitialHash": "81b012ee1145ff4f",
   "Commands": [
     {
       "Tick": 0,
@@ -524,35 +525,35 @@
     {
       "Wave": 1,
       "Tick": 1383,
-      "Hash": "8575bfda74669fea"
+      "Hash": "6986251b24694871"
     },
     {
       "Wave": 2,
       "Tick": 2640,
-      "Hash": "d229eae1b6c902c8"
+      "Hash": "22d860cfccb2199e"
     },
     {
       "Wave": 3,
       "Tick": 3862,
-      "Hash": "81d23a82c5991971"
+      "Hash": "5a64a793e53d4d34"
     },
     {
       "Wave": 4,
       "Tick": 5182,
-      "Hash": "640e3a8ee8cb0e9b"
+      "Hash": "9eeb47c04497ad24"
     },
     {
       "Wave": 5,
       "Tick": 6411,
-      "Hash": "b6b6de1309923369"
+      "Hash": "e627b8663357bfc9"
     },
     {
       "Wave": 6,
       "Tick": 8055,
-      "Hash": "3fba04270cbcb444"
+      "Hash": "b736e44a35185dd0"
     }
   ],
   "FinalTick": 8055,
-  "FinalHash": "3fba04270cbcb444",
+  "FinalHash": "b736e44a35185dd0",
   "TickHashes": null
 }

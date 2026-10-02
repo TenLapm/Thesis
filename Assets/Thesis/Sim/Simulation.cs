@@ -18,7 +18,8 @@ namespace Thesis.Sim
     //   * the next intermission starts when the wave's last agent resolves, not
     //     when it spawns (decision D4).
     // Since WP-C1 enemies have hit points and towers kill them; the lifetime clock
-    // of the original game is gone (CLAUDE.md §2).
+    // of the original game is gone (CLAUDE.md §2). Since WP-C2 an enemy is Ground,
+    // Sapper or Flying, and "the field" is two fields kept in step by FlowFieldSet.
     public sealed class Simulation
     {
         private readonly SimConfig config;
@@ -29,8 +30,9 @@ namespace Thesis.Sim
         private readonly IThreatPricer pricer;
         private readonly int maxWaveTicks;
 
-        // Scratch only: reusable buffers, no state.
-        private readonly FlowField field = new FlowField();
+        // Scratch only: reusable buffers, no state. Every rebuild goes through this,
+        // so the ground and the sapper field always describe the same board.
+        private readonly FlowFieldSet fields;
         private readonly List<SimEvent> events = new List<SimEvent>();
 
         // towerLibrary is the roster a PlaceTower command chooses from, by index. It
@@ -54,6 +56,7 @@ namespace Thesis.Sim
                 towerLibrary[i].Validate();
             }
             maxWaveTicks = Math.Max(1, config.Ticks(config.MaxWaveSeconds));
+            fields = new FlowFieldSet(config.SapperDigCostFactor);
 
             var s = new SimState
             {
@@ -68,7 +71,7 @@ namespace Thesis.Sim
             s.Bag = new ShapeBag(library, s.BagRng);
             s.Occupancy = new OccupancyMap(s.Grid.NodeCount);
             s.Damage = new DamageMap(s.Grid.NodeCount);
-            field.Generate(s.Grid, map.Core);
+            fields.Generate(s.Grid, map.Core);
 
             State = s;
         }
@@ -81,6 +84,7 @@ namespace Thesis.Sim
             towerLibrary = source.towerLibrary;
             pricer = source.pricer;
             maxWaveTicks = source.maxWaveTicks;
+            fields = new FlowFieldSet(source.fields.SapperDigCostFactor); // scratch buffers only: never shared
             RngSeed = source.RngSeed;
             this.planner = planner ?? throw new ArgumentNullException(nameof(planner));
             State = source.State.Clone();
@@ -135,7 +139,7 @@ namespace Thesis.Sim
         public void RebuildFieldForSetup()
         {
             if (State.Tick != 0) throw new InvalidOperationException("[Sim] RebuildFieldForSetup is only for setup before the first Tick (tick is " + State.Tick + ").");
-            field.Generate(State.Grid, map.Core);
+            fields.Generate(State.Grid, map.Core);
         }
 
         // Applies queued commands NOW, without advancing time. This is exactly step 1
@@ -189,18 +193,21 @@ namespace Thesis.Sim
 
             // 3. Tower pass (ascending tower id), before anything moves. Every hit
             // resolves inside this tick (CLAUDE.md I12).
+            SimNode core = s.Grid.Get(map.Core);
             int firstCombatEvent = events.Count;
-            TowerSystem.Step(s.Grid, s.Towers, s.Live, s.Damage, s.CurrentOutcome == null ? null : s.CurrentOutcome.DamageByType,
+            TowerSystem.Step(s.Grid, core, s.Towers, s.Live, s.Damage, s.CurrentOutcome == null ? null : s.CurrentOutcome.DamageByType,
                              config.MinSlowFactor, ref s.BuildBudget, events);
 
             // 4. Agent pass (ascending agent id). Agents killed in step 3 are skipped.
-            bool fieldDirty = AgentSystem.Step(s.Grid, s.Live, s.Towers, config.TickSeconds, s.Occupancy, config.TowerBreachReward,
+            // Each moves by its own class: ground field, sapper field, or a straight
+            // line through the air (WP-C2).
+            bool fieldDirty = AgentSystem.Step(s.Grid, core, s.Live, s.Towers, config.TickSeconds, s.Occupancy, config.TowerBreachReward,
                                                ref s.BuildBudget, ref s.CoreHp, events);
             CountCombatEvents(s, firstCombatEvent);
             RemoveDead(s.Live);
 
-            // One field rebuild per tick, after every agent has acted.
-            if (fieldDirty) field.Generate(s.Grid, map.Core);
+            // One rebuild per tick (both fields), after every agent has acted.
+            if (fieldDirty) fields.Generate(s.Grid, map.Core);
 
             // 4b. The backstop that replaces what the lifetime clock used to
             // guarantee: a wave that has run for MaxWaveSeconds is ended by force.
@@ -241,7 +248,7 @@ namespace Thesis.Sim
             switch (command.Kind)
             {
                 case SimCommandKind.PlaceShape:
-                    if (Placement.TryPlace(s.Grid, map, field, s.Bag.CurrentShape, s.Bag.CurrentRotationTurns,
+                    if (Placement.TryPlace(s.Grid, map, fields, s.Bag.CurrentShape, s.Bag.CurrentRotationTurns,
                                            new TileCoord(command.X, command.Y), ref s.BuildBudget, s.Tick,
                                            s.PlacementLog, events))
                     {
@@ -265,7 +272,7 @@ namespace Thesis.Sim
                     // player tried, and a try that cannot work changes nothing.
                     if (command.A >= 0 && command.A < towerLibrary.Length)
                     {
-                        Placement.TryPlaceTower(s.Grid, map, field, towerLibrary[command.A], new TileCoord(command.X, command.Y),
+                        Placement.TryPlaceTower(s.Grid, map, fields, towerLibrary[command.A], new TileCoord(command.X, command.Y),
                                                 ref s.BuildBudget, s.Tick, s.Towers, s.PlacementLog, events);
                     }
                     break;
@@ -338,13 +345,14 @@ namespace Thesis.Sim
                 // Agents enter at the spawn transform's XZ, not the tile centre -
                 // exactly where WaveSpawner put them.
                 var agent = new AgentState(s.Agents.Count, new Vec2f(at.X, at.Z), group.MoveSpeed, group.Hp, group.Resist,
-                                           group.DigRate, config.KillReward, config.WallBreakReward)
+                                           group.DigRate, config.KillReward, config.WallBreakReward, group.Movement)
                 {
                     WaveIndex = s.WaveIndex,
                 };
                 s.Agents.Add(agent);
                 s.Live.Add(agent);
                 s.CurrentOutcome.Spawned++;
+                s.CurrentOutcome.SpawnedByClass[(int)agent.Movement]++;
                 events.Add(SimEvent.AgentSpawned(agent.Id));
             }
 
@@ -362,8 +370,14 @@ namespace Thesis.Sim
             {
                 switch (events[i].Kind)
                 {
-                    case SimEventKind.AgentKilled: o.Killed++; break;
-                    case SimEventKind.AgentLeaked: o.Leaked++; break;
+                    case SimEventKind.AgentKilled:
+                        o.Killed++;
+                        o.KilledByClass[(int)s.Agents[events[i].IntA].Movement]++;
+                        break;
+                    case SimEventKind.AgentLeaked:
+                        o.Leaked++;
+                        o.LeakedByClass[(int)s.Agents[events[i].IntA].Movement]++;
+                        break;
                     case SimEventKind.WallBreached: o.WallsBreached++; break;
                     case SimEventKind.TowerDestroyed: o.TowersDestroyed++; break;
                 }

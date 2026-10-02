@@ -69,7 +69,7 @@ namespace Thesis.Sim
         // synchronously so this tick's agents already see the new wall
         // (ARCHITECTURE.md §4.2 step 1 - unlike a mid-tick breach, a player's own
         // placement command still rebuilds immediately).
-        public static bool TryPlace(SimGrid grid, MapData map, FlowField field, ShapeDef shape, int rotationTurns,
+        public static bool TryPlace(SimGrid grid, MapData map, FlowFieldSet fields, ShapeDef shape, int rotationTurns,
                                      TileCoord origin, ref float buildBudget, int tick,
                                      IList<PlacementRecord> log, IList<SimEvent> events)
         {
@@ -90,7 +90,7 @@ namespace Thesis.Sim
                 events?.Add(SimEvent.WallPlaced(node.X, node.Y));
             }
 
-            field.Generate(grid, map.Core);
+            fields.Generate(grid, map.Core);
 
             log?.Add(new PlacementRecord
             {
@@ -110,7 +110,7 @@ namespace Thesis.Sim
         // budget, spend, build, rebuild the field. It occupies ONE tile as diggable
         // terrain. Returns false, changing nothing, when the tile or the budget
         // does not allow it.
-        public static bool TryPlaceTower(SimGrid grid, MapData map, FlowField field, TowerDef def, TileCoord tile,
+        public static bool TryPlaceTower(SimGrid grid, MapData map, FlowFieldSet fields, TowerDef def, TileCoord tile,
                                          ref float buildBudget, int tick, IList<TowerState> towers,
                                          IList<PlacementRecord> log, IList<SimEvent> events)
         {
@@ -129,7 +129,7 @@ namespace Thesis.Sim
             grid.SetTower(node, Math.Max(2, def.DigCost), Math.Max(0.5f, def.TowerHealth), tower.Id);
             events?.Add(SimEvent.TowerPlaced(tower.Id, tile.X, tile.Y));
 
-            field.Generate(grid, map.Core);
+            fields.Generate(grid, map.Core);
 
             log?.Add(new PlacementRecord
             {
