@@ -6,8 +6,11 @@ namespace Thesis.Tests.Sim
 {
     public class SimulationPhaseTests
     {
-        // A short corridor. Agents with speed 0 never move and simply stall.
+        // A short corridor, 10 world units from spawn to core. No towers in these
+        // tests: an agent's wave ends when it walks into the core.
         private const string Corridor = "S . . . . C";
+
+        private static SimConfig ToughCore() { return new SimConfig { CoreMaxHp = 1000 }; }
 
         private static bool Raised(Simulation sim, SimEventKind kind)
         {
@@ -36,15 +39,16 @@ namespace Thesis.Tests.Sim
         [Test]
         public void IntermissionStartsOnlyWhenTheLastAgentResolvesThenLasts10Seconds()
         {
-            // Two agents: one stalls after 0.1 s, the other lives 2 s. D4: the wave must
-            // stay in Resolving until the long-lived one is gone.
-            var planner = new FixedPlanner(FixedPlanner.Group(1, 0.1f), FixedPlanner.Group(1, 2f));
-            var sim = TestSims.Ascii(Corridor, planner);
+            // Two agents: a fast one that reaches the core in half a second and a slow
+            // one that needs five. D4: the wave must stay in Resolving until the slow
+            // one is gone too.
+            var planner = new FixedPlanner(FixedPlanner.Group(1, speed: 20f), FixedPlanner.Group(1, speed: 2f));
+            var sim = TestSims.Ascii(Corridor, planner, ToughCore());
             sim.Enqueue(SimCommand.StartWaveNow());
             sim.Tick();
             Assert.AreEqual(1, sim.State.WaveIndex);
 
-            TestSims.Run(sim, 20); // 0.4 s: the short one has stalled, the long one hasn't
+            TestSims.Run(sim, 40); // 0.8 s: the fast one is through, the slow one is not
             Assert.AreEqual(1, sim.State.LiveAgentCount);
             Assert.AreEqual(SimPhase.Resolving, sim.State.Phase, "one agent still alive -> no intermission yet");
 
@@ -58,21 +62,23 @@ namespace Thesis.Tests.Sim
 
             WaveOutcome o = sim.State.LastOutcome;
             Assert.AreEqual(2, o.Spawned);
-            Assert.AreEqual(2, o.Stalled);
-            Assert.AreEqual(0, o.Leaked);
+            Assert.AreEqual(2, o.Leaked);
+            Assert.AreEqual(0, o.Killed);
             Assert.IsFalse(o.CoreDestroyed);
+            Assert.AreEqual(1000, o.CoreHpBefore);
+            Assert.AreEqual(998, o.CoreHpAfter);
             Assert.AreEqual(60f, o.BudgetBefore);
-            Assert.AreEqual(60.4f, o.BudgetAfter, 1e-4f, "two stalls x 0.2");
-            Assert.AreEqual(80.4f, sim.State.BuildBudget, 1e-4f, "stipend of 20 paid at intermission start, after the outcome is closed");
+            Assert.AreEqual(60f, o.BudgetAfter, "a leak pays nothing");
+            Assert.AreEqual(80f, sim.State.BuildBudget, "stipend of 20 paid at intermission start, after the outcome is closed");
 
             Assert.AreEqual(1, planner.Outcomes.Count, "planner told exactly once");
-            Assert.AreEqual(2, planner.Outcomes[0].Stalled);
+            Assert.AreEqual(2, planner.Outcomes[0].Leaked);
         }
 
         [Test]
         public void IntermissionTimerStartsTheNextWave()
         {
-            var sim = TestSims.Ascii(Corridor, new FixedPlanner(FixedPlanner.Group(1, 0.05f)));
+            var sim = TestSims.Ascii(Corridor, new FixedPlanner(FixedPlanner.Group(1, speed: 20f)), ToughCore());
             sim.Enqueue(SimCommand.StartWaveNow());
             int guard = 5000;
             while (sim.State.Phase != SimPhase.Intermission && guard-- > 0) sim.Tick();

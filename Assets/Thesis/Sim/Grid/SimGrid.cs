@@ -67,6 +67,8 @@ namespace Thesis.Sim
                     TerrainCost = s.TerrainCost,
                     WallHealth = s.WallHealth,
                     MaxWallHealth = s.MaxWallHealth,
+                    Occupant = s.Occupant,
+                    TowerId = s.TowerId,
                     BestCost = s.BestCost,
                     NextIndex = s.NextIndex,
                 };
@@ -177,14 +179,29 @@ namespace Thesis.Sim
             node.TerrainCost = terrainCost;
             node.WallHealth = wallHealth;
             node.MaxWallHealth = wallHealth;
+            node.Occupant = Occupant.Wall;
+            node.TowerId = -1;
         }
 
-        // Back to open ground (a breach, or clearing a scenario). Caller rebuilds the field.
+        // A tower stands on its tile exactly as a wall does (same cost model, same
+        // digging); the tile only remembers which tower it is, so that chewing
+        // through it can destroy that tower.
+        public void SetTower(SimNode node, int terrainCost, float towerHealth, int towerId)
+        {
+            SetWall(node, terrainCost, towerHealth);
+            node.Occupant = Occupant.Tower;
+            node.TowerId = towerId;
+        }
+
+        // Back to open ground (a breach, a destroyed tower, or clearing a scenario).
+        // Caller rebuilds the field.
         public void ClearWall(SimNode node)
         {
             node.TerrainCost = 1;
             node.WallHealth = 0f;
             node.MaxWallHealth = 0f;
+            node.Occupant = Occupant.None;
+            node.TowerId = -1;
         }
 
         // Mathf.Clamp01 / Mathf.RoundToInt equivalents. RoundToInt is (int)Math.Round,

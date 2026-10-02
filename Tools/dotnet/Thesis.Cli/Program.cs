@@ -83,7 +83,7 @@ namespace Thesis.Cli
             Console.WriteLine();
             Console.WriteLine("commands:");
             Console.WriteLine("  run      one headless episode, recorded as <out>/replay.json");
-            Console.WriteLine("             [--map f] [--shapes f] [--config f] [--planner escalation] [--policy greedy|idle]");
+            Console.WriteLine("             [--map f] [--shapes f] [--config f] [--planner escalation] [--policy sentry|mixed|greedy|idle]");
             Console.WriteLine("             [--seed s] [--waves n] [--out dir] [--per-tick] [--wait]");
             Console.WriteLine("  replay   run a recording again and check its hashes (exit 1 on divergence)");
             Console.WriteLine("             <replay.json> [--per-tick] [--dump-tick T] [--dump-out f]");

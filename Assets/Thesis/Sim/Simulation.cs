@@ -9,29 +9,38 @@ namespace Thesis.Sim
     // Same config + map + library + seed + commands at the same ticks -> the same
     // state hash on every tick (CLAUDE.md I1).
     //
-    // Tick() is ARCHITECTURE.md §4.2, step for step. Two behaviour changes from the
-    // Unity version, both intended and recorded in DEVLOG:
-    //   * step 4 - a breach rebuilds the flow field once at the end of the tick,
-    //     not in the middle of the agent loop;
-    //   * step 5 - the next intermission starts when the wave's last agent
-    //     resolves, not when it spawns (decision D4).
+    // Tick() is ARCHITECTURE.md §4.2 with the combat steps of §4.6, step for step:
+    // commands, phase machine, TOWER pass, AGENT pass, one field rebuild, the wave
+    // backstop, the wave boundary, the core. Two behaviour changes from the original
+    // Unity game, both intended and recorded in DEVLOG:
+    //   * a breach rebuilds the flow field once at the end of the tick, not in the
+    //     middle of the agent loop;
+    //   * the next intermission starts when the wave's last agent resolves, not
+    //     when it spawns (decision D4).
+    // Since WP-C1 enemies have hit points and towers kill them; the lifetime clock
+    // of the original game is gone (CLAUDE.md §2).
     public sealed class Simulation
     {
         private readonly SimConfig config;
         private readonly MapData map;
         private readonly ShapeDef[] library;
+        private readonly TowerDef[] towerLibrary;
         private readonly IWavePlanner planner;
         private readonly IThreatPricer pricer;
+        private readonly int maxWaveTicks;
 
         // Scratch only: reusable buffers, no state.
         private readonly FlowField field = new FlowField();
         private readonly List<SimEvent> events = new List<SimEvent>();
 
-        public Simulation(SimConfig config, MapData map, ShapeDef[] shapeLibrary, ulong rngSeed, IWavePlanner planner, IThreatPricer pricer = null)
+        // towerLibrary is the roster a PlaceTower command chooses from, by index. It
+        // may be empty (a game with walls only), never null.
+        public Simulation(SimConfig config, MapData map, ShapeDef[] shapeLibrary, TowerDef[] towerLibrary, ulong rngSeed, IWavePlanner planner, IThreatPricer pricer = null)
         {
             this.config = config ?? throw new ArgumentNullException(nameof(config));
             this.map = map ?? throw new ArgumentNullException(nameof(map));
             library = shapeLibrary ?? throw new ArgumentNullException(nameof(shapeLibrary));
+            this.towerLibrary = towerLibrary ?? throw new ArgumentNullException(nameof(towerLibrary));
             this.planner = planner ?? throw new ArgumentNullException(nameof(planner));
             this.pricer = pricer;
             RngSeed = rngSeed;
@@ -39,6 +48,12 @@ namespace Thesis.Sim
             config.Validate();
             map.Validate();
             if (map.Spawns.Length == 0) throw new InvalidOperationException("Map '" + map.Name + "' has no spawn; a simulation needs at least one.");
+            for (int i = 0; i < towerLibrary.Length; i++)
+            {
+                if (towerLibrary[i] == null) throw new InvalidOperationException("Tower roster entry " + i + " is null.");
+                towerLibrary[i].Validate();
+            }
+            maxWaveTicks = Math.Max(1, config.Ticks(config.MaxWaveSeconds));
 
             var s = new SimState
             {
@@ -52,6 +67,7 @@ namespace Thesis.Sim
             };
             s.Bag = new ShapeBag(library, s.BagRng);
             s.Occupancy = new OccupancyMap(s.Grid.NodeCount);
+            s.Damage = new DamageMap(s.Grid.NodeCount);
             field.Generate(s.Grid, map.Core);
 
             State = s;
@@ -62,7 +78,9 @@ namespace Thesis.Sim
             config = source.config;
             map = source.map;
             library = source.library;
+            towerLibrary = source.towerLibrary;
             pricer = source.pricer;
+            maxWaveTicks = source.maxWaveTicks;
             RngSeed = source.RngSeed;
             this.planner = planner ?? throw new ArgumentNullException(nameof(planner));
             State = source.State.Clone();
@@ -85,6 +103,10 @@ namespace Thesis.Sim
         public ulong RngSeed { get; }
 
         public ShapeDef[] ShapeLibrary => library;
+
+        // The tower types a PlaceTower command can name, by index. Pure data, never
+        // changed during a run; a replay stores it next to the shapes.
+        public TowerDef[] TowerLibrary => towerLibrary;
 
         // Everything that happened during the most recent Tick(), in order.
         public IReadOnlyList<SimEvent> LastTickEvents => events;
@@ -165,14 +187,24 @@ namespace Thesis.Sim
             s.StartWaveRequested = false; // consumed, or meaningless mid-wave
             if (s.Phase == SimPhase.Spawning) SpawnDue(s);
 
-            // 3. Agent pass (ascending id).
-            int firstEvent = events.Count;
-            bool fieldDirty = AgentSystem.Step(s.Grid, s.Live, config.TickSeconds, s.Occupancy, ref s.BuildBudget, ref s.CoreHp, events);
-            CountAgentEvents(s, firstEvent);
+            // 3. Tower pass (ascending tower id), before anything moves. Every hit
+            // resolves inside this tick (CLAUDE.md I12).
+            int firstCombatEvent = events.Count;
+            TowerSystem.Step(s.Grid, s.Towers, s.Live, s.Damage, s.CurrentOutcome == null ? null : s.CurrentOutcome.DamageByType,
+                             config.MinSlowFactor, ref s.BuildBudget, events);
+
+            // 4. Agent pass (ascending agent id). Agents killed in step 3 are skipped.
+            bool fieldDirty = AgentSystem.Step(s.Grid, s.Live, s.Towers, config.TickSeconds, s.Occupancy, config.TowerBreachReward,
+                                               ref s.BuildBudget, ref s.CoreHp, events);
+            CountCombatEvents(s, firstCombatEvent);
             RemoveDead(s.Live);
 
-            // 4. One field rebuild per tick, after every agent has acted.
+            // One field rebuild per tick, after every agent has acted.
             if (fieldDirty) field.Generate(s.Grid, map.Core);
+
+            // 4b. The backstop that replaces what the lifetime clock used to
+            // guarantee: a wave that has run for MaxWaveSeconds is ended by force.
+            if (s.CurrentOutcome != null && s.Tick - s.CurrentOutcome.TickStarted >= maxWaveTicks) TimeOutWave(s);
 
             // 5. Wave boundary (D4): only once every agent of the wave is resolved.
             if (s.Phase == SimPhase.Resolving && s.CoreHp > 0 && !AnyLiveAgentOfWave(s, s.WaveIndex))
@@ -227,6 +259,16 @@ namespace Thesis.Sim
                     // original StartWave() returning early when a wave was active.
                     if (s.Phase == SimPhase.Prep || s.Phase == SimPhase.Intermission) s.StartWaveRequested = true;
                     break;
+                case SimCommandKind.PlaceTower:
+                    // A tower type the roster does not have is ignored, like an
+                    // illegal tile or an empty budget: a command records what the
+                    // player tried, and a try that cannot work changes nothing.
+                    if (command.A >= 0 && command.A < towerLibrary.Length)
+                    {
+                        Placement.TryPlaceTower(s.Grid, map, field, towerLibrary[command.A], new TileCoord(command.X, command.Y),
+                                                ref s.BuildBudget, s.Tick, s.Towers, s.PlacementLog, events);
+                    }
+                    break;
                 default:
                     throw new InvalidOperationException("[Sim] Unknown command kind " + command.Kind + ".");
             }
@@ -252,6 +294,7 @@ namespace Thesis.Sim
             s.CurrentPlan = plan.Copy(); // our own copy: the planner cannot edit a running wave
             BuildSchedule(s, s.CurrentPlan);
             s.Occupancy.Reset();
+            s.Damage.Reset();
             s.CurrentOutcome = new WaveOutcome
             {
                 WaveIndex = s.WaveIndex,
@@ -294,8 +337,8 @@ namespace Thesis.Sim
 
                 // Agents enter at the spawn transform's XZ, not the tile centre -
                 // exactly where WaveSpawner put them.
-                var agent = new AgentState(s.Agents.Count, new Vec2f(at.X, at.Z), group.MoveSpeed, group.LifeTime,
-                                           group.DigRate, config.DeathReward, config.WallBreakReward)
+                var agent = new AgentState(s.Agents.Count, new Vec2f(at.X, at.Z), group.MoveSpeed, group.Hp, group.Resist,
+                                           group.DigRate, config.KillReward, config.WallBreakReward)
                 {
                     WaveIndex = s.WaveIndex,
                 };
@@ -308,9 +351,10 @@ namespace Thesis.Sim
             if (s.ScheduleCursor >= s.Schedule.Length) s.Phase = SimPhase.Resolving;
         }
 
-        // Tallies this tick's agent-pass events into the open outcome. Under D4 only
-        // one wave is ever live, so every such event belongs to the current wave.
-        private void CountAgentEvents(SimState s, int firstEvent)
+        // Tallies this tick's tower-pass and agent-pass events into the open outcome.
+        // Under D4 only one wave is ever live, so every such event belongs to the
+        // current wave.
+        private void CountCombatEvents(SimState s, int firstEvent)
         {
             WaveOutcome o = s.CurrentOutcome;
             if (o == null) return;
@@ -318,11 +362,34 @@ namespace Thesis.Sim
             {
                 switch (events[i].Kind)
                 {
-                    case SimEventKind.AgentStalled: o.Stalled++; break;
+                    case SimEventKind.AgentKilled: o.Killed++; break;
                     case SimEventKind.AgentLeaked: o.Leaked++; break;
                     case SimEventKind.WallBreached: o.WallsBreached++; break;
+                    case SimEventKind.TowerDestroyed: o.TowersDestroyed++; break;
                 }
             }
+        }
+
+        // The MaxWaveSeconds backstop. Whatever is still alive is taken off the
+        // board - no core damage, no reward - and anything not yet spawned never
+        // appears. Step 5 then closes the wave in the usual way. Nothing in a
+        // healthy game gets here: enemies always move (PlanValidator), a slow has a
+        // floor (MinSlowFactor), and every spawn can reach the core (MapData).
+        private void TimeOutWave(SimState s)
+        {
+            WaveOutcome o = s.CurrentOutcome;
+            o.TimedOut = true;
+            for (int i = 0; i < s.Live.Count; i++)
+            {
+                AgentState a = s.Live[i];
+                a.IsAlive = false;
+                o.Removed++;
+                events.Add(SimEvent.AgentRemoved(a.Id));
+            }
+            s.Live.Clear();
+            s.ScheduleCursor = s.Schedule.Length;
+            if (s.Phase == SimPhase.Spawning) s.Phase = SimPhase.Resolving;
+            events.Add(SimEvent.WaveTimedOut(o.WaveIndex));
         }
 
         private void CloseWave(SimState s, bool coreDestroyed)

@@ -5,7 +5,8 @@ namespace Thesis.Tests
 {
     // A small, fast episode for replay and harness tests: a 12x6 open map and a
     // dozen agents per wave, so three waves are a few thousand ticks on a 72-tile
-    // grid instead of fifteen thousand on SampleScene's 1,444.
+    // grid instead of fifteen thousand on SampleScene's 1,444. The default player
+    // builds walls and then towers, so the recording holds both kinds of command.
     public static class TestEpisodes
     {
         public const string SmallMap = @"
@@ -30,7 +31,7 @@ namespace Thesis.Tests
                 Map = AsciiMap.Parse(SmallMap, "small").Map,
                 Shapes = TestShapes.SampleSceneLibrary(),
                 Seed = seed,
-                Policy = policy ?? new GreedyDetourPolicy(),
+                Policy = policy ?? SequencePolicy.Mixed(wallsPerPhase: 2, towersPerPhase: 3),
                 MaxWaves = waves,
                 RecordTickHashes = tickHashes,
                 Build = "test",

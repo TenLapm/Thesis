@@ -13,7 +13,7 @@ namespace Thesis.Tests.Sim
         // Slow agents with a long clock, so they are still on the board when rendered.
         private static Simulation Running(int ticks)
         {
-            Simulation sim = TestSims.AsciiWithWalls(Map, new FixedPlanner(FixedPlanner.Group(count: 3, life: 100f, speed: 2f, intervalTicks: 5)), new SimConfig { PrepSeconds = 0.02f });
+            Simulation sim = TestSims.AsciiWithWalls(Map, new FixedPlanner(FixedPlanner.Group(count: 3, hp: 100f, speed: 2f, intervalTicks: 5)), new SimConfig { PrepSeconds = 0.02f });
             TestSims.Run(sim, ticks);
             return sim;
         }
@@ -26,7 +26,7 @@ namespace Thesis.Tests.Sim
             Simulation sim = TestSims.AsciiWithWalls(Map, new FixedPlanner(FixedPlanner.Group(1, 1f)));
             string[] lines = Lines(AsciiState.Render(sim, AsciiLayer.Route));
 
-            Assert.AreEqual("wave 0  tick 0  phase Prep  budget 60.0  core 10/10  live 0  layer=route", lines[0]);
+            Assert.AreEqual("wave 0  tick 0  phase Prep  budget 60.0  core 10/10  live 0  towers 0  layer=route", lines[0]);
             Assert.AreEqual(1 + 2 + 3 + 1, lines.Length, "header, two rulers, three rows, legend");
             StringAssert.StartsWith("legend", lines[lines.Length - 1]);
         }
@@ -68,7 +68,7 @@ namespace Thesis.Tests.Sim
                 # # . . .
                 S # . . C
                 # # . . .";
-            Simulation sim = TestSims.AsciiWithWalls(boxed, new FixedPlanner(FixedPlanner.Group(count: 1, life: 100f, speed: 2f)), new SimConfig { PrepSeconds = 0.02f });
+            Simulation sim = TestSims.AsciiWithWalls(boxed, new FixedPlanner(FixedPlanner.Group(count: 1, hp: 100f, speed: 2f)), new SimConfig { PrepSeconds = 0.02f });
 
             bool sawDigging = false;
             for (int i = 0; i < 400 && !sawDigging; i++)
@@ -105,6 +105,24 @@ namespace Thesis.Tests.Sim
             Assert.AreEqual('0', row[5]);
             Assert.AreEqual('C', row[6]);
             Assert.Greater(row[1], row[5], "cost falls toward the core");
+        }
+
+        [Test]
+        public void ATowerIsDrawnAsTAndCountedInTheHeader()
+        {
+            Simulation sim = TestSims.Ascii(Map, new FixedPlanner(FixedPlanner.Group(1)), new SimConfig { PrepSeconds = 60f });
+            TestSims.Send(sim, SimCommand.PlaceTower(0, 5, 2));
+
+            string[] lines = Lines(AsciiState.Render(sim, AsciiLayer.Route));
+            StringAssert.Contains("towers 1", lines[0]);
+            Assert.AreEqual('T', lines[3].Substring(5)[5], "row y=2, x=5");
+            StringAssert.Contains("T tower", lines[lines.Length - 1]);
+
+            foreach (AsciiLayer layer in new[] { AsciiLayer.Terrain, AsciiLayer.Occupancy, AsciiLayer.Cost })
+            {
+                string[] other = Lines(AsciiState.Render(sim, layer));
+                Assert.AreEqual('T', other[3].Substring(5)[5], layer.ToString());
+            }
         }
     }
 }

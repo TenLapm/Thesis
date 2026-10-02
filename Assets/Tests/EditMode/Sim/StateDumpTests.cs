@@ -13,7 +13,7 @@ namespace Thesis.Tests.Sim
 
         private static Simulation Running(int ticks)
         {
-            Simulation sim = TestSims.AsciiWithWalls(Map, new FixedPlanner(FixedPlanner.Group(count: 3, life: 100f, speed: 2f, intervalTicks: 5)), new SimConfig { PrepSeconds = 0.02f });
+            Simulation sim = TestSims.AsciiWithWalls(Map, new FixedPlanner(FixedPlanner.Group(count: 3, hp: 100f, speed: 2f, intervalTicks: 5)), new SimConfig { PrepSeconds = 0.02f });
             TestSims.Run(sim, ticks);
             return sim;
         }
@@ -47,7 +47,8 @@ namespace Thesis.Tests.Sim
             AgentState a = sim.State.LiveAgents[0];
             Assert.AreEqual(a.Id, (int)agent["Id"]);
             Assert.AreEqual(System.BitConverter.SingleToInt32Bits(a.Position.X).ToString("x8"), (string)agent["XBits"]);
-            Assert.AreEqual(System.BitConverter.SingleToInt32Bits(a.LifeTime).ToString("x8"), (string)agent["LifeBits"]);
+            Assert.AreEqual(System.BitConverter.SingleToInt32Bits(a.Hp).ToString("x8"), (string)agent["HpBits"]);
+            Assert.AreEqual("Wall", (string)walls[0]["Occupant"]);
         }
 
         [Test]

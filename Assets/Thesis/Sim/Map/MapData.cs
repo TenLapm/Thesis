@@ -82,6 +82,30 @@ namespace Thesis.Sim
                 throw new InvalidDataException("Map '" + Name + "': " + Spawns.Length + " spawns but " + (SpawnWorlds == null ? 0 : SpawnWorlds.Length) + " spawn world positions.");
             if (CoreWorld == null)
                 throw new InvalidDataException("Map '" + Name + "': CoreWorld is missing.");
+
+            CheckSpawnsReachTheCore();
+        }
+
+        // Player walls can never cut the core off (they are diggable), but the map's
+        // own static blockers can. An enemy spawned where no route exists would stand
+        // still for ever, and since WP-C1 there is no lifetime clock to remove it,
+        // so its wave would never end. Refuse such a map when it is loaded.
+        //
+        // The check runs the real flow field on an empty board, so it uses exactly the
+        // movement rules the game uses: a diagonal gap between two blockers is not a
+        // way through (the corner-cut rule).
+        private void CheckSpawnsReachTheCore()
+        {
+            if (Spawns.Length == 0) return;
+
+            var grid = new SimGrid(this);
+            new FlowField().Generate(grid, Core);
+            for (int i = 0; i < Spawns.Length; i++)
+            {
+                if (grid.Get(Spawns[i]).BestCost == SimNode.Infinity)
+                    throw new InvalidDataException("Map '" + Name + "': Spawns[" + i + "] " + Spawns[i] + " cannot reach the core " + Core
+                                                   + ". Static blockers cut it off (a diagonal gap between two blockers does not count as a way through).");
+            }
         }
 
         private void CheckTile(TileCoord t, string what)

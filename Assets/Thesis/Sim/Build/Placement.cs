@@ -5,8 +5,8 @@ using Thesis.Core;
 namespace Thesis.Sim
 {
     // Port of PlayerBuilder's placement rules. CanPlace is CLAUDE.md's I9: the
-    // single source of truth for placement legality, for walls (and later,
-    // towers - both occupy a tile as diggable terrain the same way). Everything
+    // single source of truth for placement legality, for walls and for towers
+    // (both occupy a tile as diggable terrain the same way). Everything
     // that decides "can I click here" - PlayerBuilder, GhostPreviewer, the
     // harness - must call this, never re-derive it.
     //
@@ -94,12 +94,53 @@ namespace Thesis.Sim
 
             log?.Add(new PlacementRecord
             {
+                Kind = PlacementKind.Wall,
                 Tick = tick,
                 ShapeName = shape.Name,
                 RotationTurns = rotationTurns,
                 OriginX = origin.X,
                 OriginY = origin.Y,
                 Tiles = tiles,
+            });
+            return true;
+        }
+
+        // A tower is bought and placed in one step, the same way a wall piece is:
+        // check legality (CanPlace, the same rule as for walls - I9), check the
+        // budget, spend, build, rebuild the field. It occupies ONE tile as diggable
+        // terrain. Returns false, changing nothing, when the tile or the budget
+        // does not allow it.
+        public static bool TryPlaceTower(SimGrid grid, MapData map, FlowField field, TowerDef def, TileCoord tile,
+                                         ref float buildBudget, int tick, IList<TowerState> towers,
+                                         IList<PlacementRecord> log, IList<SimEvent> events)
+        {
+            if (def == null) throw new ArgumentNullException(nameof(def));
+            if (towers == null) throw new ArgumentNullException(nameof(towers));
+
+            var tiles = new[] { tile };
+            if (!CanPlace(grid, map, tiles)) return false;
+            if (buildBudget < def.Cost) return false;
+
+            buildBudget -= def.Cost;
+
+            SimNode node = grid.Get(tile);
+            var tower = new TowerState(towers.Count, def, tile, node.Position, map.NodeDiameter, tick);
+            towers.Add(tower);
+            grid.SetTower(node, Math.Max(2, def.DigCost), Math.Max(0.5f, def.TowerHealth), tower.Id);
+            events?.Add(SimEvent.TowerPlaced(tower.Id, tile.X, tile.Y));
+
+            field.Generate(grid, map.Core);
+
+            log?.Add(new PlacementRecord
+            {
+                Kind = PlacementKind.Tower,
+                Tick = tick,
+                ShapeName = def.Id,
+                RotationTurns = 0,
+                OriginX = tile.X,
+                OriginY = tile.Y,
+                Tiles = tiles,
+                TowerId = tower.Id,
             });
             return true;
         }

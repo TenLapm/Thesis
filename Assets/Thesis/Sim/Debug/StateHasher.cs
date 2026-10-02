@@ -37,7 +37,11 @@ namespace Thesis.Sim
             AddRng(ref h, s.BagRng.Save());
             AddRng(ref h, s.SpawnRng.Save());
 
+            h.Add(s.Towers.Count);
+            for (int i = 0; i < s.Towers.Count; i++) AddTower(ref h, s.Towers[i]);
+
             s.Occupancy.AddToHash(ref h);
+            s.Damage.AddToHash(ref h);
 
             h.Add(s.PlacementLog.Count);
             for (int i = 0; i < s.PlacementLog.Count; i++) AddPlacement(ref h, s.PlacementLog[i]);
@@ -62,6 +66,7 @@ namespace Thesis.Sim
                 h.Add((int)s.Pending[i].Kind);
                 h.Add(s.Pending[i].X);
                 h.Add(s.Pending[i].Y);
+                h.Add(s.Pending[i].A);
             }
 
             return h.Value;
@@ -76,6 +81,8 @@ namespace Thesis.Sim
                 h.Add(n.TerrainCost);
                 h.Add(n.WallHealth);
                 h.Add(n.MaxWallHealth);
+                h.Add((int)n.Occupant);
+                h.Add(n.TowerId);
                 h.Add(n.BestCost);
                 h.Add(n.NextIndex);
             }
@@ -88,13 +95,34 @@ namespace Thesis.Sim
             h.Add(a.Position.Y);
             h.Add(a.MoveSpeed);
             h.Add(a.DigRate);
-            h.Add(a.LifeTime);
-            h.Add(a.DeathReward);
+            h.Add(a.Hp);
+            h.Add(a.MaxHp);
+            for (int i = 0; i < a.Resist.Length; i++) h.Add(a.Resist[i]);
+            h.Add(a.SlowTicks);
+            h.Add(a.SlowFactor);
+            h.Add(a.KillReward);
             h.Add(a.WallBreakReward);
             h.Add(a.IsAlive);
             h.Add(a.Leaked);
+            h.Add(a.Killed);
             h.Add(a.WaveIndex);
             h.Add(a.MinCostSeen);
+        }
+
+        // Every tower, destroyed ones included: there are few, and a destroyed
+        // tower's id and tile still matter to anything that refers to it.
+        private static void AddTower(ref Fnv1a64 h, TowerState t)
+        {
+            h.Add(t.Id);
+            h.Add(t.Def.Id);
+            h.Add(t.Tile.X);
+            h.Add(t.Tile.Y);
+            h.Add(t.PlacedTick);
+            h.Add(t.Cooldown);
+            h.Add(t.IsAlive);
+            h.Add(t.DamageDealt);
+            h.Add(t.Shots);
+            h.Add(t.Kills);
         }
 
         private static void AddRng(ref Fnv1a64 h, Pcg32State r)
@@ -105,6 +133,8 @@ namespace Thesis.Sim
 
         private static void AddPlacement(ref Fnv1a64 h, PlacementRecord p)
         {
+            h.Add((int)p.Kind);
+            h.Add(p.TowerId);
             h.Add(p.Tick);
             h.Add(p.ShapeName);
             h.Add(p.RotationTurns);
@@ -130,9 +160,11 @@ namespace Thesis.Sim
                 AgentGroup g = p.Groups[i];
                 h.Add(g.SpawnIndex);
                 h.Add(g.Count);
+                h.Add(g.Archetype);
                 h.Add(g.MoveSpeed);
-                h.Add(g.LifeTime);
+                h.Add(g.Hp);
                 h.Add(g.DigRate);
+                for (int r = 0; r < g.Resist.Length; r++) h.Add(g.Resist[r]);
                 h.Add(g.SpawnIntervalTicks);
                 h.Add(g.StartDelayTicks);
             }
@@ -148,9 +180,13 @@ namespace Thesis.Sim
             h.Add(o.WaveIndex);
             h.Add(o.StrategyId);
             h.Add(o.Spawned);
-            h.Add(o.Stalled);
+            h.Add(o.Killed);
             h.Add(o.Leaked);
+            h.Add(o.Removed);
+            h.Add(o.TimedOut);
             h.Add(o.WallsBreached);
+            h.Add(o.TowersDestroyed);
+            for (int i = 0; i < o.DamageByType.Length; i++) h.Add(o.DamageByType[i]);
             h.Add(o.CoreHpBefore);
             h.Add(o.CoreHpAfter);
             h.Add(o.BudgetBefore);

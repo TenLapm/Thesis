@@ -94,7 +94,7 @@ namespace Thesis.Tests.Harness
         {
             config = config ?? new SimConfig();
             AsciiFixture f = AsciiMap.Parse(ascii);
-            return new Simulation(config, f.Map, TestShapes.SampleSceneLibrary(), 1, new EscalationPlanner(config, f.Map));
+            return new Simulation(config, f.Map, TestShapes.SampleSceneLibrary(), TestTowers.Roster(), 1, new EscalationPlanner(config, f.Map));
         }
 
         private static int SpawnCost(Simulation sim) { return sim.State.Grid.Get(sim.Map.Spawns[0]).BestCost; }

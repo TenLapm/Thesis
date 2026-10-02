@@ -22,7 +22,7 @@ namespace Thesis.Cli
             MapData map = MapData.Load(args.Get("--map", Path.Combine("Maps", "SampleScene.map.json")));
             ShapeDef[] shapes = ShapeLibraryFile.Load(args.Get("--shapes", Path.Combine("Maps", "Shapes.json")));
 
-            List<string> written = PinnedEpisodes.RecordAll(outDir, PinnedEpisodes.DotnetTag, "headless " + RuntimeInformation.FrameworkDescription, map, shapes);
+            List<string> written = PinnedEpisodes.RecordAll(outDir, PinnedEpisodes.DotnetTag, "headless " + RuntimeInformation.FrameworkDescription, map, shapes, TowerRoster.Placeholder());
             foreach (string path in written)
             {
                 ReplayFile file = ReplayFile.Load(path);

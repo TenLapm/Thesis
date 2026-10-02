@@ -20,7 +20,10 @@ namespace Thesis.Sim
     // player builds and the harness assembly is editor-only.
     public sealed class ReplayFile
     {
-        public const int CurrentSchema = 1;
+        // 1: the game before towers (WP5). 2: adds the tower roster and the
+        // PlaceTower command (WP-C1). A file of another schema is refused: its
+        // commands and hashes describe a different game.
+        public const int CurrentSchema = 2;
 
         public int Schema = CurrentSchema;
 
@@ -37,8 +40,9 @@ namespace Thesis.Sim
         public SimConfig Config;
         public MapData MapData;
         public ShapeDef[] Shapes;
+        public TowerDef[] Towers;
 
-        // ReplaySetup.Hash(Config, MapData, Shapes) at record time. Validate()
+        // ReplaySetup.Hash(Config, MapData, Shapes, Towers) at record time. Validate()
         // recomputes it from the loaded values.
         public string SetupHash;
 
@@ -104,16 +108,16 @@ namespace Thesis.Sim
         public void Validate()
         {
             if (Schema != CurrentSchema) throw new InvalidDataException("[Replay] Schema " + Schema + ", expected " + CurrentSchema + ".");
-            if (Config == null || MapData == null || Shapes == null) throw new InvalidDataException("[Replay] Config, MapData and Shapes are all required.");
+            if (Config == null || MapData == null || Shapes == null || Towers == null) throw new InvalidDataException("[Replay] Config, MapData, Shapes and Towers are all required.");
             if (Commands == null || WaveHashes == null) throw new InvalidDataException("[Replay] Commands and WaveHashes must be present (they may be empty).");
             if (FinalTick < 0) throw new InvalidDataException("[Replay] FinalTick is " + FinalTick + ".");
 
             Config.Validate();
             MapData.Validate();
 
-            string setup = Hex(ReplaySetup.Hash(Config, MapData, Shapes));
+            string setup = Hex(ReplaySetup.Hash(Config, MapData, Shapes, Towers));
             if (setup != SetupHash)
-                throw new InvalidDataException("[Replay] The config, map or shapes in this file are not the ones it was recorded with (setup hash " + setup
+                throw new InvalidDataException("[Replay] The config, map, shapes or towers in this file are not the ones it was recorded with (setup hash " + setup
                                                + ", recorded " + SetupHash + "). Either the file was edited or a number did not survive being written as JSON.");
 
             int last = 0;

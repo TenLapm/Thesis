@@ -43,17 +43,17 @@ namespace Thesis.Tests.Sim
             var source = new SimConfig { PrepSeconds = 0.1f };
             var untouched = new SimConfig { PrepSeconds = 0.1f };
 
-            var shares = new Simulation(source, map, TestShapes.SampleSceneLibrary(), 1, new EscalationPlanner(source, map));
+            var shares = new Simulation(source, map, TestShapes.SampleSceneLibrary(), TestTowers.Roster(), 1, new EscalationPlanner(source, map));
             SimConfig own = source.Clone();
-            var copied = new Simulation(own, map, TestShapes.SampleSceneLibrary(), 1, new EscalationPlanner(own, map));
-            var reference = new Simulation(untouched, map, TestShapes.SampleSceneLibrary(), 1, new EscalationPlanner(untouched, map));
+            var copied = new Simulation(own, map, TestShapes.SampleSceneLibrary(), TestTowers.Roster(), 1, new EscalationPlanner(own, map));
+            var reference = new Simulation(untouched, map, TestShapes.SampleSceneLibrary(), TestTowers.Roster(), 1, new EscalationPlanner(untouched, map));
 
             TestSims.Run(shares, 50);
             TestSims.Run(copied, 50);
             TestSims.Run(reference, 50);
             Assert.AreEqual(reference.ComputeHash(), shares.ComputeHash(), "identical until the edit");
 
-            source.DeathReward = 7f; // "edited in the inspector during play": agents still to spawn carry it
+            source.KillReward = 7f; // "edited in the inspector during play": agents still to spawn carry it
 
             TestSims.Run(shares, 200);
             TestSims.Run(copied, 200);

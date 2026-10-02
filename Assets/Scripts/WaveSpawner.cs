@@ -80,8 +80,9 @@ public class WaveSpawner : MonoBehaviour
                 active[e.IntA] = view;
                 activeList.Add(view);
                 break;
-            case SimEventKind.AgentStalled:
+            case SimEventKind.AgentKilled:
             case SimEventKind.AgentLeaked:
+            case SimEventKind.AgentRemoved:
                 if (active.TryGetValue(e.IntA, out FlowAgent done))
                 {
                     active.Remove(e.IntA);

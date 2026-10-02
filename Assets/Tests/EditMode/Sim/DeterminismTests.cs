@@ -31,11 +31,18 @@ namespace Thesis.Tests.Sim
             }
 
             // The run must actually have exercised the rules, or this proves little.
+            int killed = 0;
+            foreach (AgentState agent in a.State.Agents) if (agent.Killed) killed++;
+            float damage = 0f;
+            foreach (TowerState tower in a.State.Towers) damage += tower.DamageDealt;
+
             Assert.GreaterOrEqual(a.State.WaveIndex, 3, "waves played");
-            Assert.Greater(a.State.PlacementLog.Count, 5, "walls placed");
+            Assert.Greater(a.State.PlacementLog.Count, 5, "walls and towers placed");
+            Assert.Greater(a.State.Towers.Count, 2, "towers placed");
+            Assert.Greater(damage, 0f, "towers hit something");
             Assert.Greater(a.State.Agents.Count, 200, "agents spawned");
-            TestContext.WriteLine("20k ticks: waves=" + a.State.WaveIndex + " walls=" + a.State.PlacementLog.Count
-                                  + " agents=" + a.State.Agents.Count + " last=" + a.State.LastOutcome);
+            TestContext.WriteLine("20k ticks: waves=" + a.State.WaveIndex + " placements=" + a.State.PlacementLog.Count + " towers=" + a.State.Towers.Count
+                                  + " agents=" + a.State.Agents.Count + " killed=" + killed + " tower damage=" + damage + " last=" + a.State.LastOutcome);
         }
 
         // The run above never digs: random walls leave detours open. Digging is where
@@ -66,9 +73,9 @@ namespace Thesis.Tests.Sim
             // each line breaks exactly once (found the hard way: one line gave 1 breach).
             // Five lines -> at least five crowd breaches and five mid-run rebuilds.
             Assert.GreaterOrEqual(breaches, WallRows.Length, "every wall line must have been dug through");
-            int stalled = 0;
-            foreach (AgentState agent in a.State.Agents) if (!agent.IsAlive && !agent.Leaked) stalled++;
-            TestContext.WriteLine("dig run: breaches=" + breaches + " stalled=" + stalled + " waves=" + a.State.WaveIndex + " agents=" + a.State.Agents.Count);
+            int killed = 0;
+            foreach (AgentState agent in a.State.Agents) if (agent.Killed) killed++;
+            TestContext.WriteLine("dig run: breaches=" + breaches + " killed=" + killed + " towers=" + a.State.Towers.Count + " waves=" + a.State.WaveIndex + " agents=" + a.State.Agents.Count);
         }
 
         // Rows clear of the spawn (3,3) and core (34,34) tiles.

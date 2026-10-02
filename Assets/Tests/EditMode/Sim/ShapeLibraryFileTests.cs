@@ -28,7 +28,7 @@ namespace Thesis.Tests.Sim
 
             // Stated as the one number a replay cares about.
             MapData map = TestSims.SampleSceneMap();
-            Assert.AreEqual(ReplaySetup.Hash(new SimConfig(), map, expected), ReplaySetup.Hash(new SimConfig(), map, exported));
+            Assert.AreEqual(ReplaySetup.Hash(new SimConfig(), map, expected, TestTowers.Roster()), ReplaySetup.Hash(new SimConfig(), map, exported, TestTowers.Roster()));
         }
 
         [Test]

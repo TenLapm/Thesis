@@ -16,7 +16,7 @@ namespace Thesis.Harness
         {
             if (file == null) throw new ArgumentNullException(nameof(file));
             IWavePlanner planner = Registry.CreatePlanner(file.Planner, file.Config, file.MapData);
-            return new Simulation(file.Config, file.MapData, file.Shapes, file.RngSeed, planner);
+            return new Simulation(file.Config, file.MapData, file.Shapes, file.Towers, file.RngSeed, planner);
         }
 
         // The simulation as it stood when State.Tick == tick. With

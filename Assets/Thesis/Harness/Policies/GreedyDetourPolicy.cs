@@ -48,6 +48,7 @@ namespace Thesis.Harness
         public void OnIntermission(Simulation sim, Action<SimCommand> send, IRandom rng)
         {
             SimState s = sim.State;
+            if (s.IsGameOver) return; // a finished game takes no input; do not mistake that for a refused placement
             for (int placed = 0; placed < MaxPlacementsPerIntermission; placed++)
             {
                 ShapeDef shape = s.Bag.CurrentShape;

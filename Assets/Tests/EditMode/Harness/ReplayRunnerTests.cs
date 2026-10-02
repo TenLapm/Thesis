@@ -75,7 +75,7 @@ namespace Thesis.Tests.Harness
         public void ADroppedCommandDiverges()
         {
             ReplayFile file = TestEpisodes.Reload(TestEpisodes.SmallReplay());
-            int index = file.Commands.FindIndex(c => c.Cmd == "PlaceShape");
+            int index = file.Commands.FindIndex(c => c.Cmd.StartsWith("Place"));
             int tick = file.Commands[index].Tick;
             file.Commands.RemoveAt(index);
 
@@ -137,6 +137,7 @@ namespace Thesis.Tests.Harness
             var recorder = new ReplayRecorder(sim, recordTickHashes: true);
 
             Send(sim, recorder, SimCommand.PlaceShape(5, 2));
+            Send(sim, recorder, SimCommand.PlaceTower(0, 6, 3));
             Send(sim, recorder, SimCommand.StartWaveNow());
             for (int i = 0; i < 300; i++)
             {
@@ -170,12 +171,13 @@ namespace Thesis.Tests.Harness
             sim.FlushInput();
         }
 
-        // Moves the first PlaceShape sent after tick 0 one tick later, keeping the
-        // command list in tick order. Returns the tick it was recorded at.
+        // Moves the first build command (a wall piece or a tower) sent after tick 0
+        // one tick later, keeping the command list in tick order. Returns the tick it
+        // was recorded at.
         private static int MoveFirstLatePlacementOneTickLater(ReplayFile file)
         {
-            int index = file.Commands.FindIndex(c => c.Cmd == "PlaceShape" && c.Tick > 0);
-            Assert.GreaterOrEqual(index, 0, "the episode must place a wall after the first wave");
+            int index = file.Commands.FindIndex(c => c.Cmd.StartsWith("Place") && c.Tick > 0);
+            Assert.GreaterOrEqual(index, 0, "the episode must build something after the first wave");
 
             ReplayCommand moved = file.Commands[index];
             int tick = moved.Tick;

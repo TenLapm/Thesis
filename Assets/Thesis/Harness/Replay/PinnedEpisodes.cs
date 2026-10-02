@@ -35,46 +35,47 @@ namespace Thesis.Harness
         }
 
         // Small on purpose: every file is re-run on every test run, twice. Between
-        // them they cover building, digging, breaches, stalls, leaks, several
-        // waves, and a game over; two carry a hash for every tick.
+        // them they cover towers of every kind (single target, splash, slow), kills,
+        // leaks, wall building, digging and breaches, several waves, and a game over.
+        // Two carry a hash for every tick.
         private static readonly Spec[] Specs =
         {
             new Spec
             {
-                Name = "greedy-5waves-longcore",
-                Config = () => new SimConfig { CoreMaxHp = 100000 },
-                Policy = SmallGreedy,
+                Name = "sentry-6waves",
+                Config = () => new SimConfig(),
+                Policy = () => new SentryPolicy(),
                 Seed = 7,
-                MaxWaves = 5,
+                MaxWaves = 6,
                 TickHashes = false,
             },
             new Spec
             {
-                Name = "greedy-to-gameover",
+                Name = "mixed-3waves",
                 Config = () => new SimConfig(),
-                Policy = SmallGreedy,
+                Policy = () => SequencePolicy.Mixed(wallsPerPhase: 2, towersPerPhase: 6, wallSearchOrigins: 12),
                 Seed = 3,
-                MaxWaves = 25,
+                MaxWaves = 3,
                 TickHashes = true,
             },
             new Spec
             {
-                Name = "idle-to-gameover",
+                Name = "walls-only-to-gameover",
                 Config = () => new SimConfig(),
-                Policy = () => new IdlePolicy(),
-                Seed = 1,
+                Policy = SmallGreedy,
+                Seed = 5,
                 MaxWaves = 25,
                 TickHashes = true,
             },
         };
 
         // A narrower search than the default keeps recording to a few seconds.
-        private static IPlayerPolicy SmallGreedy() { return new GreedyDetourPolicy { MaxPlacementsPerIntermission = 4, MaxOriginsPerPlacement = 12 }; }
+        private static IPlayerPolicy SmallGreedy() { return new GreedyDetourPolicy { MaxPlacementsPerIntermission = 3, MaxOriginsPerPlacement = 12 }; }
 
         // Records every episode on the runtime this is called from and writes
         // <directory>/<runtimeTag>-<name>.replay.json. Older files with the same tag
         // are removed first, so a renamed or dropped episode leaves nothing stale.
-        public static List<string> RecordAll(string directory, string runtimeTag, string build, MapData map, ShapeDef[] shapes)
+        public static List<string> RecordAll(string directory, string runtimeTag, string build, MapData map, ShapeDef[] shapes, TowerDef[] towers)
         {
             if (string.IsNullOrEmpty(runtimeTag)) throw new ArgumentException("A runtime tag is required.", nameof(runtimeTag));
             Directory.CreateDirectory(directory);
@@ -88,6 +89,7 @@ namespace Thesis.Harness
                     Config = spec.Config(),
                     Map = map,
                     Shapes = shapes,
+                    Towers = towers,
                     Seed = spec.Seed,
                     Policy = spec.Policy(),
                     MaxWaves = spec.MaxWaves,

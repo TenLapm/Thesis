@@ -3,10 +3,12 @@
 Unity / C# / URP. Maze tower-defense with a flow-field pathfinder. The thesis
 work is an adaptive wave director driven by a contextual bandit.
 
-**Status (2026-10-02).** The base game now runs on a deterministic, headless
-simulation core (`Assets/Thesis`), with Unity as a thin host around it
-(`Docs/WORKPLAN.md` WP0–WP5 and the hardening pass WP-H are done). Towers and the
-director itself are **not built yet**. Next package: WP-C1.
+**Status (2026-10-02).** The game runs on a deterministic, headless simulation core
+(`Assets/Thesis`), with Unity as a thin host around it (`Docs/WORKPLAN.md` WP0–WP5,
+the hardening pass WP-H and the combat core WP-C1 are done). Enemies have hit points
+and towers shoot them. **Not built yet:** flying and sapper enemies (WP-C2), the shop
+and selling (WP-C3), the tower UI (WP-C4), balance (WP-C5), and the director itself.
+Next package: WP-C2.
 
 Read §1 and §2 before writing any code.
 
@@ -19,37 +21,36 @@ Read §1 and §2 before writing any code.
 
 ## 1. What the game actually is today
 
-> **Planned change (decided 2026-09-15, see §2):** towers with a random shop are
-> being added and the lifetime clock removed. This section still describes the
-> code as it is *now*. The simulation port (`Docs/WORKPLAN.md` WP0–WP5) reproduces
-> it faithfully first, and WP-C1 then changes it. After WP-C1, "the player's lever
-> is time, not damage" is no longer true.
+A maze tower defense with one unusual rule: **nothing the player builds blocks the
+path.**
 
-This is **not** a conventional tower defense. There are no towers, no projectiles
-and no damage-dealing structures anywhere in the project.
-
-- The player places **tetromino-shaped walls** from a budget, using a 7-bag
-  randomiser with a hold slot and rotation. SampleScene's library is I, O, T, S, Z,
-  J, L in that order (`Cube` and `Wall` assets exist but are not in the library).
-- Walls are **not** obstacles. They are expensive, destructible *terrain*:
-  `SimNode.TerrainCost` (the shape's `DigCost`, default 15) plus `SimNode.WallHealth`
-  (seconds of chewing). A path to the core therefore **always exists**.
-- Enemies follow the flow field. When standing on a wall tile they **chew
-  through it** instead of walking. The field's cost model means enemies
-  automatically trade "walk around" against "dig through" — nobody scripts that
-  choice.
-- Every enemy carries a **lifetime clock** (`AgentState.LifeTime`) that
-  ticks down while walking *and* while digging. The player wins an enemy by
-  making the route take longer than that clock.
-  - Clock expires → **stalled** (the game's equivalent of a kill), player gains
-    `DeathReward` = 0.2 build budget.
+- The player builds two things from one budget: **tetromino-shaped walls** (a 7-bag
+  randomiser with a hold slot and rotation; SampleScene's library is I, O, T, S, Z,
+  J, L in that order) and, since WP-C1, **towers** (one tile each).
+- Neither is an obstacle. Both are expensive, destructible *terrain*:
+  `SimNode.TerrainCost` (a shape's `DigCost`, default 15; a tower's, default 20) plus
+  `SimNode.WallHealth` (seconds of chewing). A path to the core therefore **always
+  exists**.
+- Enemies follow the flow field. When standing on a built tile they **chew through
+  it** instead of walking. The field's cost model means enemies automatically trade
+  "walk around" against "dig through" — nobody scripts that choice. Chewing through a
+  tower's tile destroys the tower.
+- Enemies have **hit points**. Every tower in range shoots; an enemy at 0 HP is
+  killed.
+  - Killed → the player gains `KillReward` = 0.2 build budget.
   - Enemy reaches the core → core HP − 1; the core has 10 HP.
-  - Enemy fully breaches a wall tile → player gains `WallBreakReward` = 1.0
-    build budget (yes, the player is *paid* when walls are destroyed).
+  - Enemy fully breaches a wall tile → the player gains `WallBreakReward` = 1.0 (yes,
+    the player is *paid* when a wall is destroyed). A destroyed tower pays nothing.
 
-So the player's lever is **time**, not damage. Keep that in mind: every instinct
-imported from normal TD ("place towers", "damage per second", "damage types")
-does not apply here.
+So the player has two levers: **damage** (towers) and **time under fire** (walls,
+which bend and lengthen the route past the towers). Walls alone win nothing: the
+lifetime clock that made a long route lethal in the original game was removed in
+WP-C1 (§2). The static baseline escalates every wave: more enemies, faster, closer
+together, with more hit points.
+
+What is still a placeholder: three unbalanced tower types (`TowerRoster`: a
+single-target, a splash and a slowing tower, one per damage type), bought in Unity
+with the Z / X / C keys. There is no shop, no selling, no real tower UI yet.
 
 ### Where the rules live
 
@@ -94,7 +95,9 @@ Assets/Thesis/                pure C#, no UnityEngine; each folder is one assemb
   Sim/        the game rules
     Simulation.cs SimState.cs SimConfig.cs   tick loop, all mutable state, all tunables
     Grid/     SimGrid (GetNeighbors, corner-cut rule), SimNode, FlowField, Route
-    Agents/   AgentState, AgentSystem          movement, digging, lifetime clock
+    Agents/   AgentState, AgentSystem          hit points, movement, digging, slow
+    Combat/   TowerDef, TowerState, TowerSystem (the tower pass), Targeting,
+              DamageMap, DamageType, TowerRoster (placeholder roster)
     Build/    ShapeDef, ShapeBag (7-bag, hold, rotate), Placement (CanPlace = I9)
     Waves/    IWavePlanner, EscalationPlanner (static baseline), SafePlanner,
               PlanValidator, WavePlan, WaveOutcome
@@ -102,15 +105,15 @@ Assets/Thesis/                pure C#, no UnityEngine; each folder is one assemb
     Debug/    StateHasher, StateDump, AsciiMap, AsciiState, BenchScenarios
     Map/ Commands/ Events/ Stats/
   Learning/   empty until WP7        Director/   empty until WP8
-  Harness/    editor and headless only: EpisodeRunner, scripted policies,
-              ReplayRunner, PinnedEpisodes, PathfindingBench
+  Harness/    editor and headless only: EpisodeRunner, scripted policies (Idle,
+              GreedyDetour, Sentry, Sequence), ReplayRunner, PinnedEpisodes, PathfindingBench
 Assets/Scripts/               Unity host and views
   SimHost.cs               runs the Simulation: fixed ticks, input in, events out, records the replay
   DirectorHost.cs          picks the planner (the study condition), wraps it in SafePlanner
   SceneMapBuilder.cs       scene → MapData
   WaveSpawner.cs BlockManager.cs PlayerCore.cs PlayerBuilder.cs
                            thin adapters that keep the member names the HUD reads
-  FlowAgent.cs             view only: interpolates one AgentState
+  FlowAgent.cs             view only: interpolates one AgentState, shows its HP bar
   GridManager.cs Node.cs FlowFieldManager.cs   view data and bindings, no rules
   FlowFieldVisualizer.cs PathPreviewer.cs GhostPreviewer.cs CanvasDashboard.cs
   GameSpeedController.cs   pause / speed; pause blocks building
@@ -172,7 +175,8 @@ Consequences to keep in mind:
 - A wall breach currently pays the player +1.0 budget. Whether that stays under
   the tower economy is a balance question, not a given.
 
-`BuildProfiler` is unblocked once the combat core exists (`Docs/WORKPLAN.md` WP-C1).
+The combat core exists since WP-C1, so `BuildProfiler` is no longer blocked by it. It
+still needs the shop log (WP-C3) for the features that must tell a choice from an offer.
 
 ---
 
@@ -194,12 +198,11 @@ Therefore:
 - A change that makes the game harder but does not change how the player builds
   is a regression.
 
-Note that `WaveSpawner` **already escalates difficulty** every wave (agent count,
-speed, lifetime, spawn delay). That escalation is the *static baseline condition*
-for the study. The director varies attack **shape** on top of it; the shared
-threat budget must hold total strength constant across strategies at a given wave
-number. After WP-C1 the lifetime part of that escalation becomes an HP part, and
-the principle stays the same.
+Note that the game **already escalates difficulty** every wave (`EscalationPlanner`:
+agent count, speed, hit points, spawn delay). That escalation is the *static baseline
+condition* for the study. The director varies attack **shape** on top of it; the
+shared threat budget must hold total strength constant across strategies at a given
+wave number.
 
 ---
 

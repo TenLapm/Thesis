@@ -740,3 +740,141 @@ thesis replay Runs/Sessions/20261002-062303_seed1/replay.json --per-tick   → O
 - The week numbers in the re-plan assume W5 began on 14 September.
 - Still open from before: a session played by hand; the pre-pilot checklist at the end of `WORKPLAN.md`.
 - `main` on GitHub is still the first commit; all work is on `sim-core/wp0-wp1`.
+
+---
+
+## 2026-10-02 — WP-C1 Combat core: hit points, towers, damage
+
+**Status:** done. Every "must pass" item has a test, and all tests pass in both runners.
+**This package changes the rules on purpose:** the lifetime clock is gone, enemies have hit
+points, towers kill them. Every earlier recording describes the old game; the pinned
+recordings were re-made.
+
+**What changed**
+- `Thesis.Sim/Combat` (new): `DamageType`, `TargetingMode`, `TowerDef`, `TowerState`,
+  `TowerSystem` (the tower pass), `Targeting`, `DamageMap`, `TowerRoster` (placeholder roster).
+- `AgentState`: `LifeTime` removed; `Hp`, `MaxHp`, `Resist[]`, `SlowTicks`, `SlowFactor`, `Killed`.
+  `AgentSystem`: no clock; a slow scales the step; chewing through a tower tile destroys the tower.
+- `SimNode`: `Occupant { None, Wall, Tower }` and `TowerId`. `SimGrid.SetTower`.
+- `Placement.TryPlaceTower`, `PlacementRecord.Kind` / `TowerId`, and the command
+  `PlaceTower(towerIndex, x, y)`.
+- `Simulation`: takes a tower roster; tick order is now commands, phase machine, **tower pass**,
+  agent pass, field rebuild, **wave backstop**, wave boundary, core. `SimState.Towers`, `SimState.Damage`.
+- `AgentGroup`: `Hp`, `Resist[]`, `Archetype` instead of `LifeTime`. `EscalationPlanner` v2: hit
+  points 10, +2 a wave (placeholder), instead of a lifetime that grew 4 s a wave.
+- `WaveOutcome`: `Killed` instead of `Stalled`; `DamageByType[]`, `TowersDestroyed`, `Removed`, `TimedOut`.
+- `SimConfig`: `KillReward` (was `DeathReward`), `TowerBreachReward`, `BaseHp`, `HpIncrementPerWave`,
+  `MinSlowFactor`, `MaxWaveSeconds`; the three lifetime fields are gone.
+- **Every wave must end** (review item A2): `PlanValidator` refuses `MoveSpeed` 0 and `Hp` 0;
+  a slow has a floor; `MapData.Validate` runs the flow field and refuses a map whose spawn cannot
+  reach the core; a wave still running after `MaxWaveSeconds` is ended by force.
+- Events: `AgentKilled` (in place of `AgentStalled`), `TowerPlaced`, `TowerDestroyed`,
+  `TowerFired`, `AgentRemoved`, `WaveTimedOut`. `SimEvent` gained a third integer slot.
+- Replay **schema 2**: the tower roster is stored and hashed with the setup; `ReplayCommand.A`.
+- `StateHasher`, `StateDump`, `AsciiState` (towers are `T`) cover the new state.
+- Harness: `SentryPolicy` (towers), `SequencePolicy` (`mixed` = walls, then towers),
+  `EpisodeOptions.Towers`, new pinned episodes. CLI: `--policy sentry|mixed`.
+- Unity: `SimHost` passes the roster; `FlowAgent`'s bar shows HP; `WaveSpawner` releases a view
+  on `AgentKilled` / `AgentRemoved`; `PlayerBuilder` draws a tower as a tinted wall cube, removes
+  it on `TowerDestroyed`, and has **temporary keys Z / X / C** to buy the three towers at the
+  mouse tile; `ScenarioBenchmark` adapted. `SimConfig.asset` re-saved.
+
+**Deviations from WORKPLAN, and why**
+- **`PlaceTower` is a player command now, not an internal helper until WP-C3.** Without a recorded
+  way to place a tower, no replay could contain one, so the Mono-versus-.NET check would not have
+  covered any of the new arithmetic (range, damage, slow) until the shop existed. It also made the
+  "done when" run an ordinary recorded episode. WP-C3 changes the first argument from a roster
+  index to a shop offer slot.
+- **The simulation takes a tower roster** and the replay stores it (schema 2). Needed for the above.
+- **Unity can place towers already** (three keys, cubes for visuals). WP-C4 owns the real UI; this
+  is the smallest thing that keeps the game playable in between, because without towers every
+  enemy now reaches the core.
+- **Two explicit diagnostics deleted:** `CrossRuntimeTests` (it pinned one hash of the old game) and
+  `CrossRuntimeBisectTests`. `PinnedReplayTests` and `thesis replay --per-tick --dump-tick` do both jobs.
+- Extra small files for the one-type-per-file rule: `DamageTypes`, `TargetingMode`, `Occupant`,
+  `PlacementKind`.
+- `Targeting` has one mode (`First`). More are added when a tower needs one.
+
+**Decided while building** (all in `ARCHITECTURE.md` §4.6 and pinned by tests)
+- Damage always means **effective** damage (no overkill), in the damage map, the per-type totals
+  and a tower's own total.
+- A kill is settled at once: the enemy is dead to every later tower in the same tick.
+- Splash hits every *other* live enemy near the target, in id order, for the same damage.
+- Resist 0 is immunity: no damage and no slow.
+- A slow affects movement, not digging, and lasts exactly `SlowTicks` steps.
+- The backstop removes what is left with no core damage and no reward, and marks the outcome `TimedOut`.
+
+**Findings**
+- **Walls alone no longer win anything.** The walls-only bot loses in wave 1, exactly like the bot
+  that builds nothing: there is no clock for a long route to run out. Walls now only buy time
+  under fire. That is the intended design (CLAUDE.md §2), but it is a real change to how the game
+  plays, and it is the first thing to check by hand.
+- **The scripted players, real settings, seed 1:**
+
+  | Player | Result |
+  |---|---|
+  | idle | lost in wave 1, 0 kills |
+  | walls only (greedy) | lost in wave 1, 0 kills |
+  | towers (sentry) | waves 1–9 with no leak, lost in wave 10 (35 towers) |
+  | walls, then towers (mixed) | lost in wave 2 |
+  | towers, then walls | lost in wave 1 |
+
+  Towers-then-walls loses at once because the walls reroute the enemies away from the towers
+  just bought. That order was the first version of `mixed`; it is now walls first. Even so, the
+  mixed bot is worse than towers alone: with these placeholder prices a wall costs budget and
+  buys little. Whether walls are worth building is a question for the balance check (WP-C5).
+- **Splash is very strong against this game's enemy stream.** Enemies arrive 0.2 s apart, about
+  an eighth of a tile, so a splash of one tile hits a dozen at once. The placeholder cannon was
+  cut to 3 damage and 0.75 tiles before the numbers above were taken.
+- **Combat is bit-identical on both runtimes.** The same three tower episodes were recorded
+  under .NET and under Mono; commands and every tick hash are equal, and each file replays on the
+  other runtime. A session played in the Unity editor (8,293 ticks, 3 waves, towers, a wall,
+  input while paused, a mid-wave build, x3 and `timeScale` 12) replays headless with every tick
+  hash equal. The new float pins (a slowed step, a range check on the edge) were computed under
+  .NET and pass under Mono.
+- **The config asset kept its old fields in YAML** and had none of the new ones. Unity filled the
+  new ones from the C# initialisers (checked: the asset equals the defaults). Re-saved.
+- **Tooling:** a file can be locked for a moment while Unity re-imports (one write failed and was
+  repeated). A Bash heredoc also fails when its text has an odd number of apostrophes, not only on
+  non-ASCII characters; scripts are written to a file instead.
+
+**Unity play-mode check (SampleScene, driven through Unity MCP)**
+- `[Sim] Started ... planner 'escalation'`, then the hint for the Z / X / C keys. 0 errors or warnings.
+- `PlayerBuilder.TryPlaceTower` (what the keys call) placed an archer and a cannon and refused one on
+  the spawn tile. The tower bot placed three more through `SimHost.Submit`. All five were drawn.
+- Wave 1 at x3: 185 shots and 82 kills by tick 1,224; agent views equal live agents; the lowest HP
+  bar read 0.70. Waves 1 and 2 were cleared with the core at 10/10.
+- A tower and a wall piece were placed in the middle of wave 2; a rotate was sent while paused.
+- Lost in wave 3 with 86 budget unspent (100 killed, 10 leaked).
+- The session's replay verifies headless and is now `Results/pinned-replays/unity-session-towers.replay.json`.
+
+**Tests:** 244 → 301 headless; Unity 303 including 2 explicit diagnostics.
+- New: `TowerSystemTests` (18), `CombatTests` (11), `WaveTerminationTests` (10), `SentryPolicyTests` (8).
+- Rewritten for the new rules: `AgentSystemTests`, `EscalationPlannerTests`, `SimulationPhaseTests`,
+  `SampleSceneRunTests`, parts of the replay, episode and planner tests.
+- `FloatDeterminismTests`: the base-lifetime pin is gone; a slowed step and a range check are pinned.
+- `EpisodeRunnerTests`: the 25-wave run now uses the mixed player and checks no wave timed out;
+  `TowersLetAPlayerSurviveClearlyLongerThanNoTowers` is the "done when".
+- `PinnedReplayTests`: 7 recordings (3 .NET, 3 Mono, 1 Unity session).
+
+**Commands run**
+```
+dotnet test Tools/dotnet/Thesis.Headless.sln                          → Passed 301/301
+Unity MCP: run_tests EditMode                                         → Passed 301, 2 explicit skipped
+thesis run --policy idle|greedy|sentry|mixed --seed 1 --waves 25      → the table above
+thesis pin                                                            → Results/pinned-replays/dotnet-*.replay.json (3)
+Unity MCP: Thesis/Replay/Record Pinned Episodes (Mono)                → Results/pinned-replays/mono-*.replay.json (3)
+Unity MCP: play SampleScene with towers                               → see above
+thesis replay Runs/Sessions/20261002-070116_seed1/replay.json --per-tick   → OK, 8,293 ticks, 3 waves
+```
+(`thesis` = `dotnet run --project Tools/dotnet/Thesis.Cli --`)
+
+**Known issues**
+- **Nothing is balanced.** Tower numbers, enemy hit points and prices are placeholders (WP-C5).
+- **No shop, no selling, no tower UI.** Any tower can be bought at any time, in Unity only with the
+  Z / X / C keys; a tower looks like a wall cube; nothing shows a shot or a range.
+- **Not played by hand yet.** The WP4 checklist is still open and now has more to look at: do the
+  towers feel right, do walls still feel worth building.
+- The recordings in `Results/2026-10-02_determinism/` are schema 1 and are refused now. That is
+  expected; they stay as the evidence for that result.
+- Enemies still all share one movement class; flying and sapper enemies are WP-C2.

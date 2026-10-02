@@ -5,43 +5,53 @@ using Thesis.Core;
 namespace Thesis.Sim
 {
     // One fingerprint of everything a run is built from besides the seed and the
-    // input: the config, the map and the shape library. A replay stores it, and
+    // input: the config, the map, the shape library and the tower roster. A replay stores it, and
     // loading a replay recomputes it from the values that came back out of the
     // JSON. If the two differ, a number did not survive the round trip (or the file
     // was edited), and the replay is refused with that message instead of failing
     // later as a mysterious divergence in wave 1.
     public static class ReplaySetup
     {
-        public static ulong Hash(SimConfig config, MapData map, ShapeDef[] shapes)
+        public static ulong Hash(SimConfig config, MapData map, ShapeDef[] shapes, TowerDef[] towers)
         {
             if (config == null) throw new ArgumentNullException(nameof(config));
             if (map == null) throw new ArgumentNullException(nameof(map));
             if (shapes == null) throw new ArgumentNullException(nameof(shapes));
+            if (towers == null) throw new ArgumentNullException(nameof(towers));
 
             var h = new Fnv1a64();
-            AddConfig(ref h, config);
+            AddFields(ref h, config);
             AddMap(ref h, map);
             AddShapes(ref h, shapes);
+
+            // Order is hashed as given: a PlaceTower command names a tower by its
+            // index in the roster.
+            h.Add(towers.Length);
+            for (int i = 0; i < towers.Length; i++) AddFields(ref h, towers[i]);
             return h.Value;
         }
 
-        // By reflection, in name order, so a tunable added to SimConfig later is
-        // covered without anyone remembering to list it here. This runs once per
-        // run, never per tick. Floats go in by bit pattern.
-        private static void AddConfig(ref Fnv1a64 h, SimConfig config)
+        // Every public field of a flat data object, by reflection and in name order,
+        // so a tunable added to SimConfig or TowerDef later is covered without anyone
+        // remembering to list it here. This runs once per run, never per tick. Floats
+        // go in by bit pattern; an enum by its number.
+        private static void AddFields(ref Fnv1a64 h, object data)
         {
-            FieldInfo[] fields = typeof(SimConfig).GetFields(BindingFlags.Public | BindingFlags.Instance);
+            Type type = data.GetType();
+            FieldInfo[] fields = type.GetFields(BindingFlags.Public | BindingFlags.Instance);
             Array.Sort(fields, (a, b) => string.CompareOrdinal(a.Name, b.Name));
 
             h.Add(fields.Length);
             for (int i = 0; i < fields.Length; i++)
             {
                 h.Add(fields[i].Name);
-                object value = fields[i].GetValue(config);
+                object value = fields[i].GetValue(data);
                 if (value is float) h.Add((float)value);
                 else if (value is int) h.Add((int)value);
                 else if (value is bool) h.Add((bool)value);
-                else throw new InvalidOperationException("[Replay] SimConfig." + fields[i].Name + " has type " + fields[i].FieldType.Name
+                else if (value is string || value == null && fields[i].FieldType == typeof(string)) h.Add((string)value);
+                else if (value is Enum) h.Add(Convert.ToInt32(value));
+                else throw new InvalidOperationException("[Replay] " + type.Name + "." + fields[i].Name + " has type " + fields[i].FieldType.Name
                                                          + ", which ReplaySetup cannot hash. Add a case for it.");
             }
         }

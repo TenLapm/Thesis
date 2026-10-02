@@ -35,7 +35,18 @@ namespace Thesis.Tests.Harness
 
             // FromJson already validated the setup hash; this states the claim outright:
             // the config, map and shapes that came back are bit-for-bit the recorded ones.
-            Assert.AreEqual(a.SetupHash, ReplayFile.Hex(ReplaySetup.Hash(b.Config, b.MapData, b.Shapes)));
+            Assert.AreEqual(a.SetupHash, ReplayFile.Hex(ReplaySetup.Hash(b.Config, b.MapData, b.Shapes, b.Towers)));
+
+            // Both kinds of build command are in the recording and survive the trip.
+            Assert.IsTrue(a.Commands.Exists(c => c.Cmd == "PlaceTower"), "towers were placed");
+            Assert.IsTrue(a.Commands.Exists(c => c.Cmd == "PlaceShape"), "walls were placed");
+            Assert.AreEqual(a.Towers.Length, b.Towers.Length);
+            for (int i = 0; i < a.Towers.Length; i++)
+            {
+                Assert.AreEqual(a.Towers[i].Id, b.Towers[i].Id);
+                Assert.AreEqual(a.Towers[i].DamageType, b.Towers[i].DamageType);
+                Assert.AreEqual(a.Towers[i].Damage, b.Towers[i].Damage);
+            }
         }
 
         // The replay is rewritten at every wave boundary. Save() must swap the new
@@ -137,6 +148,14 @@ namespace Thesis.Tests.Harness
             Assert.AreEqual(4, place.X);
             Assert.AreEqual(9, place.Y);
 
+            ReplayCommand recorded = ReplayCommand.From(30, SimCommand.PlaceTower(2, 7, 5));
+            Assert.AreEqual("tick 30: PlaceTower(#2 @7,5)", recorded.ToString());
+            SimCommand tower = recorded.ToCommand();
+            Assert.AreEqual(SimCommandKind.PlaceTower, tower.Kind);
+            Assert.AreEqual(2, tower.A);
+            Assert.AreEqual(7, tower.X);
+            Assert.AreEqual(5, tower.Y);
+
             Assert.AreEqual(SimCommandKind.Rotate, ReplayCommand.From(0, SimCommand.Rotate()).ToCommand().Kind);
             Assert.AreEqual(SimCommandKind.Hold, ReplayCommand.From(0, SimCommand.Hold()).ToCommand().Kind);
             Assert.AreEqual(SimCommandKind.StartWaveNow, ReplayCommand.From(0, SimCommand.StartWaveNow()).ToCommand().Kind);
@@ -160,7 +179,7 @@ namespace Thesis.Tests.Harness
         {
             ReplayFile file = TestEpisodes.SmallReplay(waves: 1);
             file.MapData.OriginZ = -0f;
-            file.SetupHash = ReplayFile.Hex(ReplaySetup.Hash(file.Config, file.MapData, file.Shapes));
+            file.SetupHash = ReplayFile.Hex(ReplaySetup.Hash(file.Config, file.MapData, file.Shapes, file.Towers));
 
             string json = file.ToJson();
             try
@@ -183,7 +202,8 @@ namespace Thesis.Tests.Harness
         {
             MapData map = AsciiMap.Parse(TestEpisodes.SmallMap).Map;
             ShapeDef[] shapes = TestShapes.SampleSceneLibrary();
-            ulong baseline = ReplaySetup.Hash(new SimConfig(), map, shapes);
+            TowerDef[] towers = TestTowers.Roster();
+            ulong baseline = ReplaySetup.Hash(new SimConfig(), map, shapes, towers);
 
             FieldInfo[] fields = typeof(SimConfig).GetFields(BindingFlags.Public | BindingFlags.Instance);
             Assert.Greater(fields.Length, 15);
@@ -194,7 +214,7 @@ namespace Thesis.Tests.Harness
                 else if (f.FieldType == typeof(int)) f.SetValue(config, (int)f.GetValue(config) + 1);
                 else Assert.Fail("SimConfig." + f.Name + " has type " + f.FieldType.Name + ": teach ReplaySetup and this test about it.");
 
-                Assert.AreNotEqual(baseline, ReplaySetup.Hash(config, map, shapes), "SimConfig." + f.Name + " is not in the setup hash");
+                Assert.AreNotEqual(baseline, ReplaySetup.Hash(config, map, shapes, towers), "SimConfig." + f.Name + " is not in the setup hash");
             }
         }
 
@@ -203,17 +223,75 @@ namespace Thesis.Tests.Harness
         {
             MapData map = AsciiMap.Parse(TestEpisodes.SmallMap).Map;
             ShapeDef[] shapes = TestShapes.SampleSceneLibrary();
-            ulong baseline = ReplaySetup.Hash(new SimConfig(), map, shapes);
+            TowerDef[] towers = TestTowers.Roster();
+            ulong baseline = ReplaySetup.Hash(new SimConfig(), map, shapes, towers);
 
             ShapeDef[] swapped = TestShapes.SampleSceneLibrary();
             ShapeDef tmp = swapped[0];
             swapped[0] = swapped[1];
             swapped[1] = tmp;
-            Assert.AreNotEqual(baseline, ReplaySetup.Hash(new SimConfig(), map, swapped), "the bag shuffles in library order");
+            Assert.AreNotEqual(baseline, ReplaySetup.Hash(new SimConfig(), map, swapped, towers), "the bag shuffles in library order");
 
             MapData moved = AsciiMap.Parse(TestEpisodes.SmallMap).Map;
             moved.Core = new TileCoord(moved.Core.X - 1, moved.Core.Y);
-            Assert.AreNotEqual(baseline, ReplaySetup.Hash(new SimConfig(), moved, shapes));
+            Assert.AreNotEqual(baseline, ReplaySetup.Hash(new SimConfig(), moved, shapes, towers));
+        }
+
+        // The tower roster is part of what a run is built from, and its ORDER too: a
+        // PlaceTower command names a tower by its index.
+        [Test]
+        public void SetupHashCoversEveryTowerFieldAndTheRosterOrder()
+        {
+            MapData map = AsciiMap.Parse(TestEpisodes.SmallMap).Map;
+            ShapeDef[] shapes = TestShapes.SampleSceneLibrary();
+            ulong baseline = ReplaySetup.Hash(new SimConfig(), map, shapes, TestTowers.Roster());
+
+            FieldInfo[] fields = typeof(TowerDef).GetFields(BindingFlags.Public | BindingFlags.Instance);
+            Assert.Greater(fields.Length, 10);
+            foreach (FieldInfo f in fields)
+            {
+                TowerDef[] towers = TestTowers.Roster();
+                object value = f.GetValue(towers[1]);
+                if (f.FieldType == typeof(float)) f.SetValue(towers[1], (float)value + 0.25f);
+                else if (f.FieldType == typeof(int)) f.SetValue(towers[1], (int)value + 1);
+                else if (f.FieldType == typeof(bool)) f.SetValue(towers[1], !(bool)value);
+                else if (f.FieldType == typeof(string)) f.SetValue(towers[1], (string)value + "x");
+                else if (f.FieldType == typeof(DamageType)) f.SetValue(towers[1], (DamageType)(((int)value + 1) % DamageTypes.Count));
+                else if (f.FieldType == typeof(TargetingMode)) continue; // only one mode exists; covered by the enum branch of ReplaySetup when there are more
+                else Assert.Fail("TowerDef." + f.Name + " has type " + f.FieldType.Name + ": teach ReplaySetup and this test about it.");
+
+                Assert.AreNotEqual(baseline, ReplaySetup.Hash(new SimConfig(), map, shapes, towers), "TowerDef." + f.Name + " is not in the setup hash");
+            }
+
+            TowerDef[] reordered = TestTowers.Roster();
+            TowerDef first = reordered[0];
+            reordered[0] = reordered[1];
+            reordered[1] = first;
+            Assert.AreNotEqual(baseline, ReplaySetup.Hash(new SimConfig(), map, shapes, reordered), "roster order");
+
+            Assert.AreNotEqual(baseline, ReplaySetup.Hash(new SimConfig(), map, shapes, new TowerDef[0]), "an empty roster");
+        }
+
+        [Test]
+        public void AnEditedTowerIsRefused()
+        {
+            ReplayFile file = TestEpisodes.Reload(TestEpisodes.SmallReplay(waves: 1));
+            file.Towers[0].Damage += 1f;
+            var e = Assert.Throws<InvalidDataException>(() => file.Validate());
+            StringAssert.Contains("setup hash", e.Message);
+
+            ReplayFile missing = TestEpisodes.Reload(TestEpisodes.SmallReplay(waves: 1));
+            missing.Towers = null;
+            Assert.Throws<InvalidDataException>(() => missing.Validate());
+        }
+
+        [Test]
+        public void AFileOfAnOlderSchemaIsRefused()
+        {
+            ReplayFile file = TestEpisodes.Reload(TestEpisodes.SmallReplay(waves: 1));
+            file.Schema = 1;
+            var e = Assert.Throws<InvalidDataException>(() => file.Validate());
+            StringAssert.Contains("Schema 1", e.Message);
         }
     }
 }

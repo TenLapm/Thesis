@@ -16,7 +16,7 @@ namespace Thesis.Tests.Sim
 
         private static SimConfig Config() { return new SimConfig { PrepSeconds = 0.1f, IntermissionSeconds = 0.1f, AgentsPerWave = 2, CoreMaxHp = 1000 }; }
 
-        private static FixedPlanner Fixed() { return new FixedPlanner(FixedPlanner.Group(count: 2, life: 0.3f, speed: 1f)); }
+        private static FixedPlanner Fixed() { return new FixedPlanner(FixedPlanner.Group(count: 2, hp: 5f, speed: 20f)); }
 
         private sealed class Rig
         {
@@ -45,7 +45,7 @@ namespace Thesis.Tests.Sim
             var rig = new Rig { Flaky = new FlakyPlanner(Fixed()) };
             setup(rig.Flaky);
             rig.Safe = new SafePlanner(rig.Flaky, new EscalationPlanner(config, map), map, config) { OnFallback = rig.Log.Add };
-            rig.Sim = new Simulation(config, map, TestShapes.SampleSceneLibrary(), 1, rig.Safe);
+            rig.Sim = new Simulation(config, map, TestShapes.SampleSceneLibrary(), TestTowers.Roster(), 1, rig.Safe);
             return rig;
         }
 
@@ -128,9 +128,9 @@ namespace Thesis.Tests.Sim
         {
             SimConfig config = Config();
             MapData map = AsciiMap.Parse(Map).Map;
-            var bare = new Simulation(config, map, TestShapes.SampleSceneLibrary(), 9, new EscalationPlanner(config, map));
+            var bare = new Simulation(config, map, TestShapes.SampleSceneLibrary(), TestTowers.Roster(), 9, new EscalationPlanner(config, map));
             var safe = new SafePlanner(new EscalationPlanner(config, map), new EscalationPlanner(config, map), map, config);
-            var wrapped = new Simulation(config, map, TestShapes.SampleSceneLibrary(), 9, safe);
+            var wrapped = new Simulation(config, map, TestShapes.SampleSceneLibrary(), TestTowers.Roster(), 9, safe);
 
             Assert.AreEqual(EscalationPlanner.Id, wrapped.Planner.Name);
             for (int i = 0; i < 3000; i++)
@@ -151,7 +151,7 @@ namespace Thesis.Tests.Sim
             SimConfig config = Config();
             MapData map = AsciiMap.Parse(Map).Map;
             var safe = new SafePlanner(new MutatingPlanner(MutatingPlanner.When.PlanWave), new EscalationPlanner(config, map), map, config);
-            var sim = new Simulation(config, map, TestShapes.SampleSceneLibrary(), 1, safe);
+            var sim = new Simulation(config, map, TestShapes.SampleSceneLibrary(), TestTowers.Roster(), 1, safe);
 
             var e = Assert.Throws<InvalidOperationException>(() => TestSims.Run(sim, 10));
             StringAssert.Contains("changed the simulation state", e.Message);

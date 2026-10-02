@@ -8,6 +8,9 @@ namespace Thesis.Harness
         public SimConfig Config = new SimConfig();
         public MapData Map;
         public ShapeDef[] Shapes;
+
+        // The tower roster. The placeholder set until WP-C5 exports the real one.
+        public TowerDef[] Towers = TowerRoster.Placeholder();
         public ulong Seed = 1;
         public string Planner = EscalationPlanner.Id;
         public IPlayerPolicy Policy = new IdlePolicy();

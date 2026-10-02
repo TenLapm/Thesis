@@ -14,10 +14,10 @@ namespace Thesis.Harness
         public static EpisodeResult Run(EpisodeOptions o)
         {
             if (o == null) throw new ArgumentNullException(nameof(o));
-            if (o.Map == null || o.Shapes == null || o.Policy == null) throw new ArgumentException("EpisodeOptions needs Map, Shapes and Policy.");
+            if (o.Map == null || o.Shapes == null || o.Towers == null || o.Policy == null) throw new ArgumentException("EpisodeOptions needs Map, Shapes, Towers and Policy.");
 
             IWavePlanner planner = Registry.CreatePlanner(o.Planner, o.Config, o.Map);
-            var sim = new Simulation(o.Config, o.Map, o.Shapes, o.Seed, planner);
+            var sim = new Simulation(o.Config, o.Map, o.Shapes, o.Towers, o.Seed, planner);
             var recorder = new ReplayRecorder(sim, o.RecordTickHashes) { Build = o.Build, Session = o.Session, Policy = o.Policy.Name };
             var policyRng = new Pcg32(o.Seed, RngStreams.Policy);
 
@@ -72,6 +72,7 @@ namespace Thesis.Harness
             result.CoreHp = s.CoreHp;
             result.BuildBudget = s.BuildBudget;
             result.Placements = s.PlacementLog.Count;
+            result.TowersPlaced = s.Towers.Count;
             return result;
         }
     }

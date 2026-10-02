@@ -10,7 +10,7 @@ namespace Thesis.Harness
     {
         public static readonly string[] PlannerNames = { EscalationPlanner.Id };
 
-        public static readonly string[] PolicyNames = { IdlePolicy.Id, GreedyDetourPolicy.Id };
+        public static readonly string[] PolicyNames = { IdlePolicy.Id, GreedyDetourPolicy.Id, SentryPolicy.Id, SequencePolicy.MixedId };
 
         // The director's planners register here as they are built (WP7 baselines,
         // WP10 heuristic, WP11 full director).
@@ -29,6 +29,8 @@ namespace Thesis.Harness
             {
                 case IdlePolicy.Id: return new IdlePolicy();
                 case GreedyDetourPolicy.Id: return new GreedyDetourPolicy();
+                case SentryPolicy.Id: return new SentryPolicy();
+                case SequencePolicy.MixedId: return SequencePolicy.Mixed();
                 default: throw new ArgumentException("Unknown policy '" + name + "'. Known: " + string.Join(", ", PolicyNames) + ".");
             }
         }

@@ -46,7 +46,7 @@ namespace Thesis.Sim
             // the inspector while the game runs. Such a session cannot be
             // reproduced, and this is how it gets caught - the stale hash no longer
             // matches the stored values, so ReplayFile.Validate() refuses the file.
-            setupHash = ReplayFile.Hex(ReplaySetup.Hash(sim.Config, sim.Map, sim.ShapeLibrary));
+            setupHash = ReplayFile.Hex(ReplaySetup.Hash(sim.Config, sim.Map, sim.ShapeLibrary, sim.TowerLibrary));
         }
 
         public int CommandCount => commands.Count;
@@ -105,6 +105,7 @@ namespace Thesis.Sim
                 Config = sim.Config,
                 MapData = sim.Map,
                 Shapes = sim.ShapeLibrary,
+                Towers = sim.TowerLibrary,
                 SetupHash = setupHash,
                 InitialHash = initialHash,
                 Commands = new List<ReplayCommand>(commands),

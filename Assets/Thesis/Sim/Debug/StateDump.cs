@@ -31,6 +31,8 @@ namespace Thesis.Sim
                 FieldVersion = s.Grid.FieldVersion,
                 AgentsSpawned = s.Agents.Count,
                 OccupancyTotal = s.Occupancy.Total(),
+                DamageTotal = s.Damage.Total(),
+                DamageTotalBits = Bits(s.Damage.Total()),
                 Placements = s.PlacementLog.Count,
                 BagRngState = s.BagRng.Save().State.ToString("x16"),
                 SpawnRngState = s.SpawnRng.Save().State.ToString("x16"),
@@ -47,7 +49,25 @@ namespace Thesis.Sim
             {
                 SimNode n = s.Grid.ByIndex(i);
                 if (!n.HasWall && n.TerrainCost == 1) continue;
-                d.Walls.Add(new Wall { X = n.X, Y = n.Y, TerrainCost = n.TerrainCost, Health = n.WallHealth, HealthBits = Bits(n.WallHealth), BestCost = n.BestCost });
+                d.Walls.Add(new Wall { X = n.X, Y = n.Y, Occupant = n.Occupant.ToString(), TowerId = n.TowerId, TerrainCost = n.TerrainCost, Health = n.WallHealth, HealthBits = Bits(n.WallHealth), BestCost = n.BestCost });
+            }
+
+            for (int i = 0; i < s.Towers.Count; i++)
+            {
+                TowerState t = s.Towers[i];
+                d.Towers.Add(new Tower
+                {
+                    Id = t.Id,
+                    Def = t.Def.Id,
+                    X = t.Tile.X,
+                    Y = t.Tile.Y,
+                    Alive = t.IsAlive,
+                    Cooldown = t.Cooldown,
+                    Shots = t.Shots,
+                    Kills = t.Kills,
+                    DamageDealt = t.DamageDealt,
+                    DamageDealtBits = Bits(t.DamageDealt),
+                });
             }
 
             IReadOnlyList<AgentState> live = s.LiveAgents;
@@ -65,8 +85,11 @@ namespace Thesis.Sim
                     YBits = Bits(a.Position.Y),
                     TileX = on.X,
                     TileY = on.Y,
-                    Life = a.LifeTime,
-                    LifeBits = Bits(a.LifeTime),
+                    Hp = a.Hp,
+                    HpBits = Bits(a.Hp),
+                    MaxHp = a.MaxHp,
+                    SlowTicks = a.SlowTicks,
+                    SlowFactor = a.SlowFactor,
                     Speed = a.MoveSpeed,
                     MinCostSeen = a.MinCostSeen,
                 });
@@ -104,6 +127,8 @@ namespace Thesis.Sim
             public int FieldVersion;
             public int AgentsSpawned;
             public int OccupancyTotal;
+            public float DamageTotal;
+            public string DamageTotalBits;
             public int Placements;
             public string BagRngState;
             public string SpawnRngState;
@@ -113,6 +138,7 @@ namespace Thesis.Sim
             public WaveOutcome CurrentOutcome;
             public WaveOutcome LastOutcome;
             public List<Wall> Walls = new List<Wall>();
+            public List<Tower> Towers = new List<Tower>();
             public List<Agent> LiveAgents = new List<Agent>();
         }
 
@@ -126,10 +152,26 @@ namespace Thesis.Sim
             public List<string> Next = new List<string>();
         }
 
+        private sealed class Tower
+        {
+            public int Id;
+            public string Def;
+            public int X;
+            public int Y;
+            public bool Alive;
+            public int Cooldown;
+            public int Shots;
+            public int Kills;
+            public float DamageDealt;
+            public string DamageDealtBits;
+        }
+
         private sealed class Wall
         {
             public int X;
             public int Y;
+            public string Occupant;
+            public int TowerId;
             public int TerrainCost;
             public float Health;
             public string HealthBits;
@@ -146,8 +188,11 @@ namespace Thesis.Sim
             public string YBits;
             public int TileX;
             public int TileY;
-            public float Life;
-            public string LifeBits;
+            public float Hp;
+            public string HpBits;
+            public float MaxHp;
+            public int SlowTicks;
+            public float SlowFactor;
             public float Speed;
             public int MinCostSeen;
         }

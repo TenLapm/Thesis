@@ -14,7 +14,7 @@ namespace Thesis.Tests.Sim
 
         private static Simulation NewSim(SimConfig config = null)
         {
-            return TestSims.Ascii(Map, new FixedPlanner(FixedPlanner.Group(count: 2, life: 0.3f, speed: 1f)), config ?? new SimConfig { PrepSeconds = 0.1f, IntermissionSeconds = 0.1f });
+            return TestSims.Ascii(Map, new FixedPlanner(FixedPlanner.Group(count: 2, hp: 5f, speed: 20f)), config ?? new SimConfig { PrepSeconds = 0.1f, IntermissionSeconds = 0.1f });
         }
 
         [Test]
@@ -93,7 +93,7 @@ namespace Thesis.Tests.Sim
         public void NothingIsRecordedAfterGameOver()
         {
             // Both agents leak into a 1-HP core: the wave ends the game.
-            Simulation sim = TestSims.Ascii(Map, new FixedPlanner(FixedPlanner.Group(count: 2, life: 60f, speed: 4f)), new SimConfig { PrepSeconds = 0.1f, CoreMaxHp = 1 });
+            Simulation sim = TestSims.Ascii(Map, new FixedPlanner(FixedPlanner.Group(count: 2, hp: 60f, speed: 4f)), new SimConfig { PrepSeconds = 0.1f, CoreMaxHp = 1 });
             var recorder = new ReplayRecorder(sim, true);
             for (int i = 0; i < 2000 && !sim.State.IsGameOver; i++)
             {

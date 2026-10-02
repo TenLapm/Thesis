@@ -55,7 +55,7 @@ namespace Thesis.Cli
             string how = result.GameOver ? "core destroyed" : result.HitTickLimit ? "tick limit reached" : "wave limit reached";
             Console.WriteLine("[Harness] " + options.Policy.Name + " vs " + options.Planner + " on " + options.Map.Name + ", seed " + seed + ": "
                               + result.WavesResolved + " waves, " + how + " at tick " + result.Ticks + ", core " + result.CoreHp + "/" + options.Config.CoreMaxHp
-                              + ", " + result.Placements + " placements, final hash " + result.Replay.FinalHash
+                              + ", " + result.Placements + " placements (" + result.TowersPlaced + " towers), final hash " + result.Replay.FinalHash
                               + "  (" + clock.ElapsedMilliseconds + " ms)");
             Console.WriteLine("[Replay] -> " + Path.GetFullPath(file));
             return 0;

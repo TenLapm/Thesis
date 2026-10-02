@@ -38,7 +38,15 @@ namespace Thesis.Sim
         public WaveOutcome CurrentOutcome;
         public WaveOutcome LastOutcome;
 
+        // Every tower ever placed. Tower id == index; a destroyed tower stays in the
+        // list with IsAlive false.
+        public List<TowerState> Towers = new List<TowerState>();
+
+        // Per-wave statistics, both reset when a wave begins: where this wave's
+        // agents stood, and where they were standing when they took damage.
         public OccupancyMap Occupancy;
+        public DamageMap Damage;
+
         public List<PlacementRecord> PlacementLog = new List<PlacementRecord>();
 
         // Randomness, one stream per subsystem (RngStreams). Bag is the same
@@ -85,7 +93,11 @@ namespace Thesis.Sim
             c.CurrentPlan = CurrentPlan?.Copy();
             c.CurrentOutcome = CurrentOutcome?.Copy();
             c.LastOutcome = LastOutcome?.Copy();
+            c.Towers = new List<TowerState>(Towers.Count);
+            for (int i = 0; i < Towers.Count; i++) c.Towers.Add(Towers[i].Clone());
+
             c.Occupancy = Occupancy.Clone();
+            c.Damage = Damage.Clone();
             c.PlacementLog = new List<PlacementRecord>(PlacementLog); // records are never mutated after logging
             c.Schedule = (SpawnSlot[])Schedule.Clone();
             c.Pending = new List<SimCommand>(Pending);

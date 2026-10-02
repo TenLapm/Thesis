@@ -14,6 +14,7 @@ namespace Thesis.Harness
         public int Ticks;
         public int CoreHp;
         public float BuildBudget;
-        public int Placements;
+        public int Placements;      // wall pieces and towers together
+        public int TowersPlaced;
     }
 }

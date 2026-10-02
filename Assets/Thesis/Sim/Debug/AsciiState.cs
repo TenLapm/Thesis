@@ -54,6 +54,7 @@ namespace Thesis.Sim
               .Append("  budget ").Append(s.BuildBudget.ToString("0.0", CultureInfo.InvariantCulture))
               .Append("  core ").Append(s.CoreHp).Append('/').Append(sim.Config.CoreMaxHp)
               .Append("  live ").Append(live.Count)
+              .Append("  towers ").Append(LiveTowers(s))
               .Append("  layer=").Append(layer.ToString().ToLowerInvariant())
               .Append('\n');
 
@@ -74,7 +75,7 @@ namespace Thesis.Sim
                 sb.Append('\n');
             }
 
-            sb.Append("legend  X static  # wall  S spawn  C core");
+            sb.Append("legend  X static  # wall  T tower  S spawn  C core");
             switch (layer)
             {
                 case AsciiLayer.Route:
@@ -106,21 +107,34 @@ namespace Thesis.Sim
             {
                 int count = s.Occupancy[n.Index];
                 if (count > 0) return Digit(1 + (int)((long)count * 8 / maxOccupancy), 9);
-                return n.HasWall ? '#' : '.';
+                return n.HasWall ? Built(n) : '.';
             }
 
             if (layer == AsciiLayer.Cost)
             {
-                if (n.HasWall) return '#';
+                if (n.HasWall) return Built(n);
                 if (n.BestCost == SimNode.Infinity) return '?';
                 return maxCost == 0 ? '0' : Digit((int)((long)n.BestCost * 9 / maxCost), 9);
             }
 
             if (agentOn[n.Index] == 2) return 'd';
             if (agentOn[n.Index] == 1) return 'a';
-            if (n.HasWall) return n.TerrainCost >= AsciiMap.HeavyWallCost ? 'H' : '#';
+            if (n.HasWall) return Built(n);
             if (onRoute[n.Index]) return '*';
             return '.';
+        }
+
+        private static char Built(SimNode n)
+        {
+            if (n.Occupant == Occupant.Tower) return 'T';
+            return n.TerrainCost >= AsciiMap.HeavyWallCost ? 'H' : '#';
+        }
+
+        private static int LiveTowers(SimState s)
+        {
+            int n = 0;
+            for (int i = 0; i < s.Towers.Count; i++) if (s.Towers[i].IsAlive) n++;
+            return n;
         }
 
         private static char Digit(int value, int max)

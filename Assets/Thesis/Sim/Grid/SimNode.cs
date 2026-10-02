@@ -28,9 +28,14 @@ namespace Thesis.Sim
         // Pathfinding weight for ENTERING this tile. 1 = open ground.
         public int TerrainCost = 1;
 
-        // > 0 means a player wall stands here, in seconds of single-agent chewing.
+        // > 0 means a player structure stands here (a wall or a tower), in seconds of
+        // single-agent chewing.
         public float WallHealth;
         public float MaxWallHealth;
+
+        // Which kind of structure, and for a tower its id in SimState.Towers (-1 otherwise).
+        public Occupant Occupant;
+        public int TowerId = -1;
 
         // Integer cost x10 to the goal (so diagonals can cost ~sqrt(2) without floats).
         public int BestCost = Infinity;
@@ -48,6 +53,9 @@ namespace Thesis.Sim
             Position = position;
         }
 
+        // True for ANY standing structure, a tower as much as a wall: both are diggable
+        // terrain, and everything that asks "is something built here?" (placement,
+        // digging, the corner-cut rule) means both. Occupant says which.
         public bool HasWall => WallHealth > 0f;
 
         // Corner-cut rule input: agents may enter a wall tile head-on (that is how

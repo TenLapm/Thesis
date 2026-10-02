@@ -24,14 +24,14 @@ namespace Thesis.Tests.Core
             float castStepwise = (float)((float)(dist / speed) + margin);
             sb.AppendLine("dist=" + Bits(dist) + " chained=" + Bits(chained) + " stepwise=" + Bits(castStepwise) + " equal=" + (chained == castStepwise));
 
-            // 2. The real planner value.
+            // 2. A planner value built from a chain: the wave-14 speed that differed in WP4.
             var planner = new EscalationPlanner(new SimConfig(), TestSims.SampleSceneMap());
-            sb.AppendLine("BaseLifeTime=" + Bits(planner.BaseLifeTime));
+            sb.AppendLine("wave14 speed=" + Bits(planner.PlanFor(14).Groups[0].MoveSpeed) + " hp=" + Bits(planner.PlanFor(14).Groups[0].Hp));
 
-            // 3. Repeated subtraction (lifetime clock) and multiply-subtract (digging).
-            float life = planner.BaseLifeTime, wall = 6f, dig = 1f, dt = 0.02f;
-            for (int i = 0; i < 1000; i++) { life -= dt; wall -= dig * dt; }
-            sb.AppendLine("life after 1000 ticks=" + Bits(life) + " wall=" + Bits(wall));
+            // 3. Repeated subtraction (damage) and multiply-subtract (digging).
+            float hitPoints = 77.40773f, wall = 6f, dig = 1f, dt = 0.02f;
+            for (int i = 0; i < 1000; i++) { hitPoints -= dt; wall -= dig * dt; }
+            sb.AppendLine("hp after 1000 small hits=" + Bits(hitPoints) + " wall=" + Bits(wall));
 
             // 4. MoveTowards chain.
             Vec2f p = new Vec2f(-32f, -32f);

@@ -3,9 +3,10 @@ using UnityEngine;
 using UnityEngine.UI;
 
 // The look of one agent (WP4). Everything it used to decide - moving along the flow
-// field, chewing walls, the lifetime clock, stalling, leaking, paying rewards - is
-// now Thesis.Sim.AgentSystem, run by the simulation in fixed ticks, which is what
-// makes a run reproducible (CLAUDE.md I1). This component has no Update of its own
+// field, chewing walls, leaking, paying rewards - is now Thesis.Sim, run by the
+// simulation in fixed ticks, which is what makes a run reproducible (CLAUDE.md I1).
+// The bar over its head shows hit points since WP-C1 (it used to show the lifetime
+// clock, which no longer exists). This component has no Update of its own
 // (I8: nothing per-agent per-frame beyond drawing): its owner (WaveSpawner, or
 // ScenarioBenchmark) calls OnSimTick after each tick and Render every frame.
 //
@@ -24,23 +25,23 @@ public class FlowAgent : MonoBehaviour
 
     private Vector3 previous;
     private Vector3 current;
-    private float maxLife = 1f;
+    private float maxHp = 1f;
 
     public void Bind(AgentState agent)
     {
         AgentId = agent.Id;
-        maxLife = Mathf.Max(agent.LifeTime, 1e-4f);
+        maxHp = Mathf.Max(agent.MaxHp, 1e-4f);
         current = previous = ToWorld(agent.Position);
         transform.position = current;
         gameObject.SetActive(true);
-        UpdateLifeBar(agent.LifeTime);
+        UpdateLifeBar(agent.Hp);
     }
 
     public void OnSimTick(AgentState agent)
     {
         previous = current;
         current = ToWorld(agent.Position);
-        UpdateLifeBar(agent.LifeTime);
+        UpdateLifeBar(agent.Hp);
     }
 
     public void Render(float tickAlpha)
@@ -62,10 +63,11 @@ public class FlowAgent : MonoBehaviour
         return new Vector3(p.X, groundHeight, p.Y);
     }
 
-    private void UpdateLifeBar(float life)
+    // lifeBarFill keeps its old name because the prefab refers to it; it is the HP bar now.
+    private void UpdateLifeBar(float hp)
     {
         if (lifeBarFill == null) return;
-        float fraction = Mathf.Clamp01(life / maxLife);
+        float fraction = Mathf.Clamp01(hp / maxHp);
         lifeBarFill.fillAmount = fraction;
         lifeBarFill.color = Color.Lerp(Color.red, Color.green, fraction);
     }

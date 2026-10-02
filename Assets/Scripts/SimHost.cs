@@ -133,7 +133,8 @@ public class SimHost : MonoBehaviour
         map = SceneMapBuilder.Build(gridManager, flowManager.targetGoal, new[] { waveSpawner.spawnPoint }, SceneManager.GetActiveScene().name);
         runConfig = (configAsset != null ? configAsset.config : new SimConfig()).Clone();
         IWavePlanner planner = directorHost != null ? directorHost.CreatePlanner(runConfig, map) : new EscalationPlanner(runConfig, map);
-        sim = new Simulation(runConfig, map, blockManager.BuildShapeLibrary(), Seed, planner);
+        // The tower roster is the placeholder set until WP-C5 turns it into assets.
+        sim = new Simulation(runConfig, map, blockManager.BuildShapeLibrary(), TowerRoster.Placeholder(), Seed, planner);
         flowManager.Bind(sim.State.Grid);
 
         Debug.Log("[Sim] Started: map '" + map.Name + "' " + map.Width + "x" + map.Height + ", seed " + Seed + ", planner '" + planner.Name

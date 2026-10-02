@@ -12,13 +12,22 @@ namespace Thesis.Tests
         {
             MapData map = SampleSceneMap();
             config = config ?? new SimConfig();
-            return new Simulation(config, map, TestShapes.SampleSceneLibrary(), seed, planner ?? new EscalationPlanner(config, map));
+            return new Simulation(config, map, TestShapes.SampleSceneLibrary(), TestTowers.Roster(), seed, planner ?? new EscalationPlanner(config, map));
         }
 
-        public static Simulation Ascii(string text, IWavePlanner planner, SimConfig config = null, ulong seed = 1)
+        // towers: the roster PlaceTower commands choose from; the game's placeholder
+        // roster when not given.
+        public static Simulation Ascii(string text, IWavePlanner planner, SimConfig config = null, ulong seed = 1, TowerDef[] towers = null)
         {
             AsciiFixture f = AsciiMap.Parse(text);
-            return new Simulation(config ?? new SimConfig(), f.Map, TestShapes.SampleSceneLibrary(), seed, planner);
+            return new Simulation(config ?? new SimConfig(), f.Map, TestShapes.SampleSceneLibrary(), towers ?? TestTowers.Roster(), seed, planner);
+        }
+
+        // Sends a command the way a host does: applied at once, without a tick.
+        public static void Send(Simulation sim, SimCommand command)
+        {
+            sim.Enqueue(command);
+            sim.FlushInput();
         }
 
         // Ascii() gives the simulation the fixture's MAP only: '#' and 'H' walls are
@@ -27,7 +36,7 @@ namespace Thesis.Tests
         public static Simulation AsciiWithWalls(string text, IWavePlanner planner, SimConfig config = null, ulong seed = 1)
         {
             AsciiFixture f = AsciiMap.Parse(text);
-            var sim = new Simulation(config ?? new SimConfig(), f.Map, TestShapes.SampleSceneLibrary(), seed, planner);
+            var sim = new Simulation(config ?? new SimConfig(), f.Map, TestShapes.SampleSceneLibrary(), TestTowers.Roster(), seed, planner);
             SimGrid grid = sim.State.Grid;
             for (int i = 0; i < grid.NodeCount; i++)
             {
@@ -44,10 +53,10 @@ namespace Thesis.Tests
         }
     }
 
-    // A reproducible stream of player input: at a fixed cadence, one of place /
-    // rotate / hold at a pseudo-random tile. Most placements are illegal or
-    // unaffordable and get ignored, which is fine - the point is identical input to
-    // two simulations, including input the game rejects.
+    // A reproducible stream of player input: at a fixed cadence, one of place a wall
+    // piece / place a tower / rotate / hold at a pseudo-random tile. Many placements
+    // are illegal or unaffordable and get ignored, which is fine - the point is
+    // identical input to two simulations, including input the game rejects.
     public sealed class CommandScript
     {
         private readonly Dictionary<int, List<SimCommand>> byTick = new Dictionary<int, List<SimCommand>>();
@@ -58,7 +67,8 @@ namespace Thesis.Tests
             for (int t = 5; t < ticks; t += every)
             {
                 int roll = rng.NextInt(10);
-                SimCommand c = roll < 7 ? SimCommand.PlaceShape(rng.NextInt(mapWidth), rng.NextInt(mapHeight))
+                SimCommand c = roll < 4 ? SimCommand.PlaceShape(rng.NextInt(mapWidth), rng.NextInt(mapHeight))
+                             : roll < 7 ? SimCommand.PlaceTower(rng.NextInt(3), rng.NextInt(mapWidth), rng.NextInt(mapHeight))
                              : roll < 9 ? SimCommand.Rotate()
                              : SimCommand.Hold();
                 byTick[t] = new List<SimCommand> { c };

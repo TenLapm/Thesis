@@ -28,9 +28,12 @@ namespace Thesis.Tests
 
         public void OnWaveResolved(WaveOutcome outcome) { Outcomes.Add(outcome); }
 
-        public static AgentGroup Group(int count, float life, float speed = 0f, int intervalTicks = 1, int spawnIndex = 0, int startDelayTicks = 0)
+        // An enemy must be able to move (PlanValidator), so there is no "stand
+        // still" group any more: a test that wants a wave to end quickly gives its
+        // agents speed and lets them reach the core, or shoots them.
+        public static AgentGroup Group(int count, float hp = 10f, float speed = 5f, int intervalTicks = 1, int spawnIndex = 0, int startDelayTicks = 0, float[] resist = null)
         {
-            return new AgentGroup { SpawnIndex = spawnIndex, Count = count, LifeTime = life, MoveSpeed = speed, DigRate = 1f, SpawnIntervalTicks = intervalTicks, StartDelayTicks = startDelayTicks };
+            return new AgentGroup { SpawnIndex = spawnIndex, Count = count, Hp = hp, MoveSpeed = speed, DigRate = 1f, Resist = resist, SpawnIntervalTicks = intervalTicks, StartDelayTicks = startDelayTicks };
         }
     }
 

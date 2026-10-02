@@ -1,6 +1,6 @@
 # ARCHITECTURE.md — code structure for the wave director
 
-**Status: 2026-10-02.** WP0–WP5 and the hardening pass (WP-H) are built. Decisions
+**Status: 2026-10-02.** WP0–WP5, the hardening pass (WP-H) and the combat core (WP-C1) are built. Decisions
 D1–D9 are made (D1 = Option B, towers). Nothing here overrides `CLAUDE.md`. The order
 of work was re-planned on 2026-10-02 (D8, `Docs/WORKPLAN.md`).
 
@@ -136,12 +136,13 @@ Assets/
     Core/        Thesis.Core.asmdef      Pcg32.cs IRandom.cs RngStreams.cs Fnv1a64.cs TileCoord.cs Vec2f.cs Json.cs DetMath.cs
     Sim/         Thesis.Sim.asmdef
       Map/         MapData.cs
-      Grid/        SimNode.cs SimGrid.cs FlowField.cs
+      Grid/        SimNode.cs SimGrid.cs FlowField.cs Route.cs Occupant.cs
       Agents/      AgentState.cs AgentSystem.cs
       Build/       ShapeDef.cs ShapeBag.cs Placement.cs PlacementRecord.cs ShapeLibraryFile.cs
       Waves/       IWavePlanner.cs WaveContext.cs WavePlan.cs AgentGroup.cs WaveOutcome.cs EscalationPlanner.cs
                    PlanValidator.cs SafePlanner.cs
-      Combat/      DamageType.cs TowerDef.cs TowerState.cs TowerSystem.cs Targeting.cs DamageMap.cs   (WP-C1)
+      Combat/      DamageType.cs DamageTypes.cs TargetingMode.cs TowerDef.cs TowerState.cs TowerSystem.cs
+                   Targeting.cs DamageMap.cs TowerRoster.cs (placeholder roster until WP-C5)             (WP-C1, built)
       Movement/    MovementClass.cs FlowFieldSet.cs FlyingMovement.cs                                (WP-C2)
       Shop/        ShopState.cs ShopRoller.cs TowerOffer.cs                                          (WP-C3)
       Commands/    SimCommand.cs
@@ -169,7 +170,8 @@ Assets/
       Telemetry/   WaveRecord.cs TelemetryWriter.cs PlacementEntropy.cs
       DirectorConfig.cs
     Harness/     Thesis.Harness.asmdef
-      Policies/    IPlayerPolicy.cs IdlePolicy.cs GreedyDetourPolicy.cs RepeatTemplatePolicy.cs
+      Policies/    IPlayerPolicy.cs IdlePolicy.cs GreedyDetourPolicy.cs SentryPolicy.cs SequencePolicy.cs   (built)
+                   RepeatTemplatePolicy.cs
                    ChokepointPolicy.cs SpreadPolicy.cs ReactivePolicy.cs
       Bench/       PathfindingBench.cs
       Replay/      ReplayRunner.cs ReplayReport.cs PinnedEpisodes.cs
@@ -216,7 +218,7 @@ namespace Thesis.Sim
 {
     public sealed class Simulation
     {
-        public Simulation(SimConfig config, MapData map, ShapeDef[] shapeLibrary,
+        public Simulation(SimConfig config, MapData map, ShapeDef[] shapeLibrary, TowerDef[] towerLibrary,
                           ulong rngSeed, IWavePlanner planner);
 
         public SimState State { get; }                  // callers outside Thesis.Sim treat it as read-only
@@ -230,6 +232,7 @@ namespace Thesis.Sim
 
         public ulong RngSeed { get; }                   // what a replay needs to rebuild this run (WP5)
         public ShapeDef[] ShapeLibrary { get; }
+        public TowerDef[] TowerLibrary { get; }         // the roster a PlaceTower command chooses from (WP-C1)
         public SimConfig Config { get; }
         public MapData Map { get; }
         public IWavePlanner Planner { get; }
@@ -239,17 +242,20 @@ namespace Thesis.Sim
 
 `SimState` holds everything that changes during a run: `Tick`, `Phase`,
 `PhaseTicksRemaining`, `WaveIndex`, `Grid`, `Agents` (pooled array, where agent
-id = array index), `Bag`, `BuildBudget`, `CoreHp`, `CurrentPlan`,
-`CurrentOutcome`, `Occupancy`, `PlacementLog`, `Rng` (Bag and Spawn streams),
-and `IsGameOver`.
+id = array index), `Towers` (the same: tower id = index, a destroyed tower stays in
+the list), `Bag`, `BuildBudget`, `CoreHp`, `CurrentPlan`, `CurrentOutcome`, `Occupancy`
+and `Damage` (both per wave), `PlacementLog`, `Rng` (Bag and Spawn streams), and
+`IsGameOver`.
 
 `PlacementLog` is needed from the very first WP. The primary metric in G5 is the
 entropy of wall placement, and three of the five Option-A features read it.
 
 ### 4.2 Tick order (normative; tests assert this order)
 
-This is the order for the **faithful port** (WP3). WP-C1 adds a tower pass and
-removes the lifetime clock; the combat order is in §4.6.
+This is the order of the **faithful port** (WP3), kept here because the phase machine,
+the field rebuild and the wave boundary are unchanged. **Step 3 below is no longer what
+runs:** since WP-C1 there is a tower pass, the agents have hit points and the lifetime
+clock is gone. The tower and agent passes as built are in §4.6.
 
 ```
 0. if IsGameOver: return                        (Tick does not advance)
@@ -353,24 +359,33 @@ fixed-strategy planner.
 ```csharp
 public sealed class WavePlan   { public int WaveIndex; public string StrategyId; public AgentGroup[] Groups;
                                  public float ThreatSpent; public string AnnouncementId; }
-public sealed class AgentGroup { public int SpawnIndex; public int Count; public float MoveSpeed; public float LifeTime;
-                                 public float DigRate; public int SpawnIntervalTicks; public int StartDelayTicks; }
+public sealed class AgentGroup { public int SpawnIndex; public int Count; public string Archetype;
+                                 public float MoveSpeed; public float Hp; public float DigRate;
+                                 public float[] Resist;          // one multiplier per DamageType; null = all 1
+                                 public int SpawnIntervalTicks; public int StartDelayTicks; }
 ```
 
-`WaveOutcome` contains `WaveIndex`, `StrategyId`, `Spawned`, `Stalled`, `Leaked`,
-`WallsBreached`, `CoreHpBefore/After`, `BudgetBefore/After`,
+`PlanValidator` refuses a group with `Count > 0` whose `Hp` or `MoveSpeed` is not a
+positive number, or whose `Resist` has the wrong length or a negative entry.
+
+`WaveOutcome` contains `WaveIndex`, `StrategyId`, `Spawned`, `Killed`, `Leaked`,
+`Removed` and `TimedOut` (the backstop of §4.6), `WallsBreached`, `TowersDestroyed`,
+`DamageByType[]`, `CoreHpBefore/After`, `BudgetBefore/After`,
 `TickStarted/Resolved`, and `PressureShare` (the fraction of agents whose
 `MinCostSeen / 10f` fell to `≤ config.PressureRadiusTiles` or below; see spec gap S5).
 
 ### 4.5 Commands, events, RNG
 
 - `SimCommand` mirrors the player's actual inputs: `PlaceShape(originX, originY)`,
-  `Rotate`, `Hold`, and `StartWaveNow`. The current shape and its rotation live in
+  `Rotate`, `Hold`, `StartWaveNow`, and since WP-C1 `PlaceTower(towerIndex, x, y)`, which
+  buys a tower type from the roster by index (WP-C3 turns the index into a shop offer
+  slot). The current shape and its rotation live in
   `ShapeBag`, so a replay reproduces the bag's state as well. The input log is a
   list of `(tick, command)`.
 - `SimEvent` is a `readonly struct` holding a `Kind` enum plus integer and float payload
-  fields: `WallPlaced`, `WallBreached`, `AgentSpawned`, `AgentStalled`,
-  `AgentLeaked`, `WaveStarted`, `WaveResolved`, and `GameOver`. Views rely on these
+  fields: `WallPlaced`, `WallBreached`, `AgentSpawned`, `AgentKilled`,
+  `AgentLeaked`, `WaveStarted`, `WaveResolved`, `GameOver`, and since WP-C1 `TowerPlaced`,
+  `TowerDestroyed`, `TowerFired`, `AgentRemoved` and `WaveTimedOut`. Views rely on these
   events and never poll for changes.
 - Randomness comes only from `Pcg32` streams derived from one `rngSeed`, one stream per
   subsystem (`RngStreams.Bag`, `Spawn`, `Strategy`, `Thompson`, `RewardBernoulli`,
@@ -381,16 +396,18 @@ public sealed class AgentGroup { public int SpawnIndex; public int Count; public
   offers for wave 7 are the same no matter what the player bought earlier, which
   planner is running, or how many draws other systems have made. This is what makes I10 hold.
 
-**Replay file (WP5).** `Thesis.Sim.ReplayFile`, schema 1, written by `ReplayRecorder`:
+**Replay file (WP5).** `Thesis.Sim.ReplayFile`, written by `ReplayRecorder`. Schema 2
+since WP-C1 (the tower roster and the `PlaceTower` command); a file of another schema is
+refused, because its commands and hashes describe a different game:
 
 | Field | Meaning |
 |---|---|
 | `Build`, `Session`, `Policy` | Labels for people. `Policy` is `"human"` or a scripted policy's name. Never read by a replay. |
 | `Map`, `MapSeed`, `RngSeed`, `Planner` | What to rebuild. `MapSeed` is 0 until seeded mazes exist. `Planner` is `IWavePlanner.Name`, resolved by `Harness.Registry`. |
-| `Config`, `MapData`, `Shapes` | **Stored in full**, so the file is self-contained and still means the same thing after a retune or a re-export. |
-| `SetupHash` | `ReplaySetup.Hash(Config, MapData, Shapes)` taken when recording **started**. Loading recomputes it; a mismatch means a number did not survive JSON, the file was edited, or the config was changed in the inspector mid-session. The file is then refused. |
+| `Config`, `MapData`, `Shapes`, `Towers` | **Stored in full**, so the file is self-contained and still means the same thing after a retune or a re-export. `Towers` is the roster, in order: a `PlaceTower` command names a tower by its index. |
+| `SetupHash` | `ReplaySetup.Hash(Config, MapData, Shapes, Towers)` taken when recording **started**. Loading recomputes it; a mismatch means a number did not survive JSON, the file was edited, or the config was changed in the inspector mid-session. The file is then refused. |
 | `InitialHash` | State hash before the first tick and the first command. A mismatch here means the seed or the rules differ. |
-| `Commands` | `[{Tick, Cmd, X, Y}]`. `Tick` is `State.Tick` when the command was applied; commands sharing a tick apply in file order. |
+| `Commands` | `[{Tick, Cmd, X, Y, A}]` (`A` is the tower index of a `PlaceTower`). `Tick` is `State.Tick` when the command was applied; commands sharing a tick apply in file order. |
 | `WaveHashes` | `[{Wave, Tick, Hash}]`, taken right after the tick that raised `WaveResolved`. |
 | `FinalTick`, `FinalHash` | Where the recording stops, after any commands applied at that tick. A session quit mid-wave is still checked up to here. |
 | `TickHashes` | Optional. One hash per tick, 8 bytes little-endian each, base64. Entry `i` is the state right after tick `i` ran. Needed to pin a divergence to a tick. |
@@ -399,8 +416,8 @@ Hashes are 16 hex digits in strings, not JSON numbers, because readers that go t
 `double` cannot hold 64 bits. The estimator snapshot planned for this file arrives with the
 director (WP11); `MissingMemberHandling.Ignore` makes adding it non-breaking.
 
-**Schema 2 arrives with the first director planner (WP10): the file also records each
-wave's `WavePlan`.** A replay then plays the recorded plans back through a
+**The next schema arrives with the first director planner (WP10): the file also records
+each wave's `WavePlan`.** A replay then plays the recorded plans back through a
 `RecordedPlanner` and needs no director at all. The simulation replay is exact for every
 condition and on every runtime, and it stays valid after the director's code changes.
 Checking the director becomes a second, separate step (`replay --rerun-director`):
@@ -416,10 +433,17 @@ sign, so the file would describe a different input from the one that ran (found 
 
 ### 4.6 Combat, movement classes and shop (WP-C1…C3)
 
-**Enemies.** `AgentState` drops `Life` and gains `Hp`, `MaxHp`, `Resist[]` (one
-damage multiplier per `DamageType`; 1 means normal), `MovementClass`, `SlowTicks`
-and `SlowFactor`. The stats come from `AgentGroup`, which now names an enemy
-archetype and carries its numbers.
+**Built so far: the combat core (WP-C1).** Movement classes are WP-C2; the shop and
+selling are WP-C3. Until the shop exists, `PlaceTower` buys any tower of the roster at its
+cost, and the roster is `TowerRoster.Placeholder()`: three unbalanced towers (single
+target, splash, slow), one per damage type.
+
+**Enemies.** `AgentState` has `Hp`, `MaxHp`, `Resist[]` (one damage multiplier per
+`DamageType`; 1 means normal, 0 means immune), `SlowTicks` and `SlowFactor`, and no
+lifetime. (`MovementClass` comes with WP-C2.) The stats come from `AgentGroup`, which
+names an enemy archetype and carries its numbers. An enemy ends in one of three ways:
+**killed** (the player is paid `KillReward`), **leaked** (the core loses 1 HP), or
+**removed** by the wave backstop below.
 
 **Towers.** A tower is `TowerDef` data (cost, `DamageType`, damage, range in tiles,
 `FireIntervalTicks`, splash radius, slow, `CanHitFlying`, `DigCost`, `TowerHealth`,
@@ -439,7 +463,7 @@ board: 0.3 ms under .NET, 0.9 ms in Unity), so do not add caching (the reasoning
 same as in `CLAUDE.md` §8). A strategy or policy that *searches* by rebuilding the field
 must count those rebuilds against G2's 16 ms.
 
-**Tick order after WP-C1** (replaces steps 3–4 of §4.2; the other steps are unchanged):
+**Tick order since WP-C1** (replaces step 3 of §4.2; the other steps are unchanged):
 
 ```
 3. Tower pass, ascending tower id
@@ -460,11 +484,31 @@ must count those rebuilds against G2's 16 ms.
                       (no breach reward by default; see S12)
 ```
 
-**Every wave must end** *(2026-10-02 review)*. Until WP-C1 the lifetime clock
-guarantees it. Without the clock, an enemy that cannot move would stand forever, the
-wave would never resolve (D4 waits for the last agent) and the game would lock. WP-C1
-therefore adds, and tests:
-- `PlanValidator` requires `MoveSpeed > 0` (0 is accepted today);
+Decided while building it (WP-C1), and pinned by tests:
+
+- **Damage always means effective damage:** the hit points actually removed. A 6-damage shot
+  at an enemy with 2 HP deals 2. `DamageMap`, `WaveOutcome.DamageByType` and
+  `TowerState.DamageDealt` all count it that way, so overkill never inflates a feature.
+- **A kill is settled the moment it happens.** The enemy is dead to every later tower in the
+  same tick, so the reward is paid once and no damage is booked on a dead enemy.
+- **Splash** hits every *other* live enemy within `SplashRadiusTiles` of where the target
+  stood, in ascending id, for the same damage (each scaled by its own resistance).
+- **Resist 0 is immunity:** no damage and no slow. The shot is still spent.
+- **A slow affects movement only**, not digging, and counts down every tick the enemy is
+  alive. Its effect on a step is taken before the countdown, so `SlowTicks` N slows exactly
+  N steps.
+- **Range** is centre of the tower's tile to the enemy's position, in tiles; exactly on the
+  edge is in range. Reach is turned into squared world units once, when the tower is placed.
+- **`DamageMap` books a hit on the tile under the enemy**, not the tower's, and is reset at
+  the start of every wave, like `Occupancy`. A tower's own totals run across waves.
+- **Targeting** has one mode, `First`: the lowest route cost to the core, ties to the lowest id.
+- **A destroyed tower stays in `SimState.Towers`** with `IsAlive` false, so ids never shift.
+
+**Every wave must end** *(2026-10-02 review; built in WP-C1)*. The lifetime clock used
+to guarantee it. Without the clock, an enemy that cannot move would stand forever, the
+wave would never resolve (D4 waits for the last agent) and the game would lock. Four
+rules, each tested in `WaveTerminationTests`:
+- `PlanValidator` requires `MoveSpeed > 0`;
 - `SimConfig.MinSlowFactor` (default 0.25) is the floor of any slow, so a slowed enemy still advances;
 - `MapData.Validate` checks that every spawn reaches the core over walkable tiles under the
   corner-cut rule (no current map has a static blocker, so this path is so far untested by real maps);
@@ -779,7 +823,11 @@ dotnet run --project Tools/dotnet/Thesis.Cli -- pin     [--out Results/pinned-re
   (`State`, `Map`, `Config`); input goes only through `send`, which records the command and
   applies it at once. *(WP5: `Simulation` instead of the `SimState` first planned, because a
   policy needs the map and config to check legality.)*
-  Every policy both builds walls and buys from the shop. The policies are `Idle`;
+  Built so far: `Idle`; `GreedyDetour` (walls only: the piece that raises the route's
+  cost the most, ties broken by how many shortest routes it closes); `Sentry` (towers only:
+  cycles through the roster and puts each tower on the free tile beside the route that sees
+  the most of it); and `mixed`, a `SequencePolicy` of walls first, then towers.
+  The plan for WP12 is that every policy both builds walls and buys from the shop: `Idle`;
   `GreedyDetour` (maximise spawn cost per unit of budget, and buy the offer with the
   best damage per cost); `RepeatTemplate` (the "competent player who repeats" from
   `CLAUDE.md` §3); `Chokepoint` (one kill zone that holds every tower); `Spread`;
@@ -815,7 +863,7 @@ wave 7  tick 44000  phase Resolving  budget 31.0  core 8/10  live 42  layer=rout
   0  XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX
   1  XS****....####........................X
   2  X....*....#..#.....a..................X
-legend  X static  # wall  S spawn  C core  * route  a agent  d digging agent
+legend  X static  # wall  T tower  S spawn  C core  * route  a agent  d digging agent
 ```
 
 Log prefixes: `[Sim]`, `[Director]`, `[Telemetry]`, `[Harness]`, `[Replay]`.

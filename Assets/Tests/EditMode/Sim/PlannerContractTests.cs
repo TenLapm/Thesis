@@ -49,10 +49,11 @@ namespace Thesis.Tests.Sim
         }
 
         [Test]
-        public void ZeroLifetimeIsRejected()
+        public void ZeroHitPointsAreRejected()
         {
-            var sim = TestSims.Ascii(TwoTiles, new FixedPlanner(FixedPlanner.Group(1, 0f)));
-            Assert.Throws<InvalidOperationException>(() => StartWave(sim));
+            var sim = TestSims.Ascii(TwoTiles, new FixedPlanner(FixedPlanner.Group(1, hp: 0f)));
+            var e = Assert.Throws<InvalidOperationException>(() => StartWave(sim));
+            StringAssert.Contains("Hp 0", e.Message);
         }
 
         [Test]
@@ -60,7 +61,7 @@ namespace Thesis.Tests.Sim
         {
             // FakePricer: budget(wave 1) = 10, price = agent count.
             var planner = new FixedPlanner(FixedPlanner.Group(3, 10f)) { ThreatSpent = 3f };
-            var sim = new Simulation(new SimConfig(), AsciiMap.Parse(TwoTiles).Map, TestShapes.SampleSceneLibrary(), 1, planner, new FakePricer());
+            var sim = new Simulation(new SimConfig(), AsciiMap.Parse(TwoTiles).Map, TestShapes.SampleSceneLibrary(), TestTowers.Roster(), 1, planner, new FakePricer());
             var e = Assert.Throws<InvalidOperationException>(() => StartWave(sim));
             StringAssert.Contains("threat budget", e.Message);
         }
@@ -70,7 +71,7 @@ namespace Thesis.Tests.Sim
         {
             // Claims to spend exactly the budget (10), but 3 agents price at 3.
             var planner = new FixedPlanner(FixedPlanner.Group(3, 10f)) { ThreatSpent = 10f };
-            var sim = new Simulation(new SimConfig(), AsciiMap.Parse(TwoTiles).Map, TestShapes.SampleSceneLibrary(), 1, planner, new FakePricer());
+            var sim = new Simulation(new SimConfig(), AsciiMap.Parse(TwoTiles).Map, TestShapes.SampleSceneLibrary(), TestTowers.Roster(), 1, planner, new FakePricer());
             var e = Assert.Throws<InvalidOperationException>(() => StartWave(sim));
             StringAssert.Contains("prices it at 3", e.Message);
         }
@@ -79,7 +80,7 @@ namespace Thesis.Tests.Sim
         public void APlanThatSpendsExactlyTheBudgetIsAccepted()
         {
             var planner = new FixedPlanner(FixedPlanner.Group(10, 10f)) { ThreatSpent = 10f };
-            var sim = new Simulation(new SimConfig(), AsciiMap.Parse(TwoTiles).Map, TestShapes.SampleSceneLibrary(), 1, planner, new FakePricer());
+            var sim = new Simulation(new SimConfig(), AsciiMap.Parse(TwoTiles).Map, TestShapes.SampleSceneLibrary(), TestTowers.Roster(), 1, planner, new FakePricer());
             Assert.DoesNotThrow(() => StartWave(sim));
             Assert.AreEqual(1, sim.State.WaveIndex);
         }

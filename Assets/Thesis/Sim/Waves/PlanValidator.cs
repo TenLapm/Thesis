@@ -26,9 +26,22 @@ namespace Thesis.Sim
                     return at + "uses spawn " + g.SpawnIndex + " but map '" + map.Name + "' has " + map.Spawns.Length + ".";
                 if (g.SpawnIntervalTicks < 0 || g.StartDelayTicks < 0)
                     return at + "has a negative interval (" + g.SpawnIntervalTicks + ") or start delay (" + g.StartDelayTicks + ").";
-                if (g.Count > 0 && !(g.LifeTime > 0f)) return at + "has LifeTime " + g.LifeTime + "; agents would stall on spawn.";
-                if (!(g.MoveSpeed >= 0f) || !(g.DigRate >= 0f))
-                    return at + "has MoveSpeed " + g.MoveSpeed + " / DigRate " + g.DigRate + "; both must be >= 0 and not NaN.";
+                if (g.Count > 0 && (!(g.Hp > 0f) || float.IsInfinity(g.Hp))) return at + "has Hp " + g.Hp + "; it must be a positive number.";
+                // Without the lifetime clock, an enemy that cannot move would stand on
+                // the board forever and its wave could never end (ARCHITECTURE.md §4.6).
+                if (g.Count > 0 && (!(g.MoveSpeed > 0f) || float.IsInfinity(g.MoveSpeed)))
+                    return at + "has MoveSpeed " + g.MoveSpeed + "; every enemy must be able to move, or its wave could never end.";
+                if (!(g.DigRate >= 0f)) return at + "has DigRate " + g.DigRate + "; it must be >= 0 and not NaN.";
+                if (g.Resist != null)
+                {
+                    if (g.Resist.Length != DamageTypes.Count)
+                        return at + "has " + g.Resist.Length + " resistances; there are " + DamageTypes.Count + " damage types.";
+                    for (int r = 0; r < g.Resist.Length; r++)
+                    {
+                        if (!(g.Resist[r] >= 0f) || float.IsInfinity(g.Resist[r]))
+                            return at + "has Resist[" + (DamageType)r + "] = " + g.Resist[r] + "; it must be a number >= 0.";
+                    }
+                }
             }
 
             if (pricer != null)

@@ -20,18 +20,20 @@ MonoBehaviour:
     PrepSeconds: 45
     IntermissionSeconds: 10
     DigRate: 1
-    DeathReward: 0.2
+    KillReward: 0.2
     WallBreakReward: 1
+    TowerBreachReward: 0
     AgentsPerWave: 100
     AgentsPerWaveIncrement: 5
     SpawnDelay: 0.2
     SpawnDelayDecrement: 0.02
     MinSpawnDelay: 0.15
-    LifeTimeIncrementPerWave: 4
-    MaxLifeTime: 200
     BaseMoveSpeed: 1.25
     MoveSpeedIncrementPerWave: 0.0375
     MaxMoveSpeed: 2.25
-    LifeTimeSafetyMargin: 5
+    BaseHp: 10
+    HpIncrementPerWave: 2
+    MinSlowFactor: 0.25
+    MaxWaveSeconds: 600
     PressureRadiusTiles: 5
     ThreatEpsilon: 0.001

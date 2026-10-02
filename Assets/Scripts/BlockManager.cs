@@ -61,7 +61,7 @@ public class BlockManager : MonoBehaviour
         }
     }
 
-    // Float: stall rewards are fractional (0.2 per stalled agent).
+    // Float: kill rewards are fractional (0.2 per enemy killed).
     public float buildBudget => Host.State.BuildBudget;
 
     // Bumped whenever a piece could LOOK different (pull, swap, rotate).

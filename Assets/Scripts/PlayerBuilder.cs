@@ -5,13 +5,18 @@ using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.EventSystems;
 
-// WP4: player input for building, plus the wall visuals.
+// WP4: player input for building, plus the visuals of what is built.
 //
 // A click no longer places anything itself. It becomes a PlaceShape command; the
 // simulation checks legality and budget, spends, sets the terrain and rebuilds the
 // field (Thesis.Sim.Placement). Walls are then DRAWN from the simulation's own
 // record - new PlacementLog rows and WallBreached events - so what is on screen is
 // always what the simulation holds, whoever placed it (a click today, a replay in WP5).
+//
+// Towers (WP-C1) are drawn the same way, as a cube tinted by damage type. That is a
+// placeholder, and so is the way to buy one: Z / X / C put the roster's first three
+// towers on the tile under the mouse. The shop, its panel and real tower visuals
+// replace both in WP-C3 and WP-C4.
 public class PlayerBuilder : MonoBehaviour
 {
     [Header("System References")]
@@ -57,6 +62,17 @@ public class PlayerBuilder : MonoBehaviour
         if (Host != null) Host.SimEventRaised += OnSimEvent;
     }
 
+    void Start()
+    {
+        // Until the shop UI exists nothing on screen says towers can be bought at all.
+        if (Host == null) return;
+        TowerDef[] roster = Host.Sim.TowerLibrary;
+        string[] keys = { "Z", "X", "C" };
+        string hint = "";
+        for (int i = 0; i < roster.Length && i < keys.Length; i++) hint += (i > 0 ? ", " : "") + keys[i] + " = " + roster[i].Id + " (" + roster[i].Cost + ")";
+        if (hint != "") Debug.Log("[Sim] Towers (temporary keys, the shop arrives in WP-C3/C4): hover a tile and press " + hint + ".");
+    }
+
     void OnDisable()
     {
         if (simHost != null) simHost.SimEventRaised -= OnSimEvent;
@@ -85,6 +101,8 @@ public class PlayerBuilder : MonoBehaviour
             {
                 blockManager.SwapHoldShape();
             }
+
+            HandleDevTowerKeys();
         }
 
         DrawNewWalls();
@@ -100,14 +118,7 @@ public class PlayerBuilder : MonoBehaviour
         }
         if (blockManager == null || blockManager.currentShape == null) return;
 
-        Camera cam = Camera.main;
-        if (cam == null) return;
-
-        Vector2 mousePosition = Mouse.current.position.ReadValue();
-        Ray ray = cam.ScreenPointToRay(mousePosition);
-        if (!Physics.Raycast(ray, out RaycastHit hit, Mathf.Infinity, clickLayer)) return;
-
-        Node originNode = gridManager.NodeFromWorldPoint(hit.point);
+        Node originNode = NodeUnderMouse();
         if (originNode == null) return;
 
         // Same messages as before. The simulation re-checks both and has the final
@@ -126,6 +137,50 @@ public class PlayerBuilder : MonoBehaviour
         }
 
         Host.Submit(SimCommand.PlaceShape(originNode.gridX, originNode.gridY));
+    }
+
+    private Node NodeUnderMouse()
+    {
+        Camera cam = Camera.main;
+        if (cam == null) return null;
+
+        Vector2 mousePosition = Mouse.current.position.ReadValue();
+        Ray ray = cam.ScreenPointToRay(mousePosition);
+        if (!Physics.Raycast(ray, out RaycastHit hit, Mathf.Infinity, clickLayer)) return null;
+        return gridManager.NodeFromWorldPoint(hit.point);
+    }
+
+    // TEMPORARY (WP-C1). There is no shop yet, so every tower type is always for
+    // sale: Z, X and C buy the roster's first three and put them on the tile under
+    // the mouse. Same rules as a wall click: not while paused, not through the HUD.
+    private void HandleDevTowerKeys()
+    {
+        Keyboard kb = Keyboard.current;
+        int index = kb.zKey.wasPressedThisFrame ? 0 : kb.xKey.wasPressedThisFrame ? 1 : kb.cKey.wasPressedThisFrame ? 2 : -1;
+        if (index < 0) return;
+        if (speedController != null && speedController.IsPaused) return;
+        if (EventSystem.current != null && EventSystem.current.IsPointerOverGameObject()) return;
+
+        Node node = NodeUnderMouse();
+        if (node != null) TryPlaceTower(index, node.gridX, node.gridY);
+    }
+
+    // Sends the PlaceTower command and reports whether the simulation accepted it.
+    // The simulation is the only judge of legality and budget (I9).
+    public bool TryPlaceTower(int towerIndex, int x, int y)
+    {
+        TowerDef[] roster = Host.Sim.TowerLibrary;
+        if (towerIndex < 0 || towerIndex >= roster.Length) return false;
+
+        int before = Host.State.Towers.Count;
+        Host.Submit(SimCommand.PlaceTower(towerIndex, x, y));
+        bool placed = Host.State.Towers.Count > before;
+        if (!placed)
+        {
+            Debug.LogWarning("Tower '" + roster[towerIndex].Id + "' not placed at (" + x + "," + y + "): the tile is not free, or the budget ("
+                             + Host.State.BuildBudget + ") is below its cost (" + roster[towerIndex].Cost + ").");
+        }
+        return placed;
     }
 
     // CLAUDE.md I9: the single source of truth for placement legality is
@@ -149,8 +204,16 @@ public class PlayerBuilder : MonoBehaviour
         for (; placementsDrawn < log.Count; placementsDrawn++)
         {
             PlacementRecord record = log[placementsDrawn];
-            BlockShape master = blockManager.MasterFor(record.ShapeName);
-            Color color = master != null ? master.shapeColor : Color.white;
+            Color color;
+            if (record.Kind == PlacementKind.Tower)
+            {
+                color = TowerColor(Host.State.Towers[record.TowerId].Def.DamageType);
+            }
+            else
+            {
+                BlockShape master = blockManager.MasterFor(record.ShapeName);
+                color = master != null ? master.shapeColor : Color.white;
+            }
 
             for (int i = 0; i < record.Tiles.Length; i++)
             {
@@ -170,11 +233,26 @@ public class PlayerBuilder : MonoBehaviour
         }
     }
 
+    // Placeholder look for a tower: the wall cube in a colour per damage type.
+    private static Color TowerColor(DamageType type)
+    {
+        switch (type)
+        {
+            case DamageType.Fire: return new Color(1f, 0.45f, 0.1f);
+            case DamageType.Frost: return new Color(0.3f, 0.8f, 1f);
+            default: return new Color(0.85f, 0.85f, 0.9f);
+        }
+    }
+
     private void OnSimEvent(SimEvent e)
     {
-        if (e.Kind != SimEventKind.WallBreached) return;
+        // A breached wall and a chewed-through tower both leave an empty tile.
+        // WallBreached carries the tile in IntA/IntB, TowerDestroyed in IntB/IntC.
+        Node node;
+        if (e.Kind == SimEventKind.WallBreached) node = gridManager.grid[e.IntA, e.IntB];
+        else if (e.Kind == SimEventKind.TowerDestroyed) node = gridManager.grid[e.IntB, e.IntC];
+        else return;
 
-        Node node = gridManager.grid[e.IntA, e.IntB];
         if (node.visualObject != null)
         {
             Destroy(node.visualObject);

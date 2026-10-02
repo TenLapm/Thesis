@@ -61,6 +61,7 @@ public class ScenarioBenchmark : MonoBehaviour
     private OccupancyMap occupancy;
     private readonly List<AgentState> agents = new List<AgentState>();
     private readonly List<FlowAgent> views = new List<FlowAgent>();
+    private readonly List<TowerState> noTowers = new List<TowerState>();
     private readonly Pcg32 jitter = new Pcg32(20260915UL, RngStreams.Spawn);
     private float accumulator;
 
@@ -210,13 +211,13 @@ public class ScenarioBenchmark : MonoBehaviour
 
     // ================= agents (simulation + views) =================
 
-    // Keeps `n` agents alive: effectively immortal (life 999999) and respawned at
+    // Keeps `n` agents alive: nothing shoots at them here, and they are respawned at
     // the spawn when they reach the core, so the tier's count stays constant.
     void EnsureAgents(int n)
     {
         while (agents.Count < n)
         {
-            var agent = new AgentState(agents.Count, SpawnPosition(), agentSpeed, 999999f, 1f, 0f, 0f);
+            var agent = new AgentState(agents.Count, SpawnPosition(), agentSpeed, 1f, DamageTypes.AllOnes(), 1f, 0f, 0f);
             agents.Add(agent);
 
             GameObject go = Instantiate(agentPrefab);
@@ -245,7 +246,7 @@ public class ScenarioBenchmark : MonoBehaviour
         int coreHp = int.MaxValue;
         while (accumulator >= TickSeconds && ticks < MaxTicksPerFrame)
         {
-            bool dirty = AgentSystem.Step(grid, agents, TickSeconds, occupancy, ref budget, ref coreHp, null);
+            bool dirty = AgentSystem.Step(grid, agents, noTowers, TickSeconds, occupancy, 0f, ref budget, ref coreHp, null);
             if (dirty) field.Generate(grid, map.Core);
 
             for (int i = 0; i < agents.Count; i++)
@@ -254,7 +255,7 @@ public class ScenarioBenchmark : MonoBehaviour
                 if (!a.IsAlive)
                 {
                     // Reached the core: respawn (a fresh state object, same id/slot).
-                    a = new AgentState(a.Id, SpawnPosition(), agentSpeed, 999999f, 1f, 0f, 0f);
+                    a = new AgentState(a.Id, SpawnPosition(), agentSpeed, 1f, DamageTypes.AllOnes(), 1f, 0f, 0f);
                     agents[i] = a;
                     views[i].Bind(a);
                 }

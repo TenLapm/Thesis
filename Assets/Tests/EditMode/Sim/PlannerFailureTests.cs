@@ -16,9 +16,10 @@ namespace Thesis.Tests.Sim
             . . . . . .
             . . . . . C";
 
-        private static SimConfig Config() { return new SimConfig { PrepSeconds = 0.1f, IntermissionSeconds = 0.1f }; }
+        private static SimConfig Config() { return new SimConfig { PrepSeconds = 0.1f, IntermissionSeconds = 0.1f, CoreMaxHp = 1000 }; }
 
-        private static FixedPlanner Fixed() { return new FixedPlanner(FixedPlanner.Group(count: 2, life: 0.3f, speed: 1f)); }
+        // Two fast agents: a wave ends, by both reaching the core, in under a second.
+        private static FixedPlanner Fixed() { return new FixedPlanner(FixedPlanner.Group(count: 2, hp: 5f, speed: 20f)); }
 
         private static int FailingTicks(Simulation sim, int attempts)
         {

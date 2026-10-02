@@ -93,7 +93,7 @@ Three changes:
 |---|---|---|---|
 | done | WP0–WP5 | W5–W7 | |
 | done | **WP-H** hardening | W7 | 2026-10-02, after the review |
-| 1 | **WP-C1** combat core | W8 | includes "every wave must end" (§4.6) |
+| done | **WP-C1** combat core | W7 | 2026-10-02; includes "every wave must end" (§4.6) |
 | 1, parallel | **WP7** learning | W8–W9 | separate session |
 | 2 | **WP-C2** movement classes | W9 | |
 | 3 | **WP-C3** shop, telemetry, wall selling | W9 | checkpoint at the end of this week |
@@ -348,9 +348,21 @@ golden-file test, rows that parse with one `WaveRecord` class in every condition
 
 ---
 
-## WP-C1 — Combat core: HP, towers, damage (replaces the lifetime clock)
+## WP-C1 — Combat core: HP, towers, damage (replaces the lifetime clock)  ✅ done 2026-10-02
 
 **Reads:** §4.6, `CLAUDE.md` §2 and I12 · **Depends:** WP5 (determinism proven on the ported game). S12 can use a placeholder roster.
+
+**Status:** built; every "must pass" item below has a test, in both runners. As built it differs
+from the list below in four ways (DEVLOG WP-C1 has the reasons):
+- **`PlaceTower` is a real command already**, not an internal helper: `PlaceTower(towerIndex, x, y)`
+  buys a tower of the roster by index. Without a recorded way to place towers, no replay could
+  contain one, and the cross-runtime check would not have covered any of the new arithmetic until
+  WP-C3. WP-C3 turns the index into a shop offer slot.
+- **The simulation takes a tower roster** (`TowerDef[]`), stored in the replay like the shapes.
+  `TowerRoster.Placeholder()` is three unbalanced towers until WP-C5.
+- **Replay schema 2** (the roster and the command's third argument). Older recordings are refused.
+- **Unity has a temporary way to play it:** Z / X / C place the three towers at the mouse tile,
+  drawn as tinted wall cubes, and the bar over an enemy shows HP. WP-C4 replaces all of it.
 
 **Creates / changes**
 - `Sim/Combat/DamageType.cs`, `TowerDef.cs`, `TowerState.cs`, `TowerSystem.cs` (the step-3 tower pass), `Targeting.cs`, `DamageMap.cs`
@@ -414,6 +426,12 @@ All tower maths follows §9 rule 3: casts on chained floats, and no `Math.Pow` f
 This package now also contains what was WP6 (see the note above WP-C1). If it grows past one
 session, split it as **C3a** (shop, `SellTower`, `SellWall`) and **C3b** (telemetry, entropy, `trace`).
 
+**Already there from WP-C1:** the `PlaceTower` command (by roster index), `Placement.TryPlaceTower`,
+the tower roster in the simulation and in the replay, `PlacementRecord.Kind` and `TowerId`, and the
+events `TowerPlaced` and `TowerDestroyed`. This package changes what `PlaceTower`'s first argument
+means (an offer slot, checked against the shop) and adds the rest. That changes the command set, so
+bump `ReplayFile.CurrentSchema` and re-record the pinned episodes.
+
 **Creates**
 - `Sim/Shop/ShopState.cs`, `ShopRoller.cs`, `TowerOffer.cs`; the commands `PlaceTower`, `SellTower`, `SellWall` and `RerollShop`;
   the events `ShopRolled`, `TowerPlaced`, `TowerSold` and `WallSold`.
@@ -462,6 +480,10 @@ the whole piece that would be sold and shows the refund), and an HP bar replacin
   Offers refresh at intermission start and stay unchanged during a wave.
 - A Unity session with towers, recorded as a replay, verifies headless.
 
+**Replaces from WP-C1:** the Z / X / C keys and `PlayerBuilder.TryPlaceTower`, the tower drawn as a
+tinted wall cube, and the console hint. `FlowAgent`'s bar already shows HP (its field is still
+called `lifeBarFill`, because the prefab refers to it).
+
 **Out of scope:** art, VFX, sound, and UI styling. Those belong to the S2 W1–W3 UX pass.
 
 ---
@@ -471,7 +493,9 @@ the whole piece that would be sold and shows the refund), and an HP bar replacin
 **Reads:** §4.6 · **Depends:** WP-C1, WP-C2, WP-C3, **S12**
 
 **Creates**
-- 4–6 `TowerDef` assets, covering at least single-target, splash, slow and anti-air across at least 3 damage types
+- 4–6 `TowerDef` assets, covering at least single-target, splash, slow and anti-air across at least 3 damage types.
+  They replace `TowerRoster.Placeholder()`: export them to `Maps/Towers.json` the way shapes are exported, load
+  that file in the CLI and the tests, and delete the placeholder class.
 - 3–4 enemy archetypes: basic, sapper, swarm and flyer
 - HP escalation numbers
 - The CLI command `balance`: policies × 10 seeds × 25 waves, reporting damage per budget spent on each tower, how often each policy buys each tower, and the wave each policy reaches
@@ -594,6 +618,12 @@ Also, from the 2026-10-02 review:
 **Reads:** §7 · **Depends:** WP5, WP11
 
 **Creates** the rest of `Harness/Policies/*`, `Counterfactual.cs`, `Ladder.cs`, `ResultWriter.cs`, and the CLI command `ladder`.
+
+*(From WP-C1: three stand-in players exist. `Sentry` (towers beside the route) clears nine waves of the
+placeholder numbers; `GreedyDetour` (walls only) and `Idle` lose in wave 1, because walls alone no longer
+win anything; `mixed` (walls, then towers) loses in wave 2, weaker than towers alone because its walls eat
+the budget. Towers placed first and walls second loses in wave 1: the walls reroute the enemies away from
+the towers just bought. None of them sells, reacts to damage types, or looks more than one step ahead.)*
 
 *(From WP5: `GreedyDetourPolicy` as built is a weak player. On SampleScene's real settings it loses
 in wave 1 or 2, because it maximises flow-field **cost** and a swarm chews through one wall tile

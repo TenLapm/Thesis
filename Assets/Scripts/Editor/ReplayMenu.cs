@@ -52,7 +52,7 @@ public static class ReplayMenu
         }
 
         string dir = Path.Combine(root, PinnedEpisodes.Folder);
-        var written = PinnedEpisodes.RecordAll(dir, PinnedEpisodes.MonoTag, "Unity " + Application.unityVersion + " editor (Mono)", map, shapes);
+        var written = PinnedEpisodes.RecordAll(dir, PinnedEpisodes.MonoTag, "Unity " + Application.unityVersion + " editor (Mono)", map, shapes, TowerRoster.Placeholder());
         Debug.Log("[Replay] Recorded " + written.Count + " pinned episodes under Mono into " + dir
                   + ". Record the .NET half with `thesis pin`, then run the tests in both runners.");
     }

@@ -8,15 +8,15 @@ namespace Thesis.Tests.Harness
 {
     public class EpisodeRunnerTests
     {
-        // WORKPLAN WP5 "must pass": a headless 25-wave GreedyDetour run is recorded,
-        // then replayed, with every wave hash matching.
+        // WORKPLAN WP5 "must pass": a headless 25-wave run is recorded, then replayed,
+        // with every wave hash matching.
         //
-        // On SampleScene's real settings the greedy player loses within two waves
-        // (see DEVLOG WP5), so the core is given enough HP to keep the run going for
-        // all 25: the point here is 25 waves of the real rules - spawning, digging,
-        // breaches, leaks, stalls, building between waves - not the player's skill.
+        // No scripted player survives 25 waves of the real settings, so the core is
+        // given enough HP to keep the run going: the point here is 25 waves of the
+        // real rules - spawning, towers firing, kills, leaks, digging, breaches,
+        // building between waves - not the player's skill.
         [Test]
-        public void ATwentyFiveWaveGreedyRunReplaysWithEveryWaveHashMatching()
+        public void ATwentyFiveWaveRunReplaysWithEveryWaveHashMatching()
         {
             var options = new EpisodeOptions
             {
@@ -24,8 +24,8 @@ namespace Thesis.Tests.Harness
                 Map = TestSims.SampleSceneMap(),
                 Shapes = TestShapes.SampleSceneLibrary(),
                 Seed = 1,
-                // A smaller search than the default keeps this test in seconds.
-                Policy = new GreedyDetourPolicy { MaxPlacementsPerIntermission = 4, MaxOriginsPerPlacement = 12 },
+                // Walls, then towers. A smaller search than the default keeps this test in seconds.
+                Policy = SequencePolicy.Mixed(wallsPerPhase: 2, towersPerPhase: 3, wallSearchOrigins: 12),
                 MaxWaves = 25,
             };
 
@@ -41,19 +41,60 @@ namespace Thesis.Tests.Harness
             Assert.AreEqual(25, report.WavesVerified);
 
             // The run must actually have exercised the rules, or this proves little.
-            int stalled = 0, leaked = 0, breaches = 0;
+            int killed = 0, leaked = 0, breaches = 0, towersLost = 0;
+            float damage = 0f;
             foreach (WaveOutcome o in run.Outcomes)
             {
-                stalled += o.Stalled;
+                killed += o.Killed;
                 leaked += o.Leaked;
                 breaches += o.WallsBreached;
+                towersLost += o.TowersDestroyed;
+                damage += o.TotalDamage();
+                // WORKPLAN WP-C1: "in a normal 25-wave run TimedOut is never set."
+                Assert.IsFalse(o.TimedOut, "wave " + o.WaveIndex + " hit the MaxWaveSeconds backstop");
+                Assert.AreEqual(0, o.Removed);
+                Assert.AreEqual(o.Spawned, o.Killed + o.Leaked, "wave " + o.WaveIndex + ": every enemy was either killed or leaked");
             }
-            Assert.Greater(run.Placements, 50, "walls placed");
+            Assert.Greater(run.TowersPlaced, 20, "towers placed");
+            Assert.Greater(run.Placements, run.TowersPlaced, "and walls too");
+            Assert.Greater(killed, 0, "kills");
             Assert.Greater(leaked, 0, "leaks");
-            Assert.Greater(stalled, 0, "stalls");
-            Assert.Greater(breaches, 0, "breaches");
-            TestContext.WriteLine("25 waves: ticks=" + run.Ticks + " commands=" + file.Commands.Count + " placements=" + run.Placements
-                                  + " stalled=" + stalled + " leaked=" + leaked + " breaches=" + breaches + " final=" + file.FinalHash);
+            Assert.Greater(damage, 0f, "damage");
+            TestContext.WriteLine("25 waves: ticks=" + run.Ticks + " commands=" + file.Commands.Count + " placements=" + run.Placements + " (towers " + run.TowersPlaced + ")"
+                                  + " killed=" + killed + " leaked=" + leaked + " breaches=" + breaches + " towersLost=" + towersLost + " damage=" + damage + " final=" + file.FinalHash);
+        }
+
+        // WORKPLAN WP-C1 "done when": a headless run with towers survives clearly longer
+        // than the same map with no towers.
+        [Test]
+        public void TowersLetAPlayerSurviveClearlyLongerThanNoTowers()
+        {
+            Func<IPlayerPolicy, EpisodeResult> play = policy => EpisodeRunner.Run(new EpisodeOptions
+            {
+                Map = TestSims.SampleSceneMap(),
+                Shapes = TestShapes.SampleSceneLibrary(),
+                Seed = 1,
+                Policy = policy,
+                MaxWaves = 25,
+            });
+
+            EpisodeResult idle = play(new IdlePolicy());
+            EpisodeResult wallsOnly = play(new GreedyDetourPolicy { MaxPlacementsPerIntermission = 4, MaxOriginsPerPlacement = 12 });
+            EpisodeResult towers = play(new SentryPolicy());
+
+            Assert.IsTrue(idle.GameOver);
+            Assert.AreEqual(1, idle.WavesResolved, "no defence: lost in wave 1");
+            Assert.AreEqual(0, idle.Outcomes[0].Killed);
+
+            // Walls alone no longer win anything: there is no clock to run out.
+            Assert.AreEqual(1, wallsOnly.WavesResolved, "walls with nothing to shoot: also lost in wave 1");
+            Assert.AreEqual(0, wallsOnly.Outcomes[0].Killed);
+
+            Assert.GreaterOrEqual(towers.WavesResolved, 5, "towers: at least five waves");
+            Assert.AreEqual(towers.Outcomes[0].Spawned, towers.Outcomes[0].Killed, "and wave 1 is wiped out");
+            Assert.AreEqual(0, towers.Outcomes[0].Leaked);
+            TestContext.WriteLine("idle: " + idle.WavesResolved + " wave(s); walls only: " + wallsOnly.WavesResolved + " wave(s); towers: " + towers.WavesResolved
+                                  + " waves with " + towers.TowersPlaced + " towers");
         }
 
         [Test]
