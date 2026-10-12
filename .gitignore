@@ -114,3 +114,10 @@ InitTestScene*.unity*
 
 # Raw run output (telemetry, replays). Curated results live in /Results and are committed.
 /Runs/
+
+# The generators of Docs/GDD.pdf and its pictures (Tools/gdd/README.md).
+!/Tools/gdd/routetool/*.csproj
+/Tools/gdd/routetool/bin/
+/Tools/gdd/routetool/obj/
+/Tools/gdd/out/
+/Tools/gdd/__pycache__/

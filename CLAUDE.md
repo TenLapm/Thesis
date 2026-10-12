@@ -3,15 +3,24 @@
 Unity / C# / URP. Maze tower-defense with a flow-field pathfinder. The thesis
 work is an adaptive wave director driven by a contextual bandit.
 
-**Status (2026-10-02).** The game runs on a deterministic, headless simulation core
+**Status (2026-10-11).** The game runs on a deterministic, headless simulation core
 (`Assets/Thesis`), with Unity as a thin host around it (`Docs/WORKPLAN.md` WP0–WP5,
-the hardening pass WP-H, the combat core WP-C1 and the movement classes WP-C2 are
-done). Enemies have hit points, towers shoot them, and an enemy can be a ground
-walker, a sapper or a flyer. **Not built yet:** the shop and selling (WP-C3), the
-tower UI (WP-C4), balance (WP-C5), and the director itself. Next package: WP-C3.
+the hardening pass WP-H, the combat core WP-C1, the movement classes WP-C2 and the
+shop, selling and telemetry package WP-C3 are done). Enemies have hit points, towers
+shoot them, an enemy can be a ground walker, a sapper or a flyer, towers are bought
+from a random shop, towers and walls can be sold, and every session writes one
+telemetry row per wave. **Not built yet:** the tower UI (WP-C4), balance (WP-C5), the
+learner (WP7, not started) and the director itself. Next package: WP-C4.
 
 Read §1 and §2 before writing any code.
 
+- What the player sees and does, the target screens, and every design question
+  that is still open: `Docs/GDD.md` (written 2026-10-12). It also holds four decisions
+  the student made on reading it, **decided and not built**: the board is seen from
+  straight above (during a wave too); walls become single tiles, drawn by click and
+  drag, in place of tetromino pieces; the map gets rocks (static blockers); and the
+  board draws one route line for each kind of enemy the player has met (GDD §3.1, §3.2,
+  §4.1, §5.3; `Docs/WORKPLAN.md` WP-C4). §1 below describes the game as it is built today.
 - Code structure: `Docs/ARCHITECTURE.md` (decisions D1–D9 are in its §0).
 - Work packages and their order: `Docs/WORKPLAN.md` (re-planned 2026-10-02).
 - What was done and found, package by package: `Docs/DEVLOG.md`.
@@ -27,6 +36,10 @@ path.**
 - The player builds two things from one budget: **tetromino-shaped walls** (a 7-bag
   randomiser with a hold slot and rotation; SampleScene's library is I, O, T, S, Z,
   J, L in that order) and, since WP-C1, **towers** (one tile each).
+- Towers come from a **shop** (WP-C3): four random offers at the start of the game and
+  four new ones each time a wave resolves. Each offer can be bought once and stays
+  until the next wave resolves. Between waves the player can **sell** a tower for half
+  its price, or a whole wall piece for half its cost (less if part of it was chewed away).
 - Neither is an obstacle. Both are expensive, destructible *terrain*:
   `SimNode.TerrainCost` (a shape's `DigCost`, default 15; a tower's, default 20) plus
   `SimNode.WallHealth` (seconds of chewing). A path to the core therefore **always
@@ -64,9 +77,11 @@ To play them now, set `DirectorHost.condition` to `DevClassCycle` in SampleScene
 
 What is still a placeholder: three unbalanced tower types (`TowerRoster`: a
 single-target, a splash and a slowing tower, one per damage type; only the first
-can hit flyers), bought in Unity with the Z / X / C keys; the sapper and flyer
-numbers; and how the classes look (a tint, and height for flyers). There is no
-shop, no selling, no real tower UI yet.
+can hit flyers); the shop's numbers (four offers, half back on a sale, no rerolls);
+the sapper and flyer numbers; and how the classes look (a tint, and height for
+flyers). There is no real tower UI yet: in Unity the keys Z / X / C / B buy the four
+offers onto the tile under the mouse, Delete sells the tower or wall piece under it,
+and a plain text panel at the top right lists the offers (WP-C4 replaces all three).
 
 ### Where the rules live
 
@@ -77,6 +92,14 @@ out; `FlowAgent`, `PlayerBuilder`, `WaveSpawner` and the rest only draw state an
 forward clicks. **A game rule never goes into a MonoBehaviour.** The same simulation
 runs headless under `dotnet` (`Tools/dotnet`), which is how tests, replays and the
 offline harness work.
+
+**What a session leaves behind (WP5, WP-C3):** `replay.json` (the seed, every command with
+its tick, and state hashes) and `telemetry.jsonl` (one row per wave: what was sent, how it
+went, and what the player built, bought and sold around it). Unity writes both under
+`Runs/Sessions/<session>/`; a headless run under `--out`. The replay is the exact record.
+Telemetry is made from the simulation alone, so `thesis telemetry <replay>` gives back the
+same file, byte for byte, on either runtime. The primary metric (§3) is computed from
+telemetry rows, after the fact (`thesis entropy`).
 
 ### Flow field — read this before touching pathfinding
 
@@ -114,7 +137,8 @@ that is for a caller with a grid of its own (a policy's scratch copy).
 
 ```
 Assets/Thesis/                pure C#, no UnityEngine; each folder is one assembly
-  Core/       Pcg32, RngStreams, Fnv1a64, Vec2f, TileCoord, Json, DetMath
+  Core/       Pcg32, RngStreams, Fnv1a64, Vec2f, TileCoord, Json (also the number text of
+              telemetry lines), NamedValues, DetMath
   Sim/        the game rules
     Simulation.cs SimState.cs SimConfig.cs   tick loop, all mutable state, all tunables
     Grid/     SimGrid (GetNeighbors, corner-cut rule), SimNode, FlowField, Route
@@ -123,22 +147,29 @@ Assets/Thesis/                pure C#, no UnityEngine; each folder is one assemb
               rebuilt together), FlyingMovement, RouteCost (way left, per class)
     Combat/   TowerDef, TowerState, TowerSystem (the tower pass), Targeting,
               DamageMap, DamageType, TowerRoster (placeholder roster)
-    Build/    ShapeDef, ShapeBag (7-bag, hold, rotate), Placement (CanPlace = I9)
+    Build/    ShapeDef, ShapeBag (7-bag, hold, rotate), Placement (CanPlace = I9; building
+              and selling), PlacementRecord (a row of the build log: built, sold, rerolled)
+    Shop/     ShopState, TowerOffer, ShopRoller (offers from seed, wave, reroll count = I10)
     Waves/    IWavePlanner, EscalationPlanner (static baseline), SafePlanner,
               PlanValidator, WavePlan, WaveOutcome, ClassCyclePlanner (development
               only: sends sappers and flyers until the strategies exist)
     Replay/   ReplayFile, ReplayRecorder, ReplaySetup
     Debug/    StateHasher, StateDump, AsciiMap, AsciiState, BenchScenarios
     Map/ Commands/ Events/ Stats/
-  Learning/   empty until WP7        Director/   empty until WP8
+  Learning/   empty until WP7
+  Director/   Telemetry/ only, until WP8: WaveRecord (the row), TelemetryRecorder,
+              TelemetryWriter, PlacementEntropy (the primary metric)
   Harness/    editor and headless only: EpisodeRunner, scripted policies (Idle,
-              GreedyDetour, Sentry, Sequence), ReplayRunner, PinnedEpisodes, PathfindingBench
+              GreedyDetour, Sentry, Seller, Sequence), ReplayRunner, PinnedEpisodes, PathfindingBench
 Assets/Scripts/               Unity host and views
-  SimHost.cs               runs the Simulation: fixed ticks, input in, events out, records the replay
+  SimHost.cs               runs the Simulation: fixed ticks, input in, events out, records the
+                           replay and the telemetry
   DirectorHost.cs          picks the planner (the study condition), wraps it in SafePlanner
   SceneMapBuilder.cs       scene → MapData
-  WaveSpawner.cs BlockManager.cs PlayerCore.cs PlayerBuilder.cs
+  WaveSpawner.cs BlockManager.cs PlayerCore.cs
                            thin adapters that keep the member names the HUD reads
+  PlayerBuilder.cs         clicks and keys to commands; draws walls and towers from the build
+                           log; the temporary shop keys and panel
   FlowAgent.cs             view only: interpolates one AgentState, shows its HP bar and its class
   GridManager.cs Node.cs FlowFieldManager.cs   view data and bindings, no rules
   FlowFieldVisualizer.cs PathPreviewer.cs GhostPreviewer.cs CanvasDashboard.cs
@@ -149,10 +180,12 @@ Assets/Scripts/               Unity host and views
   Editor/                  MapExporter, ShapeExporter, ReplayMenu, BuildGuard
 Assets/Tests/EditMode/        one set of tests, run by Unity and by `dotnet test`
 Tools/dotnet/                 headless build of Assets/Thesis, and Thesis.Cli
-                              (run, replay, ascii, pin, bench)
+                              (run, replay, ascii, pin, bench, telemetry, trace, entropy)
+Tools/gdd/                    makes Docs/GDD.pdf and the pictures in Docs/gdd from Docs/GDD.md
 Maps/                         exported maps and Shapes.json
-Results/                      committed results; Results/pinned-replays is re-run by tests
-Runs/                         (gitignored) raw output and Unity session replays
+Results/                      committed results; Results/pinned-replays (recordings and their
+                              telemetry) is re-run by tests
+Runs/                         (gitignored) raw output and Unity sessions (replay and telemetry)
 Assets/Scenes/                SampleScene + Bench_Open / Bench_Maze / Bench_Choke / Bench_Stress
 Assets/Scripts/BlockS/        the tetromino .asset files
 ```
@@ -191,8 +224,8 @@ Consequences to keep in mind:
 - **Shop randomness is a confound for the primary metric.** Random offers push
   players to rebuild in *both* conditions. Therefore offers are a pure function of
   `(rngSeed, waveIndex, rerollCount)` (I10), telemetry records what was offered,
-  bought and sold, and features must describe what the player *chose*, not what
-  the roll happened to offer.
+  bought and sold (built in WP-C3: each row's `shop` block), and features must
+  describe what the player *chose*, not what the roll happened to offer.
 - The proposal's strategy pool applies: `breach_thin_wall`, `swarm_chokepoint`,
   `split_groups` and `flying_bypass`. The movement classes they need exist since
   WP-C2 (sappers for the first, flyers for the last). `flying_bypass` must be vetoed
@@ -204,8 +237,9 @@ Consequences to keep in mind:
 - A wall breach currently pays the player +1.0 budget. Whether that stays under
   the tower economy is a balance question, not a given.
 
-The combat core exists since WP-C1, so `BuildProfiler` is no longer blocked by it. It
-still needs the shop log (WP-C3) for the features that must tell a choice from an offer.
+The combat core exists since WP-C1 and the shop log since WP-C3 (the build log, and each
+telemetry row's `shop` block), so `BuildProfiler` is blocked only by the feature
+formulas (spec gap S9: the proposal's §6.2 is not in the repository yet).
 
 ---
 
@@ -248,7 +282,7 @@ wave number.
 | I7 | After the build freeze, no code changes except crash fixes. | Otherwise the participants did not play the same game. |
 | I8 | No director logic on the per-frame path. | The simulation ticks 50 to 150 times a second. The director runs once per wave boundary and has 16 ms there (G2). |
 | I9 | `Thesis.Sim.Placement.CanPlace` is the single source of truth for placement legality, for walls and towers. `PlayerBuilder.AreTilesPlaceable` only wraps it, and `GhostPreviewer` keeps calling that wrapper. *(Reworded 2026-09-15, D3.)* | The preview can never disagree with a real click, and the harness uses the same rule. |
-| I10 | Shop offers are a pure function of `(rngSeed, waveIndex, rerollCount)`. They never depend on the study condition, the director, or the player's board. *(Added 2026-09-15.)* | Both conditions must see the same tower offers, or shop luck could explain the result. |
+| I10 | Shop offers are a pure function of `(rngSeed, waveIndex, rerollCount)`. They never depend on the study condition, the director, or the player's board. *(Added 2026-09-15.)* | Both conditions must see the same tower offers, or shop luck could explain the result. **Satisfied since WP-C3:** `ShopRoller.Roll` is given those three numbers, the roster and a count, and nothing else; a test plays five scripted players against both planners for 30 waves and reads the same offers from every session's telemetry. |
 | I11 | The director shapes enemy waves only. It never touches the shop, tower stats, prices, or the player's budget. *(Added 2026-09-15.)* | Otherwise the director changes the player's power, and difficulty is no longer held constant (§3). |
 | I12 | Tower attacks resolve inside the simulation in whole ticks (an instant hit, or a delay fixed at the moment of firing). Projectile motion exists only in the Unity view. *(Added 2026-09-15.)* | Projectile physics would put frame-rate-dependent flight time back into the rules (I1). |
 
@@ -345,7 +379,7 @@ IWaveStrategy x4     gated     threat budget + seed → wave parameters
 WaveDirector         gated     profile → veto → heuristic → correction → play
 AdaptationAnnouncer  gated     (bin, strategy) → authored line
 RewardEvaluator      offline   four components, recency-weighted credit
-TelemetryLogger      offline   one JSONL row per wave
+TelemetryLogger      offline   one JSONL row per wave    [built in WP-C3 as TelemetryRecorder + TelemetryWriter]
 SelfPlayHarness      editor    headless loop over scripted player policies
 ```
 
@@ -384,7 +418,10 @@ semester 1.
 
 - **Telemetry**: one JSONL row per wave — seeds, profile vector, bin, strategy,
   reward components, wave outcome, timings. Append-only; schema changes bump a
-  version field.
+  version field. *(Built in WP-C3: `WaveRecord`, schema 1, `Docs/ARCHITECTURE.md` §5.8.
+  A row holds no wall-clock time and its numbers are written the same way on every
+  runtime, so the file can be made again from the replay, byte for byte. Never put
+  anything into a row that the simulation does not determine.)*
 - **Benchmarks**: reuse the existing `Benchmark/` JSON writers. Every result gets
   its own file with date, the exact command that reproduces it, the hypothesis
   stated *before* the table, then the table — including results that failed.
@@ -457,7 +494,8 @@ semester-2 rows above still apply.
 **Re-planned 2026-10-02 (D8):** WP6 is folded into WP-C3, WP7 runs in parallel, and
 Flying is cut if WP-C3 is not finished by the end of W9. The order and the reason
 are in `Docs/WORKPLAN.md`. If W5 began on 14 September the plan is one week behind,
-which is the W15 reserve.
+which is the W15 reserve. **WP-C3 was finished on 2026-10-11, the last day of W8, so
+Flying is not cut.** WP7, which was to run beside it, has not been started.
 
 Cut order: (1) generated-strategies stretch goal, (2) the transfer condition,
 (3) the second pilot, (4) n from 24 to 18. **Never cut** determinism, the balance

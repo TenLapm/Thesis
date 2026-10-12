@@ -1046,3 +1046,278 @@ thesis replay Runs/Sessions/20261002-084648_seed1/replay.json --per-tick --outco
 - **Still not played by hand.** To see the classes: select `GameManager` in SampleScene, set
   `DirectorHost > Condition` to `DevClassCycle`, and play. Set it back for the baseline.
 - The recordings of WP-C1 (schema 2) are refused now; they are in git history at that commit.
+
+---
+
+## 2026-10-11 — WP-C3 Shop, selling and telemetry
+
+**Status:** done, in one session (not split into C3a and C3b). Every "must pass" item has a
+test, and all tests pass in both runners. **This package changes the rules:** a tower can only
+be bought from the shop's offers, and towers and wall pieces can be sold. All recordings were
+made again (replay schema 4). It also contains what was WP6: every session now writes telemetry.
+
+**What changed**
+- `Thesis.Sim/Shop` (new): `TowerOffer`, `ShopState`, `ShopRoller` (`SeedFor`, `Roll`).
+  `SimState.Shop`. The simulation rolls at game start and each time a wave resolves.
+- Commands: `PlaceTower(offerSlot, x, y)` (was a roster index), `SellTower(x, y)`,
+  `SellWall(x, y)`, `RerollShop`. Events: `ShopRolled`, `TowerSold`, `WallSold`.
+- `Placement`: `TryPlaceTower` takes the price; new `TrySellTower` and `TrySellWall`. Every
+  one rebuilds through `FlowFieldSet`.
+- The build log: `PlacementKind` is `Wall`, `Tower`, `WallSold`, `TowerSold` or `ShopReroll`;
+  `PlacementRecord` has `PieceId`, `Cost`, `Refund`, and the tiles it built or cleared.
+- `SimNode.PieceId` (which piece a wall tile belongs to); `TowerState.PricePaid` and `Sold`.
+- `SimConfig`: `ShopOffers` (4), `RerollCost` (-1, off), `SellRefund` (0.5), `WallSellRefund`
+  (0.5), `SellDuringWave` (off), all validated.
+- `StateHasher` and `StateDump` cover the shop, piece ids, prices, sales and the new log fields.
+- Replay **schema 4**; a command name the simulation does not know is refused.
+- `Thesis.Core`: `Json.SerializeLine` and `FormatFloat` / `FormatDouble` / `FormatNumber` (number
+  text that is the same on every runtime), `DeterministicNumberConverter`, `NamedValues`.
+- `Thesis.Director/Telemetry` (new, the first code in that assembly): `WaveRecord` (schema 1),
+  `TelemetryRecorder`, `TelemetryWriter`, `PlacementEntropy`, `PlacementScope`.
+- Harness: `EpisodeRunner` records telemetry beside the replay (`EpisodeResult.Telemetry`);
+  `ReplayRunner.Telemetry(file)` makes it again from a replay; `SentryPolicy` buys from the
+  offers; `SellerPolicy` and `SequencePolicy.Restless()` (`--policy restless`);
+  `PinnedEpisodes` writes each episode's telemetry and has a fifth episode, `restless-5waves`.
+- CLI: `run` also writes `telemetry.jsonl`; new `telemetry`, `trace`, `entropy`.
+- Unity: `SimHost` writes `telemetry.jsonl` beside `replay.json`; `PlayerBuilder` has the
+  temporary shop keys, sell key and offers panel, and draws sales from the build log;
+  `SimConfig.asset` re-saved with the new fields.
+
+**Deviations from WORKPLAN, and why**
+- **Four shop offers, not three.** Measured before choosing (the table is under Findings): with
+  three, the tower bot loses the first wave on four seeds of ten, because the start budget of 60
+  buys four towers and the first roll offers only three.
+- **I10 is tested across `EscalationPlanner` and `ClassCyclePlanner`,** not "a random planner":
+  none exists until the baselines of WP10. Five scripted players against both planners, 30 waves,
+  offers read from each session's telemetry.
+- **The golden files are the pinned episodes' telemetry.** The plan asked for one fixed run that
+  gives byte-identical JSONL in both runners. As built, every pinned recording has its telemetry
+  beside it, written by the session itself, and the test makes it again from the replay and
+  compares bytes, on both runtimes: ten scripted files and one from a session played in Unity.
+  That checks more than a hand-kept file would (the live recorder against the replayed one, and
+  one runtime against the other) and is re-made by the same two commands as the replays. The
+  exact bytes of one baseline row are written out in `WaveRecordTests` as well, so a renamed or
+  moved field cannot slip through a re-recording.
+- **No `IClock`.** A row holds no wall-clock time at all. The session label has the start time in
+  it, but that is a string the host passes in, and the replay stores the same string.
+- **A scripted player that sells** (`SellerPolicy`, as `restless`). The review probe needs a
+  recording with sales, and without a seller no pinned episode would run the selling rules on
+  the other runtime. It is crude: weakest tower by damage dealt, oldest wall piece.
+- **A third CLI command, `entropy`.** The metric had no way to be looked at otherwise.
+- **`SimHost` owns the telemetry writer,** not `DirectorHost` as ARCHITECTURE §6 said: telemetry is
+  written in every condition and needs nothing from the director.
+- **`TelemetryRecorder` reads `SafePlanner` for the `fallback` field.** That is the one thing in a
+  row that does not come from `SimState`; it comes from the planner object the simulation holds,
+  so a replay reproduces it too.
+- **Not in the row yet:** the participant code and session number (WP14), the recorded plans in
+  the replay (WP10). The director's fields exist in `WaveRecord` and are null.
+- **Temporary Unity input** (keys and a text panel), as WP-C1 did for towers. WP-C4 replaces it.
+
+**Decided while building** (all in `ARCHITECTURE.md` §4.6, §5.8 and §5.9, and pinned by tests)
+- A roll's `waveIndex` is the number of waves resolved when it was made: 0 at game start, N the
+  moment wave N resolves. The offers of roll N stay until wave N+1 resolves.
+- Each slot is drawn on its own, weighted by `ShopWeight`, so a tower can fill two slots.
+- An offer's price is fixed when it is rolled; a sale refunds a share of the price **paid**.
+- A sold tower stays in the list (`IsAlive` false, `Sold` true), like a destroyed one.
+- A wall piece's id is the index of its row in the build log. A tile breached and later built
+  over belongs to the newer piece. The refund is in proportion to the tiles still standing.
+- Selling is for build phases, towers and walls alike. A sale command during a wave is recorded
+  and changes nothing.
+- A telemetry row is a wave's fight **and the build phase after it**; row 0 is the build phase
+  before the first wave. Something built on the tick a wave starts belongs to the row before.
+- A row's `offered` is the roll made in its window (its first set; rerolled sets can be derived).
+- **A completed wave is one whose next wave began.** §5.9 said "waves completed" and no more.
+  The last wave a session reached has no build phase after it, so it cannot be compared.
+- The metric's `K` is the number of regions with a buildable tile.
+- Floats in a row have 7 significant digits and doubles 12. The text is for reading and comparing,
+  not the exact bits; those are in the replay.
+
+**Findings**
+- **Telemetry is a pure function of the replay**, shown three ways. (1) In tests, five sessions
+  (walls and towers, selling, both planners, a game over) recorded live and made again from
+  their replays give the same text. (2) Each of the ten pinned telemetry files is made again from
+  its replay on the *other* runtime, byte for byte, and the .NET and Mono files of an episode
+  differ only in the two labels that name the recorder. (3) A session played in Unity through
+  `SimHost` (16,774 ticks, bought and sold by the calls the keys make, stopped in the middle of
+  wave 6) wrote 7 rows live under Mono; `thesis telemetry` under .NET gives the same 7 rows,
+  byte for byte. So telemetry can always be made again, also after its schema grows.
+- **The JSON library does not print a float the same way on the two runtimes:** 0.20000458 is
+  `0.20000458` under .NET and `0.200004578` under Unity's Mono. Both read back to the same bits,
+  which is why replays never noticed. Telemetry text therefore goes through its own formatter
+  (one multiplication by a power of ten, a floor, integers); every expected string in
+  `JsonNumberTests` is checked by both runners.
+- **A host and a replay do not see the same events.** A host applies a command between ticks, so
+  the event it raises is never among a tick's events; a replay applies it at the start of the
+  next tick, so it is. The recorder may therefore react only to what a tick itself raises (a wave
+  starting or resolving, the roll after it, game over). This was found by the mutation check: one
+  of 44 deliberate breakages (a paid reroll overwriting the recorded offers) passed every test,
+  because no test rerolled in a recorded session. `ASessionWithPaidRerollsIsMadeAgainTheSame` now
+  does, and all 44 are caught.
+- **The new arithmetic is bit-identical on both runtimes.** `restless-5waves` (7,240 ticks, 14
+  towers bought, 3 sold, 4 wall pieces sold) was recorded under .NET and under Mono with identical
+  commands and tick hashes.
+- **Three offers or four** (tower bot, static baseline, real settings; the wave it lost in):
+
+  | Offers | seed 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 |
+  |---|---|---|---|---|---|---|---|---|---|---|
+  | 3 | 1 | 1 | 25 | 7 | 2 | 12 | 1 | 1 | 5 | 14 |
+  | 4 | 10 | 13 | 18 | 7 | 9 | 8 | 25 | 14 | 25+ | 25+ |
+
+  (25+ = still alive after 25 waves.) Five and six offers changed little more. Seed 3 is the
+  warning in the table: more offers is not always better for a bot that buys whatever comes
+  first; that is the bot, and balance is WP-C5.
+- **The scripted players with the shop, real settings** (the wave each lost in):
+
+  | Player | seed 1, static baseline | seed 1, class cycle | seeds 1 to 10, static baseline |
+  |---|---|---|---|
+  | idle | 1 | 1 | |
+  | walls only (greedy) | 1 | 1 | |
+  | towers (sentry) | 10 | 7 | 10 13 18 7 9 8 25 14 25+ 25+ |
+  | walls, then towers (mixed) | 2 | 2 | 2 1 3 5 1 1 1 3 1 3 |
+  | sell, walls, towers (restless) | 4 | 3 | 4 1 4 24 1 1 1 6 1 3 |
+
+  The two players that build walls first are weak: walls take the budget the first towers need.
+  They are stand-ins that exercise the rules, not the ladder's players (WP12).
+- **First numbers from the metric** (static baseline; they show the tool works, nothing more):
+  tower bot, seed 7, 24 completed waves, 90 tiles: H = 0.487. Restless, seed 4, 23 completed waves,
+  268 tiles: H = 0.469. Tower bot, seed 4, 6 completed waves, 18 tiles: H = 0.343. A session lost
+  in wave 1 has no completed wave and scores 0.
+- **A row is about 1.5 to 2 KB**; a 25-wave session is under 50 KB. Recording costs nothing
+  measurable: the recorder reads four kinds of event per tick and builds a row once per wave.
+- **A float sum shows in the file:** `"budgetBefore":9.000015` is a budget that kill rewards of 0.2
+  were added to one at a time. Seven digits print the float as it is; they do not tidy it.
+- **The tests notice a broken rule.** 44 deliberate breakages, each applied alone: the shop seed
+  ignoring a counter, an offer bought twice, selling during a wave, a refund that ignores the
+  rate or the breached tiles, a clone dropping piece ids, a window ending a tick late, stale or
+  rerolled offers in a row, placements repeated, the metric counting row 0 or sales or every
+  region, swapped region axes, a half rounding down, a renamed field, Windows line ends, and so
+  on. 43 failed at least one test at once; the 44th led to the test named above.
+- **Tooling.** A Python edit script that opens a C# file while Unity is leaving play mode can
+  fail with "Invalid argument" (the file was untouched; run it again). The Edit and Write tools
+  turn `\uXXXX` in their input into the character, so an escape in source has to be written by a
+  script that builds the backslash itself. An ad-hoc run of 44 builds takes about 15 minutes.
+
+**Unity play-mode check (SampleScene, driven through Unity MCP)**
+- `DirectorHost.condition` set to `DevClassCycle` and the core to 1,000 HP, both in memory only; the
+  scene and the config asset's other values on disk were not changed (checked afterwards).
+- The offers panel is at the top right, the one corner the HUD leaves free. (A first version sat
+  on the controls list on the left and was too small in a small Game view; both fixed.)
+- Bought through `PlayerBuilder.TryBuyOffer`, the call the keys make: four offers before wave 1,
+  eleven more later; a slot bought twice was refused with a message.
+- Sold through `PlayerBuilder.TrySell`, the call the sell key makes: eight towers and two wall
+  pieces in build phases, with refunds of half (frost 6, archer 5, cannon 9, a T piece 2.5, an L
+  piece 1.5); open ground refused. Cubes disappeared with each sale.
+- Two sale commands were sent on the first tick of wave 3, from an event handler: the simulation
+  refused both (no log row, no budget change), and both are in the replay.
+- Waves 1 to 5 of the class cycle: 100, 52, 55 and 113 enemies all killed, then 47 of 120 with
+  most towers sold. The session was stopped 19 ticks into wave 6.
+- `thesis replay … --per-tick`: 16,774 ticks, 5 wave hashes, every tick hash and the final state
+  match. `thesis telemetry … --check`: the 7 rows are the file's, byte for byte. Both files are
+  the pinned `unity-session-shop`.
+- 0 errors and 0 warnings in the console after compiling.
+
+**Tests:** 356 → 510 headless; Unity 512 including 2 explicit diagnostics.
+- New: `ShopTests` (21), `SellingTests` (19), `JsonNumberTests` (32), `WaveRecordTests` (14, with the
+  file tests), `TelemetryRecorderTests` (24), `PlacementEntropyTests` (21), `SellerPolicyTests` (6),
+  `ShopIndependenceTests` (1: ten sessions of 30 waves).
+- `PinnedReplayTests`: 11 recordings (5 .NET, 5 Mono, 1 Unity session), each replayed and each
+  with its telemetry made again; the two runtimes' telemetry compared; the set must contain
+  walls, towers and both kinds of sale.
+- Added to existing files: sales in the 20,000-tick determinism run (12 wall pieces, 5 towers),
+  piece ids in the grid clone test, the sentry buying by slot, the new commands in a replay file.
+- Fixtures: `TestRows` (rows by hand, and a full director row); `TestTowers.Buy` / `BuySlot` /
+  `BuyAny`; `CommandScript` buys, sells and rerolls.
+
+**Commands run**
+```
+dotnet test Tools/dotnet/Thesis.Headless.sln                               → Passed 510/510
+Unity MCP: run_tests EditMode                                              → Passed 510, 2 explicit skipped
+thesis pin                                                                 → Results/pinned-replays/dotnet-* (5 replays, 5 telemetry files)
+Unity MCP: Thesis/Replay/Record Pinned Episodes (Mono)                     → Results/pinned-replays/mono-* (the same)
+Unity MCP: play SampleScene with DevClassCycle                             → see above
+thesis replay Runs/Sessions/20261011-152552_seed1/replay.json --per-tick   → OK, 16,774 ticks, 5 waves
+thesis telemetry Runs/Sessions/20261011-152552_seed1/replay.json --check Runs/Sessions/20261011-152552_seed1/telemetry.jsonl   → OK, 7 rows, byte for byte
+thesis run --policy restless --seed 4 --waves 5 --per-tick --out Runs/c3_probe          (the review probe)
+thesis replay Runs/c3_probe/replay.json --per-tick                         → OK, 7,240 ticks (10 walls, 14 towers, 4 wall sales, 3 tower sales)
+thesis telemetry Runs/c3_probe/replay.json --check Runs/c3_probe/telemetry.jsonl        → OK, 6 rows, byte for byte
+thesis trace Runs/c3_probe/telemetry.jsonl [--wave 2]
+thesis entropy Runs/c3_probe/replay.json
+thesis run --planner escalation|class-cycle --policy idle|greedy|sentry|mixed|restless --seed 1..10 --waves 25   → the tables above
+python c3_mutate.py  (scratch; 44 one-line breakages, each with dotnet test on the affected classes)   → 44 of 44 caught
+```
+(`thesis` = `dotnet run --project Tools/dotnet/Thesis.Cli --`)
+
+**Known issues**
+- **Still not played by hand.** Z / X / C / B buy the four offers onto the tile under the mouse;
+  Delete (or Backspace) sells the tower or wall piece under it, between waves. The panel at the
+  top right names the keys.
+- **The temporary input shows too little:** no range before a tower is placed, and no preview of
+  which tiles and what refund a wall sale takes (WP-C4). The C key also resets the camera's roll
+  (`CameraMovement`), an overlap that has been there since WP-C1.
+- **Nothing is balanced:** four offers from a roster of three means most rolls have a duplicate;
+  half back on a sale and no rerolls are first guesses (WP-C5, S11).
+- **The scripted players do not choose among offers.** The tower bot buys whatever the budget
+  covers, in slot order (WP12).
+- **S14 is still open** (income depends on the wave's shape), and the shop makes it matter more:
+  what a player can buy next turn is what the last wave paid.
+- **Secondary measures of §5.9:** walls only, towers only and the 4×4 and 8×8 partitions are
+  built; tower type × region, the mean of the per-wave entropies and the sale counts are left
+  to the analysis; `restructure` needs the profile (WP8).
+- **A built player has not written telemetry yet.** Like the replay (I1), it is verified in the
+  editor and headless; a session from the Windows build must be checked before the pilot.
+- **WP7 has not been started.** It was planned to run beside this package.
+- **`ProjectSettings/TimeManager.asset` has an unrelated change in the working tree.** Unity
+  re-saved its physics fixed timestep in a newer format, as the fraction 2822399 / 141120000:
+  0.02 to seven digits. Nothing in the game reads it (`SimHost` counts its own ticks from
+  `SimConfig.TickSeconds`; no script uses `FixedUpdate`). Not part of this package; revert it or
+  commit it apart.
+- The recordings of WP-C2 (schema 3) are refused now; they are in git history at that commit.
+
+---
+
+## 2026-10-12 — The game design document, and the student's first read of it
+
+**Status:** documents only. No code of the game changed and nothing was re-recorded.
+
+**What was made**
+- `Docs/GDD.md` and `Docs/GDD.pdf`: the game from the player's side, with every part marked
+  Built, Planned, Proposed or Open, and a list of the open questions with who answers each.
+- `Docs/gdd/`: three drawn pictures (where enemies walk; a build phase; a wave) and one
+  screenshot of the game as it is.
+- `Tools/gdd/`: what makes the PDF and the pictures (`README.md` there).
+
+**What the student decided on reading it (not built; WORKPLAN WP-C4)**
+- The board is seen from straight above. The mockups were drawn flat only to be readable;
+  the student preferred that to the tilted 3-D camera.
+- Walls do not need to be tetromino pieces. Proposed in their place: single tiles, drawn by
+  click and drag, one price a tile.
+- Later the same day, yes to four of the five questions the read had raised (GDD §12,
+  "Answered"): the walls as proposed; rocks on the map; the wave watched from above too; one
+  route line for each kind of enemy the player has met. The last is still to be shown to the
+  supervisor, because the screens of the two conditions differ by it.
+
+**What the student asked, and what was answered**
+- *Should the board start with walls or terrain on it?* Proposed: rocks (the map's static
+  blockers, which the rules have always had and no map has used), not walls. A standing
+  wall can be sold and pays when it is chewed through, so it would be money on the board.
+  The rocks must not decide the maze, or both study conditions build the same thing.
+- *Do enemies walk the same path, or does the director choose?* One path rule; one route per
+  movement class and spawn; the director chooses the class and never the path (GDD §5.3).
+  The GDD had not said this anywhere in one place.
+
+**Found while drawing the picture of the routes**
+The walker and sapper routes in the pictures come from the real flow field (`routetool`), on a
+38 × 38 sample board with 167 rock tiles, 34 wall tiles and 9 towers. Walkers: about 71 tiles,
+past all 9 towers, chewing nothing. Sappers: about 50 tiles through two walls one tile thick,
+past 5 towers. Flyers: 44 tiles, in reach of 1 tower that can hit them. Two things went wrong
+on the way, and both are how the game is meant to work:
+- With the far ends of the middle ridge left open, the walkers went round the whole board
+  through a corner (cost 67.8) and never entered the maze.
+- With one baffle three tiles longer, the walkers chewed through a wall one tile thick
+  (cost 73.0 with the dig) because the way round had become dearer than 15 tiles.
+So a detour is worth at most one wall's price per wall, and a hand-made map has to be read
+with the route drawn on it before it is trusted. This matters for the rocks: a layout is
+checked with `thesis ascii` or `routetool`, not by eye.
+
+**Open, for the student:** GDD §12, question 19 (the size of the board), besides the fourteen
+that were there before the read. The decisions add an estimated two to three days to WP-C4.

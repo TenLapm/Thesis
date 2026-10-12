@@ -42,6 +42,9 @@ WP-C2 + WP-C3 ──────── WP9 strategies ── WP10 layers ── 
 
 WP6 (telemetry) no longer exists as its own package: it is part of WP-C3 (D8).
 
+**Where things stand (2026-10-11):** WP0 to WP5, WP-H, WP-C1, WP-C2 and WP-C3 are done.
+Next is **WP-C4**. WP7 has not been started.
+
 ### Revised semester-1 schedule (approved 2026-09-15)
 
 | Week | Original `CLAUDE.md` §9 | Revised |
@@ -95,9 +98,9 @@ Three changes:
 | done | **WP-H** hardening | W7 | 2026-10-02, after the review |
 | done | **WP-C1** combat core | W7 | 2026-10-02; includes "every wave must end" (§4.6) |
 | done | **WP-C2** movement classes | W7 | 2026-10-02; Ground, Sapper, Flying |
-| 1, parallel | **WP7** learning | W8–W9 | separate session |
-| 2 | **WP-C3** shop, telemetry, wall selling | W9 | checkpoint at the end of this week |
-| 3 | **WP-C4** Unity towers and shop UI | W10 | |
+| done | **WP-C3** shop, telemetry, wall selling | W8 | 2026-10-11, the last day of W8 |
+| 1, parallel | **WP7** learning | W8–W9 | separate session; **not started** |
+| 3 | **WP-C4** Unity towers and shop UI | W10 | next |
 | 4 | **WP-C5** roster and balance check | W10 | |
 | 5 | **WP8** profile | W11 | needs the proposal's §6.2 in the repo |
 | 6 | **WP9** strategies | W11 | needs the proposal's §6.3 in the repo; S14 (income per wave shape) |
@@ -110,6 +113,11 @@ Three changes:
 
 There is no slack left in this table. Cutting Flying at the checkpoint buys back roughly
 half a week across WP-C2, WP-C4, WP-C5, WP9 and WP10.
+
+**The checkpoint, as it came out (2026-10-11).** WP-C3 was finished on the last day of W8, a
+week before the checkpoint, so **Flying is not cut**. Nothing else moved: WP7, planned to run
+beside this package, has not been started, and it is what WP11 waits for. It needs only
+`Thesis.Core`, so it can still run in a separate session at any time before W13.
 
 ---
 
@@ -331,7 +339,7 @@ schema 2 (WP10); the director's config and snapshot in the replay (WP11); parall
 
 ---
 
-## WP6 — Telemetry v1 and placement entropy  → folded into WP-C3 (D8, 2026-10-02)
+## WP6 — Telemetry v1 and placement entropy  → folded into WP-C3 (D8, 2026-10-02), built there 2026-10-11
 
 Its requirements moved to WP-C3 unchanged in substance: an append-only JSONL writer, a
 golden-file test, rows that parse with one `WaveRecord` class in every condition,
@@ -435,9 +443,29 @@ As built: `thesis ascii --map Maps/Bench_Maze.map.json --scenario maze --class g
 
 ---
 
-## WP-C3 — Shop, wall selling and telemetry
+## WP-C3 — Shop, wall selling and telemetry  ✅ done 2026-10-11
 
 **Reads:** §4.5 (counter-based shop RNG), §4.6 (shop defaults, wall selling), §5.1, §5.8, §5.9, `CLAUDE.md` I10 and I11 · **Depends:** WP-C1. S11 can start with the §4.6 defaults.
+
+**Status:** built in one session, not split; every "must pass" item below has a test, in both
+runners. As built it differs from the list below in these ways (DEVLOG WP-C3 has the reasons):
+- **Four shop offers, not three** (`SimConfig.ShopOffers`). Measured: with three, the tower bot loses
+  wave 1 on four seeds of ten.
+- **I10 is tested across the two planners that exist** (`EscalationPlanner`, `ClassCyclePlanner`) and
+  five scripted players, for 30 waves. There is no random planner until WP10.
+- **The golden files are the pinned episodes' telemetry**, not one hand-kept file: every
+  `Results/pinned-replays/<name>.replay.json` has a `<name>.telemetry.jsonl` beside it, written by the
+  session itself, and the test makes it again from the replay on both runtimes and compares bytes. A
+  Unity session played through `SimHost` is one of them. The exact bytes of one baseline row are also
+  written out in `WaveRecordTests`.
+- **No `IClock`.** A row holds no wall-clock time at all, so there is nothing to inject.
+- **`restless`, a scripted player that sells** (`SellerPolicy` in front of the wall and tower builders),
+  and a fifth pinned episode, `restless-5waves`. Without one, no recording would contain a sale.
+- **A third CLI command, `entropy`,** beside `trace` and `telemetry`.
+- **`SimHost` owns the telemetry writer,** not `DirectorHost` as §6 first said.
+- **Replay schema 4.** Older recordings are refused.
+- **Unity has a temporary way to play it:** Z / X / C / B buy offers 1 to 4 at the mouse tile, Delete
+  sells the tower or wall piece under the mouse, and a text panel lists the offers. WP-C4 replaces all of it.
 
 This package now also contains what was WP6 (see the note above WP-C1). If it grows past one
 session, split it as **C3a** (shop, `SellTower`, `SellWall`) and **C3b** (telemetry, entropy, `trace`).
@@ -500,14 +528,51 @@ the whole piece that would be sold and shows the refund), and an HP bar replacin
   Offers refresh at intermission start and stay unchanged during a wave.
 - A Unity session with towers, recorded as a replay, verifies headless.
 
-**Replaces from WP-C1:** the Z / X / C keys and `PlayerBuilder.TryPlaceTower`, the tower drawn as a
-tinted wall cube, and the console hint. `FlowAgent`'s bar already shows HP (its field is still
-called `lifeBarFill`, because the prefab refers to it).
+**Replaces from WP-C1 and WP-C3:** the Z / X / C / B keys and `PlayerBuilder.TryBuyOffer`, the Delete
+key and `PlayerBuilder.TrySell`, the text panel drawn in `PlayerBuilder.OnGUI`, and the tower drawn as a
+tinted wall cube. `FlowAgent`'s bar already shows HP (its field is still called `lifeBarFill`, because
+the prefab refers to it). Two things the temporary input does not do and the real UI must: show a
+tower's range before it is placed, and show which wall tiles and what refund a sale would take.
+The C key also resets the camera's roll (`CameraMovement`), an overlap that has been there since WP-C1.
 
 **Replaces from WP-C2:** `FlowAgent`'s placeholder look for the movement classes (a sapper tinted orange, a
 flyer tinted blue and drawn 2.6 units up). `EnemyArchetypeAsset` gives each enemy type its own prefab.
 Also worth adding here: the route preview (`PathPreviewer`) draws the ground route only, so nothing on
 screen shows where sappers will dig or that flyers ignore the maze.
+
+**Design changes from the GDD review (2026-10-12).** The student read `Docs/GDD.md` and decided four
+things (GDD §12, "Answered"). They are built here, because this package rebuilds the building input and
+the screen anyway:
+- **The board is seen from straight above, in the build phase and during a wave** (GDD §3.1): a fixed
+  top-down camera and no camera controls in SampleScene. `CameraMovement` stays for the benchmark scenes.
+- **Walls are single tiles, no longer tetromino pieces** (GDD §4.1): drawn by click and drag, one price
+  a tile, sold tile by tile. The rules need no change: a shape may be one tile, so the shape library
+  (`Maps/Shapes.json`, `Assets/Scripts/BlockS`) becomes that one shape, a drag sends one placement
+  command per tile, and a sale is one tile. The piece queue, the hold slot and rotation leave the screen;
+  whether they are also taken out of the simulation is decided here (it changes the replay schema).
+- **Rocks on the map** (GDD §3.2): static blockers in SampleScene's map. The rules and the check at load
+  exist, and no map has used them. A first layout is drawn here by the four rules of GDD §3.2, read with
+  the routes drawn on it before it is trusted (`thesis ascii`; `DEVLOG` 2026-10-12 says why), and then
+  changed by the student's play.
+- **One route line for each movement class the player has met** (GDD §5.3): in a build phase the classes
+  met so far in the session, during a wave the classes of that wave. This is view only: what has been
+  "met" is read from the waves the simulation started and never goes back into it. The supervisor is
+  still to see it before the pilot, because the screens of the two conditions differ by it.
+
+The shape library and the map both change, so every pinned replay has to be recorded again, and the tests
+that load the real shape file or the real map have to be checked.
+
+**Not decided:** the size of the board (GDD question 19, WP-C5).
+
+Added to **Must pass** by these decisions:
+- A wall drawn by drag is placed tile by tile with the ghost agreeing with every click (I9), and a
+  recorded Unity session that contains drags verifies headless.
+- Nothing can be built on a rock, enemies on foot go round it and flyers pass over it, in play and not
+  only in the tests.
+- Under the static baseline only the walkers' line is ever drawn. Under `DevClassCycle` the sappers' and
+  the flyers' lines appear with the first wave that contains them, and not before.
+
+The estimate for all of it is two to three days more than this package had. The table above has no slack.
 
 **Out of scope:** art, VFX, sound, and UI styling. Those belong to the S2 W1–W3 UX pass.
 

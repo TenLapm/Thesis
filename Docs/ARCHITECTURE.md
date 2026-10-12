@@ -126,6 +126,18 @@ and NuGet `Newtonsoft.Json` 13.0.2 on the `dotnet` side. `Thesis.Core.Json` hold
 shared `JsonSerializerSettings` (invariant culture, round-trip floats, ordered
 properties). Never use `JsonUtility` in `Thesis.*`.
 
+**Two ways to write a number (WP-C3).** `Json.Serialize` keeps every bit of a float; replays,
+maps and snapshots use it. `Json.SerializeLine` is for telemetry lines, whose *text* must be
+the same on every runtime, and the library's own number text is not: it prints the float
+0.20000458 as `0.20000458` under .NET and as `0.200004578` under Unity's Mono. So a line's
+floats go through `Json.FormatFloat` (7 significant digits) and its doubles through
+`Json.FormatDouble` (12): plain decimals, no exponent, no trailing zeros, made with one
+multiplication by a power of ten, a floor and integers, so that no library routine formats
+a floating-point number. `NaN` and the infinities are written as strings. That text is for
+reading and for comparing files; it is not the exact bits. Whatever must be bit-exact is in
+the replay. `NamedValues` is an ordered name → number list written as a JSON object
+(`{"physical":812,"fire":240.5}`), used where a `Dictionary`'s order would be an accident.
+
 ---
 
 ## 3. Folder layout
@@ -134,17 +146,18 @@ properties). Never use `JsonUtility` in `Thesis.*`.
 Assets/
   Thesis/
     Core/        Thesis.Core.asmdef      Pcg32.cs IRandom.cs RngStreams.cs Fnv1a64.cs TileCoord.cs Vec2f.cs Json.cs DetMath.cs
+                                         NamedValues.cs NamedValuesConverter.cs DeterministicNumberConverter.cs   (WP-C3)
     Sim/         Thesis.Sim.asmdef
       Map/         MapData.cs
       Grid/        SimNode.cs SimGrid.cs FlowField.cs Route.cs Occupant.cs
       Agents/      AgentState.cs AgentSystem.cs
-      Build/       ShapeDef.cs ShapeBag.cs Placement.cs PlacementRecord.cs ShapeLibraryFile.cs
+      Build/       ShapeDef.cs ShapeBag.cs Placement.cs PlacementRecord.cs PlacementKind.cs ShapeLibraryFile.cs
       Waves/       IWavePlanner.cs WaveContext.cs WavePlan.cs AgentGroup.cs WaveOutcome.cs EscalationPlanner.cs
                    PlanValidator.cs SafePlanner.cs ClassCyclePlanner.cs (development only, until WP9)
       Combat/      DamageType.cs DamageTypes.cs TargetingMode.cs TowerDef.cs TowerState.cs TowerSystem.cs
                    Targeting.cs DamageMap.cs TowerRoster.cs (placeholder roster until WP-C5)             (WP-C1, built)
       Movement/    MovementClass.cs MovementClasses.cs FlowFieldSet.cs FlyingMovement.cs RouteCost.cs    (WP-C2, built)
-      Shop/        ShopState.cs ShopRoller.cs TowerOffer.cs                                          (WP-C3)
+      Shop/        ShopState.cs ShopRoller.cs TowerOffer.cs                                          (WP-C3, built)
       Commands/    SimCommand.cs
       Events/      SimEvent.cs
       Stats/       OccupancyMap.cs
@@ -167,10 +180,12 @@ Assets/
         Baselines/ RandomPlanner.cs RoundRobinPlanner.cs
       Reward/      RewardEvaluator.cs RewardBreakdown.cs CreditAssigner.cs
       Announce/    AnnouncementTable.cs
-      Telemetry/   WaveRecord.cs TelemetryWriter.cs PlacementEntropy.cs
+      Telemetry/   WaveRecord.cs TelemetryRecorder.cs TelemetryWriter.cs
+                   PlacementEntropy.cs PlacementScope.cs                                             (WP-C3, built)
       DirectorConfig.cs
     Harness/     Thesis.Harness.asmdef
-      Policies/    IPlayerPolicy.cs IdlePolicy.cs GreedyDetourPolicy.cs SentryPolicy.cs SequencePolicy.cs   (built)
+      Policies/    IPlayerPolicy.cs IdlePolicy.cs GreedyDetourPolicy.cs SentryPolicy.cs SequencePolicy.cs
+                   SellerPolicy.cs                                                                   (built)
                    RepeatTemplatePolicy.cs
                    ChokepointPolicy.cs SpreadPolicy.cs ReactivePolicy.cs
       Bench/       PathfindingBench.cs
@@ -193,17 +208,20 @@ Assets/
 Maps/        SampleScene.map.json Bench_Open.map.json ...   (exported static geometry)
              Shapes.json                                    (exported wall-shape library, in bag order)
 Runs/        (gitignored) raw run output: telemetry.jsonl, replay.json
-             Runs/Sessions/<time>_seed<seed>/replay.json is what a Unity editor session writes
+             Runs/Sessions/<time>_seed<seed>/ is what a Unity editor session writes: replay.json and telemetry.jsonl
 Results/     (committed) one folder per reported result, per CLAUDE.md §7
-             Results/pinned-replays/ is the standing set PinnedReplayTests re-runs (re-recorded when the rules change)
+             Results/pinned-replays/ is the standing set PinnedReplayTests re-runs (re-recorded when the rules change):
+             each <name>.replay.json has its <name>.telemetry.jsonl beside it
 Docs/        ARCHITECTURE.md WORKPLAN.md DEVLOG.md REVIEW-2026-10-02.md
+             GDD.md (the game from the player's side; its pictures are in Docs/gdd/) and GDD.pdf, made from it
+Tools/gdd/   pdf.py, pictures.py, board.py, routes.txt, routetool/ (README.md there): what makes GDD.pdf and Docs/gdd
 .github/workflows/headless-tests.yml   `dotnet test` on every push, Linux and Windows
-.gitattributes                          LF in the repository on every machine
+.gitattributes                          LF in the repository on every machine; *.jsonl is LF in the working tree too
 Tools/dotnet/
   Directory.Build.props   LangVersion 9.0, netstandard2.1 for libraries, net9.0 for Cli/Tests
   Thesis.Headless.sln
   Thesis.Core/ Thesis.Sim/ Thesis.Learning/ Thesis.Director/ Thesis.Harness/   (csproj only, glob-include Assets sources)
-  Thesis.Cli/   Program.cs Args.cs RunCmd.cs ReplayCmd.cs AsciiCmd.cs PinCmd.cs
+  Thesis.Cli/   Program.cs Args.cs RunCmd.cs ReplayCmd.cs AsciiCmd.cs PinCmd.cs TelemetryCmd.cs TraceCmd.cs EntropyCmd.cs
   Thesis.Tests/ (csproj glob-includes Assets/Tests/EditMode/**/*.cs; NUnit 3.x)
 ```
 
@@ -385,39 +403,47 @@ field's cost for a walker or a sapper, the straight line for a flyer.
 ### 4.5 Commands, events, RNG
 
 - `SimCommand` mirrors the player's actual inputs: `PlaceShape(originX, originY)`,
-  `Rotate`, `Hold`, `StartWaveNow`, and since WP-C1 `PlaceTower(towerIndex, x, y)`, which
-  buys a tower type from the roster by index (WP-C3 turns the index into a shop offer
-  slot). The current shape and its rotation live in
-  `ShapeBag`, so a replay reproduces the bag's state as well. The input log is a
-  list of `(tick, command)`.
+  `Rotate`, `Hold`, `StartWaveNow`, and since WP-C3 `PlaceTower(offerSlot, x, y)` (buys one
+  of the shop's offers and puts it on a tile), `SellTower(x, y)`, `SellWall(x, y)` and
+  `RerollShop`. The current shape and its rotation live in `ShapeBag`, so a replay
+  reproduces the bag's state as well. The input log is a list of `(tick, command)`.
+  **A command records what the player tried.** One that cannot work (an illegal tile, an
+  empty budget, a slot already bought, a sale during a wave) changes nothing and raises
+  no event, but it is still in the replay.
 - `SimEvent` is a `readonly struct` holding a `Kind` enum plus integer and float payload
   fields: `WallPlaced`, `WallBreached`, `AgentSpawned`, `AgentKilled`,
-  `AgentLeaked`, `WaveStarted`, `WaveResolved`, `GameOver`, and since WP-C1 `TowerPlaced`,
-  `TowerDestroyed`, `TowerFired`, `AgentRemoved` and `WaveTimedOut`. Views rely on these
+  `AgentLeaked`, `WaveStarted`, `WaveResolved`, `GameOver`, since WP-C1 `TowerPlaced`,
+  `TowerDestroyed`, `TowerFired`, `AgentRemoved` and `WaveTimedOut`, and since WP-C3
+  `ShopRolled(waveIndex, rerollCount)`, `TowerSold(towerId, x, y, refund)` and
+  `WallSold(x, y, pieceId)` (one per tile cleared). Views rely on these
   events and never poll for changes.
 - Randomness comes only from `Pcg32` streams derived from one `rngSeed`, one stream per
   subsystem (`RngStreams.Bag`, `Spawn`, `Strategy`, `Thompson`, `RewardBernoulli`,
   `Policy`). Adding a draw in one subsystem therefore never shifts another subsystem's
   sequence. That property is what keeps a determinism divergence local and findable.
 - **The shop is the exception: its RNG is counter-based, not a running stream.** Each roll
-  seeds a new `Pcg32` from `Fnv1a64(rngSeed, "shop", waveIndex, rerollCount)`. So the
+  seeds a new `Pcg32` (on the `RngStreams.Shop` stream) from
+  `Fnv1a64(rngSeed, "shop", waveIndex, rerollCount)`: `ShopRoller.SeedFor`. So the
   offers for wave 7 are the same no matter what the player bought earlier, which
   planner is running, or how many draws other systems have made. This is what makes I10 hold.
 
-**Replay file (WP5).** `Thesis.Sim.ReplayFile`, written by `ReplayRecorder`. Schema 3
-since WP-C2. (Schema 2, WP-C1, added the tower roster and the `PlaceTower` command.
-Schema 3 has the same layout; the number went up because every hash now also covers the
-sapper field and each enemy's movement class.) A file of another schema is refused,
-because its commands and hashes describe a different game:
+**Replay file (WP5).** `Thesis.Sim.ReplayFile`, written by `ReplayRecorder`. Schema 4
+since WP-C3. (Schema 2, WP-C1, added the tower roster and the `PlaceTower` command.
+Schema 3, WP-C2, kept the layout; every hash also covered the sapper field and each
+enemy's movement class. Schema 4: `PlaceTower` names a shop offer slot where it named a
+roster index, there are three more commands, and every hash also covers the shop, each
+wall tile's piece, and what a tower cost and whether it was sold.) A file of another
+schema is refused, because its commands and hashes describe a different game. A command
+name the simulation does not know is refused too, also when it is a number.
 
 | Field | Meaning |
 |---|---|
 | `Build`, `Session`, `Policy` | Labels for people. `Policy` is `"human"` or a scripted policy's name. Never read by a replay. |
 | `Map`, `MapSeed`, `RngSeed`, `Planner` | What to rebuild. `MapSeed` is 0 until seeded mazes exist. `Planner` is `IWavePlanner.Name`, resolved by `Harness.Registry`. |
-| `Config`, `MapData`, `Shapes`, `Towers` | **Stored in full**, so the file is self-contained and still means the same thing after a retune or a re-export. `Towers` is the roster, in order: a `PlaceTower` command names a tower by its index. |
+| `Config`, `MapData`, `Shapes`, `Towers` | **Stored in full**, so the file is self-contained and still means the same thing after a retune or a re-export. `Towers` is the roster, in order: the shop draws its offers from it by index. |
 | `SetupHash` | `ReplaySetup.Hash(Config, MapData, Shapes, Towers)` taken when recording **started**. Loading recomputes it; a mismatch means a number did not survive JSON, the file was edited, or the config was changed in the inspector mid-session. The file is then refused. |
 | `InitialHash` | State hash before the first tick and the first command. A mismatch here means the seed or the rules differ. |
-| `Commands` | `[{Tick, Cmd, X, Y, A}]` (`A` is the tower index of a `PlaceTower`). `Tick` is `State.Tick` when the command was applied; commands sharing a tick apply in file order. |
+| `Commands` | `[{Tick, Cmd, X, Y, A}]` (`A` is the offer slot of a `PlaceTower`). `Tick` is `State.Tick` when the command was applied; commands sharing a tick apply in file order. |
 | `WaveHashes` | `[{Wave, Tick, Hash}]`, taken right after the tick that raised `WaveResolved`. |
 | `FinalTick`, `FinalHash` | Where the recording stops, after any commands applied at that tick. A session quit mid-wave is still checked up to here. |
 | `TickHashes` | Optional. One hash per tick, 8 bytes little-endian each, base64. Entry `i` is the state right after tick `i` ran. Needed to pin a divergence to a tick. |
@@ -435,7 +461,9 @@ rebuild it from the `DirectorConfig` and estimator snapshot stored in the file, 
 again, and compare its plans with the recorded ones. The reason for the split: the
 director's arithmetic is the part most likely to differ between machines, and the study
 data must not depend on reproducing it. It also means telemetry can always be
-regenerated from a replay.
+regenerated from a replay. *(For the conditions that exist today that is already so:
+`ReplayRunner.Telemetry(file)` gives back the session's telemetry file byte for byte,
+§5.8.)*
 
 Rule for anything that ends up in a replay's setup: **no negative zeros**. JSON drops the
 sign, so the file would describe a different input from the one that ran (found in WP5;
@@ -443,10 +471,9 @@ sign, so the file would describe a different input from the one that ran (found 
 
 ### 4.6 Combat, movement classes and shop (WP-C1…C3)
 
-**Built so far: the combat core (WP-C1) and the movement classes (WP-C2).** The shop and
-selling are WP-C3. Until the shop exists, `PlaceTower` buys any tower of the roster at its
-cost, and the roster is `TowerRoster.Placeholder()`: three unbalanced towers (single
-target, splash, slow), one per damage type.
+**Built: the combat core (WP-C1), the movement classes (WP-C2), and the shop and selling
+(WP-C3).** The roster is still `TowerRoster.Placeholder()`: three unbalanced towers (single
+target, splash, slow), one per damage type (WP-C5).
 
 **Enemies.** `AgentState` has `Hp`, `MaxHp`, `Resist[]` (one damage multiplier per
 `DamageType`; 1 means normal, 0 means immune), `SlowTicks` and `SlowFactor`, a
@@ -582,24 +609,49 @@ trivial, so do **not** add spatial hashing unless there is a measured reason.
 Tower hits resolve within the tick (I12). `TowerView` draws a cosmetic projectile when it receives
 `TowerFired`.
 
-**Shop.** `ShopState` holds `Offers[]` (tower def id, price, bought flag),
-`RerollCount` and `WaveIndex`. Defaults (all in `SimConfig`, all tunable; the rules
-are spec gap S11):
+**Shop (WP-C3, built).** `SimState.Shop` is a `ShopState`: `Offers[]` (each a
+`TowerOffer`: index into the roster, price, bought flag), `WaveIndex` and `RerollCount`.
+`ShopRoller.Roll(rngSeed, waveIndex, rerollCount, roster, count)` makes a set of offers and
+reads nothing else, which is I10. The numbers are in `SimConfig` (spec gap S11; all of them
+can still move in the balance pass):
 
-| Rule | Default |
+| Rule | As built |
 |---|---|
-| When offers roll | At game start and at each intermission start. Unbought offers are replaced. |
-| Offers per roll | 3, drawn weighted by `TowerDef.ShopWeight` using counter-based RNG (§4.5) |
-| Buying | `PlaceTower(offerSlot, x, y)` checks legality and budget, spends the budget, and places the tower all in one command, the same way walls work today. Each slot can be bought once. |
-| Rerolls | Off in v1 (`RerollCost = -1`). Turning them on adds `RerollShop`. |
-| Selling towers | `SellTower(x, y)` refunds `price × SellRefund` (default 0.5), clears the tile, and rebuilds the fields. In build phases only, unless `SimConfig.SellDuringWave` is on (see the next row). *This default changed on 2026-10-02 from "at any time"; S11 can change it back.* |
-| Shop during waves | Open. Offers refresh only at intermission start. |
-| Selling walls | **Allowed (D6).** `SellWall(x, y)` sells the whole **piece** the tile belongs to: every tile of that placement still standing is cleared, the fields rebuild, and the player gets `piece cost × WallSellRefund × (tiles still standing ÷ tiles placed)`, with `WallSellRefund` 0.5 by default. In build phases only (`SimConfig.SellDuringWave`, default off): selling mid-wave lets a player open and close gaps to walk enemies back and forth under fire, the classic maze-TD exploit. |
+| When offers roll | At game start (`waveIndex` 0) and the moment a wave resolves (`waveIndex` = that wave's number). The new set replaces the old one, bought or not. No roll when the game ends. |
+| Offers per roll | `ShopOffers` = **4**. Each slot is drawn on its own, with a chance in proportion to `TowerDef.ShopWeight`, so the same tower can fill two slots. |
+| Buying | `PlaceTower(offerSlot, x, y)` checks legality (I9) and budget, spends, and places the tower in one command, the way walls work. Each slot can be bought once. The price is the offer's, fixed when it was rolled. |
+| Shop during waves | Open. The offers of a roll stay through the next wave's fight, until that wave resolves. |
+| Rerolls | Off (`RerollCost = -1`). With a price set, `RerollShop` pays it and rolls `(waveIndex, rerollCount + 1)`: the next set of the same wave. |
+| Selling towers | `SellTower(x, y)` refunds `price paid × SellRefund` (0.5), clears the tile and rebuilds both fields. The tower stays in the list with `IsAlive` false and `Sold` true, so its id and its totals keep their meaning. |
+| Selling walls | **Allowed (D6).** `SellWall(x, y)` sells the whole **piece** the tile belongs to: every tile of that placement still standing is cleared, both fields rebuild, and the player gets `piece cost × WallSellRefund × (tiles still standing ÷ tiles placed)`, with `WallSellRefund` 0.5. |
+| When selling is allowed | In build phases only (`SellDuringWave`, default off), for towers and walls alike: selling mid-wave lets a player open and close gaps to walk enemies back and forth under fire, the classic maze-TD exploit. *The plan first said "towers at any time"; changed 2026-10-02.* |
 
-New commands: `PlaceTower`, `SellTower`, `SellWall`, `RerollShop`. New events: `TowerPlaced`,
-`TowerSold`, `WallSold`, `TowerDestroyed`, `TowerFired`, `AgentKilled`, `ShopRolled`.
-`PlacementLog` becomes a build log: sales are appended to it as well, because the
-primary metric (§5.9) and the profile both need to know what left the board.
+Decided while building it (WP-C3), and pinned by tests:
+
+- **Four offers, not the three first planned.** Measured with the tower bot against the
+  static baseline, real settings, seeds 1 to 10, waves survived: with three offers
+  1 1 25 7 2 12 1 1 5 14; with four 10 13 18 7 9 8 25 14 25 25. The start budget of 60 buys
+  four towers, and a first roll of three leaves a third of it unspent on the wave that
+  matters most. Five and six offers changed little more.
+- **The draws are independent.** With a roster of three, "one of each" would be the only
+  possible roll otherwise, and the shop would offer no choice at all.
+- **`waveIndex` is the number of waves resolved when the roll was made**, so offers are
+  indexed the way telemetry rows are: the roll of index N is what the player can buy
+  while answering wave N.
+- **A wall piece's id is the index of its row in the build log** (`SimNode.PieceId`,
+  `PlacementRecord.PieceId`). A tile "still stands" for its piece when it is a wall *and*
+  still carries that id: a tile that was breached and later built over belongs to the
+  newer piece, and selling the older one leaves it alone.
+- **A wall tile put there without a placement** (a test fixture, a benchmark scenario) has
+  no piece and cannot be sold.
+- **The build log (`SimState.PlacementLog`) is the one record of what was built and what
+  left the board by the player's hand.** `PlacementKind` is `Wall`, `Tower`, `WallSold`,
+  `TowerSold` or `ShopReroll`. A row carries the tiles it built or cleared, its cost or
+  its refund, and the piece or tower it concerns. The log only grows. The primary metric
+  (§5.9), telemetry and Unity's drawing of walls all read it.
+- **The state hash covers all of it:** the shop, each tile's piece id, each tower's price
+  and whether it was sold, and the new fields of every log row.
+
 `WaveOutcome` replaced `Stalled` with `Killed` and added `DamageByType[]` and
 `TowersDestroyed` (WP-C1) and the per-class counts (WP-C2). `EscalationPlanner` v2 raises
 HP instead of lifetime each wave (formula in S12).
@@ -763,27 +815,76 @@ entries with weight `0.5^lag`.
 
 ### 5.8 Telemetry: `WaveRecord`, schema 1 (one JSONL line per wave)
 
+Built in WP-C3. A row of the static baseline, as written today: wave 2 of the pinned
+episode `dotnet-restless-5waves` (one line in the file; broken up here, and three of its
+seven placements left out):
+
 ```json
-{"schema":1,"session":"p07","condition":"WaveDirector.Full","build":"3f9cf57","map":"SampleScene",
- "mapSeed":0,"rngSeed":1234,"wave":7,"tickStart":41250,"tickResolved":44900,
- "profile":{"maze_length":2.41,"breach_vulnerability":0.12,"chokepoint_reliance":0.61,"tower_concentration":0.33,"damage_type_mix":0.20},
- "bin":3,"threatBudget":118.0,
- "strategies":[{"id":"breach_thin_wall","veto":null,"heuristic":0.40,"theta":0.71,"cold":false,"correction":0.42,"score":0.82},
-               {"id":"flying_bypass","veto":"Uncounterable","heuristic":null,"theta":null,"cold":null,"correction":null,"score":"-Infinity"}],
- "chosen":"breach_thin_wall","fallback":null,"announcement":"b3.breach_thin_wall",
- "plan":{"groups":[{"spawn":0,"archetype":"sapper","count":45,"hp":38.0,"moveSpeed":1.5,"digRate":2.5,"intervalTicks":10}]},
- "outcome":{"spawned":45,"killed":39,"leaked":6,"breaches":4,"towersDestroyed":1,"coreHpBefore":8,"coreHpAfter":2,
-            "budgetBefore":31.0,"budgetAfter":57.8,"pressure":0.27,"damageByType":{"physical":812.0,"fire":240.5}},
- "placements":[{"tick":44950,"kind":"wall","shape":"L","rot":1,"x":12,"y":7},{"tick":45010,"kind":"tower","def":"frost","x":14,"y":9}],
- "shop":{"offered":["frost","cannon","archer"],"bought":["frost"],"sold":[{"def":"archer","x":3,"y":20}],"rerolls":0},
- "reward":{"restructure":0.31,"survived":1,"pressure":0.27,"novelty":0.50,"total":0.5245,"binary":0,
-           "credited":[{"wave":7,"weight":1.0},{"wave":6,"weight":0.5},{"wave":5,"weight":0.25}]},
- "estimatorDigest":"9f2c41d0","directorMicros":412,"stateHash":"a81f09c3e2b7d154"}
+{"schema":1,"session":"dotnet-restless-5waves","condition":"escalation","player":"restless",
+ "build":"headless .NET 9.0.10","map":"SampleScene","mapSeed":0,"rngSeed":4,
+ "wave":2,"tickStart":1597,"tickResolved":2998,"tickEnd":2999,
+ "profile":null,"bin":null,"threatBudget":null,"strategies":null,"chosen":null,"fallback":null,"announcement":null,
+ "plan":{"strategy":"escalation","threatSpent":0,"groups":[{"spawn":0,"archetype":"basic","movement":"ground","count":105,
+         "hp":12,"moveSpeed":1.2875,"digRate":1,"resist":{"physical":1,"fire":1,"frost":1},"intervalTicks":9,"startDelayTicks":0}]},
+ "outcome":{"spawned":105,"killed":105,"leaked":0,"removed":0,"timedOut":false,"breaches":0,"towersDestroyed":0,
+            "coreHpBefore":10,"coreHpAfter":10,"coreDestroyed":false,"budgetBefore":9.000015,"budgetAfter":30.00006,"pressure":0,
+            "damageByType":{"physical":44,"fire":1170,"frost":46},
+            "spawnedByClass":{"ground":105,"sapper":0,"flying":0},"killedByClass":{"ground":105,"sapper":0,"flying":0},
+            "leakedByClass":{"ground":0,"sapper":0,"flying":0}},
+ "placements":[{"tick":2999,"kind":"sellTower","name":"frost","rot":0,"x":5,"y":3,"tiles":[[5,3]],"cost":0,"refund":6,"piece":-1,"tower":3},
+               {"tick":2999,"kind":"sellWall","name":"O","rot":0,"x":3,"y":5,"tiles":[[3,5],[4,5],[3,6],[4,6]],"cost":0,"refund":3.5,"piece":1,"tower":-1},
+               {"tick":2999,"kind":"wall","name":"Z","rot":0,"x":3,"y":5,"tiles":[[3,5],[4,5],[4,6],[5,6]],"cost":3,"refund":0,"piece":12,"tower":-1},
+               {"tick":2999,"kind":"tower","name":"cannon","rot":0,"x":5,"y":5,"tiles":[[5,5]],"cost":18,"refund":0,"piece":-1,"tower":5}],
+ "shop":{"offered":["cannon","cannon","cannon","frost"],"bought":["cannon","cannon","frost"],"sold":[{"def":"frost","x":5,"y":3,"refund":6}],"rerolls":0},
+ "reward":null,"estimatorDigest":null,"directorMicros":null,"stateHash":"252b3954e1cf82c1"}
 ```
 
-`placements` for wave N covers everything placed from wave N's start until wave
-N+1's start. The escalation condition writes the same row with the director
-fields set to `null`, so every condition can be analysed with the same code.
+- **A row's window** runs from the start of its wave to the start of the next one: the
+  fight, and the build phase after it. That is the stretch in which the player answers
+  this wave, so it is what `placements` and `shop` cover. **Row 0** is the build phase
+  before the first wave; it has no plan and no outcome.
+- **Ticks.** `tickStart` is the tick the wave began on, `tickResolved` the tick it
+  resolved on (-1 if it did not), `tickEnd` the next wave's start or the session's last
+  tick. Something built on the very tick a wave begins was built before it (a tick applies
+  the player's commands first) and is in the row before, so a row's placements have
+  `tickStart < tick <= tickEnd`.
+- **`placements`** is the build log (§4.6) for the window, in order: `kind` is `wall`,
+  `tower`, `sellWall`, `sellTower` or `reroll`; `tiles` lists every tile built or cleared,
+  so a reader needs no shape geometry.
+- **`shop.offered`** is the roll made in the window: at game start for row 0, at the moment
+  the wave resolved for every other row. Those offers are what the player could buy in
+  this window's build phase and during the next wave's fight. Rolls after a paid reroll
+  are not stored; they are `ShopRoller.Roll(seed, wave, 1)`, `(…, 2)` and so on.
+- **`stateHash`** is the simulation's hash on the tick the wave resolved: the value the
+  replay stores for that wave. A row can be matched to its replay without running anything.
+- **One class for every condition.** What only a director knows (`profile`, `bin`,
+  `strategies`, `reward` …) is `null` in the baseline. The fields exist in `WaveRecord`
+  now, with `"score":"-Infinity"` for a vetoed strategy, so that the baseline's files and
+  the director's are read by the same code. `fallback` is `SafePlanner`'s reason when it
+  had to plan the wave.
+- **When rows are written.** `TelemetryRecorder` watches the simulation the way
+  `ReplayRecorder` does (`AfterTick()` after every tick) and hands out a row when its
+  window closes: at the next wave's start, at game over, or at `Finish()` when the session
+  is stopped. `TelemetryWriter` appends each row and flushes at once, so a crash keeps
+  every finished wave; a row is never gone back to. The file is UTF-8 without a byte-order
+  mark, with `\n` line ends, on every machine.
+- **The bytes are fixed.** Every field's JSON name and position is written out in
+  `WaveRecord` (never the C# name or declaration order), numbers go through
+  `Json.SerializeLine` (§2.3), and nothing in a row depends on the clock, the frame rate
+  or the machine. So **telemetry is a pure function of the replay**:
+  `ReplayRunner.Telemetry(file)` (`thesis telemetry <replay> --check <file>`) gives back
+  the file a session wrote, byte for byte, on either runtime. `PinnedReplayTests` checks
+  that on every test run, including for a session played through `SimHost`'s frame loop.
+  Lost or doubted telemetry can therefore always be made again; and when the schema grows,
+  old sessions can be given the new fields.
+- A float in a row shows the float's own error (`"budgetBefore":9.000015` is a budget that
+  kill rewards of 0.2 were added to one by one). That is the game's number, not a
+  formatting fault. A scripted player builds everything on the last tick of the build
+  phase, so its placements all carry the tick the next wave starts on; a person's are
+  spread over the phase.
+
+`threatSpent` is 0 until the threat cost table exists (WP9). `mapSeed` is 0 until seeded
+mazes exist. The participant code and the session number of D9 are added by WP14.
 
 ### 5.9 The primary metric for G5 (provisional, D7; freeze before the pilot)
 
@@ -795,12 +896,13 @@ before the freeze costs nothing, because it is computed offline from replays, ne
 
 | Question (S7) | Decision |
 |---|---|
-| What is counted | Every **tile** the player builds: each tile of a wall piece, and the tile of a tower. A tile that is later sold or breached still counts. |
-| Over what | The **region** the tile is in: a fixed 6×6 partition of the map (`rx = 6x ÷ width`, `ry = 6y ÷ height`, whole-number division), 36 regions on SampleScene. A region with no buildable tile is left out. |
+| What is counted | Every **tile** the player builds: each tile of a wall piece, and the tile of a tower. A tile that is later sold or breached still counts. Selling and rerolling build nothing. |
+| Over what | The **region** the tile is in: a fixed 6×6 partition of the map (`rx = 6x ÷ width`, `ry = 6y ÷ height`, whole-number division), 36 regions on SampleScene. A region with no buildable tile (all static blocker, or nothing but the spawn or the core) is left out. |
 | Walls, towers, or both | **Both, pooled.** The director attacks tower weaknesses as much as maze weaknesses, so the response is often a tower move. |
-| Which part of the session | From the start of wave 1 to the end of the comparison window. What is built before wave 1 is excluded: no wave has been seen yet, so it cannot be a response. |
+| Which part of the session | The telemetry rows of waves 1 to *W* (§5.8: each row is a wave's fight and the build phase after it). Row 0, what is built before wave 1, is excluded: no wave has been seen yet, so it cannot be a response. |
+| A completed wave | A wave whose whole window was played: the **next wave began**. The last wave a session reached never is, because the session stopped, or the core fell, before the player could answer it. A session whose rows go up to wave *N* has *N* − 1 completed waves. *(Fixed in WP-C3; the table did not say.)* |
 | Comparison window | The first *W* waves, where *W* is the smaller number of waves the participant completed in their two sessions. Both sessions are cut to the same length, so a session that ended early is not compared with a longer one. |
-| The number | `H = −Σ p_r ln p_r ÷ ln K`, where `p_r` is the share of counted tiles in region `r` and `K` is the number of regions. 0 means everything went into one region (repairing the same spot); 1 means spread evenly. `H = 0` when nothing was built. |
+| The number | `H = −Σ p_r ln p_r ÷ ln K`, where `p_r` is the share of counted tiles in region `r` and `K` is the number of regions that have a buildable tile. 0 means everything went into one region (repairing the same spot); 1 means spread evenly. `H = 0` when nothing was built. The logarithm is `DetMath.Log` (§9 rule 3), so the same rows give the same number on every machine. |
 | Unit of analysis | One value per **session**. G5 compares each participant's two sessions (Wilcoxon signed-rank, as in `CLAUDE.md` §6). |
 | Changes forced by the shop | **Not discounted.** D9 gives both conditions the same seeds, so the same offers and the same piece order; the shop pushes equally on both sides. |
 
@@ -815,7 +917,14 @@ across the whole map scores high without rebuilding anything. The within-subject
 takes each player's own style out of the comparison; `restructure` and the sale counts
 are the cross-check.
 
-`PlacementEntropy` (WP-C3) implements exactly this table and nothing else.
+`PlacementEntropy` (WP-C3) implements exactly this table and nothing else: `Compute(rows,
+map, waves, partition, scope)`, `CompletedWaves(rows)` and `ComparisonWindow(a, b)`. It
+reads telemetry rows, after the fact; nothing in the game reads it. `thesis entropy
+<replay> [<replay>]` prints it for one session, or for two cut to the same length. Of the
+secondary measures, walls only, towers only (by region) and the 4×4 and 8×8 partitions
+are built (`PlacementScope`, the `partition` argument); tower type × region, the mean of
+the per-wave entropies and the sale counts are a few lines over the same rows and are
+left for the analysis; `restructure` needs the profile (WP8).
 
 ---
 
@@ -823,13 +932,13 @@ are the cross-check.
 
 | Class | Becomes |
 |---|---|
-| `SimHost` (new) | Builds `MapData` (from the `GridManager` scan plus spawn and core transforms) and `ShapeDef[]` (from `BlockShape` assets), and creates the `Simulation`, giving it a **copy** of the config asset (an inspector edit during play changes the next session, never the running one). In `Update` it adds `Time.deltaTime` to an accumulator and runs ticks, at most `maxTicksPerFrame` per frame. It then drains events into C# events for the views. It records every session with a `ReplayRecorder` and writes `Sessions/<session>/replay.json` at each wave boundary and when the session ends: under the project's `Runs/` in the editor, under `persistentDataPath` in a build. A failed write is logged once and never stops the game. `GameSpeedController` needs no change, because scaled `deltaTime` already means more ticks per frame. |
-| `DirectorHost` (new) | Turns config assets into a planner according to the session condition and owns the `TelemetryWriter`. It wraps every planner in `SafePlanner` (§4.4): if the director throws or returns an invalid plan, that wave uses `EscalationPlanner`, the host logs `[Director]`, and telemetry gets `"fallback":"Exception"` or `"InvalidPlan"`. **A participant session never crashes because of the director.** The wrapper exists since WP-H; the planner factory itself moves into `Thesis.Director` in WP10, so that Unity and the headless `Registry` build planners from one place. Its `Condition` list has one entry that is **not** a study condition: `DevClassCycle` runs `ClassCyclePlanner` (§4.4), to play sappers and flyers before the strategies exist. |
+| `SimHost` (new) | Builds `MapData` (from the `GridManager` scan plus spawn and core transforms) and `ShapeDef[]` (from `BlockShape` assets), and creates the `Simulation`, giving it a **copy** of the config asset (an inspector edit during play changes the next session, never the running one). In `Update` it adds `Time.deltaTime` to an accumulator and runs ticks, at most `maxTicksPerFrame` per frame. It then drains events into C# events for the views. It records every session with a `ReplayRecorder` and writes `Sessions/<session>/replay.json` at each wave boundary and when the session ends: under the project's `Runs/` in the editor, under `persistentDataPath` in a build. Beside it, since WP-C3, a `TelemetryRecorder` and a `TelemetryWriter` append `telemetry.jsonl`, one row as each wave's window closes and the open one when the session ends (§5.8). A failed write is logged once and never stops the game. `GameSpeedController` needs no change, because scaled `deltaTime` already means more ticks per frame. |
+| `DirectorHost` (new) | Turns config assets into a planner according to the session condition. *(The plan had it own the `TelemetryWriter`; as built in WP-C3 `SimHost` does, next to the replay, because telemetry is written for every condition and is made from the simulation alone.)* It wraps every planner in `SafePlanner` (§4.4): if the director throws or returns an invalid plan, that wave uses `EscalationPlanner`, the host logs `[Director]`, and telemetry gets `"fallback":"Exception"` or `"InvalidPlan"`. **A participant session never crashes because of the director.** The wrapper exists since WP-H; the planner factory itself moves into `Thesis.Director` in WP10, so that Unity and the headless `Registry` build planners from one place. Its `Condition` list has one entry that is **not** a study condition: `DevClassCycle` runs `ClassCyclePlanner` (§4.4), to play sappers and flyers before the strategies exist. |
 | `WaveSpawner`, `BlockManager`, `PlayerCore` | Thin adapters that **keep the member names the HUD already reads**: `currentWave`, `isIntermission`, `intermissionTimeRemaining`, `ActiveAgentCount`, `StartWave()`, `buildBudget`, `currentShape`, `holdShape`, `nextShapes`, `shapeVersion`, `OnHealthChanged`, `OnGameOver`. Fields turn into forwarding properties, and actions become enqueued commands. `CanvasDashboard` should compile unchanged. |
 | `FlowAgent` | Visual only. Reads `AgentState` by id, interpolates between the previous and current tick positions, and draws the life bar (an HP bar after WP-C1). No game rules, so I8 holds trivially. Since WP-C2 a sapper is tinted and a flyer is tinted and drawn above the walls; that is a placeholder until WP-C4 gives each enemy type a prefab. |
 | `TowerView`, `ShopPanel` (new, WP-C4) | `TowerView` spawns on `TowerPlaced`, turns toward its target and fires a cosmetic projectile on `TowerFired`, and is destroyed on `TowerSold`/`TowerDestroyed`. `ShopPanel` shows the offers and prices; clicking an offer arms the ghost for tower placement, and the ghost shows the range ring. Sell mode sends `SellTower`. |
 | `Node` | Slimmed down to view data only (`worldPosition`, `gridX`, `gridY`, `visualObject`). **Delete the gameplay fields first**, and the compiler errors become the exact list of code to migrate (`PathPreviewer`, `FlowFieldVisualizer`, `Benchmark/`). |
-| `PlayerBuilder` | Mouse input becomes `PlaceShape` commands, and wall visuals spawn on `WallPlaced` events. `AreTilesPlaceable` wraps `Placement.CanPlace` (D3). |
+| `PlayerBuilder` | Mouse input becomes `PlaceShape` commands. Walls and towers are drawn by walking the build log, which also holds the sales (a sale row lists the tiles to clear); a breach removes its cube on the `WallBreached` or `TowerDestroyed` event. `AreTilesPlaceable` wraps `Placement.CanPlace` (D3). **Temporary since WP-C3, replaced by WP-C4:** Z / X / C / B buy shop offers 1 to 4 onto the tile under the mouse, Delete (or Backspace) sells the tower or the whole wall piece under it, and a plain text panel at the top right lists the offers, their prices and the keys. |
 | `Benchmark/` | Rebuild timing and A* comparison move to the CLI (`bench`), since they never needed Unity. Frame-time tiers stay in Unity but run on `SimHost`. |
 
 **Session setup and seeds (D9; built in WP14).** In development `SimHost.seed` stays 1,
@@ -860,13 +969,16 @@ records data, because they decide where `persistentDataPath` is.
 ## 7. Harness and CLI
 
 ```
-dotnet run --project Tools/dotnet/Thesis.Cli -- run     --map Maps/SampleScene.map.json --planner escalation|class-cycle --policy greedy --seed 1 --waves 25 --out Runs/<name>
+dotnet run --project Tools/dotnet/Thesis.Cli -- run     --map Maps/SampleScene.map.json --planner escalation|class-cycle --policy sentry|mixed|restless|greedy|idle
+                                                         --seed 1 --waves 25 --out Runs/<name>      (writes replay.json and telemetry.jsonl)
                                                          [--shapes Maps/Shapes.json] [--config overrides.json] [--per-tick] [--wait]
 dotnet run --project Tools/dotnet/Thesis.Cli -- replay  Runs/<name>/replay.json [--per-tick] [--dump-tick T] [--dump-out file]
 dotnet run --project Tools/dotnet/Thesis.Cli -- ascii   Runs/<name>/replay.json [--wave 7 | --tick 44000] [--layer route|terrain|occupancy|cost] [--class ground|sapper]
 dotnet run --project Tools/dotnet/Thesis.Cli -- ascii   --map Maps/Bench_Maze.map.json [--scenario open|maze|choke|scatter] [--layer route|terrain]
                                                          [--class ground|sapper] [--sapper-factor 0.2]
-dotnet run --project Tools/dotnet/Thesis.Cli -- trace   Runs/<name>/telemetry.jsonl --wave 7
+dotnet run --project Tools/dotnet/Thesis.Cli -- telemetry Runs/<name>/replay.json [--out file] [--check Runs/<name>/telemetry.jsonl]
+dotnet run --project Tools/dotnet/Thesis.Cli -- trace   Runs/<name>/telemetry.jsonl [--wave 7]
+dotnet run --project Tools/dotnet/Thesis.Cli -- entropy Runs/<a>/replay.json [Runs/<b>/replay.json] [--waves W] [--partition P]
 dotnet run --project Tools/dotnet/Thesis.Cli -- ladder  --map Maps/SampleScene.map.json --seeds 20 --out Results/<yyyy-MM-dd>_ladder
 dotnet run --project Tools/dotnet/Thesis.Cli -- synth   --episodes 1000000 --estimator binned --out Results/<yyyy-MM-dd>_g1-synth
 dotnet run --project Tools/dotnet/Thesis.Cli -- gate    G1|G2|G3 ...
@@ -874,8 +986,14 @@ dotnet run --project Tools/dotnet/Thesis.Cli -- bench   --map Maps/Bench_Maze.ma
 dotnet run --project Tools/dotnet/Thesis.Cli -- pin     [--out Results/pinned-replays]
 ```
 
-- `run`, `replay` and `ascii` exist as of WP5; `bench` since WP4; `pin` since WP-H; the rest are planned.
-  `pin` re-records the .NET half of the pinned episodes; the Mono half is the Unity menu
+- `run`, `replay` and `ascii` exist as of WP5; `bench` since WP4; `pin` since WP-H; `telemetry`,
+  `trace` and `entropy` since WP-C3; `ladder`, `synth` and `gate` are planned.
+  `telemetry` makes a session's rows again from its replay; with `--check` it compares them
+  with a file and exits 1 on the first byte that differs, naming the line. `trace` reads a
+  telemetry file: one line per wave, or with `--wave N` everything that row holds (and, once
+  a director writes rows, how each strategy was scored). `entropy` prints the primary metric
+  (§5.9) and its variants for one session, or for two cut to the shorter one.
+  `pin` re-records the .NET half of the pinned episodes and their telemetry; the Mono half is the Unity menu
   **Thesis → Replay → Record Pinned Episodes (Mono)**. Run both after any deliberate rule change.
   `run --config` takes a JSON file listing only the `SimConfig` fields to change, and
   rejects a field name `SimConfig` does not have. `--wait` lets build-phase countdowns
@@ -891,8 +1009,12 @@ dotnet run --project Tools/dotnet/Thesis.Cli -- pin     [--out Results/pinned-re
   policy needs the map and config to check legality.)*
   Built so far: `Idle`; `GreedyDetour` (walls only: the piece that raises the route's
   cost the most, ties broken by how many shortest routes it closes); `Sentry` (towers only:
-  cycles through the roster and puts each tower on the free tile beside the route that sees
-  the most of it); and `mixed`, a `SequencePolicy` of walls first, then towers.
+  buys every shop offer the budget covers, in slot order, and puts each on the free tile
+  beside the route that sees the most of it); `mixed`, a `SequencePolicy` of walls first,
+  then towers; and `restless` (WP-C3), the same with a `SellerPolicy` in front, which each
+  build phase sells the tower that has dealt the least damage and the oldest wall piece
+  still standing. `restless` is crude as a player; it exists so that recorded episodes
+  contain sales.
   The plan for WP12 is that every policy both builds walls and buys from the shop: `Idle`;
   `GreedyDetour` (maximise spawn cost per unit of budget, and buy the offer with the
   best damage per cost); `RepeatTemplate` (the "competent player who repeats" from
@@ -913,6 +1035,8 @@ dotnet run --project Tools/dotnet/Thesis.Cli -- pin     [--out Results/pinned-re
 | Symptom | First tool |
 |---|---|
 | The director picked something odd | `cli trace <telemetry> --wave N`: per-strategy veto, heuristic, θ, correction, score |
+| What happened in a session, wave by wave | `cli trace <telemetry>`: one line per wave (sent, killed, leaked, built, sold, offered); `--wave N` for the plan, the outcome and every build action of one |
+| A telemetry file is missing, cut short or doubted | `cli telemetry <replay> --out <file>` makes it again from the replay; `--check <file>` names the first line that differs |
 | Two runs that should match don't | `cli replay <file>` finds the first divergent **wave**, then `--per-tick` finds the first divergent **tick** (the file must carry `TickHashes`; Unity sessions do by default). `--dump-tick T` writes the re-run's state at `State.Tick == T` as JSON with float bit patterns; dump the same tick from the other run or the other runtime and `diff` the two. |
 | Agents behave strangely | `cli ascii <replay> --wave N --tick T` renders the map, route, agents and occupancy as text |
 | Unity and headless disagree | Unity writes the same replay format. If it verifies headless, the bug is in the view layer. The menu **Thesis → Replay → Verify Latest Session** re-runs a file under Unity's Mono. `PinnedReplayTests` re-runs committed Unity and .NET recordings on both runtimes on every test run. |
@@ -990,7 +1114,7 @@ Log prefixes: `[Sim]`, `[Director]`, `[Telemetry]`, `[Harness]`, `[Replay]`.
 | S8 | Where the extra spawn points for `split_groups` go on SampleScene | WP9 |
 | S9 | The exact formulas of the five proposal features. §5.3 gives starting definitions, which must be checked against the proposal's §6.2. **The proposal is not in the repository: the student must add it, or those sections, to `Docs/` before WP8.** | WP8 |
 | S10 | The strategy definitions from the proposal's §6.3 (composition and levers). Also: is damage-type resistance part of each strategy, or a fifth arm? A fifth arm means 5×5 = 25 cells and raises the data G4 needs. | WP9 |
-| S11 | Shop rules (§4.6 defaults): offers per roll, single-use slots, rerolls and their cost, sell refund for towers and for walls (D6), whether selling is allowed during a wave (`SellDuringWave`, default off), and whether the shop stays open during waves | WP-C3 |
+| S11 | Shop rules: offers per roll, single-use slots, rerolls and their cost, sell refund for towers and for walls (D6), whether selling is allowed during a wave, and whether the shop stays open during waves. **Built in WP-C3 with the values in the §4.6 table** (4 offers, single use, no rerolls, half back on a sale, selling between waves only, shop open during waves). They are `SimConfig` numbers and stay open to the balance pass; changing one after the pilot means re-recording, not re-coding. | Balance (WP-C5, S2 W4) |
 | S12 | Tower roster v1 (types, damage types, range, fire rate, splash, slow, anti-air); enemy archetypes and the HP escalation formula; `SapperDigCostFactor`; whether wall and tower breaches pay the player under the tower economy | WP-C5 |
 | S13 | Study design with a shop: a participant who plays both conditions on the same seed sees the same offers twice and may remember them. **Decided (D9, §6): two seed sets crossed with condition and order.** | Done |
 | S14 | **Income depends on the wave's shape.** `KillReward` is paid per enemy. A strategy that spends the same threat budget on fewer, stronger enemies therefore pays the player less, and flyers the player cannot hit pay nothing; so the director's choice changes the player's budget, which I11 forbids. *(Found in WP-C2: against the development planner's half-size sapper and flyer waves the tower bot runs out of money and loses in wave 5; against the escalation it lasts to wave 10.)* Options: pay a kill in proportion to the enemy's price in the threat table, so a wave that is wiped out pays the same whatever its shape; or pay per wave, not per kill. | WP9 |
