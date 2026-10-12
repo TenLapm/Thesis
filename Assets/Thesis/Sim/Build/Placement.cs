@@ -13,6 +13,10 @@ namespace Thesis.Sim
     // Placement is fully synchronous: because walls are expensive terrain rather
     // than absolute blockers, no placement can ever disconnect the map, so there
     // is nothing to validate asynchronously and nothing to revert.
+    //
+    // Selling (WP-C3) lives here too: it is placement run backwards. Every change
+    // to the board, in either direction, rebuilds BOTH flow fields at once and adds
+    // one row to the build log.
     public static class Placement
     {
         // Off-map, on static geometry, on an existing wall, or on a protected tile
@@ -69,6 +73,11 @@ namespace Thesis.Sim
         // synchronously so this tick's agents already see the new wall
         // (ARCHITECTURE.md §4.2 step 1 - unlike a mid-tick breach, a player's own
         // placement command still rebuilds immediately).
+        //
+        // Every tile of the piece is stamped with the piece's id, which is the index
+        // its row gets in the log. That is how SellWall later finds the rest of a
+        // piece from any one of its tiles. Without a log there is no id, and such a
+        // wall cannot be sold.
         public static bool TryPlace(SimGrid grid, MapData map, FlowFieldSet fields, ShapeDef shape, int rotationTurns,
                                      TileCoord origin, ref float buildBudget, int tick,
                                      IList<PlacementRecord> log, IList<SimEvent> events)
@@ -81,12 +90,13 @@ namespace Thesis.Sim
 
             buildBudget -= shape.BuildCost;
 
+            int pieceId = log != null ? log.Count : -1;
             int terrainCost = WallTerrainCost(shape);
             float wallHealth = WallHealth(shape);
             for (int i = 0; i < tiles.Length; i++)
             {
                 SimNode node = grid.Get(tiles[i]);
-                grid.SetWall(node, terrainCost, wallHealth);
+                grid.SetWall(node, terrainCost, wallHealth, pieceId);
                 events?.Add(SimEvent.WallPlaced(node.X, node.Y));
             }
 
@@ -101,16 +111,21 @@ namespace Thesis.Sim
                 OriginX = origin.X,
                 OriginY = origin.Y,
                 Tiles = tiles,
+                PieceId = pieceId,
+                Cost = shape.BuildCost,
             });
             return true;
         }
 
         // A tower is bought and placed in one step, the same way a wall piece is:
         // check legality (CanPlace, the same rule as for walls - I9), check the
-        // budget, spend, build, rebuild the field. It occupies ONE tile as diggable
+        // budget, spend, build, rebuild the fields. It occupies ONE tile as diggable
         // terrain. Returns false, changing nothing, when the tile or the budget
         // does not allow it.
-        public static bool TryPlaceTower(SimGrid grid, MapData map, FlowFieldSet fields, TowerDef def, TileCoord tile,
+        //
+        // `price` is what the shop is asking for this offer. It is remembered on the
+        // tower, because a later sale refunds a share of what was actually paid.
+        public static bool TryPlaceTower(SimGrid grid, MapData map, FlowFieldSet fields, TowerDef def, int price, TileCoord tile,
                                          ref float buildBudget, int tick, IList<TowerState> towers,
                                          IList<PlacementRecord> log, IList<SimEvent> events)
         {
@@ -119,12 +134,12 @@ namespace Thesis.Sim
 
             var tiles = new[] { tile };
             if (!CanPlace(grid, map, tiles)) return false;
-            if (buildBudget < def.Cost) return false;
+            if (buildBudget < price) return false;
 
-            buildBudget -= def.Cost;
+            buildBudget -= price;
 
             SimNode node = grid.Get(tile);
-            var tower = new TowerState(towers.Count, def, tile, node.Position, map.NodeDiameter, tick);
+            var tower = new TowerState(towers.Count, def, tile, node.Position, map.NodeDiameter, tick, price);
             towers.Add(tower);
             grid.SetTower(node, Math.Max(2, def.DigCost), Math.Max(0.5f, def.TowerHealth), tower.Id);
             events?.Add(SimEvent.TowerPlaced(tower.Id, tile.X, tile.Y));
@@ -141,8 +156,119 @@ namespace Thesis.Sim
                 OriginY = tile.Y,
                 Tiles = tiles,
                 TowerId = tower.Id,
+                Cost = price,
             });
             return true;
+        }
+
+        // Sells the tower standing on `tile` for a share of what was paid for it.
+        // The tile goes back to open ground and the fields are rebuilt. Returns
+        // false, changing nothing, when there is no tower there.
+        //
+        // The tower stays in the list, like one that was chewed through: its id and
+        // its totals still mean something to telemetry. Sold tells the two apart.
+        public static bool TrySellTower(SimGrid grid, MapData map, FlowFieldSet fields, TileCoord tile, float refundRate,
+                                        ref float buildBudget, int tick, IList<TowerState> towers,
+                                        IList<PlacementRecord> log, IList<SimEvent> events)
+        {
+            if (towers == null) throw new ArgumentNullException(nameof(towers));
+            if (!grid.InBounds(tile)) return false;
+
+            SimNode node = grid.Get(tile);
+            if (node.Occupant != Occupant.Tower) return false;
+
+            TowerState tower = towers[node.TowerId];
+            float refund = (float)(tower.PricePaid * refundRate);
+
+            tower.IsAlive = false;
+            tower.Sold = true;
+            grid.ClearWall(node);
+            buildBudget += refund;
+            events?.Add(SimEvent.TowerSold(tower.Id, tile.X, tile.Y, refund));
+
+            fields.Generate(grid, map.Core);
+
+            log?.Add(new PlacementRecord
+            {
+                Kind = PlacementKind.TowerSold,
+                Tick = tick,
+                ShapeName = tower.Def.Id,
+                OriginX = tile.X,
+                OriginY = tile.Y,
+                Tiles = new[] { tile },
+                TowerId = tower.Id,
+                Refund = refund,
+            });
+            return true;
+        }
+
+        // Sells the whole wall PIECE that `tile` belongs to (decision D6): every tile
+        // of that placement still standing is cleared, and the player gets
+        //
+        //     piece cost x refundRate x (tiles still standing / tiles placed)
+        //
+        // so a piece that enemies have half chewed away pays half. "Still standing"
+        // means the tile is a wall AND still carries this piece's id: a tile that was
+        // breached and later built over by another piece belongs to that one now and
+        // is left alone. Returns false, changing nothing, when `tile` is not part of
+        // a piece (open ground, a tower, or a wall put there by a test or a scenario,
+        // which never went through the log).
+        public static bool TrySellWall(SimGrid grid, MapData map, FlowFieldSet fields, TileCoord tile, float refundRate,
+                                       ref float buildBudget, int tick,
+                                       IList<PlacementRecord> log, IList<SimEvent> events)
+        {
+            if (log == null) throw new ArgumentNullException(nameof(log), "A wall is sold through the log that recorded its piece.");
+            if (!grid.InBounds(tile)) return false;
+
+            SimNode clicked = grid.Get(tile);
+            int pieceId = clicked.PieceId;
+            if (clicked.Occupant != Occupant.Wall || pieceId < 0 || pieceId >= log.Count) return false;
+
+            PlacementRecord piece = log[pieceId];
+            if (piece.Kind != PlacementKind.Wall) return false;
+
+            int standing = 0;
+            for (int i = 0; i < piece.Tiles.Length; i++)
+            {
+                if (BelongsTo(grid.Get(piece.Tiles[i]), pieceId)) standing++;
+            }
+
+            var cleared = new TileCoord[standing];
+            int k = 0;
+            for (int i = 0; i < piece.Tiles.Length; i++)
+            {
+                SimNode node = grid.Get(piece.Tiles[i]);
+                if (!BelongsTo(node, pieceId)) continue;
+                grid.ClearWall(node);
+                cleared[k++] = piece.Tiles[i];
+                events?.Add(SimEvent.WallSold(node.X, node.Y, pieceId));
+            }
+
+            // Explicit casts round every float intermediate (ARCHITECTURE.md §9 rule 3).
+            float whole = (float)(piece.Cost * refundRate);
+            float refund = (float)((float)(whole * standing) / piece.Tiles.Length);
+            buildBudget += refund;
+
+            fields.Generate(grid, map.Core);
+
+            log.Add(new PlacementRecord
+            {
+                Kind = PlacementKind.WallSold,
+                Tick = tick,
+                ShapeName = piece.ShapeName,
+                RotationTurns = piece.RotationTurns,
+                OriginX = piece.OriginX,
+                OriginY = piece.OriginY,
+                Tiles = cleared,
+                PieceId = pieceId,
+                Refund = refund,
+            });
+            return true;
+        }
+
+        private static bool BelongsTo(SimNode node, int pieceId)
+        {
+            return node.Occupant == Occupant.Wall && node.PieceId == pieceId;
         }
     }
 }

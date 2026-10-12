@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using Thesis.Director;
 using Thesis.Sim;
 
 namespace Thesis.Harness
@@ -65,6 +66,33 @@ namespace Thesis.Harness
                 }
             }
             return outcomes;
+        }
+
+        // Runs the recording again with a telemetry recorder attached and returns the
+        // rows. A replay holds everything telemetry is made from, so this gives back
+        // the session's telemetry file, byte for byte: the labels come from the
+        // replay (Session, Build, Policy), and nothing else in a row depends on
+        // where or when it was written. Telemetry can therefore always be made
+        // again, also after its schema has grown.
+        public static List<WaveRecord> Telemetry(ReplayFile file)
+        {
+            Simulation sim = NewSimulation(file);
+            var recorder = new TelemetryRecorder(sim, file.Session, file.Build, file.Policy);
+            var rows = new List<WaveRecord>();
+
+            int cursor = 0;
+            while (sim.State.Tick < file.FinalTick && !sim.State.IsGameOver)
+            {
+                Feed(file, sim, ref cursor);
+                sim.Tick();
+                rows.AddRange(recorder.AfterTick());
+            }
+
+            // Commands recorded at the final tick were applied before the session stopped.
+            Feed(file, sim, ref cursor);
+            sim.FlushInput();
+            rows.AddRange(recorder.Finish());
+            return rows;
         }
 
         // Without perTick: checks every wave hash and the final hash, and stops at

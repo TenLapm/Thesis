@@ -39,6 +39,61 @@ namespace Thesis.Tests
             return new AgentState(id, position, speed, hp, resist ?? DamageTypes.AllOnes(), 1f, killReward, 1f, movement);
         }
 
+        // ---- buying from the shop (WP-C3): a PlaceTower command names an offer slot ----
+
+        // The first slot not yet bought that offers this tower type, or -1.
+        public static int SlotOf(Simulation sim, string defId)
+        {
+            TowerOffer[] offers = sim.State.Shop.Offers;
+            for (int i = 0; i < offers.Length; i++)
+            {
+                if (!offers[i].Bought && sim.TowerLibrary[offers[i].TowerIndex].Id == defId) return i;
+            }
+            return -1;
+        }
+
+        // The first slot not yet bought, or -1.
+        public static int FreeSlot(Simulation sim)
+        {
+            TowerOffer[] offers = sim.State.Shop.Offers;
+            for (int i = 0; i < offers.Length; i++) if (!offers[i].Bought) return i;
+            return -1;
+        }
+
+        // Buys this tower type and puts it on (x, y). Throws when the shop is not
+        // offering it or the purchase is refused: a test that needs a particular
+        // tower must not carry on quietly without it.
+        public static TowerState Buy(Simulation sim, string defId, int x, int y)
+        {
+            int slot = SlotOf(sim, defId);
+            if (slot < 0) throw new System.InvalidOperationException("rig: the shop is not offering '" + defId + "' (seed " + sim.RngSeed + ", roll " + sim.State.Shop.WaveIndex + "): " + Offered(sim));
+            return BuySlot(sim, slot, x, y);
+        }
+
+        // Buys whatever the first free slot offers.
+        public static TowerState BuyAny(Simulation sim, int x, int y)
+        {
+            int slot = FreeSlot(sim);
+            if (slot < 0) throw new System.InvalidOperationException("rig: every offer is already bought: " + Offered(sim));
+            return BuySlot(sim, slot, x, y);
+        }
+
+        public static TowerState BuySlot(Simulation sim, int slot, int x, int y)
+        {
+            int before = sim.State.Towers.Count;
+            TestSims.Send(sim, SimCommand.PlaceTower(slot, x, y));
+            if (sim.State.Towers.Count != before + 1)
+                throw new System.InvalidOperationException("rig: buying slot " + slot + " at (" + x + "," + y + ") was refused (budget " + sim.State.BuildBudget + "): " + Offered(sim));
+            return sim.State.Towers[before];
+        }
+
+        public static string Offered(Simulation sim)
+        {
+            var parts = new List<string>();
+            foreach (TowerOffer o in sim.State.Shop.Offers) parts.Add(sim.TowerLibrary[o.TowerIndex].Id + " " + o.Price + (o.Bought ? " (bought)" : ""));
+            return "[" + string.Join(", ", parts) + "]";
+        }
+
         public static int Count(IList<SimEvent> events, SimEventKind kind)
         {
             int n = 0;

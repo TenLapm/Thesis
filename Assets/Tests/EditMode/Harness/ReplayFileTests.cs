@@ -135,7 +135,7 @@ namespace Thesis.Tests.Harness
         [Test]
         public void AnUnknownCommandIsRefused()
         {
-            Assert.Throws<InvalidDataException>(() => new ReplayCommand { Tick = 3, Cmd = "SellTower" }.ToCommand());
+            Assert.Throws<InvalidDataException>(() => new ReplayCommand { Tick = 3, Cmd = "Teleport" }.ToCommand());
             Assert.Throws<InvalidDataException>(() => new ReplayCommand { Tick = 3, Cmd = "7" }.ToCommand());
             Assert.Throws<InvalidDataException>(() => new ReplayCommand { Tick = 3, Cmd = null }.ToCommand());
         }
@@ -149,12 +149,28 @@ namespace Thesis.Tests.Harness
             Assert.AreEqual(9, place.Y);
 
             ReplayCommand recorded = ReplayCommand.From(30, SimCommand.PlaceTower(2, 7, 5));
-            Assert.AreEqual("tick 30: PlaceTower(#2 @7,5)", recorded.ToString());
+            Assert.AreEqual("tick 30: PlaceTower(slot 2 @7,5)", recorded.ToString());
             SimCommand tower = recorded.ToCommand();
             Assert.AreEqual(SimCommandKind.PlaceTower, tower.Kind);
             Assert.AreEqual(2, tower.A);
             Assert.AreEqual(7, tower.X);
             Assert.AreEqual(5, tower.Y);
+
+            // The three commands of WP-C3.
+            ReplayCommand sellTower = ReplayCommand.From(40, SimCommand.SellTower(7, 5));
+            Assert.AreEqual("tick 40: SellTower(7,5)", sellTower.ToString());
+            Assert.AreEqual(SimCommandKind.SellTower, sellTower.ToCommand().Kind);
+            Assert.AreEqual(7, sellTower.ToCommand().X);
+            Assert.AreEqual(5, sellTower.ToCommand().Y);
+
+            ReplayCommand sellWall = ReplayCommand.From(41, SimCommand.SellWall(3, 9));
+            Assert.AreEqual("tick 41: SellWall(3,9)", sellWall.ToString());
+            Assert.AreEqual(SimCommandKind.SellWall, sellWall.ToCommand().Kind);
+            Assert.AreEqual(3, sellWall.ToCommand().X);
+            Assert.AreEqual(9, sellWall.ToCommand().Y);
+
+            Assert.AreEqual(SimCommandKind.RerollShop, ReplayCommand.From(42, SimCommand.RerollShop()).ToCommand().Kind);
+            Assert.AreEqual("tick 42: RerollShop", ReplayCommand.From(42, SimCommand.RerollShop()).ToString());
 
             Assert.AreEqual(SimCommandKind.Rotate, ReplayCommand.From(0, SimCommand.Rotate()).ToCommand().Kind);
             Assert.AreEqual(SimCommandKind.Hold, ReplayCommand.From(0, SimCommand.Hold()).ToCommand().Kind);
@@ -212,6 +228,7 @@ namespace Thesis.Tests.Harness
                 var config = new SimConfig();
                 if (f.FieldType == typeof(float)) f.SetValue(config, (float)f.GetValue(config) + 0.5f);
                 else if (f.FieldType == typeof(int)) f.SetValue(config, (int)f.GetValue(config) + 1);
+                else if (f.FieldType == typeof(bool)) f.SetValue(config, !(bool)f.GetValue(config));
                 else Assert.Fail("SimConfig." + f.Name + " has type " + f.FieldType.Name + ": teach ReplaySetup and this test about it.");
 
                 Assert.AreNotEqual(baseline, ReplaySetup.Hash(config, map, shapes, towers), "SimConfig." + f.Name + " is not in the setup hash");

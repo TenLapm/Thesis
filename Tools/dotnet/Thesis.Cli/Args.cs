@@ -68,6 +68,8 @@ namespace Thesis.Cli
             return parsed;
         }
 
+        public int PositionalCount => positionals.Count;
+
         public string Positional(int index, string what)
         {
             if (index >= positionals.Count) throw new ArgumentException(command + ": missing " + what);

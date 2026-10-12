@@ -42,31 +42,40 @@ namespace Thesis.Tests.Sim
         public void PlaceTowerBuysTheTowerPutsItOnTheTileAndLogsIt()
         {
             Simulation sim = TestSims.Ascii(Field, new FixedPlanner(FixedPlanner.Group(1)), Quick());
-            TowerDef archer = sim.TowerLibrary[0];
 
-            TestSims.Send(sim, SimCommand.PlaceTower(0, 4, 2));
+            // Slot 1 of the shop: whatever tower the first roll put there.
+            TowerOffer offer = sim.State.Shop.Offers[1];
+            TowerDef def = sim.TowerLibrary[offer.TowerIndex];
+
+            TestSims.Send(sim, SimCommand.PlaceTower(1, 4, 2));
 
             SimState s = sim.State;
-            Assert.AreEqual(60f - archer.Cost, s.BuildBudget);
+            Assert.AreEqual(60f - offer.Price, s.BuildBudget);
             Assert.AreEqual(1, s.Towers.Count);
             TowerState tower = s.Towers[0];
             Assert.AreEqual(0, tower.Id);
-            Assert.AreSame(archer, tower.Def);
+            Assert.AreSame(def, tower.Def);
             Assert.AreEqual(new TileCoord(4, 2), tower.Tile);
+            Assert.AreEqual(offer.Price, tower.PricePaid);
             Assert.IsTrue(tower.IsAlive);
+            Assert.IsFalse(tower.Sold);
+            Assert.IsTrue(offer.Bought, "the slot is used up");
 
             SimNode node = s.Grid[4, 2];
             Assert.IsTrue(node.HasWall, "a tower is a built tile like a wall");
             Assert.AreEqual(Occupant.Tower, node.Occupant);
             Assert.AreEqual(0, node.TowerId);
-            Assert.AreEqual(archer.DigCost, node.TerrainCost);
-            Assert.AreEqual(archer.TowerHealth, node.WallHealth);
+            Assert.AreEqual(-1, node.PieceId, "a tower is not a wall piece");
+            Assert.AreEqual(def.DigCost, node.TerrainCost);
+            Assert.AreEqual(def.TowerHealth, node.WallHealth);
 
             Assert.AreEqual(1, s.PlacementLog.Count);
             PlacementRecord record = s.PlacementLog[0];
             Assert.AreEqual(PlacementKind.Tower, record.Kind);
-            Assert.AreEqual("archer", record.ShapeName);
+            Assert.AreEqual(def.Id, record.ShapeName);
             Assert.AreEqual(0, record.TowerId);
+            Assert.AreEqual((float)offer.Price, record.Cost);
+            Assert.AreEqual(0f, record.Refund);
             CollectionAssert.AreEqual(new[] { new TileCoord(4, 2) }, record.Tiles);
 
             SimEvent placed = sim.LastTickEvents.Single(e => e.Kind == SimEventKind.TowerPlaced);
@@ -86,7 +95,7 @@ namespace Thesis.Tests.Sim
             TestSims.Send(sim, SimCommand.PlaceTower(0, 0, 1));    // the spawn
             TestSims.Send(sim, SimCommand.PlaceTower(0, 9, 1));    // the core
             TestSims.Send(sim, SimCommand.PlaceTower(0, 40, 1));   // off the map
-            TestSims.Send(sim, SimCommand.PlaceTower(-1, 4, 2));   // no such tower type
+            TestSims.Send(sim, SimCommand.PlaceTower(-1, 4, 2));   // no such shop slot
             TestSims.Send(sim, SimCommand.PlaceTower(99, 4, 2));
             Assert.AreEqual(before, sim.ComputeHash(), "none of those changed anything");
             Assert.AreEqual(0, sim.State.Towers.Count);
@@ -101,16 +110,17 @@ namespace Thesis.Tests.Sim
             // A tile that already holds a tower.
             TestSims.Send(sim, SimCommand.PlaceTower(0, 4, 2));
             ulong withTower = sim.ComputeHash();
-            TestSims.Send(sim, SimCommand.PlaceTower(0, 4, 2));
+            TestSims.Send(sim, SimCommand.PlaceTower(1, 4, 2));
             Assert.AreEqual(withTower, sim.ComputeHash(), "nor on another tower");
             Assert.AreEqual(1, sim.State.Towers.Count);
+            Assert.IsFalse(sim.State.Shop.Offers[1].Bought, "a refused purchase does not use up the slot");
         }
 
         [Test]
         public void ATowerThatCostsMoreThanTheBudgetIsNotPlaced()
         {
             var config = Quick();
-            config.StartBudget = 9f; // the archer costs 10
+            config.StartBudget = 9f; // the cheapest tower costs 10
             Simulation sim = TestSims.Ascii(Field, new FixedPlanner(FixedPlanner.Group(1)), config);
 
             TestSims.Send(sim, SimCommand.PlaceTower(0, 4, 2));

@@ -14,9 +14,10 @@ using UnityEngine.EventSystems;
 // always what the simulation holds, whoever placed it (a click today, a replay in WP5).
 //
 // Towers (WP-C1) are drawn the same way, as a cube tinted by damage type. That is a
-// placeholder, and so is the way to buy one: Z / X / C put the roster's first three
-// towers on the tile under the mouse. The shop, its panel and real tower visuals
-// replace both in WP-C3 and WP-C4.
+// placeholder, and so is the way to buy and sell (WP-C3): a key per shop offer puts
+// that offer on the tile under the mouse, another key sells the tower or the wall
+// piece under it, and a plain text panel lists the offers. The tower UI of WP-C4
+// replaces the keys, the panel and the cubes; the commands they send stay.
 public class PlayerBuilder : MonoBehaviour
 {
     [Header("System References")]
@@ -30,6 +31,16 @@ public class PlayerBuilder : MonoBehaviour
     [Header("Prefabs & Layer")]
     public GameObject standardWallPrefab;
     public LayerMask clickLayer;
+
+    [Header("Shop (temporary, until the tower UI of WP-C4)")]
+    [Tooltip("Key n buys shop offer n and puts it on the tile under the mouse. Offers beyond the last key cannot be bought by hand.")]
+    public Key[] offerKeys = { Key.Z, Key.X, Key.C, Key.B };
+    [Tooltip("Sells the tower, or the whole wall piece, under the mouse. Between waves only (SimConfig.SellDuringWave).")]
+    public Key sellKey = Key.Delete;
+    [Tooltip("A second key for the same thing, for keyboards without Delete.")]
+    public Key sellKeyAlternative = Key.Backspace;
+    [Tooltip("Lists the shop's offers and the keys on screen.")]
+    public bool showShopPanel = true;
 
     // Reused across placements to avoid allocating a new block every wall.
     private MaterialPropertyBlock wallPropertyBlock;
@@ -62,17 +73,6 @@ public class PlayerBuilder : MonoBehaviour
         if (Host != null) Host.SimEventRaised += OnSimEvent;
     }
 
-    void Start()
-    {
-        // Until the shop UI exists nothing on screen says towers can be bought at all.
-        if (Host == null) return;
-        TowerDef[] roster = Host.Sim.TowerLibrary;
-        string[] keys = { "Z", "X", "C" };
-        string hint = "";
-        for (int i = 0; i < roster.Length && i < keys.Length; i++) hint += (i > 0 ? ", " : "") + keys[i] + " = " + roster[i].Id + " (" + roster[i].Cost + ")";
-        if (hint != "") Debug.Log("[Sim] Towers (temporary keys, the shop arrives in WP-C3/C4): hover a tile and press " + hint + ".");
-    }
-
     void OnDisable()
     {
         if (simHost != null) simHost.SimEventRaised -= OnSimEvent;
@@ -102,7 +102,7 @@ public class PlayerBuilder : MonoBehaviour
                 blockManager.SwapHoldShape();
             }
 
-            HandleDevTowerKeys();
+            HandleShopKeys();
         }
 
         DrawNewWalls();
@@ -150,37 +150,72 @@ public class PlayerBuilder : MonoBehaviour
         return gridManager.NodeFromWorldPoint(hit.point);
     }
 
-    // TEMPORARY (WP-C1). There is no shop yet, so every tower type is always for
-    // sale: Z, X and C buy the roster's first three and put them on the tile under
-    // the mouse. Same rules as a wall click: not while paused, not through the HUD.
-    private void HandleDevTowerKeys()
+    // TEMPORARY (WP-C3, until WP-C4). One key per shop offer buys it onto the tile
+    // under the mouse; the sell key sells what stands there. Same rules as a wall
+    // click: not while paused, not through the HUD.
+    private void HandleShopKeys()
     {
         Keyboard kb = Keyboard.current;
-        int index = kb.zKey.wasPressedThisFrame ? 0 : kb.xKey.wasPressedThisFrame ? 1 : kb.cKey.wasPressedThisFrame ? 2 : -1;
-        if (index < 0) return;
+        int slot = -1;
+        for (int i = 0; i < offerKeys.Length; i++)
+        {
+            if (kb[offerKeys[i]].wasPressedThisFrame) slot = i;
+        }
+        bool sell = kb[sellKey].wasPressedThisFrame || kb[sellKeyAlternative].wasPressedThisFrame;
+        if (slot < 0 && !sell) return;
         if (speedController != null && speedController.IsPaused) return;
         if (EventSystem.current != null && EventSystem.current.IsPointerOverGameObject()) return;
 
         Node node = NodeUnderMouse();
-        if (node != null) TryPlaceTower(index, node.gridX, node.gridY);
+        if (node == null) return;
+        if (sell) TrySell(node.gridX, node.gridY);
+        else TryBuyOffer(slot, node.gridX, node.gridY);
     }
 
-    // Sends the PlaceTower command and reports whether the simulation accepted it.
-    // The simulation is the only judge of legality and budget (I9).
-    public bool TryPlaceTower(int towerIndex, int x, int y)
+    // Sends the PlaceTower command for one of the shop's offers and reports whether
+    // the simulation accepted it. The simulation is the only judge of legality and
+    // budget (I9); the message only explains a key press that did nothing.
+    public bool TryBuyOffer(int slot, int x, int y)
     {
-        TowerDef[] roster = Host.Sim.TowerLibrary;
-        if (towerIndex < 0 || towerIndex >= roster.Length) return false;
+        TowerOffer[] offers = Host.State.Shop.Offers;
+        if (slot < 0 || slot >= offers.Length) return false;
+
+        TowerOffer offer = offers[slot];
+        string name = Host.Sim.TowerLibrary[offer.TowerIndex].Id;
+        if (offer.Bought)
+        {
+            Debug.LogWarning("Offer " + (slot + 1) + " ('" + name + "') is already bought; each offer can be bought once.");
+            return false;
+        }
 
         int before = Host.State.Towers.Count;
-        Host.Submit(SimCommand.PlaceTower(towerIndex, x, y));
+        Host.Submit(SimCommand.PlaceTower(slot, x, y));
         bool placed = Host.State.Towers.Count > before;
         if (!placed)
         {
-            Debug.LogWarning("Tower '" + roster[towerIndex].Id + "' not placed at (" + x + "," + y + "): the tile is not free, or the budget ("
-                             + Host.State.BuildBudget + ") is below its cost (" + roster[towerIndex].Cost + ").");
+            Debug.LogWarning("Tower '" + name + "' not placed at (" + x + "," + y + "): the tile is not free, or the budget ("
+                             + Host.State.BuildBudget + ") is below its price (" + offer.Price + ").");
         }
         return placed;
+    }
+
+    // Sells the tower on this tile, or the whole wall piece the tile belongs to.
+    public bool TrySell(int x, int y)
+    {
+        SimState state = Host.State;
+        SimNode node = state.Grid[x, y];
+        if (node.Occupant == Occupant.None) return false; // nothing there: say nothing
+
+        bool buildPhase = state.Phase == SimPhase.Prep || state.Phase == SimPhase.Intermission;
+        if (!buildPhase && !Host.Config.SellDuringWave)
+        {
+            Debug.LogWarning("Selling is for the time between waves.");
+            return false;
+        }
+
+        int before = state.PlacementLog.Count;
+        Host.Submit(node.Occupant == Occupant.Tower ? SimCommand.SellTower(x, y) : SimCommand.SellWall(x, y));
+        return state.PlacementLog.Count > before;
     }
 
     // CLAUDE.md I9: the single source of truth for placement legality is
@@ -201,9 +236,18 @@ public class PlayerBuilder : MonoBehaviour
         List<PlacementRecord> log = Host.State.PlacementLog;
         float cellSize = gridManager.nodeRadius * 2f;
 
+        // The build log is the one record of what was built AND of what was sold, in
+        // order, so walking it draws both: a sale row lists the tiles it cleared.
         for (; placementsDrawn < log.Count; placementsDrawn++)
         {
             PlacementRecord record = log[placementsDrawn];
+            if (record.IsSale)
+            {
+                for (int i = 0; i < record.Tiles.Length; i++) RemoveVisual(gridManager.grid[record.Tiles[i].X, record.Tiles[i].Y]);
+                continue;
+            }
+            if (!record.IsPlacement) continue; // a shop reroll puts nothing on the board
+
             Color color;
             if (record.Kind == PlacementKind.Tower)
             {
@@ -253,12 +297,72 @@ public class PlayerBuilder : MonoBehaviour
         else if (e.Kind == SimEventKind.TowerDestroyed) node = gridManager.grid[e.IntB, e.IntC];
         else return;
 
+        RemoveVisual(node);
+    }
+
+    private void RemoveVisual(Node node)
+    {
         if (node.visualObject != null)
         {
             Destroy(node.visualObject);
             node.visualObject = null;
         }
         wallTiles.Remove(node);
+    }
+
+    // --- the shop panel (temporary: plain text, until WP-C4) ---
+
+    private GUIStyle panelStyle;
+
+    void OnGUI()
+    {
+        if (!showShopPanel || Host == null) return;
+        if (panelStyle == null)
+        {
+            panelStyle = new GUIStyle(GUI.skin.label) { richText = true, fontSize = 15, alignment = TextAnchor.UpperLeft, wordWrap = false };
+        }
+
+        SimState state = Host.State;
+        TowerDef[] roster = Host.Sim.TowerLibrary;
+        TowerOffer[] offers = state.Shop.Offers;
+
+        var text = new System.Text.StringBuilder();
+        text.Append("<b>TOWER SHOP</b>\n");
+        for (int i = 0; i < offers.Length; i++)
+        {
+            TowerDef def = roster[offers[i].TowerIndex];
+            string key = i < offerKeys.Length ? offerKeys[i].ToString() : "-";
+            string line = "[" + key + "]  " + def.Id + "  " + offers[i].Price + "  " + def.DamageType.ToString().ToLowerInvariant()
+                          + (def.CanHitFlying ? ", hits flyers" : "");
+
+            if (offers[i].Bought) text.Append("<color=#808080>").Append(line).Append("  (bought)</color>\n");
+            else if (state.BuildBudget < offers[i].Price) text.Append("<color=#d09090>").Append(line).Append("</color>\n");
+            else text.Append(line).Append('\n');
+        }
+        if (offers.Length == 0) text.Append("(nothing on offer)\n");
+        text.Append("<color=#c0c0c0>hover a tile, press the key</color>\n");
+
+        bool buildPhase = state.Phase == SimPhase.Prep || state.Phase == SimPhase.Intermission;
+        bool maySell = buildPhase || Host.Config.SellDuringWave;
+        string sellLine = "[" + sellKey + "]  sell what is under the mouse" + (maySell ? "" : "\n          (between waves only)");
+        text.Append(maySell ? sellLine : "<color=#808080>" + sellLine + "</color>");
+
+        // Top right, the one corner the HUD leaves free. Laid out for a view 1080
+        // pixels high and scaled with the window, but never so small that it cannot
+        // be read in a small editor Game view.
+        float scale = Mathf.Clamp(Screen.height / 1080f, 0.8f, 2f);
+        Matrix4x4 keep = GUI.matrix;
+        GUI.matrix = Matrix4x4.Scale(new Vector3(scale, scale, 1f));
+        float width = 300f;
+        float height = 22f + 21f * (offers.Length + (maySell ? 3 : 4));
+        float viewWidth = Screen.width / scale;
+        float viewHeight = Screen.height / scale;
+        var area = new Rect(viewWidth - width - 14f, viewHeight * 0.1f, width, height);
+        GUI.color = new Color(0f, 0f, 0f, 0.6f);
+        GUI.DrawTexture(area, Texture2D.whiteTexture);
+        GUI.color = Color.white;
+        GUI.Label(new Rect(area.x + 10f, area.y + 8f, area.width - 20f, area.height - 12f), text.ToString(), panelStyle);
+        GUI.matrix = keep;
     }
 
     // Shrink damaged walls so chew progress is readable at a glance. Untouched walls

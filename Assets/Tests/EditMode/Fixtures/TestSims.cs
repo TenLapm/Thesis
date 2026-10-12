@@ -51,35 +51,93 @@ namespace Thesis.Tests
         {
             for (int i = 0; i < ticks; i++) sim.Tick();
         }
+
+        // Ticks until the next wave resolves (or the game ends) and returns every
+        // event raised on the way. Throws if that takes longer than maxTicks.
+        public static List<SimEvent> RunUntilWaveResolves(Simulation sim, int maxTicks = 8000)
+        {
+            var all = new List<SimEvent>();
+            int resolved = sim.State.LastOutcome == null ? 0 : sim.State.LastOutcome.WaveIndex;
+            for (int i = 0; i < maxTicks; i++)
+            {
+                sim.Tick();
+                all.AddRange(sim.LastTickEvents);
+                if (sim.State.LastOutcome != null && sim.State.LastOutcome.WaveIndex > resolved) return all;
+                if (sim.State.IsGameOver) return all;
+            }
+            throw new System.InvalidOperationException("rig: no wave resolved within " + maxTicks + " ticks (wave " + sim.State.WaveIndex + ", phase " + sim.State.Phase + ").");
+        }
     }
 
     // A reproducible stream of player input: at a fixed cadence, one of place a wall
-    // piece / place a tower / rotate / hold at a pseudo-random tile. Many placements
-    // are illegal or unaffordable and get ignored, which is fine - the point is
-    // identical input to two simulations, including input the game rejects.
+    // piece / buy a shop offer / rotate / hold / sell the newest thing still standing
+    // / reroll the shop. Many of them are illegal, unaffordable or out of phase and
+    // get ignored, which is fine - the point is identical input to two simulations,
+    // including input the game rejects.
+    //
+    // A sale needs something to aim at, so that one is worked out when it is fed,
+    // from the simulation's own build log. Two simulations in the same state get
+    // the same command.
     public sealed class CommandScript
     {
-        private readonly Dictionary<int, List<SimCommand>> byTick = new Dictionary<int, List<SimCommand>>();
+        private enum Op { PlaceShape, PlaceTower, Rotate, Hold, SellNewest, Reroll }
+
+        private struct Step
+        {
+            public Op Op;
+            public int A, X, Y;
+        }
+
+        private readonly Dictionary<int, Step> byTick = new Dictionary<int, Step>();
 
         public CommandScript(ulong seed, int ticks, int every, int mapWidth, int mapHeight)
         {
             var rng = new Pcg32(seed, RngStreams.Policy);
             for (int t = 5; t < ticks; t += every)
             {
-                int roll = rng.NextInt(10);
-                SimCommand c = roll < 4 ? SimCommand.PlaceShape(rng.NextInt(mapWidth), rng.NextInt(mapHeight))
-                             : roll < 7 ? SimCommand.PlaceTower(rng.NextInt(3), rng.NextInt(mapWidth), rng.NextInt(mapHeight))
-                             : roll < 9 ? SimCommand.Rotate()
-                             : SimCommand.Hold();
-                byTick[t] = new List<SimCommand> { c };
+                int roll = rng.NextInt(12);
+                var step = new Step { X = rng.NextInt(mapWidth), Y = rng.NextInt(mapHeight), A = rng.NextInt(4) };
+                step.Op = roll < 4 ? Op.PlaceShape
+                        : roll < 7 ? Op.PlaceTower
+                        : roll < 9 ? Op.Rotate
+                        : roll < 10 ? Op.Hold
+                        : roll < 11 ? Op.SellNewest
+                        : Op.Reroll;
+                byTick[t] = step;
             }
         }
 
         public void Feed(Simulation sim)
         {
-            if (byTick.TryGetValue(sim.State.Tick, out List<SimCommand> list))
+            Step step;
+            if (!byTick.TryGetValue(sim.State.Tick, out step)) return;
+
+            switch (step.Op)
             {
-                foreach (SimCommand c in list) sim.Enqueue(c);
+                case Op.PlaceShape: sim.Enqueue(SimCommand.PlaceShape(step.X, step.Y)); break;
+                case Op.PlaceTower: sim.Enqueue(SimCommand.PlaceTower(step.A, step.X, step.Y)); break;
+                case Op.Rotate: sim.Enqueue(SimCommand.Rotate()); break;
+                case Op.Hold: sim.Enqueue(SimCommand.Hold()); break;
+                case Op.Reroll: sim.Enqueue(SimCommand.RerollShop()); break;
+                case Op.SellNewest:
+                    // The most recent wall piece or tower with a tile still standing.
+                    List<PlacementRecord> log = sim.State.PlacementLog;
+                    for (int i = log.Count - 1; i >= 0; i--)
+                    {
+                        if (!log[i].IsPlacement) continue;
+                        SimNode node = sim.State.Grid.Get(log[i].Tiles[0]);
+                        if (log[i].Kind == PlacementKind.Tower && node.Occupant == Occupant.Tower && node.TowerId == log[i].TowerId)
+                        {
+                            sim.Enqueue(SimCommand.SellTower(node.X, node.Y));
+                            break;
+                        }
+                        if (log[i].Kind == PlacementKind.Wall && node.Occupant == Occupant.Wall && node.PieceId == i)
+                        {
+                            sim.Enqueue(SimCommand.SellWall(node.X, node.Y));
+                            break;
+                        }
+                    }
+                    break;
             }
         }
     }

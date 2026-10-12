@@ -17,6 +17,8 @@ namespace Thesis.Tests.Sim
             const int ticks = 20000;
             var a = TestSims.SampleScene(seed: 7, config: LongRun());
             var b = TestSims.SampleScene(seed: 7, config: LongRun());
+            BuyTheOffersBesideTheStraightLine(a);
+            BuyTheOffersBesideTheStraightLine(b);
             var script = new CommandScript(seed: 99, ticks: ticks, every: 23, mapWidth: 38, mapHeight: 38);
 
             Assert.AreEqual(a.ComputeHash(), b.ComputeHash(), "identical before the first tick");
@@ -35,14 +37,33 @@ namespace Thesis.Tests.Sim
             foreach (AgentState agent in a.State.Agents) if (agent.Killed) killed++;
             float damage = 0f;
             foreach (TowerState tower in a.State.Towers) damage += tower.DamageDealt;
+            int wallSales = 0, towerSales = 0;
+            foreach (PlacementRecord record in a.State.PlacementLog)
+            {
+                if (record.Kind == PlacementKind.WallSold) wallSales++;
+                if (record.Kind == PlacementKind.TowerSold) towerSales++;
+            }
 
             Assert.GreaterOrEqual(a.State.WaveIndex, 3, "waves played");
+            Assert.Greater(wallSales + towerSales, 0, "something was sold (WP-C3)");
             Assert.Greater(a.State.PlacementLog.Count, 5, "walls and towers placed");
             Assert.Greater(a.State.Towers.Count, 2, "towers placed");
             Assert.Greater(damage, 0f, "towers hit something");
             Assert.Greater(a.State.Agents.Count, 200, "agents spawned");
             TestContext.WriteLine("20k ticks: waves=" + a.State.WaveIndex + " placements=" + a.State.PlacementLog.Count + " towers=" + a.State.Towers.Count
-                                  + " agents=" + a.State.Agents.Count + " killed=" + killed + " tower damage=" + damage + " last=" + a.State.LastOutcome);
+                                  + " agents=" + a.State.Agents.Count + " killed=" + killed + " tower damage=" + damage
+                                  + " sold=" + wallSales + " wall piece(s), " + towerSales + " tower(s) last=" + a.State.LastOutcome);
+        }
+
+        // The script's own purchases land on random tiles, mostly out of reach of the
+        // route. These stand beside the straight line from the spawn (3,3) to the core
+        // (34,34), so that towers fire from the first wave on. A slot the budget does
+        // not cover is simply refused.
+        private static void BuyTheOffersBesideTheStraightLine(Simulation sim)
+        {
+            int[] x = { 7, 11, 15, 19 };
+            for (int slot = 0; slot < sim.State.Shop.Offers.Length && slot < x.Length; slot++)
+                TestSims.Send(sim, SimCommand.PlaceTower(slot, x[slot], x[slot] - 2));
         }
 
         // The run above never digs: random walls leave detours open. Digging is where
@@ -99,8 +120,8 @@ namespace Thesis.Tests.Sim
         public void DeterminismHoldsWithSappersAndFlyers()
         {
             const int ticks = 20000;
-            Simulation a = ClassCycleRig(seed: 9);
-            Simulation b = ClassCycleRig(seed: 9);
+            Simulation a = ClassCycleRig(seed: 1);
+            Simulation b = ClassCycleRig(seed: 1);
             var script = new CommandScript(seed: 41, ticks: ticks, every: 19, mapWidth: 38, mapHeight: 38);
 
             int breaches = 0;
@@ -157,8 +178,7 @@ namespace Thesis.Tests.Sim
             // One archer (the roster's anti-air tower) beside that same line, which is
             // also the line the flyers take: enough to shoot some of them down and let
             // the rest through. The script's own towers land anywhere.
-            TestSims.Send(sim, SimCommand.PlaceTower(0, 22, 24));
-            if (sim.State.Towers.Count != 1) throw new System.InvalidOperationException("rig: the archer was not placed");
+            TestTowers.Buy(sim, "archer", 22, 24);
             return sim;
         }
 

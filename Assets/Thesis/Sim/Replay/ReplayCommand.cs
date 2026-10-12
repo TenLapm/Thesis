@@ -14,11 +14,12 @@ namespace Thesis.Sim
         public int Tick;
         public string Cmd;
 
-        // PlaceShape: the origin tile. PlaceTower: the tower's tile. Zero otherwise.
+        // PlaceShape: the origin tile. PlaceTower, SellTower, SellWall: the tile.
+        // Zero otherwise.
         public int X;
         public int Y;
 
-        // PlaceTower: the index of the tower type in the roster. Zero otherwise.
+        // PlaceTower: the shop's offer slot. Zero otherwise.
         public int A;
 
         public static ReplayCommand From(int tick, SimCommand command)
@@ -28,8 +29,10 @@ namespace Thesis.Sim
 
         public SimCommand ToCommand()
         {
+            // The name must be exactly a command's name. Enum.TryParse alone also takes a
+            // number ("7"), which would silently mean whatever command has that number today.
             SimCommandKind kind;
-            if (Cmd == null || !Enum.TryParse(Cmd, out kind) || !Enum.IsDefined(typeof(SimCommandKind), kind))
+            if (Cmd == null || !Enum.TryParse(Cmd, out kind) || !Enum.IsDefined(typeof(SimCommandKind), kind) || kind.ToString() != Cmd)
                 throw new InvalidDataException("[Replay] Unknown command '" + Cmd + "' at tick " + Tick + ".");
 
             switch (kind)
@@ -39,6 +42,9 @@ namespace Thesis.Sim
                 case SimCommandKind.Hold: return SimCommand.Hold();
                 case SimCommandKind.StartWaveNow: return SimCommand.StartWaveNow();
                 case SimCommandKind.PlaceTower: return SimCommand.PlaceTower(A, X, Y);
+                case SimCommandKind.SellTower: return SimCommand.SellTower(X, Y);
+                case SimCommandKind.SellWall: return SimCommand.SellWall(X, Y);
+                case SimCommandKind.RerollShop: return SimCommand.RerollShop();
                 default: throw new InvalidDataException("[Replay] Command '" + Cmd + "' at tick " + Tick + " cannot be replayed by this version.");
             }
         }
@@ -46,7 +52,8 @@ namespace Thesis.Sim
         public override string ToString()
         {
             if (Cmd == "PlaceShape") return "tick " + Tick + ": PlaceShape(" + X + "," + Y + ")";
-            if (Cmd == "PlaceTower") return "tick " + Tick + ": PlaceTower(#" + A + " @" + X + "," + Y + ")";
+            if (Cmd == "PlaceTower") return "tick " + Tick + ": PlaceTower(slot " + A + " @" + X + "," + Y + ")";
+            if (Cmd == "SellTower" || Cmd == "SellWall") return "tick " + Tick + ": " + Cmd + "(" + X + "," + Y + ")";
             return "tick " + Tick + ": " + Cmd;
         }
     }

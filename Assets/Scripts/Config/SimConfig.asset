@@ -33,6 +33,11 @@ MonoBehaviour:
     MaxMoveSpeed: 2.25
     BaseHp: 10
     HpIncrementPerWave: 2
+    ShopOffers: 4
+    RerollCost: -1
+    SellRefund: 0.5
+    WallSellRefund: 0.5
+    SellDuringWave: 0
     SapperDigCostFactor: 0.2
     MinSlowFactor: 0.25
     MaxWaveSeconds: 600

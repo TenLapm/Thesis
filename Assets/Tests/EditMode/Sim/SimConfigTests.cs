@@ -20,7 +20,8 @@ namespace Thesis.Tests.Sim
             {
                 if (f.FieldType == typeof(float)) f.SetValue(original, (float)f.GetValue(original) + 0.25f);
                 else if (f.FieldType == typeof(int)) f.SetValue(original, (int)f.GetValue(original) + 3);
-                else Assert.Fail("SimConfig." + f.Name + " has type " + f.FieldType.Name + ". A shallow Clone() is only a full copy while every field is a plain number.");
+                else if (f.FieldType == typeof(bool)) f.SetValue(original, !(bool)f.GetValue(original));
+                else Assert.Fail("SimConfig." + f.Name + " has type " + f.FieldType.Name + ". A shallow Clone() is only a full copy while every field is a plain number or flag.");
             }
 
             SimConfig copy = original.Clone();

@@ -4,6 +4,7 @@ using System.Globalization;
 using System.IO;
 using System.Runtime.InteropServices;
 using Thesis.Core;
+using Thesis.Director;
 using Thesis.Harness;
 using Thesis.Sim;
 
@@ -11,7 +12,8 @@ namespace Thesis.Cli
 {
     // run [--map f] [--shapes f] [--config f] [--planner p] [--policy p] [--seed s]
     //     [--waves n] [--out dir] [--per-tick] [--wait]
-    // One headless episode. Writes <out>/replay.json and prints one line per wave.
+    // One headless episode. Writes <out>/replay.json and <out>/telemetry.jsonl and
+    // prints one line per wave.
     //
     // --planner is escalation (the static baseline, the default) or class-cycle (a
     // development planner that sends sappers and flyers; see ClassCyclePlanner).
@@ -54,6 +56,8 @@ namespace Thesis.Cli
 
             string file = Path.Combine(outDir, "replay.json");
             result.Replay.Save(file);
+            string telemetryFile = Path.Combine(outDir, "telemetry.jsonl");
+            using (var writer = new TelemetryWriter(telemetryFile)) writer.Write(result.Telemetry);
 
             string how = result.GameOver ? "core destroyed" : result.HitTickLimit ? "tick limit reached" : "wave limit reached";
             Console.WriteLine("[Harness] " + options.Policy.Name + " vs " + options.Planner + " on " + options.Map.Name + ", seed " + seed + ": "
@@ -61,6 +65,7 @@ namespace Thesis.Cli
                               + ", " + result.Placements + " placements (" + result.TowersPlaced + " towers), final hash " + result.Replay.FinalHash
                               + "  (" + clock.ElapsedMilliseconds + " ms)");
             Console.WriteLine("[Replay] -> " + Path.GetFullPath(file));
+            Console.WriteLine("[Telemetry] " + result.Telemetry.Count + " rows -> " + Path.GetFullPath(telemetryFile));
             return 0;
         }
 

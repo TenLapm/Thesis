@@ -12,6 +12,9 @@ namespace Thesis.Sim
         public readonly TileCoord Tile;
         public readonly int PlacedTick;
 
+        // What the shop was paid for it. A sale refunds a share of this.
+        public readonly int PricePaid;
+
         // World XZ of the tile centre, and the tower's reach squared in world units.
         // Worked out once when the tower is placed, so the per-tick range check is
         // two subtractions, two multiplications and a compare.
@@ -22,8 +25,10 @@ namespace Thesis.Sim
         // Ticks until it may fire again. 0 = ready.
         public int Cooldown;
 
-        // False once an enemy has chewed through it (or, from WP-C3, it was sold).
+        // False once it is off the board: an enemy chewed through it, or the player
+        // sold it. Sold says which.
         public bool IsAlive = true;
+        public bool Sold;
 
         // Lifetime totals. DamageDealt is EFFECTIVE damage: hit points actually
         // removed, never the overkill on a dying enemy.
@@ -31,13 +36,14 @@ namespace Thesis.Sim
         public int Shots;
         public int Kills;
 
-        public TowerState(int id, TowerDef def, TileCoord tile, Vec2f position, float tileSize, int placedTick)
+        public TowerState(int id, TowerDef def, TileCoord tile, Vec2f position, float tileSize, int placedTick, int pricePaid = 0)
         {
             Id = id;
             Def = def;
             Tile = tile;
             Position = position;
             PlacedTick = placedTick;
+            PricePaid = pricePaid;
 
             // Explicit casts round every float intermediate (ARCHITECTURE.md §9 rule 3).
             float range = (float)(def.RangeTiles * tileSize);
@@ -53,10 +59,12 @@ namespace Thesis.Sim
             Tile = source.Tile;
             Position = source.Position;
             PlacedTick = source.PlacedTick;
+            PricePaid = source.PricePaid;
             RangeSquared = source.RangeSquared;
             SplashSquared = source.SplashSquared;
             Cooldown = source.Cooldown;
             IsAlive = source.IsAlive;
+            Sold = source.Sold;
             DamageDealt = source.DamageDealt;
             Shots = source.Shots;
             Kills = source.Kills;
@@ -66,7 +74,7 @@ namespace Thesis.Sim
 
         public override string ToString()
         {
-            return "Tower#" + Id + " " + Def.Id + " @" + Tile + (IsAlive ? "" : " (destroyed)") + " shots=" + Shots + " kills=" + Kills + " dmg=" + DamageDealt;
+            return "Tower#" + Id + " " + Def.Id + " @" + Tile + (IsAlive ? "" : Sold ? " (sold)" : " (destroyed)") + " shots=" + Shots + " kills=" + Kills + " dmg=" + DamageDealt;
         }
     }
 }

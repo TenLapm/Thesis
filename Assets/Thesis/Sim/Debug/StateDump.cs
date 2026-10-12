@@ -40,7 +40,11 @@ namespace Thesis.Sim
                 CurrentOutcome = s.CurrentOutcome,
                 LastOutcome = s.LastOutcome,
                 Bag = BagOf(s.Bag),
+                ShopWave = s.Shop.WaveIndex,
+                ShopRerolls = s.Shop.RerollCount,
             };
+
+            for (int i = 0; i < s.Shop.Offers.Length; i++) d.ShopOffers.Add(s.Shop.Offers[i].ToString());
 
             for (int i = 0; i < s.Pending.Count; i++) d.Pending.Add(s.Pending[i].ToString());
 
@@ -49,7 +53,7 @@ namespace Thesis.Sim
             {
                 SimNode n = s.Grid.ByIndex(i);
                 if (!n.HasWall && n.TerrainCost == 1) continue;
-                d.Walls.Add(new Wall { X = n.X, Y = n.Y, Occupant = n.Occupant.ToString(), TowerId = n.TowerId, TerrainCost = n.TerrainCost, Health = n.WallHealth, HealthBits = Bits(n.WallHealth), BestCost = n.BestCost, SapperCost = n.SapperCost });
+                d.Walls.Add(new Wall { X = n.X, Y = n.Y, Occupant = n.Occupant.ToString(), TowerId = n.TowerId, PieceId = n.PieceId, TerrainCost = n.TerrainCost, Health = n.WallHealth, HealthBits = Bits(n.WallHealth), BestCost = n.BestCost, SapperCost = n.SapperCost });
             }
 
             for (int i = 0; i < s.Towers.Count; i++)
@@ -62,6 +66,8 @@ namespace Thesis.Sim
                     X = t.Tile.X,
                     Y = t.Tile.Y,
                     Alive = t.IsAlive,
+                    Sold = t.Sold,
+                    PricePaid = t.PricePaid,
                     Cooldown = t.Cooldown,
                     Shots = t.Shots,
                     Kills = t.Kills,
@@ -136,6 +142,9 @@ namespace Thesis.Sim
             public bool StartWaveRequested;
             public List<string> Pending = new List<string>();
             public BagDump Bag;
+            public int ShopWave;
+            public int ShopRerolls;
+            public List<string> ShopOffers = new List<string>();
             public WaveOutcome CurrentOutcome;
             public WaveOutcome LastOutcome;
             public List<Wall> Walls = new List<Wall>();
@@ -160,6 +169,8 @@ namespace Thesis.Sim
             public int X;
             public int Y;
             public bool Alive;
+            public bool Sold;
+            public int PricePaid;
             public int Cooldown;
             public int Shots;
             public int Kills;
@@ -173,6 +184,7 @@ namespace Thesis.Sim
             public int Y;
             public string Occupant;
             public int TowerId;
+            public int PieceId;
             public int TerrainCost;
             public float Health;
             public string HealthBits;

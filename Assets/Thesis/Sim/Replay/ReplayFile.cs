@@ -23,9 +23,11 @@ namespace Thesis.Sim
         // 1: the game before towers (WP5). 2: adds the tower roster and the
         // PlaceTower command (WP-C1). 3: movement classes (WP-C2); the file's layout
         // is the same as 2, but the state every hash covers now includes the sapper
-        // field and each enemy's class. A file of another schema is refused: its
-        // commands and hashes describe a different game.
-        public const int CurrentSchema = 3;
+        // field and each enemy's class. 4: the shop and selling (WP-C3); PlaceTower's
+        // A is now an offer slot, not a roster index, and there are three new
+        // commands. A file of another schema is refused: its commands and hashes
+        // describe a different game.
+        public const int CurrentSchema = 4;
 
         public int Schema = CurrentSchema;
 
@@ -42,7 +44,7 @@ namespace Thesis.Sim
         public SimConfig Config;
         public MapData MapData;
         public ShapeDef[] Shapes;
-        public TowerDef[] Towers;
+        public TowerDef[] Towers;   // the roster the shop draws from, in order: an offer names a tower by its index
 
         // ReplaySetup.Hash(Config, MapData, Shapes, Towers) at record time. Validate()
         // recomputes it from the loaded values.

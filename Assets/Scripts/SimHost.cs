@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using Thesis.Director;
 using Thesis.Sim;
 using UnityEngine;
 using UnityEngine.SceneManagement;
@@ -18,6 +19,11 @@ using UnityEngine.SceneManagement;
 // headless CLI re-runs that file and checks the hashes, which is the proof that
 // Unity and the headless build play the same game (CLAUDE.md I1).
 //
+// Telemetry (WP-C3): the same session also writes Sessions/<session>/telemetry.jsonl,
+// one row per wave, appended as each wave's window closes. It holds nothing the
+// replay does not: `thesis telemetry replay.json --check telemetry.jsonl` makes the
+// rows again and compares them byte for byte.
+//
 // Runs before every view (execution order -100) so they all see this frame's state.
 // The simulation is created lazily on first access, so any script may touch it from
 // its own Awake/Start regardless of Unity's Awake order.
@@ -34,8 +40,8 @@ public class SimHost : MonoBehaviour
     [Tooltip("Upper bound on ticks per rendered frame. After a long hitch the game slows down instead of freezing to catch up.")]
     public int maxTicksPerFrame = 20;
 
-    [Header("Replay")]
-    [Tooltip("Record this session to Sessions/<session>/replay.json (project Runs/ folder in the editor, persistentDataPath in a build).")]
+    [Header("Replay and telemetry")]
+    [Tooltip("Record this session to Sessions/<session>/replay.json and telemetry.jsonl (project Runs/ folder in the editor, persistentDataPath in a build).")]
     public bool recordReplay = true;
     [Tooltip("Also store one state hash per tick. Costs one hash per tick and about 1 MB per 25 minutes; without it a divergence can only be narrowed to a wave, not a tick.")]
     public bool recordTickHashes = true;
@@ -62,9 +68,15 @@ public class SimHost : MonoBehaviour
     private ReplayRecorder recorder;
     private string replayPath;
     private bool replayWriteFailed;
+    private TelemetryRecorder telemetry;
+    private TelemetryWriter telemetryWriter;
+    private string telemetryPath;
 
     // Where this session's replay is written, or null when recording is off.
     public string ReplayPath => replayPath;
+
+    // Where this session's telemetry is written, or null when recording is off.
+    public string TelemetryPath => telemetryPath;
 
     public Simulation Sim
     {
@@ -159,6 +171,49 @@ public class SimHost : MonoBehaviour
         };
         replayPath = Path.Combine(SessionsRoot(), session, "replay.json");
         Debug.Log("[Replay] Recording to " + replayPath);
+
+        // The same labels as the replay: telemetry made again from the replay must
+        // come out as this file, byte for byte.
+        telemetry = new TelemetryRecorder(sim, recorder.Session, recorder.Build, recorder.Policy);
+        telemetryPath = Path.Combine(SessionsRoot(), session, "telemetry.jsonl");
+        try
+        {
+            telemetryWriter = new TelemetryWriter(telemetryPath);
+        }
+        catch (Exception e) when (e is IOException || e is UnauthorizedAccessException)
+        {
+            Debug.LogError("[Telemetry] Could not create " + telemetryPath + ": " + e.Message + " This session writes no telemetry; it can be made from the replay.");
+        }
+    }
+
+    // Appends the rows a tick (or the end of the session) completed. A failed write
+    // is logged once and never stops the game: the replay still holds everything.
+    private void WriteTelemetry(System.Collections.Generic.IReadOnlyList<WaveRecord> rows)
+    {
+        if (telemetryWriter == null || rows.Count == 0) return;
+        try
+        {
+            telemetryWriter.Write(rows);
+        }
+        catch (Exception e) when (e is IOException || e is UnauthorizedAccessException || e is ObjectDisposedException)
+        {
+            Debug.LogError("[Telemetry] Could not write " + telemetryPath + ": " + e.Message + " The rest of this session's telemetry can be made from the replay.");
+            CloseTelemetry();
+        }
+    }
+
+    private void CloseTelemetry()
+    {
+        if (telemetryWriter == null) return;
+        try
+        {
+            telemetryWriter.Dispose();
+        }
+        catch (Exception e) when (e is IOException || e is UnauthorizedAccessException)
+        {
+            // Nothing more to do: the file keeps the rows already flushed.
+        }
+        telemetryWriter = null;
     }
 
     // In the editor the project's Runs/ folder (gitignored), next to the headless
@@ -195,6 +250,15 @@ public class SimHost : MonoBehaviour
         if (recorder == null) return;
         WriteReplay();
         if (!replayWriteFailed) Debug.Log("[Replay] Session saved: " + sim.State.Tick + " ticks, " + recorder.CommandCount + " commands, " + recorder.WaveCount + " waves -> " + replayPath);
+
+        // The window that was still open: the wave in progress, or the build phase
+        // the session was stopped in.
+        if (telemetry != null)
+        {
+            WriteTelemetry(telemetry.Finish());
+            if (telemetryWriter != null) Debug.Log("[Telemetry] " + telemetryWriter.RowsWritten + " rows -> " + telemetryPath);
+            CloseTelemetry();
+        }
     }
 
     // Player input. Applied at once (FlushInput), not at the next tick, so it feels
@@ -230,6 +294,7 @@ public class SimHost : MonoBehaviour
             // replaces LastTickEvents, and the recorder reads them.
             bool waveBoundary = recorder != null && recorder.AfterTick();
             if (waveBoundary) WriteReplay();
+            if (telemetry != null) WriteTelemetry(telemetry.AfterTick());
             Dispatch();
             Ticked?.Invoke();
             if (sim.State.IsGameOver)

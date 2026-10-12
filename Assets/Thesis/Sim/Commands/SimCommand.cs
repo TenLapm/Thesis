@@ -13,19 +13,24 @@ namespace Thesis.Sim
         Rotate,       // rotate the current shape a quarter turn
         Hold,         // swap the current shape with the hold slot
         StartWaveNow, // skip the rest of an intermission
-        PlaceTower,   // buy tower type A from the roster and put it on tile (X, Y)
+        PlaceTower,   // buy the shop's offer in slot A and put that tower on tile (X, Y)
+        SellTower,    // sell the tower on tile (X, Y)
+        SellWall,     // sell the whole wall piece that tile (X, Y) belongs to
+        RerollShop,   // pay for a new set of offers (a no-op while rerolls are off)
     }
 
     public readonly struct SimCommand
     {
         public readonly SimCommandKind Kind;
 
-        // PlaceShape: the origin tile. PlaceTower: the tower's tile. Zero otherwise.
+        // PlaceShape: the origin tile. PlaceTower, SellTower, SellWall: the tile.
+        // Zero otherwise.
         public readonly int X;
         public readonly int Y;
 
-        // PlaceTower: the index of the tower type in the simulation's tower roster.
-        // (From WP-C3 this becomes the shop's offer slot.) Zero otherwise.
+        // PlaceTower: the shop's offer slot (an index into SimState.Shop.Offers), so
+        // a player can only build what the shop is offering. Until WP-C3 this was an
+        // index into the tower roster. Zero otherwise.
         public readonly int A;
 
         private SimCommand(SimCommandKind kind, int x, int y, int a)
@@ -44,14 +49,22 @@ namespace Thesis.Sim
 
         public static SimCommand StartWaveNow() { return new SimCommand(SimCommandKind.StartWaveNow, 0, 0, 0); }
 
-        public static SimCommand PlaceTower(int towerIndex, int x, int y) { return new SimCommand(SimCommandKind.PlaceTower, x, y, towerIndex); }
+        public static SimCommand PlaceTower(int offerSlot, int x, int y) { return new SimCommand(SimCommandKind.PlaceTower, x, y, offerSlot); }
+
+        public static SimCommand SellTower(int x, int y) { return new SimCommand(SimCommandKind.SellTower, x, y, 0); }
+
+        public static SimCommand SellWall(int x, int y) { return new SimCommand(SimCommandKind.SellWall, x, y, 0); }
+
+        public static SimCommand RerollShop() { return new SimCommand(SimCommandKind.RerollShop, 0, 0, 0); }
 
         public override string ToString()
         {
             switch (Kind)
             {
                 case SimCommandKind.PlaceShape: return "PlaceShape(" + X + "," + Y + ")";
-                case SimCommandKind.PlaceTower: return "PlaceTower(#" + A + " @" + X + "," + Y + ")";
+                case SimCommandKind.PlaceTower: return "PlaceTower(slot " + A + " @" + X + "," + Y + ")";
+                case SimCommandKind.SellTower: return "SellTower(" + X + "," + Y + ")";
+                case SimCommandKind.SellWall: return "SellWall(" + X + "," + Y + ")";
                 default: return Kind.ToString();
             }
         }

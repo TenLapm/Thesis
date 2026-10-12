@@ -1,5 +1,5 @@
 {
-  "Schema": 3,
+  "Schema": 4,
   "Build": "headless .NET 9.0.10",
   "Session": "dotnet-sentry-6waves",
   "Policy": "sentry",
@@ -28,6 +28,11 @@
     "MaxMoveSpeed": 2.25,
     "BaseHp": 10.0,
     "HpIncrementPerWave": 2.0,
+    "ShopOffers": 4,
+    "RerollCost": -1.0,
+    "SellRefund": 0.5,
+    "WallSellRefund": 0.5,
+    "SellDuringWave": false,
     "SapperDigCostFactor": 0.2,
     "MinSlowFactor": 0.25,
     "MaxWaveSeconds": 600.0,
@@ -328,193 +333,193 @@
       "ShopWeight": 1.0
     }
   ],
-  "SetupHash": "0a3b807e2602ad87",
-  "InitialHash": "81b012ee1145ff4f",
+  "SetupHash": "42564be997facd7d",
+  "InitialHash": "04a4ac8b46f94350",
   "Commands": [
     {
       "Tick": 0,
       "Cmd": "PlaceTower",
       "X": 4,
-      "Y": 6,
+      "Y": 5,
       "A": 0
     },
     {
       "Tick": 0,
       "Cmd": "PlaceTower",
-      "X": 4,
-      "Y": 5,
+      "X": 5,
+      "Y": 6,
       "A": 1
     },
     {
       "Tick": 0,
       "Cmd": "PlaceTower",
       "X": 5,
-      "Y": 6,
+      "Y": 5,
       "A": 2
     },
     {
       "Tick": 0,
-      "Cmd": "PlaceTower",
-      "X": 5,
-      "Y": 5,
-      "A": 0
-    },
-    {
-      "Tick": 0,
-      "Cmd": "PlaceTower",
-      "X": 7,
-      "Y": 5,
-      "A": 0
-    },
-    {
-      "Tick": 0,
-      "Cmd": "StartWaveNow",
-      "X": 0,
-      "Y": 0,
-      "A": 0
-    },
-    {
-      "Tick": 1383,
       "Cmd": "PlaceTower",
       "X": 5,
       "Y": 3,
-      "A": 2
+      "A": 3
     },
     {
-      "Tick": 1383,
-      "Cmd": "PlaceTower",
-      "X": 5,
-      "Y": 7,
-      "A": 0
-    },
-    {
-      "Tick": 1383,
-      "Cmd": "PlaceTower",
-      "X": 7,
-      "Y": 6,
-      "A": 1
-    },
-    {
-      "Tick": 1383,
+      "Tick": 0,
       "Cmd": "StartWaveNow",
       "X": 0,
       "Y": 0,
       "A": 0
     },
     {
-      "Tick": 2640,
+      "Tick": 4549,
       "Cmd": "PlaceTower",
-      "X": 8,
+      "X": 4,
+      "Y": 6,
+      "A": 0
+    },
+    {
+      "Tick": 4549,
+      "Cmd": "PlaceTower",
+      "X": 7,
+      "Y": 5,
+      "A": 1
+    },
+    {
+      "Tick": 4549,
+      "Cmd": "PlaceTower",
+      "X": 7,
       "Y": 6,
       "A": 2
     },
     {
-      "Tick": 2640,
+      "Tick": 4549,
+      "Cmd": "StartWaveNow",
+      "X": 0,
+      "Y": 0,
+      "A": 0
+    },
+    {
+      "Tick": 5956,
+      "Cmd": "PlaceTower",
+      "X": 8,
+      "Y": 6,
+      "A": 0
+    },
+    {
+      "Tick": 5956,
+      "Cmd": "PlaceTower",
+      "X": 8,
+      "Y": 7,
+      "A": 1
+    },
+    {
+      "Tick": 5956,
       "Cmd": "PlaceTower",
       "X": 7,
+      "Y": 7,
+      "A": 2
+    },
+    {
+      "Tick": 5956,
+      "Cmd": "PlaceTower",
+      "X": 6,
+      "Y": 6,
+      "A": 3
+    },
+    {
+      "Tick": 5956,
+      "Cmd": "StartWaveNow",
+      "X": 0,
+      "Y": 0,
+      "A": 0
+    },
+    {
+      "Tick": 7424,
+      "Cmd": "PlaceTower",
+      "X": 4,
       "Y": 4,
       "A": 0
     },
     {
-      "Tick": 2640,
+      "Tick": 7424,
       "Cmd": "PlaceTower",
-      "X": 8,
-      "Y": 7,
+      "X": 2,
+      "Y": 5,
       "A": 1
     },
     {
-      "Tick": 2640,
-      "Cmd": "StartWaveNow",
-      "X": 0,
-      "Y": 0,
-      "A": 0
-    },
-    {
-      "Tick": 3862,
-      "Cmd": "PlaceTower",
-      "X": 7,
-      "Y": 7,
-      "A": 2
-    },
-    {
-      "Tick": 3862,
-      "Cmd": "PlaceTower",
-      "X": 4,
-      "Y": 7,
-      "A": 0
-    },
-    {
-      "Tick": 3862,
-      "Cmd": "PlaceTower",
-      "X": 7,
-      "Y": 9,
-      "A": 1
-    },
-    {
-      "Tick": 3862,
-      "Cmd": "StartWaveNow",
-      "X": 0,
-      "Y": 0,
-      "A": 0
-    },
-    {
-      "Tick": 5182,
-      "Cmd": "PlaceTower",
-      "X": 8,
-      "Y": 9,
-      "A": 2
-    },
-    {
-      "Tick": 5182,
+      "Tick": 7424,
       "Cmd": "PlaceTower",
       "X": 2,
       "Y": 6,
-      "A": 0
+      "A": 2
     },
     {
-      "Tick": 5182,
-      "Cmd": "PlaceTower",
-      "X": 2,
-      "Y": 5,
-      "A": 1
-    },
-    {
-      "Tick": 5182,
+      "Tick": 7424,
       "Cmd": "StartWaveNow",
       "X": 0,
       "Y": 0,
       "A": 0
     },
     {
-      "Tick": 6411,
+      "Tick": 8806,
       "Cmd": "PlaceTower",
-      "X": 8,
-      "Y": 10,
-      "A": 2
-    },
-    {
-      "Tick": 6411,
-      "Cmd": "PlaceTower",
-      "X": 8,
-      "Y": 5,
+      "X": 4,
+      "Y": 8,
       "A": 0
     },
     {
-      "Tick": 6411,
+      "Tick": 8806,
       "Cmd": "PlaceTower",
-      "X": 9,
-      "Y": 10,
+      "X": 5,
+      "Y": 8,
       "A": 1
     },
     {
-      "Tick": 6411,
+      "Tick": 8806,
       "Cmd": "PlaceTower",
-      "X": 10,
-      "Y": 12,
+      "X": 6,
+      "Y": 5,
+      "A": 2
+    },
+    {
+      "Tick": 8806,
+      "Cmd": "StartWaveNow",
+      "X": 0,
+      "Y": 0,
       "A": 0
     },
     {
-      "Tick": 6411,
+      "Tick": 10064,
+      "Cmd": "PlaceTower",
+      "X": 5,
+      "Y": 4,
+      "A": 0
+    },
+    {
+      "Tick": 10064,
+      "Cmd": "PlaceTower",
+      "X": 5,
+      "Y": 9,
+      "A": 1
+    },
+    {
+      "Tick": 10064,
+      "Cmd": "PlaceTower",
+      "X": 6,
+      "Y": 9,
+      "A": 2
+    },
+    {
+      "Tick": 10064,
+      "Cmd": "PlaceTower",
+      "X": 7,
+      "Y": 9,
+      "A": 3
+    },
+    {
+      "Tick": 10064,
       "Cmd": "StartWaveNow",
       "X": 0,
       "Y": 0,
@@ -524,36 +529,36 @@
   "WaveHashes": [
     {
       "Wave": 1,
-      "Tick": 1383,
-      "Hash": "6986251b24694871"
+      "Tick": 4549,
+      "Hash": "7d0be673720d3c54"
     },
     {
       "Wave": 2,
-      "Tick": 2640,
-      "Hash": "22d860cfccb2199e"
+      "Tick": 5956,
+      "Hash": "497ce97f1d869502"
     },
     {
       "Wave": 3,
-      "Tick": 3862,
-      "Hash": "5a64a793e53d4d34"
+      "Tick": 7424,
+      "Hash": "d32c0c1dc02746af"
     },
     {
       "Wave": 4,
-      "Tick": 5182,
-      "Hash": "9eeb47c04497ad24"
+      "Tick": 8806,
+      "Hash": "d6a8f3fb71b26dff"
     },
     {
       "Wave": 5,
-      "Tick": 6411,
-      "Hash": "e627b8663357bfc9"
+      "Tick": 10064,
+      "Hash": "4d22785f60b07172"
     },
     {
       "Wave": 6,
-      "Tick": 8055,
-      "Hash": "b736e44a35185dd0"
+      "Tick": 11393,
+      "Hash": "acd17f66da48837c"
     }
   ],
-  "FinalTick": 8055,
-  "FinalHash": "b736e44a35185dd0",
+  "FinalTick": 11393,
+  "FinalHash": "acd17f66da48837c",
   "TickHashes": null
 }

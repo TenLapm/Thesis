@@ -1,14 +1,15 @@
 using System;
 using System.Collections.Generic;
 using Thesis.Core;
+using Thesis.Director;
 using Thesis.Sim;
 
 namespace Thesis.Harness
 {
     // One headless game from tick 0 to its end: a scripted policy builds, the
-    // planner sends waves, and everything is recorded as a replay. This loop is the
-    // only place headless runs advance a simulation, so the ladder and the gates
-    // (WP12, WP13) get recording and the determinism guarantee for free.
+    // planner sends waves, and everything is recorded as a replay and as telemetry.
+    // This loop is the only place headless runs advance a simulation, so the ladder
+    // and the gates (WP12, WP13) get recording and the determinism guarantee for free.
     public static class EpisodeRunner
     {
         public static EpisodeResult Run(EpisodeOptions o)
@@ -19,6 +20,7 @@ namespace Thesis.Harness
             IWavePlanner planner = Registry.CreatePlanner(o.Planner, o.Config, o.Map);
             var sim = new Simulation(o.Config, o.Map, o.Shapes, o.Towers, o.Seed, planner);
             var recorder = new ReplayRecorder(sim, o.RecordTickHashes) { Build = o.Build, Session = o.Session, Policy = o.Policy.Name };
+            var telemetry = new TelemetryRecorder(sim, o.Session, o.Build, o.Policy.Name);
             var policyRng = new Pcg32(o.Seed, RngStreams.Policy);
 
             Action<SimCommand> send = command =>
@@ -56,6 +58,7 @@ namespace Thesis.Harness
 
                 sim.Tick();
                 recorder.AfterTick();
+                result.Telemetry.AddRange(telemetry.AfterTick());
 
                 IReadOnlyList<SimEvent> events = sim.LastTickEvents;
                 for (int i = 0; i < events.Count; i++)
@@ -66,6 +69,7 @@ namespace Thesis.Harness
                 }
             }
 
+            result.Telemetry.AddRange(telemetry.Finish());
             result.Replay = recorder.Snapshot();
             result.GameOver = s.IsGameOver;
             result.Ticks = s.Tick;

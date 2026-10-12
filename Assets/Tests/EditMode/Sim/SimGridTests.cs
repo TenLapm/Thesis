@@ -160,14 +160,21 @@ namespace Thesis.Tests.Sim
                 C # .");
             new FlowField().Generate(f.Grid, f.Map.Core);
 
+            f.Grid.SetWall(f.Grid[2, 1], 15, 6f, pieceId: 4);
+
             SimGrid clone = f.Grid.Clone();
+            Assert.AreEqual(4, clone[2, 1].PieceId, "which piece a wall tile belongs to goes with it (WP-C3)");
+            Assert.AreEqual(-1, clone[0, 1].PieceId);
             Assert.AreEqual(f.Grid[2, 0].BestCost, clone[2, 0].BestCost);
             Assert.AreEqual(f.Grid[2, 0].NextIndex, clone[2, 0].NextIndex);
             Assert.AreEqual(f.Grid.FieldVersion, clone.FieldVersion);
 
             clone.ClearWall(clone[1, 0]);
+            clone.ClearWall(clone[2, 1]);
             clone[2, 0].BestCost = 12345;
 
+            Assert.AreEqual(-1, clone[2, 1].PieceId, "a cleared tile belongs to no piece");
+            Assert.AreEqual(4, f.Grid[2, 1].PieceId);
             Assert.IsTrue(f.Grid[1, 0].HasWall, "original wall must survive a change to the clone");
             Assert.AreNotEqual(12345, f.Grid[2, 0].BestCost);
         }

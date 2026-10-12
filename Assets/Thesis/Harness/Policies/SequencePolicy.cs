@@ -14,6 +14,7 @@ namespace Thesis.Harness
     public sealed class SequencePolicy : IPlayerPolicy
     {
         public const string MixedId = "mixed";
+        public const string RestlessId = "restless";
 
         private readonly IPlayerPolicy[] steps;
 
@@ -33,6 +34,17 @@ namespace Thesis.Harness
         public static SequencePolicy Mixed(int wallsPerPhase = 2, int towersPerPhase = 6, int wallSearchOrigins = 24)
         {
             return new SequencePolicy(MixedId,
+                new GreedyDetourPolicy { MaxPlacementsPerIntermission = wallsPerPhase, MaxOriginsPerPlacement = wallSearchOrigins },
+                new SentryPolicy { MaxTowersPerPhase = towersPerPhase });
+        }
+
+        // The mixed player with a seller in front: every build phase it first sells its
+        // weakest tower and its oldest wall piece, then builds walls and buys towers
+        // with what it has. The one scripted player whose sessions contain sales.
+        public static SequencePolicy Restless(int wallsPerPhase = 2, int towersPerPhase = 6, int wallSearchOrigins = 24)
+        {
+            return new SequencePolicy(RestlessId,
+                new SellerPolicy(),
                 new GreedyDetourPolicy { MaxPlacementsPerIntermission = wallsPerPhase, MaxOriginsPerPlacement = wallSearchOrigins },
                 new SentryPolicy { MaxTowersPerPhase = towersPerPhase });
         }

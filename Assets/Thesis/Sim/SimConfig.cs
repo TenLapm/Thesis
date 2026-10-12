@@ -53,6 +53,31 @@ namespace Thesis.Sim
         public float BaseHp = 10f;
         public float HpIncrementPerWave = 2f;
 
+        // --- shop and selling (WP-C3). Every number here is spec gap S11: a default
+        // to play with, not a decision. ---
+        // How many towers the shop offers per roll. It rolls at game start and every
+        // time a wave resolves; each offer can be bought once.
+        //
+        // Four, not the three first planned: the starting budget of 60 buys four
+        // towers, and with three offers a third of it cannot be spent on them. The
+        // tower bot then lost wave 1 on 4 of 10 seeds, purely on what the first roll
+        // held; with four offers it lost wave 1 on none (measured 2026-10-11, DEVLOG).
+        public int ShopOffers = 4;
+
+        // What a new set of offers costs. Negative means rerolls are off, which is
+        // the default: with them on, a player who wants one tower can buy their way
+        // to it, and the shop stops shaping what gets built.
+        public float RerollCost = -1f;
+
+        // The share of what was paid that selling returns: of a tower's price, and
+        // of a wall piece's cost (scaled by how much of the piece still stands).
+        public float SellRefund = 0.5f;
+        public float WallSellRefund = 0.5f;
+
+        // Selling is for build phases. Mid-wave it lets a player open and close a
+        // gap to walk enemies back and forth under fire, the classic maze exploit.
+        public bool SellDuringWave = false;
+
         // --- movement classes (WP-C2) ---
         // The share of a built tile's price that a SAPPER pays when it chooses a
         // route. A wall of cost 15 reads as a 15-tile detour to an ordinary enemy
@@ -86,7 +111,7 @@ namespace Thesis.Sim
             return (int)MathF.Round((float)(seconds / TickSeconds));
         }
 
-        // Every field is a plain number, so a shallow copy is a full copy. A host
+        // Every field is a plain number or flag, so a shallow copy is a full copy. A host
         // gives the simulation its own copy, so that editing the source object later
         // (the config asset in Unity's inspector, during play) cannot change a
         // running game.
@@ -103,6 +128,11 @@ namespace Thesis.Sim
             if (!(MinSlowFactor > 0f) || MinSlowFactor > 1f) throw new InvalidOperationException("SimConfig.MinSlowFactor must be in (0, 1], was " + MinSlowFactor + ".");
             if (!(MaxWaveSeconds > 0f)) throw new InvalidOperationException("SimConfig.MaxWaveSeconds must be positive, was " + MaxWaveSeconds + ".");
             if (!(SapperDigCostFactor >= 0f) || SapperDigCostFactor > 1f) throw new InvalidOperationException("SimConfig.SapperDigCostFactor must be in [0, 1], was " + SapperDigCostFactor + ".");
+            if (ShopOffers < 0 || ShopOffers > 16) throw new InvalidOperationException("SimConfig.ShopOffers must be between 0 and 16, was " + ShopOffers + ".");
+            if (float.IsNaN(RerollCost) || float.IsInfinity(RerollCost)) throw new InvalidOperationException("SimConfig.RerollCost must be a number (negative turns rerolls off), was " + RerollCost + ".");
+            // Above 1 a sale would pay more than the purchase cost: free budget for buying and selling in a loop.
+            if (!(SellRefund >= 0f) || SellRefund > 1f) throw new InvalidOperationException("SimConfig.SellRefund must be in [0, 1], was " + SellRefund + ".");
+            if (!(WallSellRefund >= 0f) || WallSellRefund > 1f) throw new InvalidOperationException("SimConfig.WallSellRefund must be in [0, 1], was " + WallSellRefund + ".");
         }
     }
 }

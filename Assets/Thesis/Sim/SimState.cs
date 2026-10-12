@@ -47,7 +47,12 @@ namespace Thesis.Sim
         public OccupancyMap Occupancy;
         public DamageMap Damage;
 
+        // The build log: every wall piece and tower built, every one sold, every
+        // shop reroll paid for, in order. It only grows (see PlacementRecord).
         public List<PlacementRecord> PlacementLog = new List<PlacementRecord>();
+
+        // What the shop is offering now. Replaced whole at every roll.
+        public ShopState Shop = new ShopState();
 
         // Randomness, one stream per subsystem (RngStreams). Bag is the same
         // instance the ShapeBag draws from, so its state here is the bag's state.
@@ -99,6 +104,7 @@ namespace Thesis.Sim
             c.Occupancy = Occupancy.Clone();
             c.Damage = Damage.Clone();
             c.PlacementLog = new List<PlacementRecord>(PlacementLog); // records are never mutated after logging
+            c.Shop = Shop.Clone();
             c.Schedule = (SpawnSlot[])Schedule.Clone();
             c.Pending = new List<SimCommand>(Pending);
             return c;

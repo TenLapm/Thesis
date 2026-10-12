@@ -75,6 +75,7 @@ namespace Thesis.Sim
                     MaxWallHealth = s.MaxWallHealth,
                     Occupant = s.Occupant,
                     TowerId = s.TowerId,
+                    PieceId = s.PieceId,
                     BestCost = s.BestCost,
                     NextIndex = s.NextIndex,
                     SapperCost = s.SapperCost,
@@ -183,7 +184,10 @@ namespace Thesis.Sim
         // Turns a tile into player wall terrain. Walls are diggable terrain, not
         // blockers: raise the entry cost and give it chew-through health. The
         // caller is responsible for rebuilding the flow field afterwards.
-        public void SetWall(SimNode node, int terrainCost, float wallHealth)
+        //
+        // pieceId is the wall piece the tile belongs to (SimNode.PieceId). Scenario
+        // and test walls leave it at -1: they are scenery, and cannot be sold.
+        public void SetWall(SimNode node, int terrainCost, float wallHealth, int pieceId = -1)
         {
             if (!node.IsWalkable)
                 throw new InvalidOperationException("Cannot place a wall on static geometry at (" + node.X + "," + node.Y + ").");
@@ -197,6 +201,7 @@ namespace Thesis.Sim
             node.MaxWallHealth = wallHealth;
             node.Occupant = Occupant.Wall;
             node.TowerId = -1;
+            node.PieceId = pieceId;
         }
 
         // A tower stands on its tile exactly as a wall does (same cost model, same
@@ -209,8 +214,8 @@ namespace Thesis.Sim
             node.TowerId = towerId;
         }
 
-        // Back to open ground (a breach, a destroyed tower, or clearing a scenario).
-        // Caller rebuilds the field.
+        // Back to open ground (a breach, a destroyed tower, a sale, or clearing a
+        // scenario). Caller rebuilds the fields.
         public void ClearWall(SimNode node)
         {
             node.TerrainCost = 1;
@@ -218,6 +223,7 @@ namespace Thesis.Sim
             node.MaxWallHealth = 0f;
             node.Occupant = Occupant.None;
             node.TowerId = -1;
+            node.PieceId = -1;
         }
 
         // Mathf.Clamp01 / Mathf.RoundToInt equivalents. RoundToInt is (int)Math.Round,

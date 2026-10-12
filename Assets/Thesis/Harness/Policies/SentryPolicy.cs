@@ -5,22 +5,25 @@ using Thesis.Sim;
 
 namespace Thesis.Harness
 {
-    // "Put towers where they can see the most of the route." Each build phase it
-    // buys towers, cycling through the roster so every type gets used, and puts each
-    // one on the free tile next to the route from which the most route tiles are
-    // within that tower's range. It never builds ON the route, so it does not make
-    // enemies dig.
+    // "Buy what the shop offers and put it where it can see the most of the route."
+    // Each build phase it goes through the shop's offers in slot order, buys every
+    // one the budget covers, and puts each tower on the free tile next to the route
+    // from which the most route tiles are within that tower's range. It never
+    // builds ON the route, so it does not make enemies dig.
     //
     // Counting tiles in range needs no flow-field rebuild, so this policy is cheap
     // (compare GreedyDetourPolicy, which rebuilds the field for every candidate).
     //
-    // A stand-in player, not a good one: it ignores damage types, never sells, and
-    // keeps stacking towers on the same stretch of route. SequencePolicy.Mixed()
-    // pairs it with GreedyDetourPolicy for a player that builds walls as well.
+    // A stand-in player, not a good one: it takes the offers as they come, ignores
+    // damage types, never sells, and keeps stacking towers on the same stretch of
+    // route. SequencePolicy.Mixed() pairs it with GreedyDetourPolicy for a player
+    // that builds walls as well.
     public sealed class SentryPolicy : IPlayerPolicy
     {
         public const string Id = "sentry";
 
+        // The shop already limits a phase to its offers (three by default); this
+        // is a second, lower limit for callers that want a weaker player.
         public int MaxTowersPerPhase = 6;
 
         // How far from the route a tower may stand, in tiles (Chebyshev distance).
@@ -40,36 +43,23 @@ namespace Thesis.Harness
             if (s.IsGameOver) return; // a finished game takes no input; do not mistake that for a refused placement
             TowerDef[] roster = sim.TowerLibrary;
 
-            for (int placed = 0; placed < MaxTowersPerPhase && roster.Length > 0; placed++)
+            int placed = 0;
+            for (int slot = 0; slot < s.Shop.Offers.Length && placed < MaxTowersPerPhase; slot++)
             {
-                int type = ChooseType(roster, s.Towers.Count, s.BuildBudget);
-                if (type < 0) break;
+                TowerOffer offer = s.Shop.Offers[slot];
+                if (offer.Bought || s.BuildBudget < offer.Price) continue;
 
+                TowerDef def = roster[offer.TowerIndex];
                 TileCoord tile;
-                if (!FindBestTile(sim, roster[type], out tile)) break;
+                if (!FindBestTile(sim, def, out tile)) continue;
 
                 int before = s.Towers.Count;
-                send(SimCommand.PlaceTower(type, tile.X, tile.Y));
+                send(SimCommand.PlaceTower(slot, tile.X, tile.Y));
                 if (s.Towers.Count == before)
-                    throw new InvalidOperationException("[Harness] SentryPolicy chose " + roster[type].Id + " at " + tile
+                    throw new InvalidOperationException("[Harness] SentryPolicy chose " + def.Id + " (shop slot " + slot + ") at " + tile
                                                         + ", but the simulation refused it. The policy's legality check and Placement.CanPlace disagree.");
+                placed++;
             }
-        }
-
-        // The next type in the cycle if the budget covers it, otherwise the cheapest
-        // one it does cover (the first such in roster order), otherwise none.
-        private static int ChooseType(TowerDef[] roster, int towersSoFar, float budget)
-        {
-            int next = towersSoFar % roster.Length;
-            if (budget >= roster[next].Cost) return next;
-
-            int cheapest = -1;
-            for (int i = 0; i < roster.Length; i++)
-            {
-                if (budget < roster[i].Cost) continue;
-                if (cheapest < 0 || roster[i].Cost < roster[cheapest].Cost) cheapest = i;
-            }
-            return cheapest;
         }
 
         private bool FindBestTile(Simulation sim, TowerDef def, out TileCoord best)

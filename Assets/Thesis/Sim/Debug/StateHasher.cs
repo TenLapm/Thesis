@@ -46,6 +46,8 @@ namespace Thesis.Sim
             h.Add(s.PlacementLog.Count);
             for (int i = 0; i < s.PlacementLog.Count; i++) AddPlacement(ref h, s.PlacementLog[i]);
 
+            s.Shop.AddToHash(ref h);
+
             AddPlan(ref h, s.CurrentPlan);
             AddOutcome(ref h, s.CurrentOutcome);
             AddOutcome(ref h, s.LastOutcome);
@@ -83,6 +85,7 @@ namespace Thesis.Sim
                 h.Add(n.MaxWallHealth);
                 h.Add((int)n.Occupant);
                 h.Add(n.TowerId);
+                h.Add(n.PieceId);
                 h.Add(n.BestCost);
                 h.Add(n.NextIndex);
                 h.Add(n.SapperCost);
@@ -121,8 +124,10 @@ namespace Thesis.Sim
             h.Add(t.Tile.X);
             h.Add(t.Tile.Y);
             h.Add(t.PlacedTick);
+            h.Add(t.PricePaid);
             h.Add(t.Cooldown);
             h.Add(t.IsAlive);
+            h.Add(t.Sold);
             h.Add(t.DamageDealt);
             h.Add(t.Shots);
             h.Add(t.Kills);
@@ -144,6 +149,9 @@ namespace Thesis.Sim
             h.Add(p.OriginX);
             h.Add(p.OriginY);
             h.Add(p.Tiles.Length);
+            h.Add(p.PieceId);
+            h.Add(p.Cost);
+            h.Add(p.Refund);
         }
 
         private static void AddPlan(ref Fnv1a64 h, WavePlan p)

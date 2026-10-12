@@ -24,6 +24,9 @@ namespace Thesis.Sim
         TowerFired,
         AgentRemoved,
         WaveTimedOut,
+        ShopRolled,
+        TowerSold,
+        WallSold,
     }
 
     public readonly struct SimEvent
@@ -80,6 +83,18 @@ namespace Thesis.Sim
 
         // The MaxWaveSeconds backstop fired. IntA = wave index.
         public static SimEvent WaveTimedOut(int waveIndex) { return new SimEvent(SimEventKind.WaveTimedOut, waveIndex, 0, 0, 0f); }
+
+        // The shop has new offers (SimState.Shop). IntA = the roll's wave index (the
+        // number of waves resolved when it was made), IntB = its reroll count. The
+        // roll at game start happens before anyone can listen: read SimState.Shop.
+        public static SimEvent ShopRolled(int waveIndex, int rerollCount) { return new SimEvent(SimEventKind.ShopRolled, waveIndex, rerollCount, 0, 0f); }
+
+        // The player sold a tower. IntA = tower id, IntB = tile X, IntC = tile Y, FloatA = budget refunded.
+        public static SimEvent TowerSold(int towerId, int x, int y, float refund) { return new SimEvent(SimEventKind.TowerSold, towerId, x, y, refund); }
+
+        // One tile of a sold wall piece was cleared; a piece raises one of these per
+        // tile still standing. IntA = tile X, IntB = tile Y (as WallBreached), IntC = piece id.
+        public static SimEvent WallSold(int x, int y, int pieceId) { return new SimEvent(SimEventKind.WallSold, x, y, pieceId, 0f); }
 
         public override string ToString()
         {

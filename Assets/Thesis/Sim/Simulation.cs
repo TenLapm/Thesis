@@ -35,8 +35,8 @@ namespace Thesis.Sim
         private readonly FlowFieldSet fields;
         private readonly List<SimEvent> events = new List<SimEvent>();
 
-        // towerLibrary is the roster a PlaceTower command chooses from, by index. It
-        // may be empty (a game with walls only), never null.
+        // towerLibrary is the roster the shop draws its offers from. It may be empty
+        // (a game with walls only), never null.
         public Simulation(SimConfig config, MapData map, ShapeDef[] shapeLibrary, TowerDef[] towerLibrary, ulong rngSeed, IWavePlanner planner, IThreatPricer pricer = null)
         {
             this.config = config ?? throw new ArgumentNullException(nameof(config));
@@ -73,6 +73,10 @@ namespace Thesis.Sim
             s.Damage = new DamageMap(s.Grid.NodeCount);
             fields.Generate(s.Grid, map.Core);
 
+            // The first offers are there before the first tick: the player builds
+            // from them during the prep phase.
+            s.Shop = RollShop(0, 0);
+
             State = s;
         }
 
@@ -108,8 +112,9 @@ namespace Thesis.Sim
 
         public ShapeDef[] ShapeLibrary => library;
 
-        // The tower types a PlaceTower command can name, by index. Pure data, never
-        // changed during a run; a replay stores it next to the shapes.
+        // Every tower type of the game. The shop draws its offers from it; an offer
+        // names a tower by its index here. Pure data, never changed during a run; a
+        // replay stores it next to the shapes.
         public TowerDef[] TowerLibrary => towerLibrary;
 
         // Everything that happened during the most recent Tick(), in order.
@@ -221,6 +226,11 @@ namespace Thesis.Sim
                 s.BuildBudget += config.StipendPerWave;
                 s.Phase = SimPhase.Intermission;
                 s.PhaseTicksRemaining = config.Ticks(config.IntermissionSeconds);
+
+                // New offers for the build phase that starts now. They stay through
+                // the next wave, until that one resolves.
+                s.Shop = RollShop(s.WaveIndex, 0);
+                events.Add(SimEvent.ShopRolled(s.Shop.WaveIndex, s.Shop.RerollCount));
             }
 
             // 6. Core destroyed. If a wave was running, close it first so the planner
@@ -267,18 +277,69 @@ namespace Thesis.Sim
                     if (s.Phase == SimPhase.Prep || s.Phase == SimPhase.Intermission) s.StartWaveRequested = true;
                     break;
                 case SimCommandKind.PlaceTower:
-                    // A tower type the roster does not have is ignored, like an
-                    // illegal tile or an empty budget: a command records what the
-                    // player tried, and a try that cannot work changes nothing.
-                    if (command.A >= 0 && command.A < towerLibrary.Length)
+                    // A is the shop's offer slot. A slot that does not exist or is
+                    // already bought is ignored, like an illegal tile or an empty
+                    // budget: a command records what the player tried, and a try
+                    // that cannot work changes nothing.
+                    if (command.A >= 0 && command.A < s.Shop.Offers.Length)
                     {
-                        Placement.TryPlaceTower(s.Grid, map, fields, towerLibrary[command.A], new TileCoord(command.X, command.Y),
-                                                ref s.BuildBudget, s.Tick, s.Towers, s.PlacementLog, events);
+                        TowerOffer offer = s.Shop.Offers[command.A];
+                        if (!offer.Bought && Placement.TryPlaceTower(s.Grid, map, fields, towerLibrary[offer.TowerIndex], offer.Price,
+                                                                     new TileCoord(command.X, command.Y), ref s.BuildBudget, s.Tick,
+                                                                     s.Towers, s.PlacementLog, events))
+                        {
+                            offer.Bought = true; // each slot once
+                        }
+                    }
+                    break;
+                case SimCommandKind.SellTower:
+                    if (MaySell(s))
+                    {
+                        Placement.TrySellTower(s.Grid, map, fields, new TileCoord(command.X, command.Y), config.SellRefund,
+                                               ref s.BuildBudget, s.Tick, s.Towers, s.PlacementLog, events);
+                    }
+                    break;
+                case SimCommandKind.SellWall:
+                    if (MaySell(s))
+                    {
+                        Placement.TrySellWall(s.Grid, map, fields, new TileCoord(command.X, command.Y), config.WallSellRefund,
+                                              ref s.BuildBudget, s.Tick, s.PlacementLog, events);
+                    }
+                    break;
+                case SimCommandKind.RerollShop:
+                    // Off unless the config puts a price on it. The new offers are
+                    // the next roll of the SAME wave, so they too depend on nothing
+                    // but the seed and the two counters (I10).
+                    if (config.RerollCost >= 0f && s.BuildBudget >= config.RerollCost)
+                    {
+                        s.BuildBudget -= config.RerollCost;
+                        s.Shop = RollShop(s.Shop.WaveIndex, s.Shop.RerollCount + 1);
+                        s.PlacementLog.Add(new PlacementRecord { Kind = PlacementKind.ShopReroll, Tick = s.Tick, Cost = config.RerollCost });
+                        events.Add(SimEvent.ShopRolled(s.Shop.WaveIndex, s.Shop.RerollCount));
                     }
                     break;
                 default:
                     throw new InvalidOperationException("[Sim] Unknown command kind " + command.Kind + ".");
             }
+        }
+
+        // Selling is for build phases, unless the config says otherwise: see
+        // SimConfig.SellDuringWave for why.
+        private bool MaySell(SimState s)
+        {
+            return config.SellDuringWave || s.Phase == SimPhase.Prep || s.Phase == SimPhase.Intermission;
+        }
+
+        // A fresh set of offers. Nothing of the state goes in: only the seed and the
+        // two counters (ShopRoller, CLAUDE.md I10).
+        private ShopState RollShop(int waveIndex, int rerollCount)
+        {
+            return new ShopState
+            {
+                WaveIndex = waveIndex,
+                RerollCount = rerollCount,
+                Offers = ShopRoller.Roll(RngSeed, waveIndex, rerollCount, towerLibrary, config.ShopOffers),
+            };
         }
 
         private void BeginWave(SimState s)

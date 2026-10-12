@@ -38,6 +38,12 @@ namespace Thesis.Sim
         public Occupant Occupant;
         public int TowerId = -1;
 
+        // For a wall tile: the piece it belongs to, which is the index of the
+        // placement that built it in SimState.PlacementLog. Selling any tile of a
+        // piece sells the whole piece (WP-C3). -1 for open ground, for a tower, and
+        // for a wall that was put here without going through the log.
+        public int PieceId = -1;
+
         // The GROUND flow field. Integer cost x10 to the goal (so diagonals can cost
         // ~sqrt(2) without floats).
         public int BestCost = Infinity;

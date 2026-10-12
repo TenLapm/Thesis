@@ -35,20 +35,63 @@ namespace Thesis.Tests.Harness
             return sent;
         }
 
+        // The shop decides what can be bought (WP-C3): the policy takes the offers in
+        // slot order and buys every one the budget still covers.
         [Test]
-        public void ItBuysTowersUntilTheBudgetRunsOutCyclingThroughTheRoster()
+        public void ItBuysEveryOfferTheBudgetCoversInSlotOrder()
         {
             Simulation sim = Sim();
+            var offered = new List<string>();
+            int total = 0;
+            foreach (TowerOffer o in sim.State.Shop.Offers)
+            {
+                offered.Add(sim.TowerLibrary[o.TowerIndex].Id);
+                total += o.Price;
+            }
+            Assert.AreEqual(4, offered.Count, "rig: four offers");
+            Assert.LessOrEqual(total, 60, "rig: the starting budget covers all four (the dearest tower is 18)");
+
             List<SimCommand> sent = Build(sim, new SentryPolicy());
 
-            // Budget 60: archer 10, cannon 18, frost 12, archer 10, then the cannon is
-            // too dear, so the cheapest that still fits: archer 10. Nothing is left.
-            var types = new List<string>();
-            foreach (TowerState t in sim.State.Towers) types.Add(t.Def.Id);
-            CollectionAssert.AreEqual(new[] { "archer", "cannon", "frost", "archer", "archer" }, types);
-            Assert.AreEqual(0f, sim.State.BuildBudget);
-            Assert.AreEqual(5, sent.Count);
-            foreach (SimCommand c in sent) Assert.AreEqual(SimCommandKind.PlaceTower, c.Kind);
+            var bought = new List<string>();
+            foreach (TowerState t in sim.State.Towers) bought.Add(t.Def.Id);
+            CollectionAssert.AreEqual(offered, bought, "one of each offer, in slot order");
+            Assert.AreEqual(60f - total, sim.State.BuildBudget);
+            Assert.AreEqual(4, sent.Count);
+            for (int i = 0; i < sent.Count; i++)
+            {
+                Assert.AreEqual(SimCommandKind.PlaceTower, sent[i].Kind);
+                Assert.AreEqual(i, sent[i].A, "the command names the slot");
+            }
+            foreach (TowerOffer o in sim.State.Shop.Offers) Assert.IsTrue(o.Bought);
+
+            // Nothing is left to buy: a second pass in the same build phase sends nothing.
+            Assert.AreEqual(0, Build(sim, new SentryPolicy()).Count);
+        }
+
+        [Test]
+        public void WithATightBudgetItSkipsWhatItCannotAffordAndBuysWhatItCan()
+        {
+            Simulation sim = Sim(new SimConfig { StartBudget = 25f });
+
+            // What the rule should do, worked out from the offers themselves.
+            var expected = new List<int>();
+            float budget = 25f;
+            for (int slot = 0; slot < sim.State.Shop.Offers.Length; slot++)
+            {
+                int price = sim.State.Shop.Offers[slot].Price;
+                if (budget < price) continue;
+                budget -= price;
+                expected.Add(slot);
+            }
+            Assert.Less(expected.Count, 4, "rig: 25 cannot buy all four");
+            Assert.Greater(expected.Count, 0);
+
+            List<SimCommand> sent = Build(sim, new SentryPolicy());
+            var slots = new List<int>();
+            foreach (SimCommand c in sent) slots.Add(c.A);
+            CollectionAssert.AreEqual(expected, slots);
+            Assert.AreEqual(budget, sim.State.BuildBudget);
         }
 
         [Test]
