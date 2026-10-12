@@ -1321,3 +1321,60 @@ checked with `thesis ascii` or `routetool`, not by eye.
 
 **Open, for the student:** GDD §12, question 19 (the size of the board), besides the fourteen
 that were there before the read. The decisions add an estimated two to three days to WP-C4.
+
+---
+
+## 2026-10-12 — WP-C4 The board from above, one-tile walls, rocks, and the tower UI
+
+**Status:** done, with the deviations below. 522 tests pass in both runners (12 new). A Unity
+session driven through the real input path replays headless, ticks and telemetry. **Nobody
+has played it by hand yet.**
+
+**What changed for the player (GDD §3, §4.1, §5.3, §9, §10)**
+- The board is 24 × 24 (the student: "24 for now"), seen from straight above by a fixed camera
+  (`TopDownCamera`), in the build phase and during a wave.
+- Rocks: 68 tiles (11.8 %) in eleven groups (`RockLayout`, text in the scene; `SceneMapBuilder`
+  turns them into the map's `X` tiles). Checked with the path rule before it went into the scene:
+  on the empty board the walkers' way is 29.6 tiles, the straight line 26.9.
+- A wall is one tile, 1 budget, drawn by click or drag; a sale is one tile.
+- The shop is a panel of cards; a tower picked from its card shows a ghost and its range ring;
+  Wall and Sell are tools; a tooltip says what a click would do and what a sale would pay.
+- Towers are a ring in their damage type's colour with a barrel that turns to its target and a
+  shot drawn for a moment (I12: the hit is resolved before anything is drawn).
+- Enemy classes by shape: walker a small square, sapper an orange disc, flyer a blue diamond.
+- Route lines by the rule of GDD §5.3: build phase, every class met so far (walkers from the
+  start); wave, the classes in it. Seen under `DevClassCycle`: wave 1 pink only, wave 2 the
+  sappers' line only, wave 3 the flyers' straight line only.
+
+**What changed in the code**
+- New: `RockLayout`, `TopDownCamera`, `TowerShopPanel`, `TowerView`. Rewritten: `PlayerBuilder`
+  (the hand: `BuildTool`, drag, `SalePreview`), `GhostPreviewer`, `PathPreviewer`. Smaller:
+  `FlowAgent`, `CanvasDashboard` (`showPieceQueue`), `SceneMapBuilder`.
+- **No rule changed.** `Thesis.Sim` is untouched. The shape library is one shape of one tile
+  (`Maps/Shapes.json`), so a drag is one `PlaceShape` per tile. Replay schema still 4.
+- Scene: grid 48 × 48 world units, spawn tile (2,2), core (21,21); camera movement off; the hold
+  and next-piece slots and the controls list hidden.
+- Tests: the rigs written in the old board's coordinates keep it as a fixture
+  (`Maps/Fixture_Open38.map.json`, `TestSims.Open38`); `GameMapTests` (10) is the real board.
+- All pinned sessions recorded again on the new board; `unity-session-mouse` added.
+
+**Deviations from the plan**
+- The file names of **Creates** were not kept, and there is no `TowerDefAsset` or
+  `EnemyArchetypeAsset`: the roster and the enemy types are WP-C5's.
+- The bag, the hold slot and rotation stay in the simulation, unused.
+- The manual playtest was done by script: a second mouse device fed through the Input System,
+  so clicks went through the EventSystem, the raycast and `PlayerBuilder` as a hand's would.
+  (Two false alarms on the way were the rig's: the real mouse overrides a queued position,
+  and screen coordinates computed outside the player loop use another resolution.)
+
+**Measured on the new board** (static baseline, real settings, wave lost in, seeds 1 to 5):
+sentry 1, 11, 18, 11, 25+; mixed 3, 5, 18, 21, 2; restless 2, 11, 15, 25+, 3. An idle player
+loses in wave 1. Nothing is balanced; these are only to show the scripted players still play.
+
+**Open, for WP-C5 or the student**
+- A wall tile costs 1 and pays 1 when it is chewed through: a chewed wall is free. The start
+  budget of 60 is 60 tiles on a board of 576. Both are balance (GDD question 9).
+- Enemies are small on the screen, the HUD text is the default font, and the old budget and
+  health labels are plain. Styling is the second semester's.
+- The pictures in GDD §5.3 and §9.2 show a larger example board, not the game's.
+- A flyer has no shadow (GDD, proposed).

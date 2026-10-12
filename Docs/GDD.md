@@ -1,10 +1,10 @@
 # GDD.md — game design document
 
-**Written 2026-10-12, after WP-C3. Revised the same day** after your first read. You decided
-four things then, none of them built yet: the board is seen from straight above, during a
-wave too (§3.1); walls are single tiles and no longer tetromino pieces (§4.1); the map has
-rocks (§3.2); and the board draws a route line for every kind of enemy you have met (§5.3,
-which also says where enemies walk). No name has been chosen for the game yet (§12,
+**Written 2026-10-12, after WP-C3. Revised the same day** after your first read, and again
+after WP-C4, which built the four things you decided then: the board is seen from straight
+above, during a wave too (§3.1); walls are single tiles and no longer tetromino pieces
+(§4.1); the map has rocks (§3.2); and the board draws a route line for every kind of enemy
+you have met (§5.3, which also says where enemies walk). The board is 24 × 24 for now (§3.3). No name has been chosen for the game yet (§12,
 question 12).
 
 This file describes the game from the player's side: what is on the screen, what the
@@ -42,8 +42,6 @@ and expensive, and you put towers along it.
 Waves come one after another, each stronger than the last. Between waves you build, buy
 and sell. The session ends when ten enemies have reached the core.
 
-**Not in today's build yet:** the view from above and the single-tile walls. Today the
-camera is a tilted 3-D one and walls are tetromino pieces dealt from a bag (§3.1, §4.1).
 
 **What the thesis adds.** The game exists in two versions that differ in one thing only.
 In the *static* version every wave is the same kind of enemy, just more and tougher. In
@@ -88,27 +86,25 @@ All of this is **Built**, except the banner (**Planned**, WP14).
 
 ## 3. The board
 
-**Built.** One map, 38 × 38 tiles, with nothing on it. The spawn is near one corner
-(tile 3, 3) and the core near the opposite one (tile 34, 34), so with nothing built the
-enemies walk the diagonal. At wave-1 speed that walk takes a little over a minute. Any
-tile can be built on, except the spawn's and the core's.
+**Built** (WP-C4). One map, 24 × 24 tiles, with rocks on it (§3.2). The spawn is near one
+corner (tile 2, 2) and the core near the opposite one (tile 21, 21). With nothing built the
+enemies' way is about 30 tiles long, which takes about three quarters of a minute at
+wave-1 speed. Any tile that is not a rock can be built on, except the spawn's and the core's.
 
 ### 3.1 Seen from straight above
 
-**Planned** (your decisions, 2026-10-12; in the work plan under WP-C4). The board lies flat
+**Built** (WP-C4; your decisions of 2026-10-12). The board lies flat
 on the screen and all of it is visible at once, as in the pictures of §5.3 and §9. There
 is no camera to turn or move, so four controls go away (§10).
 
 The wave is watched in the same view as the build phase. One view to learn is less than
-two, and a participant has a single sitting to learn the game in. **Proposed:** a flyer
-gets a shadow under it, so that "above the walls" can still be read from above.
-
-**Built today:** a tilted 3-D camera that can be turned, moved, zoomed and rolled (§9.1).
+two, and a participant has a single sitting to learn the game in. **Proposed**, not built:
+a flyer gets a shadow under it, so that "above the walls" can still be read from above.
 
 ### 3.2 Rocks
 
-**Planned** (your decision, 2026-10-12; in the work plan under WP-C4). An empty board of
-1,444 equal tiles gives a new player nothing
+**Built** (WP-C4; your decision of 2026-10-12). An empty board of
+equal tiles gives a new player nothing
 to start from. So the map gets **rocks**: fixed tiles that belong to the map and not to
 the player.
 
@@ -126,8 +122,7 @@ with walls starts with money lying on it. A rock is only ground.
 building changes from wave to wave. If the rocks leave one sensible line, every
 participant builds that line in both versions and there is nothing left to measure. So:
 
-1. Few: about a tenth of the board. (The board in this file's pictures has 167 rock
-   tiles, which is 11.6 %.)
+1. Few: about a tenth of the board. (The game's board has 68 rock tiles, 11.8 %.)
 2. In separate groups, with more gaps between them than a player can afford to close.
    Which gaps to close is then the player's decision, and the waves give a reason to
    change it.
@@ -135,20 +130,22 @@ participant builds that line in both versions and there is nothing left to measu
 4. Always a way through on foot. The game checks this when it loads a map, and refuses a
    map whose rocks cut the spawn off (**Built**).
 
-The rules for rocks are **Built** already: a map can mark tiles as blocked, nothing can
-be placed on them, the path rule goes round them and flyers ignore them. No map uses them
-yet. The layout in the pictures is an example only. I draw a first real one in WP-C4, by
-the four rules above, you change it by playing, and it is checked in WP-C5.
+The game has a first layout, drawn by these four rules and checked with the path rule: on
+the empty board the walkers' way is about a tenth longer than the straight line. It is a
+first layout only. It is text in the scene (one line per row, `.` and `X`), so you can
+change it by playing; it is checked again in WP-C5. The pictures in §5.3 and §9.2 were
+drawn before it, on a larger example board.
 
 Rocks take the place of the "seeded maze" that the schedule named for the second
 semester (question 11).
 
 ### 3.3 Size
 
-**Open** (question 19). 38 × 38 is large: a tile is small on the screen, one wall tile
-changes little, and the walk alone takes over a minute a wave. A smaller board would make
-every wall matter more and every wave shorter, which also bears on how long a session is
-(question 1). Worth trying when the numbers are balanced (WP-C5), not before.
+**Built** as 24 × 24, which you chose "for now" on 2026-10-12 (question 19 stays open in
+that sense). The board was 38 × 38 before: a tile was small on the screen, one wall tile
+changed little, and the walk alone took over a minute a wave. Whether 24 is right is a
+thing to judge by playing and in the balance check (WP-C5); it also bears on how long a
+session is (question 1).
 
 ### 3.4 Spawn points
 
@@ -161,8 +158,8 @@ types sends groups from different sides. Where the extra spawns go is **Open** (
 
 ### 4.1 Walls
 
-**Planned** (your decisions, 2026-10-12; in the work plan under WP-C4): **walls are no
-longer tetromino pieces.** They are single tiles:
+**Built** (WP-C4; your decisions of 2026-10-12): **walls are no longer tetromino
+pieces.** They are single tiles:
 
 - **A wall is one tile.** With the Wall tool, a click builds one tile; holding the button
   and dragging draws a line of them. Each tile is paid for as it appears, and the line
@@ -199,11 +196,11 @@ What the change does:
   small change. Whether it still tells sessions apart is something to look at in the
   pilot, before the measure is frozen.
 - **What is lost:** the small puzzle of fitting the piece you were dealt.
-- **In the code** the rules need no change: a wall "piece" may already have any shape,
-  one tile included. What changes is the list of shapes, the input, the screen, and every
-  recorded session (they have to be recorded again).
+- **In the code** the rules did not change: a wall "piece" could already have any
+  shape, one tile included. What changed is the list of shapes, the input, the screen,
+  and every recorded session (they were recorded again).
 
-**Built today**, until WP-C4, is the tetromino version:
+**Until WP-C4** the game had the tetromino version:
 
 - Seven shapes of four tiles each (I, O, T, S, Z, J, L) from a shuffled bag. The current
   piece and the next three are shown. R rotates the piece; Shift swaps it with a hold slot.
@@ -284,16 +281,16 @@ loses 1).
 | **Sapper** | The same, but a wall counts as 3 tiles. Goes through walls that walkers go round. | Often, and its group digs faster. | All |
 | **Flyer** | A straight line to the core, over everything. | Never. | Only towers that hit flyers |
 
-Today a sapper is tinted orange and a flyer is blue and drawn above the walls. Those
-looks are placeholders (WP-C4).
+On the screen a walker is a small square, a sapper an orange disc and a flyer a blue
+diamond (WP-C4). Plain shapes: models are art, and art is the second semester's.
 
 ### 5.3 Where enemies walk
 
 ![Where the three kinds of enemy walk on one board](gdd/routes.png)
 
-**Built** (the rule; the game does not draw the lines for sappers and flyers yet). The
-pink and the orange route in the picture were not drawn by hand: they are what the game's
-own path rule gives for that board.
+**Built.** The pink and the orange route in the picture were not drawn by hand: they are
+what the game's own path rule gives for that board (an example board, larger than the
+game's).
 
 **Nobody assigns a path to an enemy.** There is one rule, and every enemy follows it on
 its own: *at every step, go to the neighbouring tile from which the rest of the way to
@@ -329,8 +326,7 @@ What follows from that:
 
 <!-- pdf: figures here -->
 
-**What the screen shows.** **Built:** one line, the walkers' (pink). **Planned**
-(your decision, 2026-10-12; WP-C4): in a build phase, one line for every kind of enemy you have met so far in
+**What the screen shows.** **Built** (WP-C4; your decision of 2026-10-12): in a build phase, one line for every kind of enemy you have met so far in
 this session; during a wave, the lines of the kinds in that wave. The lines are worked
 out again each time you build. Drawing all three from the first wave would be simpler,
 but in the static version it would warn of enemies that never come. With "the kinds you
@@ -505,16 +501,16 @@ twice, so nobody can remember the shop.
 
 ### 9.1 Today
 
-![The game on 2026-10-11](gdd/today-2026-10-11.png)
+![The game on 2026-10-12, after WP-C4](gdd/today-2026-10-12.png)
 
-**Built.** This is the earlier design, before the changes of 2026-10-12: a tilted 3-D view
-of the board that can be turned, moved and zoomed, and walls that are tetromino pieces.
-Top left: the core's health. Top centre: the wave and the countdown. Bottom: the budget,
-the hold slot, the current piece and the next three, and the Start, speed and Pause
-buttons. Left: the list of controls. The pink line is the route the walkers will take.
-Walls are glowing cubes in the colour of their shape; towers are cubes tinted by damage
-type; enemies are small cubes with a health bar. The text box at the top right is the
-temporary shop.
+**Built** (WP-C4). The board from straight above, early in wave 1. Dark blocks: rocks.
+Light tiles: two walls drawn by drag. The two rings with a barrel: towers. The pink line:
+the walkers' route; the yellow streak at its start is the wave coming out of the spawn.
+A cannon from the shop is in the hand: its card is lit, and over the board it shows as a
+green tile with its range ring and a tooltip. Right: the shop's four cards, the two tools
+(Sell is greyed while a wave runs), and the key to the route lines. Top: the core's
+health and the wave. Bottom: Start, speed and Pause. It is functional, not styled: the
+text font, the colours and the size of the enemies are whatever came first.
 
 ### 9.2 The target: a build phase
 
@@ -524,13 +520,13 @@ A mockup, on the board of the picture in §5.3. What in it is decided and what i
 
 | On the screen | Status |
 |---|---|
-| The board seen from straight above | **Planned** (your decision) |
-| Walls as single tiles, drawn with the Wall tool | **Planned** (your decision, §4.1) |
-| Rocks | **Planned** (your decision, §3.2); this layout is only an example |
-| A route line for each kind of enemy you have met, with a key | **Planned** (your decision, §5.3) |
-| The shop as four cards; a bought tower follows the mouse with its range ring | **Planned** (WP-C4) |
-| Sell as a tool that shows what would be sold, and the refund | **Planned** (WP-C4) |
-| Where things are on the screen | **Proposed** |
+| The board seen from straight above | **Built** |
+| Walls as single tiles, drawn with the Wall tool | **Built** (§4.1) |
+| Rocks | **Built** (§3.2); the layout in this picture is only an example |
+| A route line for each kind of enemy you have met, with a key | **Built** (§5.3) |
+| The shop as four cards; a tower picked from its card follows the mouse with its range ring | **Built** |
+| Sell as a tool that shows what would be sold, and the refund | **Built** |
+| Where things are on the screen, and how it all looks | **Proposed**; today's screen (§9.1) has the tools in the right-hand panel |
 
 - **The shop.** Click a card, and the tower follows the mouse with its **range ring**;
   click a tile to place it. Esc puts it down.
@@ -542,12 +538,12 @@ A mockup, on the board of the picture in §5.3. What in it is decided and what i
 ![Mockup of a wave that has just started](gdd/screen-wave.png)
 
 - The **banner** (**Planned**, WP14).
-- Only the route of what is coming is drawn: here the sappers' (**Planned**, §5.3). One
+- Only the route of what is coming is drawn: here the sappers' (**Built**, §5.3). One
   of the two thin walls is already chewed through, and the first sappers are at the second.
-- Towers that turn towards their target and fire a visible shot (**Planned**, WP-C4).
+- Towers that turn towards their target and fire a visible shot (**Built**: a line for a moment).
   The shot is only drawn; the damage is done the instant the tower fires.
-- An enemy model per type, in place of today's tint (**Planned**, WP-C4).
-- The Sell tool is visibly off until the wave is over (**Planned**, WP-C4).
+- An enemy model per type. **Built** as plain shapes: a walker is a small square, a sapper an orange disc, a flyer a blue diamond. Models are art, and art is the second semester's.
+- The Sell tool is visibly off until the wave is over (**Built**).
 
 ### 9.4 Other screens and overlays
 
@@ -563,22 +559,22 @@ A mockup, on the board of the picture in §5.3. What in it is decided and what i
 
 ## 10. Controls
 
-| Action | Today (**Built**) | Target |
-|---|---|---|
-| Build a wall | left click places the current piece | Wall tool: click a tile, or drag to draw a line (**Planned**, your decision) |
-| Rotate the piece; swap it with the hold slot | R; Shift | gone with the pieces |
-| Buy a tower | Z, X, C or B (offers 1 to 4) with the mouse over a tile | click the card, then click a tile (**Planned**, WP-C4) |
-| Sell a tower or a wall | Delete or Backspace with the mouse over it, between waves; a wall goes as a whole piece | Sell tool: click it, or drag over wall tiles (**Planned**, WP-C4) |
-| Put a tool or a tower down | (nothing to put down) | Esc |
-| Start the wave early | Start button | the same |
-| Game speed | 1, 2, 3 | the same |
-| Pause (building is off while paused) | Space | the same |
-| Turn, move, zoom and roll the camera | right mouse button and drag; W A S D or the arrow keys; mouse wheel; Q, E and C | gone: the board is fixed on the screen (**Planned**, your decision) |
-| Flow-field view | V | the same, for development |
+**Built** (WP-C4).
 
-For a participant that is seven controls where there were twelve.
+| Action | How |
+|---|---|
+| Build a wall | Wall tool (it is in the hand when the game starts): click a tile, or hold and drag to draw a line |
+| Buy a tower | click its card, then click a tile; clicking the card again puts it back |
+| Sell a tower or a wall | Sell tool, between waves: click it; drag to sell every wall tile the mouse passes over |
+| Put the hand down | Esc, or the right mouse button |
+| Start the wave early | Start button |
+| Game speed | 1, 2, 3 |
+| Pause (building is off while paused) | Space |
+| Flow-field view | V, for development |
 
-Known clash today: C both buys offer 3 and resets the camera's roll. It goes away with the keys.
+For a participant that is seven controls where there were twelve. Gone with WP-C4: the
+keys that bought and sold (Z X C B, Delete), rotating and holding a piece (R, Shift), and
+everything that moved the camera.
 
 ---
 
@@ -619,7 +615,7 @@ not a decision. Questions 15 to 19 came out of your first read on 2026-10-12. Yo
 | 12 | **A name for the game,** and the company and product name in the build settings (still `DefaultCompany/InternProj`). They decide where a build writes its data. | — | you | the first build that records data |
 | 13 | **Sound.** | A handful of effects (place, shot, enemy through, wave start) in the UX pass, only if there is time. Not needed for the study. | you | the second-semester UX pass |
 | 14 | **May a participant pause and change speed?** They can today. | Yes to both: pause is for thinking, and building is off while paused. | you and your supervisor | the pilot |
-| 19 | **How big is the board?** | Try a smaller one when the numbers are balanced. | you | WP-C5 |
+| 19 | **How big is the board?** It is 24 × 24 "for now" (your word, 2026-10-12). | Play on it; settle it with the balance check. | you | WP-C5 |
 
 ### Answered
 
@@ -638,7 +634,7 @@ What each coming package changes for the person playing.
 
 | Package | What the player will notice |
 |---|---|
-| **WP-C4** towers and shop on screen (next) | The board from above, with rocks on it; walls drawn tile by tile; a route line for every kind of enemy you have met. The shop as cards, a range ring before placing, a Sell tool with a preview, towers that turn and fire, a model per enemy type. |
+| **WP-C4** towers and shop on screen (**done**) | The board from above, with rocks on it; walls drawn tile by tile; a route line for every kind of enemy you have met. The shop as cards, a range ring before placing, a Sell tool with a preview, towers that turn and fire, a shape per enemy class. |
 | **WP-C5** roster and balance check | The real towers and enemy types; numbers that are not absurd. |
 | **WP7** the learner | Nothing. It runs without the game. |
 | **WP8** build profile | Nothing. |
@@ -649,13 +645,9 @@ What each coming package changes for the person playing.
 | Second semester: UX pass, balance pass | Route previews, a clearer screen, a game that is fair to an ordinary player. |
 | Build freeze | Nothing changes after this, except crash fixes. |
 
-**What the changes of 2026-10-12 cost.** They belong in WP-C4, which rebuilds the building
-input and the screen anyway. Some of its work falls away (no piece queue, rotation or
-hold slot to carry over; a sale is one tile) and some is added (a fixed camera, drawing
-by drag, a map with rocks, two more route lines, and recording the pinned sessions
-again). My estimate is two to three days more than WP-C4 had; it is an estimate, not a
-measurement. The plan has no slack left (`WORKPLAN.md`), so that is time the later
-packages do not have, and the cut order in `CLAUDE.md` §9 says where it would come from.
+**The changes of 2026-10-12 were built with WP-C4**, on the day they were decided. Nobody
+has played the result by hand yet: that is the next thing to do, before WP-C5 sets numbers
+on top of it.
 
 ---
 

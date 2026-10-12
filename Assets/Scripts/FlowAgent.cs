@@ -13,9 +13,11 @@ using UnityEngine.UI;
 // Rendering interpolates between the previous and the current tick's position, so
 // motion is smooth at any frame rate even though the simulation steps at 50 Hz.
 //
-// Movement classes (WP-C2) are told apart by a placeholder look until WP-C4 gives
-// each enemy type its own prefab: a sapper is tinted, a flyer is tinted and drawn
-// above the walls. The height is view only; the simulation is flat.
+// Movement classes are told apart by shape, size and colour (WP-C4), so that they can
+// be read from straight above: a walker is the prefab's small square, a sapper a
+// larger orange disc, a flyer a blue diamond drawn above the walls. Primitive shapes
+// only; a model per enemy type is art, and art is the second semester's. The height
+// is view only; the simulation is flat.
 public class FlowAgent : MonoBehaviour
 {
     // Grid nodes are all at y=0, so this is the resting height that sits the mesh
@@ -25,11 +27,14 @@ public class FlowAgent : MonoBehaviour
     [Header("UI Visuals")]
     public Image lifeBarFill;
 
-    [Header("Movement classes (placeholder look until WP-C4)")]
+    [Header("Movement classes")]
     [Tooltip("How far above the ground a flyer is drawn. Walls are one tile (2 units) tall, so this clears them.")]
     public float flyHeight = 2.6f;
     public Color sapperColor = new Color(1f, 0.3f, 0.08f);
     public Color flyerColor = new Color(0.3f, 0.85f, 1f);
+    [Tooltip("Size of a sapper and of a flyer, as a multiple of the prefab's own size.")]
+    public float sapperScale = 1.7f;
+    public float flyerScale = 1.4f;
 
     public int AgentId { get; private set; } = -1;
 
@@ -38,7 +43,13 @@ public class FlowAgent : MonoBehaviour
     private float maxHp = 1f;
     private float height;
     private MeshRenderer meshRenderer;
+    private MeshFilter meshFilter;
     private MaterialPropertyBlock tint;
+    private Mesh prefabMesh;
+    private Vector3 prefabScale;
+    private bool looksRead;
+    private float yaw;
+    private static Mesh discMesh;
 
     public void Bind(AgentState agent)
     {
@@ -64,7 +75,7 @@ public class FlowAgent : MonoBehaviour
         Vector3 p = Vector3.Lerp(previous, current, tickAlpha);
         Vector3 delta = p - transform.position;
         transform.position = p;
-        if (delta.sqrMagnitude > 0.0000001f) transform.rotation = Quaternion.LookRotation(delta.normalized);
+        if (delta.sqrMagnitude > 0.0000001f) transform.rotation = Quaternion.LookRotation(delta.normalized) * Quaternion.Euler(0f, yaw, 0f);
     }
 
     public void Release()
@@ -86,6 +97,19 @@ public class FlowAgent : MonoBehaviour
     {
         if (meshRenderer == null) meshRenderer = GetComponent<MeshRenderer>();
         if (meshRenderer == null) return;
+        if (!looksRead)
+        {
+            looksRead = true;
+            meshFilter = GetComponent<MeshFilter>();
+            prefabMesh = meshFilter != null ? meshFilter.sharedMesh : null;
+            prefabScale = transform.localScale;
+            if (discMesh == null) discMesh = Resources.GetBuiltinResource<Mesh>("Cylinder.fbx");
+        }
+
+        // A flyer is the prefab's square turned by 45 degrees: a diamond.
+        yaw = movement == MovementClass.Flying ? 45f : 0f;
+        transform.localScale = prefabScale * (movement == MovementClass.Sapper ? sapperScale : movement == MovementClass.Flying ? flyerScale : 1f);
+        if (meshFilter != null) meshFilter.sharedMesh = movement == MovementClass.Sapper && discMesh != null ? discMesh : prefabMesh;
 
         if (movement == MovementClass.Ground)
         {

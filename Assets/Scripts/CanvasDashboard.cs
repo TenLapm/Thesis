@@ -26,6 +26,9 @@ public class CanvasDashboard : MonoBehaviour
 
     public Color emptySlotColor = new Color(1f, 1f, 1f, 0.12f);
 
+    [Tooltip("Off since WP-C4 in SampleScene: a wall is one tile, so there is no piece to show, hold or queue.")]
+    public bool showPieceQueue = true;
+
     private Dictionary<string, Sprite> shapeIconCache = new Dictionary<string, Sprite>();
     private BlockShape lastCurrentShape;
     private BlockShape lastHoldShape;
@@ -103,7 +106,7 @@ public class CanvasDashboard : MonoBehaviour
     // the reference alone never changed and the panel used to show stale art).
     public void RefreshUI()
     {
-        if (blockManager == null) return;
+        if (blockManager == null || !showPieceQueue) return;
 
         bool versionChanged = blockManager.shapeVersion != lastShapeVersion;
         lastShapeVersion = blockManager.shapeVersion;
@@ -331,7 +334,7 @@ public class CanvasDashboard : MonoBehaviour
 
         if (budgetText != null && blockManager != null)
         {
-            budgetText.text = $"Build Budget: {blockManager.buildBudget:0.#}";
+            budgetText.text = showPieceQueue ? $"Build Budget: {blockManager.buildBudget:0.#}" : "";
         }
 
         if (speedController != null)

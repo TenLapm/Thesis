@@ -45,6 +45,7 @@ telemetry schema 1). Eleven recordings, each with its telemetry.
 
 | Episode | What it covers |
 |---|---|
+| `unity-session-mouse` | **The screen of WP-C4**, on the 24 × 24 board with rocks. Played in the Unity editor through `SimHost`, with the input sent through the Input System by a scripted second mouse: two lines of wall drawn by drag, two towers bought from their cards, three wall tiles sold with the Sell tool (one click, one drag), a third line drawn, the Start button, then left alone until the game over in wave 1. |
 | `sentry-6waves` | Towers only, six waves: every offer the budget covers is bought, all three tower types, kills, splash, slow. |
 | `mixed-3waves` | Walls, then towers, three waves, with a hash for every tick. |
 | `walls-only-to-gameover` | Walls and no towers: nothing is killed, the enemies leak, game over in wave 1, with a hash for every tick. Its telemetry ends with a row closed by the game over. |

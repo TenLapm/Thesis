@@ -21,7 +21,7 @@ namespace Thesis.Tests.Harness
             var options = new EpisodeOptions
             {
                 Config = new SimConfig { CoreMaxHp = 100000 },
-                Map = TestSims.SampleSceneMap(),
+                Map = TestSims.Open38Map(),
                 Shapes = TestShapes.SampleSceneLibrary(),
                 Seed = 1,
                 // Walls, then towers. A smaller search than the default keeps this test in seconds.
@@ -71,7 +71,7 @@ namespace Thesis.Tests.Harness
         {
             Func<IPlayerPolicy, EpisodeResult> play = policy => EpisodeRunner.Run(new EpisodeOptions
             {
-                Map = TestSims.SampleSceneMap(),
+                Map = TestSims.Open38Map(),
                 Shapes = TestShapes.SampleSceneLibrary(),
                 Seed = 1,
                 Policy = policy,
@@ -113,7 +113,7 @@ namespace Thesis.Tests.Harness
         {
             var options = new EpisodeOptions
             {
-                Map = TestSims.SampleSceneMap(),
+                Map = TestSims.Open38Map(),
                 Shapes = TestShapes.SampleSceneLibrary(),
                 Policy = new IdlePolicy(),
             };

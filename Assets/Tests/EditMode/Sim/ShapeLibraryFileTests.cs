@@ -1,20 +1,35 @@
 using System.IO;
 using NUnit.Framework;
+using Thesis.Core;
 using Thesis.Sim;
 
 namespace Thesis.Tests.Sim
 {
     public class ShapeLibraryFileTests
     {
-        // Maps/Shapes.json is exported from the scene (menu Thesis/Export Shapes);
-        // TestShapes was copied by hand from the same assets. They must agree, shape
-        // for shape and in the same order, or headless runs and tests would be
-        // playing with a different bag from the game.
+        // Maps/Shapes.json is exported from the scene (menu Thesis/Export Shapes) and is
+        // what a headless run builds with. Since WP-C4 a wall is one tile (GDD 4.1): the
+        // library is one shape of one tile, so every piece the bag deals is that tile.
         [Test]
-        public void TheExportedLibraryMatchesTheHandCopiedOne()
+        public void TheGamesLibraryIsOneWallOfOneTile()
         {
-            ShapeDef[] exported = ShapeLibraryFile.Load(TestPaths.ShapesFile);
+            ShapeDef[] exported = TestSims.GameShapes();
+
+            Assert.AreEqual(1, exported.Length, "one shape");
+            Assert.AreEqual("Wall", exported[0].Name);
+            Assert.AreEqual(1, exported[0].BuildCost, "one price a tile");
+            Assert.AreEqual(15, exported[0].DigCost);
+            Assert.AreEqual(6f, exported[0].WallHealth);
+            CollectionAssert.AreEqual(new[] { new TileCoord(0, 0) }, exported[0].LocalTiles, "the tile under the mouse");
+        }
+
+        // The file format carries a library of several shapes exactly: the tetrominoes
+        // the game had until WP-C4, which the fixtures still build with.
+        [Test]
+        public void ALibraryWrittenToAFileIsReadBackTheSame()
+        {
             ShapeDef[] expected = TestShapes.SampleSceneLibrary();
+            ShapeDef[] exported = ShapeLibraryFile.FromJson(new ShapeLibraryFile { Source = "test", Shapes = expected }.ToJson()).Shapes;
 
             Assert.AreEqual(expected.Length, exported.Length);
             for (int i = 0; i < expected.Length; i++)
@@ -27,7 +42,7 @@ namespace Thesis.Tests.Sim
             }
 
             // Stated as the one number a replay cares about.
-            MapData map = TestSims.SampleSceneMap();
+            MapData map = TestSims.Open38Map();
             Assert.AreEqual(ReplaySetup.Hash(new SimConfig(), map, expected, TestTowers.Roster()), ReplaySetup.Hash(new SimConfig(), map, exported, TestTowers.Roster()));
         }
 

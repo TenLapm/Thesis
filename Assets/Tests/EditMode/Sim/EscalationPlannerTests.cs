@@ -8,7 +8,7 @@ namespace Thesis.Tests.Sim
     {
         private static EscalationPlanner SampleScenePlanner()
         {
-            return new EscalationPlanner(new SimConfig(), TestSims.SampleSceneMap());
+            return new EscalationPlanner(new SimConfig(), TestSims.Open38Map());
         }
 
         // Hand-computed anchors, independent of the formula below. Count, spacing and
@@ -75,7 +75,7 @@ namespace Thesis.Tests.Sim
         public void EveryPlanItMakesIsValid()
         {
             var config = new SimConfig();
-            MapData map = TestSims.SampleSceneMap();
+            MapData map = TestSims.Open38Map();
             var planner = new EscalationPlanner(config, map);
             for (int wave = 1; wave <= 60; wave++)
             {
@@ -99,7 +99,7 @@ namespace Thesis.Tests.Sim
         [Test]
         public void PricerFillsThreatSpentWhenPresent()
         {
-            var planner = new EscalationPlanner(new SimConfig(), TestSims.SampleSceneMap(), new FakePricer());
+            var planner = new EscalationPlanner(new SimConfig(), TestSims.Open38Map(), new FakePricer());
             Assert.AreEqual(100f, planner.PlanFor(1).ThreatSpent, "FakePricer prices a plan at its agent count");
             Assert.AreEqual(0f, SampleScenePlanner().PlanFor(1).ThreatSpent, "no cost table -> 0");
         }

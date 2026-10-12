@@ -43,7 +43,7 @@ WP-C2 + WP-C3 ──────── WP9 strategies ── WP10 layers ── 
 WP6 (telemetry) no longer exists as its own package: it is part of WP-C3 (D8).
 
 **Where things stand (2026-10-11):** WP0 to WP5, WP-H, WP-C1, WP-C2 and WP-C3 are done.
-Next is **WP-C4**. WP7 has not been started.
+Next is **WP-C5**. WP7 has not been started.
 
 ### Revised semester-1 schedule (approved 2026-09-15)
 
@@ -100,8 +100,8 @@ Three changes:
 | done | **WP-C2** movement classes | W7 | 2026-10-02; Ground, Sapper, Flying |
 | done | **WP-C3** shop, telemetry, wall selling | W8 | 2026-10-11, the last day of W8 |
 | 1, parallel | **WP7** learning | W8–W9 | separate session; **not started** |
-| 3 | **WP-C4** Unity towers and shop UI | W10 | next |
-| 4 | **WP-C5** roster and balance check | W10 | |
+| done | **WP-C4** board, towers and shop UI | W9 | 2026-10-12, with the four decisions of the GDD review |
+| 4 | **WP-C5** roster and balance check | W10 | next |
 | 5 | **WP8** profile | W11 | needs the proposal's §6.2 in the repo |
 | 6 | **WP9** strategies | W11 | needs the proposal's §6.3 in the repo; S14 (income per wave shape) |
 | 7 | **WP10** layers, recorded plans in the replay | W12 | |
@@ -513,7 +513,21 @@ and `plan.groups[]` gets `movement`. The pinned set has a fourth episode, `class
 
 ---
 
-## WP-C4 — Unity towers and shop UI (functional, not polished)
+## WP-C4 — Unity towers and shop UI (functional, not polished) ✅ done 2026-10-12
+
+**As built.** `DEVLOG` 2026-10-12 has the detail. Differences from the plan below:
+- The board is 24 × 24 (the student, "for now"), so GDD question 19 was answered early.
+- The names in **Creates** were not kept. `TowerShopPanel` builds the shop cards, the two tools, the
+  key to the routes and the tooltip in code; `TowerView` builds a tower from primitives; the enemy
+  classes are told apart in `FlowAgent` by shape, size and colour. There is no `TowerDefAsset` and no
+  `EnemyArchetypeAsset`: the roster and the enemy types are WP-C5's, and assets for them belong there.
+- Rocks are text (`RockLayout`), not colliders, so a layout can be checked headless before it is played.
+- The piece queue, the hold slot and rotation stay in the simulation, unused, so the replay schema did
+  not change. Taking them out is a clean-up for whenever the schema changes for another reason.
+- The tests that were written in the old board's coordinates keep that board as a fixture
+  (`Maps/Fixture_Open38.map.json`, with the tetrominoes of `TestShapes`); `GameMapTests` covers the real one.
+- **Not done:** a person has not played it. The input was driven through Unity's Input System with a
+  second, scripted mouse; the playtest by hand is the student's. A flyer has no shadow (GDD, proposed).
 
 **Reads:** §6 · **Depends:** WP4, WP-C2, WP-C3
 

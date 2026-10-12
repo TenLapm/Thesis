@@ -59,7 +59,7 @@ namespace Thesis.Harness
                 Name = "sentry-6waves",
                 Config = () => new SimConfig(),
                 Policy = () => new SentryPolicy(),
-                Seed = 7,
+                Seed = 3, // on the board of WP-C4, a seed whose shop lets the sentry live through six waves
                 MaxWaves = 6,
                 TickHashes = false,
             },

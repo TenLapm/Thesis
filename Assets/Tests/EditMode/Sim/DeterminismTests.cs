@@ -15,8 +15,8 @@ namespace Thesis.Tests.Sim
         public void SameSeedAndCommandsGiveIdenticalHashesOnEveryTickFor20000Ticks()
         {
             const int ticks = 20000;
-            var a = TestSims.SampleScene(seed: 7, config: LongRun());
-            var b = TestSims.SampleScene(seed: 7, config: LongRun());
+            var a = TestSims.Open38(seed: 7, config: LongRun());
+            var b = TestSims.Open38(seed: 7, config: LongRun());
             BuyTheOffersBesideTheStraightLine(a);
             BuyTheOffersBesideTheStraightLine(b);
             var script = new CommandScript(seed: 99, ticks: ticks, every: 23, mapWidth: 38, mapHeight: 38);
@@ -104,7 +104,7 @@ namespace Thesis.Tests.Sim
 
         private static Simulation WallLineRig(ulong seed)
         {
-            Simulation sim = TestSims.SampleScene(seed: seed, config: LongRun());
+            Simulation sim = TestSims.Open38(seed: seed, config: LongRun());
             SimGrid g = sim.State.Grid;
             foreach (int y in WallRows)
                 for (int x = 0; x < g.Width; x++) g.SetWall(g[x, y], 15, 6f);
@@ -165,7 +165,7 @@ namespace Thesis.Tests.Sim
             // Short build phases and small waves: a wave on this map is about 4,000
             // ticks (the walk alone is 70 seconds), so 20,000 ticks hold five of them.
             var config = new SimConfig { CoreMaxHp = 100000, PrepSeconds = 5f, IntermissionSeconds = 2f, AgentsPerWave = 40 };
-            MapData map = TestSims.SampleSceneMap();
+            MapData map = TestSims.Open38Map();
             var sim = new Simulation(config, map, TestShapes.SampleSceneLibrary(), TestTowers.Roster(), seed, new ClassCyclePlanner(config, map));
 
             // The straight line from the spawn (3,3) to the core (34,34) crosses row 18
@@ -185,8 +185,8 @@ namespace Thesis.Tests.Sim
         [Test]
         public void DifferentSeedsDiffer()
         {
-            var a = TestSims.SampleScene(seed: 1);
-            var b = TestSims.SampleScene(seed: 2);
+            var a = TestSims.Open38(seed: 1);
+            var b = TestSims.Open38(seed: 2);
             Assert.AreNotEqual(a.ComputeHash(), b.ComputeHash(), "the shape bag is seeded differently from tick 0");
         }
 
@@ -194,7 +194,7 @@ namespace Thesis.Tests.Sim
         public void CloneThenTickBothGivesEqualHashesAndStaysIndependent()
         {
             var script = new CommandScript(seed: 5, ticks: 9000, every: 31, mapWidth: 38, mapHeight: 38);
-            var a = TestSims.SampleScene(seed: 3, config: LongRun());
+            var a = TestSims.Open38(seed: 3, config: LongRun());
             for (int i = 0; i < 3000; i++) { script.Feed(a); a.Tick(); }
 
             Simulation b = a.Clone(new EscalationPlanner(a.Config, a.Map));
@@ -223,7 +223,7 @@ namespace Thesis.Tests.Sim
         [TestCase("rng state")]
         public void MutatingOneFieldOfACloneChangesItsHash(string field)
         {
-            var a = TestSims.SampleScene(seed: 11);
+            var a = TestSims.Open38(seed: 11);
             // Into wave 1 so live agents exist.
             a.Enqueue(SimCommand.StartWaveNow());
             TestSims.Run(a, 50);

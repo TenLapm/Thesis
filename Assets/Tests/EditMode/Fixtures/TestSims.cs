@@ -6,11 +6,28 @@ namespace Thesis.Tests
 {
     public static class TestSims
     {
-        public static MapData SampleSceneMap() { return MapData.Load(TestPaths.MapFile("SampleScene")); }
+        // The open 38 x 38 board, spawn (3,3) and core (34,34): the game's own map until
+        // WP-C4, kept as a fixture (Maps/Fixture_Open38.map.json) because the rigs of many
+        // tests are written in its coordinates. With TestShapes' tetrominoes it is the
+        // game as it was; the rules it exercises are the rules the game still has.
+        public static MapData Open38Map() { return MapData.Load(TestPaths.MapFile("Fixture_Open38")); }
 
-        public static Simulation SampleScene(ulong seed = 1, SimConfig config = null, IWavePlanner planner = null)
+        // The map and the wall shapes the game is played on today, as exported from
+        // SampleScene: 24 x 24 with rocks, and one shape of one tile (WP-C4).
+        public static MapData GameMap() { return MapData.Load(TestPaths.MapFile("SampleScene")); }
+
+        public static ShapeDef[] GameShapes() { return ShapeLibraryFile.Load(TestPaths.ShapesFile); }
+
+        public static Simulation Game(ulong seed = 1, SimConfig config = null, IWavePlanner planner = null)
         {
-            MapData map = SampleSceneMap();
+            MapData map = GameMap();
+            config = config ?? new SimConfig();
+            return new Simulation(config, map, GameShapes(), TestTowers.Roster(), seed, planner ?? new EscalationPlanner(config, map));
+        }
+
+        public static Simulation Open38(ulong seed = 1, SimConfig config = null, IWavePlanner planner = null)
+        {
+            MapData map = Open38Map();
             config = config ?? new SimConfig();
             return new Simulation(config, map, TestShapes.SampleSceneLibrary(), TestTowers.Roster(), seed, planner ?? new EscalationPlanner(config, map));
         }

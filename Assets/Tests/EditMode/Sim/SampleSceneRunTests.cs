@@ -13,7 +13,7 @@ namespace Thesis.Tests.Sim
         [Test]
         public void AnIdlePlayerLosesTheGameDuringWaveOne()
         {
-            var sim = TestSims.SampleScene(seed: 1);
+            var sim = TestSims.Open38(seed: 1);
             int guard = 200000;
             while (!sim.State.IsGameOver && guard-- > 0) sim.Tick();
 

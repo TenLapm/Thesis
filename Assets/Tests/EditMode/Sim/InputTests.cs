@@ -11,8 +11,8 @@ namespace Thesis.Tests.Sim
         [Test]
         public void FlushInputEqualsApplyingAtTheNextTick()
         {
-            var flushed = TestSims.SampleScene(seed: 21);
-            var ticked = TestSims.SampleScene(seed: 21);
+            var flushed = TestSims.Open38(seed: 21);
+            var ticked = TestSims.Open38(seed: 21);
             var script = new CommandScript(seed: 8, ticks: 6000, every: 7, mapWidth: 38, mapHeight: 38);
 
             for (int i = 0; i < 6000; i++)
@@ -41,7 +41,7 @@ namespace Thesis.Tests.Sim
         {
             // Paused game = no ticks. Rotating and holding must still work (as in the
             // original, where pause blocks building but not rotate/hold).
-            var sim = TestSims.SampleScene();
+            var sim = TestSims.Open38();
             int tick = sim.State.Tick;
             int remaining = sim.State.PhaseTicksRemaining;
 
@@ -60,7 +60,7 @@ namespace Thesis.Tests.Sim
         [Test]
         public void StartWaveNowFlushedEarlyIsActedOnByTheNextTick()
         {
-            var sim = TestSims.SampleScene();
+            var sim = TestSims.Open38();
             sim.Enqueue(SimCommand.StartWaveNow());
             sim.FlushInput();
             Assert.AreEqual(0, sim.State.WaveIndex, "flushing input never starts a wave by itself");
@@ -72,7 +72,7 @@ namespace Thesis.Tests.Sim
         [Test]
         public void FlushedPlacementRaisesItsEventsImmediately()
         {
-            var sim = TestSims.SampleScene();
+            var sim = TestSims.Open38();
             sim.Enqueue(SimCommand.PlaceShape(18, 18));
             sim.FlushInput();
 

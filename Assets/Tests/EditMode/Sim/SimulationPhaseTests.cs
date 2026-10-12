@@ -155,7 +155,7 @@ namespace Thesis.Tests.Sim
         [Test]
         public void PlacingAShapeSpendsBudgetConsumesThePieceAndLogsIt()
         {
-            var sim = TestSims.SampleScene();
+            var sim = TestSims.Open38();
             string current = sim.State.Bag.CurrentShape.Name;
             int cost = sim.State.Bag.CurrentShape.BuildCost;
 

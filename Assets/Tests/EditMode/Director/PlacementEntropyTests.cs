@@ -173,7 +173,7 @@ namespace Thesis.Tests.Director
         [Test]
         public void ATileIsInTheRegionWholeNumberDivisionPutsItIn()
         {
-            MapData scene = TestSims.SampleSceneMap();      // 38 x 38: 6 * x / 38
+            MapData scene = TestSims.Open38Map();      // 38 x 38: 6 * x / 38
 
             Assert.AreEqual(0, PlacementEntropy.RegionOf(0, 0, scene));
             Assert.AreEqual(0, PlacementEntropy.RegionOf(6, 6, scene));
@@ -187,7 +187,7 @@ namespace Thesis.Tests.Director
         [Test]
         public void EveryTileIsInOneRegionAndTheRegionsAreNearlyTheSameSize()
         {
-            MapData scene = TestSims.SampleSceneMap();
+            MapData scene = TestSims.Open38Map();
             var size = new int[36];
             for (int x = 0; x < scene.Width; x++)
                 for (int y = 0; y < scene.Height; y++)
@@ -209,9 +209,9 @@ namespace Thesis.Tests.Director
         public void TheRegionCountIsTheRegionsAPlayerCanBuildIn()
         {
             Assert.AreEqual(36, PlacementEntropy.Regions(Open12()));
-            Assert.AreEqual(36, PlacementEntropy.Regions(TestSims.SampleSceneMap()));
-            Assert.AreEqual(16, PlacementEntropy.Regions(TestSims.SampleSceneMap(), 4));
-            Assert.AreEqual(64, PlacementEntropy.Regions(TestSims.SampleSceneMap(), 8));
+            Assert.AreEqual(36, PlacementEntropy.Regions(TestSims.Open38Map()));
+            Assert.AreEqual(16, PlacementEntropy.Regions(TestSims.Open38Map(), 4));
+            Assert.AreEqual(64, PlacementEntropy.Regions(TestSims.Open38Map(), 8));
 
             // 6 x 6 tiles cut 6 x 6: every tile is its own region. Three static
             // blockers, the spawn and the core can never be built on.

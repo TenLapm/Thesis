@@ -8,11 +8,11 @@ namespace Thesis.Tests.Sim
     // strategies exist (WP-C2). Not a study condition.
     public class ClassCyclePlannerTests
     {
-        private static ClassCyclePlanner Planner() { return new ClassCyclePlanner(new SimConfig(), TestSims.SampleSceneMap()); }
+        private static ClassCyclePlanner Planner() { return new ClassCyclePlanner(new SimConfig(), TestSims.Open38Map()); }
 
         private static AgentGroup Escalation(int wave)
         {
-            return new EscalationPlanner(new SimConfig(), TestSims.SampleSceneMap()).PlanFor(wave).Groups[0];
+            return new EscalationPlanner(new SimConfig(), TestSims.Open38Map()).PlanFor(wave).Groups[0];
         }
 
         [Test]
@@ -100,7 +100,7 @@ namespace Thesis.Tests.Sim
         public void EveryPlanItMakesIsValid()
         {
             var config = new SimConfig();
-            MapData map = TestSims.SampleSceneMap();
+            MapData map = TestSims.Open38Map();
             var planner = new ClassCyclePlanner(config, map);
             for (int wave = 1; wave <= 60; wave++)
             {
@@ -133,12 +133,12 @@ namespace Thesis.Tests.Sim
         public void ItIsKnownByNameAndPricedWhenACostTableIsGiven()
         {
             CollectionAssert.Contains(Registry.PlannerNames, ClassCyclePlanner.Id);
-            IWavePlanner made = Registry.CreatePlanner(ClassCyclePlanner.Id, new SimConfig(), TestSims.SampleSceneMap());
+            IWavePlanner made = Registry.CreatePlanner(ClassCyclePlanner.Id, new SimConfig(), TestSims.Open38Map());
             Assert.IsInstanceOf<ClassCyclePlanner>(made);
             Assert.AreEqual("class-cycle", made.Name);
 
             Assert.AreEqual(0f, Planner().PlanFor(4).ThreatSpent, "no cost table -> 0");
-            var priced = new ClassCyclePlanner(new SimConfig(), TestSims.SampleSceneMap(), new FakePricer());
+            var priced = new ClassCyclePlanner(new SimConfig(), TestSims.Open38Map(), new FakePricer());
             Assert.AreEqual(113f, priced.PlanFor(4).ThreatSpent, "FakePricer prices a plan at its agent count");
         }
 

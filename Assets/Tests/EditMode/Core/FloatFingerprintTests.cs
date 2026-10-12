@@ -25,7 +25,7 @@ namespace Thesis.Tests.Core
             sb.AppendLine("dist=" + Bits(dist) + " chained=" + Bits(chained) + " stepwise=" + Bits(castStepwise) + " equal=" + (chained == castStepwise));
 
             // 2. A planner value built from a chain: the wave-14 speed that differed in WP4.
-            var planner = new EscalationPlanner(new SimConfig(), TestSims.SampleSceneMap());
+            var planner = new EscalationPlanner(new SimConfig(), TestSims.Open38Map());
             sb.AppendLine("wave14 speed=" + Bits(planner.PlanFor(14).Groups[0].MoveSpeed) + " hp=" + Bits(planner.PlanFor(14).Groups[0].Hp));
 
             // 3. Repeated subtraction (damage) and multiply-subtract (digging).

@@ -204,9 +204,10 @@ Assets/
     Benchmark/ ...               (ported onto SimHost in WP4)
   Tests/EditMode/  Thesis.Tests.EditMode.asmdef
     Core/ Sim/ Learning/ Director/ Harness/   (mirrors Assets/Thesis)
-    Fixtures/  TestMaps.cs  (ASCII map fixtures)
-Maps/        SampleScene.map.json Bench_Open.map.json ...   (exported static geometry)
-             Shapes.json                                    (exported wall-shape library, in bag order)
+    Fixtures/  TestMaps.cs  (ASCII map fixtures); TestSims.cs: Open38 (the fixture board) and Game (the real one)
+Maps/        SampleScene.map.json Bench_Open.map.json ...   (exported static geometry; SampleScene is 24 x 24 with rocks since WP-C4)
+             Fixture_Open38.map.json                        (the open 38 x 38 board the game had until WP-C4; a test fixture, not exported)
+             Shapes.json                                    (exported wall-shape library, in bag order: one shape of one tile since WP-C4)
 Runs/        (gitignored) raw run output: telemetry.jsonl, replay.json
              Runs/Sessions/<time>_seed<seed>/ is what a Unity editor session writes: replay.json and telemetry.jsonl
 Results/     (committed) one folder per reported result, per CLAUDE.md §7

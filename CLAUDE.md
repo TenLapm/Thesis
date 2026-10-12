@@ -3,24 +3,24 @@
 Unity / C# / URP. Maze tower-defense with a flow-field pathfinder. The thesis
 work is an adaptive wave director driven by a contextual bandit.
 
-**Status (2026-10-11).** The game runs on a deterministic, headless simulation core
+**Status (2026-10-12).** The game runs on a deterministic, headless simulation core
 (`Assets/Thesis`), with Unity as a thin host around it (`Docs/WORKPLAN.md` WP0–WP5,
-the hardening pass WP-H, the combat core WP-C1, the movement classes WP-C2 and the
-shop, selling and telemetry package WP-C3 are done). Enemies have hit points, towers
-shoot them, an enemy can be a ground walker, a sapper or a flyer, towers are bought
-from a random shop, towers and walls can be sold, and every session writes one
-telemetry row per wave. **Not built yet:** the tower UI (WP-C4), balance (WP-C5), the
-learner (WP7, not started) and the director itself. Next package: WP-C4.
+the hardening pass WP-H, the combat core WP-C1, the movement classes WP-C2, the
+shop, selling and telemetry package WP-C3 and the board and tower UI package WP-C4
+are done). Enemies have hit points, towers shoot them, an enemy can be a ground
+walker, a sapper or a flyer, towers are bought from a random shop, towers and walls
+can be sold, and every session writes one telemetry row per wave. The board is 24 × 24
+with rocks on it, seen from straight above, and a wall is one tile. **Not built
+yet:** balance and the real roster (WP-C5), the learner (WP7, not started) and the
+director itself. Next package: WP-C5.
 
 Read §1 and §2 before writing any code.
 
 - What the player sees and does, the target screens, and every design question
-  that is still open: `Docs/GDD.md` (written 2026-10-12). It also holds four decisions
-  the student made on reading it, **decided and not built**: the board is seen from
-  straight above (during a wave too); walls become single tiles, drawn by click and
-  drag, in place of tetromino pieces; the map gets rocks (static blockers); and the
-  board draws one route line for each kind of enemy the player has met (GDD §3.1, §3.2,
-  §4.1, §5.3; `Docs/WORKPLAN.md` WP-C4). §1 below describes the game as it is built today.
+  that is still open: `Docs/GDD.md` (written 2026-10-12). The four decisions the student
+  made on reading it are built since WP-C4: the board seen from straight above, walls
+  of one tile drawn by click and drag, rocks on the map, and one route line for each
+  kind of enemy the player has met (GDD §3.1, §3.2, §4.1, §5.3).
 - Code structure: `Docs/ARCHITECTURE.md` (decisions D1–D9 are in its §0).
 - Work packages and their order: `Docs/WORKPLAN.md` (re-planned 2026-10-02).
 - What was done and found, package by package: `Docs/DEVLOG.md`.
@@ -33,7 +33,17 @@ Read §1 and §2 before writing any code.
 A maze tower defense with one unusual rule: **nothing the player builds blocks the
 path.**
 
-- The player builds two things from one budget: **tetromino-shaped walls** (a 7-bag
+- The board is **24 × 24 tiles, seen from straight above**, with **rocks** on it: fixed
+  tiles of the map (`RockLayout`, the `X` of the map file) that nothing is built on,
+  that enemies on foot go round and flyers pass over. The board size is the student's
+  "for now" (GDD question 19).
+- **A wall is one tile** since WP-C4, drawn by click or drag, 1 budget a tile. The
+  simulation still deals "pieces" from a bag with a hold slot and rotation; SampleScene's
+  shape library simply holds one shape of one tile, so every piece is that tile and the
+  bag, the hold and the rotation do nothing a player can see. What follows describes
+  that machinery, which the tests still exercise with tetrominoes on the old open
+  38 × 38 board (`Maps/Fixture_Open38.map.json`).
+- The player builds two things from one budget: **walls** (in the rules: shapes from a 7-bag
   randomiser with a hold slot and rotation; SampleScene's library is I, O, T, S, Z,
   J, L in that order) and, since WP-C1, **towers** (one tile each).
 - Towers come from a **shop** (WP-C3): four random offers at the start of the game and
@@ -79,9 +89,11 @@ What is still a placeholder: three unbalanced tower types (`TowerRoster`: a
 single-target, a splash and a slowing tower, one per damage type; only the first
 can hit flyers); the shop's numbers (four offers, half back on a sale, no rerolls);
 the sapper and flyer numbers; and how the classes look (a tint, and height for
-flyers). There is no real tower UI yet: in Unity the keys Z / X / C / B buy the four
-offers onto the tile under the mouse, Delete sells the tower or wall piece under it,
-and a plain text panel at the top right lists the offers (WP-C4 replaces all three).
+flyers: a square, an orange disc and a blue diamond). The screen is functional, not
+styled (WP-C4): the shop is a panel of cards (click a card, then a tile; the tower
+shows its range ring first), Wall and Sell are two tools, and Esc puts the hand down.
+The route lines follow the rule of GDD §5.3: in a build phase one line for each kind of
+enemy met so far, during a wave the kinds in that wave.
 
 ### Where the rules live
 
@@ -168,13 +180,19 @@ Assets/Scripts/               Unity host and views
   SceneMapBuilder.cs       scene → MapData
   WaveSpawner.cs BlockManager.cs PlayerCore.cs
                            thin adapters that keep the member names the HUD reads
-  PlayerBuilder.cs         clicks and keys to commands; draws walls and towers from the build
+  PlayerBuilder.cs         the hand (Wall, Sell, a tower from the shop): clicks and drags to
+                           commands; draws walls and towers from the build
                            log; the temporary shop keys and panel
   FlowAgent.cs             view only: interpolates one AgentState, shows its HP bar and its class
   GridManager.cs Node.cs FlowFieldManager.cs   view data and bindings, no rules
   FlowFieldVisualizer.cs PathPreviewer.cs GhostPreviewer.cs CanvasDashboard.cs
   GameSpeedController.cs   pause / speed; pause blocks building
-  CameraMovement.cs Billboard.cs WallSpawnAnimator.cs BlockShape.cs
+  TowerShopPanel.cs        the shop's cards, the two tools, the key to the routes, the tooltip
+  TowerView.cs             one tower: a ring in its damage type's colour, a barrel, a drawn shot
+  RockLayout.cs            the map's rocks as text; SceneMapBuilder turns them into 'X' tiles
+  TopDownCamera.cs         the fixed view from above (SampleScene); CameraMovement.cs is the
+                           free camera of the benchmark scenes
+  Billboard.cs WallSpawnAnimator.cs BlockShape.cs
   Config/SimConfigAsset.cs inspector home of SimConfig
   Benchmark/ScenarioBenchmark.cs   the Unity-only frame-time scenarios
   Editor/                  MapExporter, ShapeExporter, ReplayMenu, BuildGuard
@@ -187,7 +205,7 @@ Results/                      committed results; Results/pinned-replays (recordi
                               telemetry) is re-run by tests
 Runs/                         (gitignored) raw output and Unity sessions (replay and telemetry)
 Assets/Scenes/                SampleScene + Bench_Open / Bench_Maze / Bench_Choke / Bench_Stress
-Assets/Scripts/BlockS/        the tetromino .asset files
+Assets/Scripts/BlockS/        the wall shape assets: Wall (one tile, the game's) and the tetrominoes
 ```
 
 The offline harness is `Thesis.Harness` plus `Thesis.Cli`. `ScenarioBenchmark`

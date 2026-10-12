@@ -21,6 +21,9 @@ public static class SceneMapBuilder
         // Same arithmetic, same order, as GridManager.CreateGrid.
         Physics.SyncTransforms();
         Vector3 worldBottomLeft = origin - Vector3.right * gridManager.gridWorldSize.x / 2 - Vector3.forward * gridManager.gridWorldSize.y / 2;
+        // A static blocker is a collider on unwalkableMask (the benchmark scenes) or a
+        // rock of the scene's RockLayout (SampleScene since WP-C4). Both become 'X'.
+        RockLayout rocks = gridManager.GetComponent<RockLayout>();
         var rows = new string[height];
         for (int y = height - 1; y >= 0; y--)
         {
@@ -28,7 +31,9 @@ public static class SceneMapBuilder
             for (int x = 0; x < width; x++)
             {
                 Vector3 worldPoint = worldBottomLeft + Vector3.right * (x * nodeDiameter + nodeRadius) + Vector3.forward * (y * nodeDiameter + nodeRadius);
-                row.Append(Physics.CheckSphere(worldPoint, nodeRadius, gridManager.unwalkableMask) ? 'X' : '.');
+                bool blocked = Physics.CheckSphere(worldPoint, nodeRadius, gridManager.unwalkableMask)
+                               || (rocks != null && rocks.enabled && rocks.IsRock(x, y, width, height));
+                row.Append(blocked ? 'X' : '.');
             }
             rows[height - 1 - y] = row.ToString();
         }
