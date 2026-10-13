@@ -27,6 +27,7 @@ namespace Thesis.Sim
         ShopRolled,
         TowerSold,
         WallSold,
+        TowerChanged,
     }
 
     public readonly struct SimEvent
@@ -95,6 +96,9 @@ namespace Thesis.Sim
         // One tile of a sold wall piece was cleared; a piece raises one of these per
         // tile still standing. IntA = tile X, IntB = tile Y (as WallBreached), IntC = piece id.
         public static SimEvent WallSold(int x, int y, int pieceId) { return new SimEvent(SimEventKind.WallSold, x, y, pieceId, 0f); }
+
+        // A tower's level or gear changed, so what it does has. IntA = tower id.
+        public static SimEvent TowerChanged(int towerId) { return new SimEvent(SimEventKind.TowerChanged, towerId, 0, 0, 0f); }
 
         public override string ToString()
         {

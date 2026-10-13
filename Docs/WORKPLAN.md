@@ -43,7 +43,7 @@ WP-C2 + WP-C3 ──────── WP9 strategies ── WP10 layers ── 
 WP6 (telemetry) no longer exists as its own package: it is part of WP-C3 (D8).
 
 **Where things stand (2026-10-11):** WP0 to WP5, WP-H, WP-C1, WP-C2 and WP-C3 are done.
-Next is **WP-C5**. WP7 has not been started.
+Next is **WP7** (not started; WP11 waits for it), then **WP8**.
 
 ### Revised semester-1 schedule (approved 2026-09-15)
 
@@ -101,7 +101,7 @@ Three changes:
 | done | **WP-C3** shop, telemetry, wall selling | W8 | 2026-10-11, the last day of W8 |
 | 1, parallel | **WP7** learning | W8–W9 | separate session; **not started** |
 | done | **WP-C4** board, towers and shop UI | W9 | 2026-10-12, with the four decisions of the GDD review |
-| 4 | **WP-C5** roster and balance check | W10 | next |
+| done | **WP-C5** roster and balance check | W9 | 2026-10-12; two of six hypotheses fail, reported |
 | 5 | **WP8** profile | W11 | needs the proposal's §6.2 in the repo |
 | 6 | **WP9** strategies | W11 | needs the proposal's §6.3 in the repo; S14 (income per wave shape) |
 | 7 | **WP10** layers, recorded plans in the replay | W12 | |
@@ -592,7 +592,20 @@ The estimate for all of it is two to three days more than this package had. The 
 
 ---
 
-## WP-C5 — Tower roster v1 and balance sanity check
+## WP-C5 — Tower roster v1 and balance sanity check ✅ done 2026-10-12
+
+**As built.** `Results/2026-10-12_balance-v1/README.md` is the result; `DEVLOG` 2026-10-12 the detail.
+- Five towers (the GDD's proposal: archer, ballista, cannon, brazier, frost) as `TowerDefAsset`s,
+  exported to `Maps/Towers.json`; `TowerRoster.Placeholder()` is deleted (its three towers are the
+  tests' fixture roster, `TestTowers.Roster()`).
+- Four enemy types in code (`EnemyArchetypes`), not assets: basic, swarm, sapper, flyer. The
+  development planner's cycle is five waves now, with a swarm.
+- **The game's numbers moved out of the C# defaults**: `SimConfig.asset`, exported to
+  `Maps/SimConfig.json`, which `thesis run` and `thesis balance` read. The defaults stay as the
+  numbers the tests and the pinned replays use.
+- `thesis balance` plays `sentry`, `mixed`, `restless` and `idle` on 10 seeds against both planners.
+- The student did not answer GDD questions 2 and 3 before this package; the GDD's proposals were
+  built and stay the student's to change.
 
 **Reads:** §4.6 · **Depends:** WP-C1, WP-C2, WP-C3, **S12**
 

@@ -21,5 +21,24 @@ namespace Thesis.Harness
         public float BuildBudget;
         public int Placements;      // rows of the build log: wall pieces and towers built, and anything sold
         public int TowersPlaced;
+
+        // Every tower that was ever bought, in the order they were bought: what it
+        // cost and what it did. For the balance check (`thesis balance`).
+        public List<TowerSummary> Towers = new List<TowerSummary>();
+    }
+
+    public sealed class TowerSummary
+    {
+        public string Id;
+        public int PricePaid;
+        public float DamageDealt;
+        public int Shots;
+        public int Kills;
+
+        // From the tick it was placed to the end of the episode. A tower that was sold
+        // or chewed through is counted to the end all the same: the budget stayed spent.
+        public int TicksOnBoard;
+        public bool Sold;
+        public bool Destroyed;
     }
 }

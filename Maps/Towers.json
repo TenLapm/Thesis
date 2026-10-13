@@ -1,0 +1,302 @@
+{
+  "Schema": 1,
+  "Source": "SampleScene",
+  "Towers": [
+    {
+      "Id": "archer",
+      "Cost": 10,
+      "DamageType": "Physical",
+      "Damage": 4.0,
+      "RangeTiles": 3.5,
+      "FireIntervalTicks": 25,
+      "Mode": "First",
+      "SplashRadiusTiles": 0.0,
+      "SlowTicks": 0,
+      "SlowFactor": 1.0,
+      "CanHitFlying": true,
+      "Targets": 1,
+      "DigCost": 20,
+      "TowerHealth": 8.0,
+      "ShopWeight": 1.0,
+      "Levels": [
+        {
+          "Label": "faster shots",
+          "DamageMul": 1.0,
+          "IntervalMul": 0.7,
+          "RangeAdd": 0.0,
+          "SplashAdd": 0.0,
+          "SlowTicksMul": 1.0,
+          "ExtraTargets": 0
+        },
+        {
+          "Label": "hits two enemies",
+          "DamageMul": 1.0,
+          "IntervalMul": 1.0,
+          "RangeAdd": 0.0,
+          "SplashAdd": 0.0,
+          "SlowTicksMul": 1.0,
+          "ExtraTargets": 1
+        }
+      ]
+    },
+    {
+      "Id": "ballista",
+      "Cost": 16,
+      "DamageType": "Physical",
+      "Damage": 22.0,
+      "RangeTiles": 5.5,
+      "FireIntervalTicks": 100,
+      "Mode": "First",
+      "SplashRadiusTiles": 0.0,
+      "SlowTicks": 0,
+      "SlowFactor": 1.0,
+      "CanHitFlying": true,
+      "Targets": 1,
+      "DigCost": 20,
+      "TowerHealth": 8.0,
+      "ShopWeight": 1.0,
+      "Levels": [
+        {
+          "Label": "two bolts",
+          "DamageMul": 1.0,
+          "IntervalMul": 1.0,
+          "RangeAdd": 0.0,
+          "SplashAdd": 0.0,
+          "SlowTicksMul": 1.0,
+          "ExtraTargets": 1
+        },
+        {
+          "Label": "three bolts, +1 range",
+          "DamageMul": 1.0,
+          "IntervalMul": 1.0,
+          "RangeAdd": 1.0,
+          "SplashAdd": 0.0,
+          "SlowTicksMul": 1.0,
+          "ExtraTargets": 1
+        }
+      ]
+    },
+    {
+      "Id": "cannon",
+      "Cost": 18,
+      "DamageType": "Fire",
+      "Damage": 3.0,
+      "RangeTiles": 2.5,
+      "FireIntervalTicks": 60,
+      "Mode": "First",
+      "SplashRadiusTiles": 0.75,
+      "SlowTicks": 0,
+      "SlowFactor": 1.0,
+      "CanHitFlying": false,
+      "Targets": 1,
+      "DigCost": 20,
+      "TowerHealth": 8.0,
+      "ShopWeight": 1.0,
+      "Levels": [
+        {
+          "Label": "bigger blast",
+          "DamageMul": 1.0,
+          "IntervalMul": 1.0,
+          "RangeAdd": 0.0,
+          "SplashAdd": 0.5,
+          "SlowTicksMul": 1.0,
+          "ExtraTargets": 0
+        },
+        {
+          "Label": "+60% damage",
+          "DamageMul": 1.6,
+          "IntervalMul": 1.0,
+          "RangeAdd": 0.0,
+          "SplashAdd": 0.0,
+          "SlowTicksMul": 1.0,
+          "ExtraTargets": 0
+        }
+      ]
+    },
+    {
+      "Id": "brazier",
+      "Cost": 12,
+      "DamageType": "Fire",
+      "Damage": 1.2,
+      "RangeTiles": 1.5,
+      "FireIntervalTicks": 5,
+      "Mode": "First",
+      "SplashRadiusTiles": 0.0,
+      "SlowTicks": 0,
+      "SlowFactor": 1.0,
+      "CanHitFlying": false,
+      "Targets": 1,
+      "DigCost": 20,
+      "TowerHealth": 8.0,
+      "ShopWeight": 1.0,
+      "Levels": [
+        {
+          "Label": "wider ring",
+          "DamageMul": 1.0,
+          "IntervalMul": 1.0,
+          "RangeAdd": 0.75,
+          "SplashAdd": 0.0,
+          "SlowTicksMul": 1.0,
+          "ExtraTargets": 0
+        },
+        {
+          "Label": "burns the neighbours too",
+          "DamageMul": 1.0,
+          "IntervalMul": 1.0,
+          "RangeAdd": 0.0,
+          "SplashAdd": 0.6,
+          "SlowTicksMul": 1.0,
+          "ExtraTargets": 0
+        }
+      ]
+    },
+    {
+      "Id": "frost",
+      "Cost": 12,
+      "DamageType": "Frost",
+      "Damage": 2.0,
+      "RangeTiles": 2.5,
+      "FireIntervalTicks": 30,
+      "Mode": "First",
+      "SplashRadiusTiles": 0.0,
+      "SlowTicks": 75,
+      "SlowFactor": 0.5,
+      "CanHitFlying": false,
+      "Targets": 1,
+      "DigCost": 20,
+      "TowerHealth": 8.0,
+      "ShopWeight": 1.0,
+      "Levels": [
+        {
+          "Label": "longer slow",
+          "DamageMul": 1.0,
+          "IntervalMul": 1.0,
+          "RangeAdd": 0.0,
+          "SplashAdd": 0.0,
+          "SlowTicksMul": 1.6,
+          "ExtraTargets": 0
+        },
+        {
+          "Label": "slows an area",
+          "DamageMul": 1.0,
+          "IntervalMul": 1.0,
+          "RangeAdd": 0.0,
+          "SplashAdd": 1.0,
+          "SlowTicksMul": 1.0,
+          "ExtraTargets": 0
+        }
+      ]
+    },
+    {
+      "Id": "sniper",
+      "Cost": 20,
+      "DamageType": "Physical",
+      "Damage": 45.0,
+      "RangeTiles": 8.0,
+      "FireIntervalTicks": 160,
+      "Mode": "First",
+      "SplashRadiusTiles": 0.0,
+      "SlowTicks": 0,
+      "SlowFactor": 1.0,
+      "CanHitFlying": false,
+      "Targets": 1,
+      "DigCost": 20,
+      "TowerHealth": 8.0,
+      "ShopWeight": 1.0,
+      "Levels": [
+        {
+          "Label": "+60% damage",
+          "DamageMul": 1.6,
+          "IntervalMul": 1.0,
+          "RangeAdd": 0.0,
+          "SplashAdd": 0.0,
+          "SlowTicksMul": 1.0,
+          "ExtraTargets": 0
+        },
+        {
+          "Label": "two shots",
+          "DamageMul": 1.0,
+          "IntervalMul": 1.0,
+          "RangeAdd": 0.0,
+          "SplashAdd": 0.0,
+          "SlowTicksMul": 1.0,
+          "ExtraTargets": 1
+        }
+      ]
+    },
+    {
+      "Id": "shard",
+      "Cost": 14,
+      "DamageType": "Frost",
+      "Damage": 3.0,
+      "RangeTiles": 3.0,
+      "FireIntervalTicks": 30,
+      "Mode": "First",
+      "SplashRadiusTiles": 0.0,
+      "SlowTicks": 0,
+      "SlowFactor": 1.0,
+      "CanHitFlying": false,
+      "Targets": 3,
+      "DigCost": 20,
+      "TowerHealth": 8.0,
+      "ShopWeight": 1.0,
+      "Levels": [
+        {
+          "Label": "four shards",
+          "DamageMul": 1.0,
+          "IntervalMul": 1.0,
+          "RangeAdd": 0.0,
+          "SplashAdd": 0.0,
+          "SlowTicksMul": 1.0,
+          "ExtraTargets": 1
+        },
+        {
+          "Label": "+50% damage, +0.5 range",
+          "DamageMul": 1.5,
+          "IntervalMul": 1.0,
+          "RangeAdd": 0.5,
+          "SplashAdd": 0.0,
+          "SlowTicksMul": 1.0,
+          "ExtraTargets": 0
+        }
+      ]
+    },
+    {
+      "Id": "flak",
+      "Cost": 14,
+      "DamageType": "Fire",
+      "Damage": 2.0,
+      "RangeTiles": 4.5,
+      "FireIntervalTicks": 40,
+      "Mode": "First",
+      "SplashRadiusTiles": 0.75,
+      "SlowTicks": 0,
+      "SlowFactor": 1.0,
+      "CanHitFlying": true,
+      "Targets": 1,
+      "DigCost": 20,
+      "TowerHealth": 8.0,
+      "ShopWeight": 1.0,
+      "Levels": [
+        {
+          "Label": "faster shots",
+          "DamageMul": 1.0,
+          "IntervalMul": 0.7,
+          "RangeAdd": 0.0,
+          "SplashAdd": 0.0,
+          "SlowTicksMul": 1.0,
+          "ExtraTargets": 0
+        },
+        {
+          "Label": "bigger blast",
+          "DamageMul": 1.0,
+          "IntervalMul": 1.0,
+          "RangeAdd": 0.0,
+          "SplashAdd": 0.5,
+          "SlowTicksMul": 1.0,
+          "ExtraTargets": 0
+        }
+      ]
+    }
+  ]
+}

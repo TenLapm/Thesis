@@ -15,14 +15,15 @@ namespace Thesis.Cli
     {
         public static int Run(string[] argv)
         {
-            var args = new Args(argv, new[] { "--out", "--map", "--shapes" }, new string[0]);
+            var args = new Args(argv, new[] { "--out", "--map", "--shapes", "--towers" }, new string[0]);
             args.NoMorePositionals(0);
 
             string outDir = args.Get("--out", PinnedEpisodes.Folder);
             MapData map = MapData.Load(args.Get("--map", Path.Combine("Maps", "SampleScene.map.json")));
             ShapeDef[] shapes = ShapeLibraryFile.Load(args.Get("--shapes", Path.Combine("Maps", "Shapes.json")));
 
-            List<string> written = PinnedEpisodes.RecordAll(outDir, PinnedEpisodes.DotnetTag, "headless " + RuntimeInformation.FrameworkDescription, map, shapes, TowerRoster.Placeholder());
+            List<string> written = PinnedEpisodes.RecordAll(outDir, PinnedEpisodes.DotnetTag, "headless " + RuntimeInformation.FrameworkDescription, map, shapes,
+                                                             TowerLibraryFile.Load(args.Get("--towers", Path.Combine("Maps", "Towers.json"))));
             foreach (string path in written)
             {
                 ReplayFile file = ReplayFile.Load(path);

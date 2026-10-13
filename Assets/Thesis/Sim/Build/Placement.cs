@@ -127,7 +127,7 @@ namespace Thesis.Sim
         // tower, because a later sale refunds a share of what was actually paid.
         public static bool TryPlaceTower(SimGrid grid, MapData map, FlowFieldSet fields, TowerDef def, int price, TileCoord tile,
                                          ref float buildBudget, int tick, IList<TowerState> towers,
-                                         IList<PlacementRecord> log, IList<SimEvent> events)
+                                         IList<PlacementRecord> log, IList<SimEvent> events, int level = 1)
         {
             if (def == null) throw new ArgumentNullException(nameof(def));
             if (towers == null) throw new ArgumentNullException(nameof(towers));
@@ -139,7 +139,7 @@ namespace Thesis.Sim
             buildBudget -= price;
 
             SimNode node = grid.Get(tile);
-            var tower = new TowerState(towers.Count, def, tile, node.Position, map.NodeDiameter, tick, price);
+            var tower = new TowerState(towers.Count, def, tile, node.Position, map.NodeDiameter, tick, price, level);
             towers.Add(tower);
             grid.SetTower(node, Math.Max(2, def.DigCost), Math.Max(0.5f, def.TowerHealth), tower.Id);
             events?.Add(SimEvent.TowerPlaced(tower.Id, tile.X, tile.Y));
@@ -198,6 +198,47 @@ namespace Thesis.Sim
                 Tiles = new[] { tile },
                 TowerId = tower.Id,
                 Refund = refund,
+            });
+            return true;
+        }
+
+        // Puts the tower standing on `from` on `to`, for nothing. The tower keeps its id,
+        // its level, its gear, its cooldown and whatever has been chewed off it; only
+        // the tile changes. `to` must be a tile a tower could be built on (CanPlace,
+        // I9). Returns false, changing nothing, otherwise.
+        public static bool TryMoveTower(SimGrid grid, MapData map, FlowFieldSet fields, TileCoord from, TileCoord to, int tick,
+                                        IList<TowerState> towers, IList<PlacementRecord> log, IList<SimEvent> events)
+        {
+            if (towers == null) throw new ArgumentNullException(nameof(towers));
+            if (!grid.InBounds(from)) return false;
+
+            SimNode source = grid.Get(from);
+            if (source.Occupant != Occupant.Tower) return false;
+            if (!CanPlace(grid, map, new[] { to })) return false;
+
+            TowerState tower = towers[source.TowerId];
+            int terrainCost = source.TerrainCost;
+            float health = source.WallHealth;
+            float fullHealth = source.MaxWallHealth;
+
+            grid.ClearWall(source);
+            SimNode target = grid.Get(to);
+            grid.SetTower(target, terrainCost, fullHealth, tower.Id);
+            target.WallHealth = health;
+            tower.MoveTo(to, target.Position);
+            events?.Add(SimEvent.TowerChanged(tower.Id));
+
+            fields.Generate(grid, map.Core);
+
+            log?.Add(new PlacementRecord
+            {
+                Kind = PlacementKind.TowerMoved,
+                Tick = tick,
+                ShapeName = tower.Def.Id,
+                OriginX = to.X,
+                OriginY = to.Y,
+                Tiles = new[] { from, to },
+                TowerId = tower.Id,
             });
             return true;
         }

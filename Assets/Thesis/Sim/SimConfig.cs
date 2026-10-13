@@ -69,6 +69,10 @@ namespace Thesis.Sim
         // to it, and the shop stops shaping what gets built.
         public float RerollCost = -1f;
 
+        // Each reroll of the same roll costs this much more than the one before it; the
+        // price is back at RerollCost when the next wave's cards come (2026-10-12).
+        public float RerollCostStep = 0f;
+
         // The share of what was paid that selling returns: of a tower's price, and
         // of a wall piece's cost (scaled by how much of the piece still stands).
         public float SellRefund = 0.5f;
@@ -77,6 +81,62 @@ namespace Thesis.Sim
         // Selling is for build phases. Mid-wave it lets a player open and close a
         // gap to walk enemies back and forth under fire, the classic maze exploit.
         public bool SellDuringWave = false;
+
+        // --- cards, levels and gear (2026-10-12; all off by default, so the numbers
+        // the tests are written against play exactly as before) ---
+        // The build phase has no clock: a wave starts when the player says so.
+        public bool WaitForStart = false;
+
+        // A shop slot holds a tower card, a coin card or a gear card. The two weights
+        // are relative to a tower card's weight of 1; 0 means that kind never comes.
+        public float CoinCardWeight = 0f;
+        public int CoinCardAmount = 8;
+        public float GearCardWeight = 0f;
+
+        // The chance that a tower card is rare (level 2) or epic (level 3). Such a
+        // card costs what the tower and its upgrades would.
+        public float RareTowerChance = 0f;
+        public float EpicTowerChance = 0f;
+
+        // Raising a tower one level costs its card's price times this (and half as
+        // much again for the second level): TowerUpgrades.CostOf.
+        public float UpgradeCostFactor = 1f;
+
+        // Gear moves between towers for nothing, but only between waves.
+        public bool MoveGearDuringWave = false;
+
+        // The next wave is decided when a build phase BEGINS, not when it ends, so the
+        // player can be told what is coming and build against it (SimState.NextPlan).
+        // The planner then sees the board as it stood when the last wave resolved.
+        public bool PlanAhead = false;
+
+        // A roll of cards is a draft: the cards are free, and the player takes this
+        // many of them (0 = off: every card can be bought, at its price). The roll at
+        // game start allows PicksAtStart, because the first wave needs a defence.
+        public int PicksPerRoll = 0;
+        public int PicksAtStart = 2;
+
+        // The gear shop: this many pieces on sale at their price, a new stock every
+        // GearShopRefreshWaves waves. 0 slots = no gear shop. Its stock is a pure
+        // function of the seed and of which stock it is (I10), like the cards.
+        public int GearShopSlots = 0;
+        public int GearShopRefreshWaves = 5;
+
+        // --- combining, the tower cap and moving towers (2026-10-12, the third round;
+        // all off by default) ---
+        // This many towers of one type and one level merge into ONE tower of the next
+        // level the moment the last of them is placed (TowerCombine). 0 or 1 = off.
+        public int CombineCount = 0;
+
+        // The most towers that may stand at once: TowerCap at the start and one more
+        // for every TowerCapEveryWaves waves started. A tower that completes a set is
+        // placed whatever the cap says, because the set then merges. 0 = no cap.
+        public int TowerCap = 0;
+        public int TowerCapEveryWaves = 0;
+
+        // A standing tower can be put on another tile for nothing, between waves, with
+        // its level and its gear.
+        public bool MoveTowers = false;
 
         // --- movement classes (WP-C2) ---
         // The share of a built tile's price that a SAPPER pays when it chooses a
@@ -129,6 +189,8 @@ namespace Thesis.Sim
             if (!(MaxWaveSeconds > 0f)) throw new InvalidOperationException("SimConfig.MaxWaveSeconds must be positive, was " + MaxWaveSeconds + ".");
             if (!(SapperDigCostFactor >= 0f) || SapperDigCostFactor > 1f) throw new InvalidOperationException("SimConfig.SapperDigCostFactor must be in [0, 1], was " + SapperDigCostFactor + ".");
             if (ShopOffers < 0 || ShopOffers > 16) throw new InvalidOperationException("SimConfig.ShopOffers must be between 0 and 16, was " + ShopOffers + ".");
+            if (!(RerollCostStep >= 0f) || float.IsInfinity(RerollCostStep)) throw new InvalidOperationException("SimConfig.RerollCostStep must be a number >= 0, was " + RerollCostStep + ".");
+            if (CombineCount < 0 || TowerCap < 0 || TowerCapEveryWaves < 0) throw new InvalidOperationException("SimConfig.CombineCount, TowerCap and TowerCapEveryWaves must not be negative.");
             if (float.IsNaN(RerollCost) || float.IsInfinity(RerollCost)) throw new InvalidOperationException("SimConfig.RerollCost must be a number (negative turns rerolls off), was " + RerollCost + ".");
             // Above 1 a sale would pay more than the purchase cost: free budget for buying and selling in a loop.
             if (!(SellRefund >= 0f) || SellRefund > 1f) throw new InvalidOperationException("SimConfig.SellRefund must be in [0, 1], was " + SellRefund + ".");

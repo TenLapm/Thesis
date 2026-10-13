@@ -1,11 +1,11 @@
 {
-  "Schema": 4,
+  "Schema": 7,
   "Build": "Unity 6000.4.10f1 editor (Mono)",
   "Session": "mono-sentry-6waves",
   "Policy": "sentry",
   "Map": "SampleScene",
   "MapSeed": 0,
-  "RngSeed": 3,
+  "RngSeed": 7,
   "Planner": "escalation",
   "Config": {
     "TickSeconds": 0.02,
@@ -30,9 +30,27 @@
     "HpIncrementPerWave": 2.0,
     "ShopOffers": 4,
     "RerollCost": -1.0,
+    "RerollCostStep": 0.0,
     "SellRefund": 0.5,
     "WallSellRefund": 0.5,
     "SellDuringWave": false,
+    "WaitForStart": false,
+    "CoinCardWeight": 0.0,
+    "CoinCardAmount": 8,
+    "GearCardWeight": 0.0,
+    "RareTowerChance": 0.0,
+    "EpicTowerChance": 0.0,
+    "UpgradeCostFactor": 1.0,
+    "MoveGearDuringWave": false,
+    "PlanAhead": false,
+    "PicksPerRoll": 0,
+    "PicksAtStart": 2,
+    "GearShopSlots": 0,
+    "GearShopRefreshWaves": 5,
+    "CombineCount": 0,
+    "TowerCap": 0,
+    "TowerCapEveryWaves": 0,
+    "MoveTowers": false,
     "SapperDigCostFactor": 0.2,
     "MinSlowFactor": 0.25,
     "MaxWaveSeconds": 600.0,
@@ -126,9 +144,67 @@
       "SlowTicks": 0,
       "SlowFactor": 1.0,
       "CanHitFlying": true,
+      "Targets": 1,
       "DigCost": 20,
       "TowerHealth": 8.0,
-      "ShopWeight": 1.0
+      "ShopWeight": 1.0,
+      "Levels": [
+        {
+          "Label": "faster shots",
+          "DamageMul": 1.0,
+          "IntervalMul": 0.7,
+          "RangeAdd": 0.0,
+          "SplashAdd": 0.0,
+          "SlowTicksMul": 1.0,
+          "ExtraTargets": 0
+        },
+        {
+          "Label": "hits two enemies",
+          "DamageMul": 1.0,
+          "IntervalMul": 1.0,
+          "RangeAdd": 0.0,
+          "SplashAdd": 0.0,
+          "SlowTicksMul": 1.0,
+          "ExtraTargets": 1
+        }
+      ]
+    },
+    {
+      "Id": "ballista",
+      "Cost": 16,
+      "DamageType": "Physical",
+      "Damage": 22.0,
+      "RangeTiles": 5.5,
+      "FireIntervalTicks": 100,
+      "Mode": "First",
+      "SplashRadiusTiles": 0.0,
+      "SlowTicks": 0,
+      "SlowFactor": 1.0,
+      "CanHitFlying": true,
+      "Targets": 1,
+      "DigCost": 20,
+      "TowerHealth": 8.0,
+      "ShopWeight": 1.0,
+      "Levels": [
+        {
+          "Label": "two bolts",
+          "DamageMul": 1.0,
+          "IntervalMul": 1.0,
+          "RangeAdd": 0.0,
+          "SplashAdd": 0.0,
+          "SlowTicksMul": 1.0,
+          "ExtraTargets": 1
+        },
+        {
+          "Label": "three bolts, +1 range",
+          "DamageMul": 1.0,
+          "IntervalMul": 1.0,
+          "RangeAdd": 1.0,
+          "SplashAdd": 0.0,
+          "SlowTicksMul": 1.0,
+          "ExtraTargets": 1
+        }
+      ]
     },
     {
       "Id": "cannon",
@@ -142,15 +218,73 @@
       "SlowTicks": 0,
       "SlowFactor": 1.0,
       "CanHitFlying": false,
+      "Targets": 1,
       "DigCost": 20,
       "TowerHealth": 8.0,
-      "ShopWeight": 1.0
+      "ShopWeight": 1.0,
+      "Levels": [
+        {
+          "Label": "bigger blast",
+          "DamageMul": 1.0,
+          "IntervalMul": 1.0,
+          "RangeAdd": 0.0,
+          "SplashAdd": 0.5,
+          "SlowTicksMul": 1.0,
+          "ExtraTargets": 0
+        },
+        {
+          "Label": "+60% damage",
+          "DamageMul": 1.6,
+          "IntervalMul": 1.0,
+          "RangeAdd": 0.0,
+          "SplashAdd": 0.0,
+          "SlowTicksMul": 1.0,
+          "ExtraTargets": 0
+        }
+      ]
+    },
+    {
+      "Id": "brazier",
+      "Cost": 12,
+      "DamageType": "Fire",
+      "Damage": 1.2,
+      "RangeTiles": 1.5,
+      "FireIntervalTicks": 5,
+      "Mode": "First",
+      "SplashRadiusTiles": 0.0,
+      "SlowTicks": 0,
+      "SlowFactor": 1.0,
+      "CanHitFlying": false,
+      "Targets": 1,
+      "DigCost": 20,
+      "TowerHealth": 8.0,
+      "ShopWeight": 1.0,
+      "Levels": [
+        {
+          "Label": "wider ring",
+          "DamageMul": 1.0,
+          "IntervalMul": 1.0,
+          "RangeAdd": 0.75,
+          "SplashAdd": 0.0,
+          "SlowTicksMul": 1.0,
+          "ExtraTargets": 0
+        },
+        {
+          "Label": "burns the neighbours too",
+          "DamageMul": 1.0,
+          "IntervalMul": 1.0,
+          "RangeAdd": 0.0,
+          "SplashAdd": 0.6,
+          "SlowTicksMul": 1.0,
+          "ExtraTargets": 0
+        }
+      ]
     },
     {
       "Id": "frost",
       "Cost": 12,
       "DamageType": "Frost",
-      "Damage": 1.0,
+      "Damage": 2.0,
       "RangeTiles": 2.5,
       "FireIntervalTicks": 30,
       "Mode": "First",
@@ -158,216 +292,405 @@
       "SlowTicks": 75,
       "SlowFactor": 0.5,
       "CanHitFlying": false,
+      "Targets": 1,
       "DigCost": 20,
       "TowerHealth": 8.0,
-      "ShopWeight": 1.0
+      "ShopWeight": 1.0,
+      "Levels": [
+        {
+          "Label": "longer slow",
+          "DamageMul": 1.0,
+          "IntervalMul": 1.0,
+          "RangeAdd": 0.0,
+          "SplashAdd": 0.0,
+          "SlowTicksMul": 1.6,
+          "ExtraTargets": 0
+        },
+        {
+          "Label": "slows an area",
+          "DamageMul": 1.0,
+          "IntervalMul": 1.0,
+          "RangeAdd": 0.0,
+          "SplashAdd": 1.0,
+          "SlowTicksMul": 1.0,
+          "ExtraTargets": 0
+        }
+      ]
+    },
+    {
+      "Id": "sniper",
+      "Cost": 20,
+      "DamageType": "Physical",
+      "Damage": 45.0,
+      "RangeTiles": 8.0,
+      "FireIntervalTicks": 160,
+      "Mode": "First",
+      "SplashRadiusTiles": 0.0,
+      "SlowTicks": 0,
+      "SlowFactor": 1.0,
+      "CanHitFlying": false,
+      "Targets": 1,
+      "DigCost": 20,
+      "TowerHealth": 8.0,
+      "ShopWeight": 1.0,
+      "Levels": [
+        {
+          "Label": "+60% damage",
+          "DamageMul": 1.6,
+          "IntervalMul": 1.0,
+          "RangeAdd": 0.0,
+          "SplashAdd": 0.0,
+          "SlowTicksMul": 1.0,
+          "ExtraTargets": 0
+        },
+        {
+          "Label": "two shots",
+          "DamageMul": 1.0,
+          "IntervalMul": 1.0,
+          "RangeAdd": 0.0,
+          "SplashAdd": 0.0,
+          "SlowTicksMul": 1.0,
+          "ExtraTargets": 1
+        }
+      ]
+    },
+    {
+      "Id": "shard",
+      "Cost": 14,
+      "DamageType": "Frost",
+      "Damage": 3.0,
+      "RangeTiles": 3.0,
+      "FireIntervalTicks": 30,
+      "Mode": "First",
+      "SplashRadiusTiles": 0.0,
+      "SlowTicks": 0,
+      "SlowFactor": 1.0,
+      "CanHitFlying": false,
+      "Targets": 3,
+      "DigCost": 20,
+      "TowerHealth": 8.0,
+      "ShopWeight": 1.0,
+      "Levels": [
+        {
+          "Label": "four shards",
+          "DamageMul": 1.0,
+          "IntervalMul": 1.0,
+          "RangeAdd": 0.0,
+          "SplashAdd": 0.0,
+          "SlowTicksMul": 1.0,
+          "ExtraTargets": 1
+        },
+        {
+          "Label": "+50% damage, +0.5 range",
+          "DamageMul": 1.5,
+          "IntervalMul": 1.0,
+          "RangeAdd": 0.5,
+          "SplashAdd": 0.0,
+          "SlowTicksMul": 1.0,
+          "ExtraTargets": 0
+        }
+      ]
+    },
+    {
+      "Id": "flak",
+      "Cost": 14,
+      "DamageType": "Fire",
+      "Damage": 2.0,
+      "RangeTiles": 4.5,
+      "FireIntervalTicks": 40,
+      "Mode": "First",
+      "SplashRadiusTiles": 0.75,
+      "SlowTicks": 0,
+      "SlowFactor": 1.0,
+      "CanHitFlying": true,
+      "Targets": 1,
+      "DigCost": 20,
+      "TowerHealth": 8.0,
+      "ShopWeight": 1.0,
+      "Levels": [
+        {
+          "Label": "faster shots",
+          "DamageMul": 1.0,
+          "IntervalMul": 0.7,
+          "RangeAdd": 0.0,
+          "SplashAdd": 0.0,
+          "SlowTicksMul": 1.0,
+          "ExtraTargets": 0
+        },
+        {
+          "Label": "bigger blast",
+          "DamageMul": 1.0,
+          "IntervalMul": 1.0,
+          "RangeAdd": 0.0,
+          "SplashAdd": 0.5,
+          "SlowTicksMul": 1.0,
+          "ExtraTargets": 0
+        }
+      ]
     }
   ],
-  "SetupHash": "8b1039ce921a404a",
-  "InitialHash": "72e207df50f97df9",
+  "SetupHash": "c4befdec22535cbc",
+  "InitialHash": "cc984ff0f2011a8d",
   "Commands": [
     {
       "Tick": 0,
       "Cmd": "PlaceTower",
       "X": 6,
       "Y": 8,
-      "A": 0
+      "A": 0,
+      "B": 0,
+      "C": 0
     },
     {
       "Tick": 0,
       "Cmd": "PlaceTower",
-      "X": 6,
-      "Y": 7,
-      "A": 1
+      "X": 9,
+      "Y": 11,
+      "A": 1,
+      "B": 0,
+      "C": 0
     },
     {
       "Tick": 0,
       "Cmd": "PlaceTower",
       "X": 8,
-      "Y": 6,
-      "A": 2
+      "Y": 10,
+      "A": 2,
+      "B": 0,
+      "C": 0
     },
     {
       "Tick": 0,
       "Cmd": "PlaceTower",
-      "X": 5,
-      "Y": 6,
-      "A": 3
+      "X": 9,
+      "Y": 12,
+      "A": 3,
+      "B": 0,
+      "C": 0
     },
     {
       "Tick": 0,
       "Cmd": "StartWaveNow",
       "X": 0,
       "Y": 0,
-      "A": 0
+      "A": 0,
+      "B": 0,
+      "C": 0
     },
     {
-      "Tick": 1736,
+      "Tick": 1782,
       "Cmd": "PlaceTower",
-      "X": 6,
-      "Y": 6,
-      "A": 0
-    },
-    {
-      "Tick": 1736,
-      "Cmd": "PlaceTower",
-      "X": 4,
-      "Y": 3,
-      "A": 1
-    },
-    {
-      "Tick": 1736,
-      "Cmd": "StartWaveNow",
-      "X": 0,
-      "Y": 0,
-      "A": 0
-    },
-    {
-      "Tick": 3090,
-      "Cmd": "PlaceTower",
-      "X": 5,
-      "Y": 4,
-      "A": 0
-    },
-    {
-      "Tick": 3090,
-      "Cmd": "PlaceTower",
-      "X": 5,
-      "Y": 7,
-      "A": 1
-    },
-    {
-      "Tick": 3090,
-      "Cmd": "StartWaveNow",
-      "X": 0,
-      "Y": 0,
-      "A": 0
-    },
-    {
-      "Tick": 4274,
-      "Cmd": "PlaceTower",
-      "X": 4,
-      "Y": 4,
-      "A": 0
-    },
-    {
-      "Tick": 4274,
-      "Cmd": "PlaceTower",
-      "X": 5,
-      "Y": 3,
-      "A": 1
-    },
-    {
-      "Tick": 4274,
-      "Cmd": "PlaceTower",
-      "X": 2,
-      "Y": 4,
-      "A": 2
-    },
-    {
-      "Tick": 4274,
-      "Cmd": "StartWaveNow",
-      "X": 0,
-      "Y": 0,
-      "A": 0
-    },
-    {
-      "Tick": 5475,
-      "Cmd": "PlaceTower",
-      "X": 4,
-      "Y": 9,
-      "A": 0
-    },
-    {
-      "Tick": 5475,
-      "Cmd": "PlaceTower",
-      "X": 2,
-      "Y": 5,
-      "A": 1
-    },
-    {
-      "Tick": 5475,
-      "Cmd": "PlaceTower",
-      "X": 4,
-      "Y": 5,
-      "A": 2
-    },
-    {
-      "Tick": 5475,
-      "Cmd": "StartWaveNow",
-      "X": 0,
-      "Y": 0,
-      "A": 0
-    },
-    {
-      "Tick": 6648,
-      "Cmd": "PlaceTower",
-      "X": 6,
+      "X": 8,
       "Y": 11,
-      "A": 0
+      "A": 0,
+      "B": 0,
+      "C": 0
     },
     {
-      "Tick": 6648,
+      "Tick": 1782,
       "Cmd": "PlaceTower",
-      "X": 2,
-      "Y": 6,
-      "A": 1
+      "X": 5,
+      "Y": 8,
+      "A": 1,
+      "B": 0,
+      "C": 0
     },
     {
-      "Tick": 6648,
+      "Tick": 1782,
       "Cmd": "PlaceTower",
-      "X": 4,
-      "Y": 6,
-      "A": 2
-    },
-    {
-      "Tick": 6648,
-      "Cmd": "PlaceTower",
-      "X": 2,
+      "X": 6,
       "Y": 7,
-      "A": 3
+      "A": 2,
+      "B": 0,
+      "C": 0
     },
     {
-      "Tick": 6648,
+      "Tick": 1782,
       "Cmd": "StartWaveNow",
       "X": 0,
       "Y": 0,
-      "A": 0
+      "A": 0,
+      "B": 0,
+      "C": 0
+    },
+    {
+      "Tick": 3378,
+      "Cmd": "PlaceTower",
+      "X": 12,
+      "Y": 9,
+      "A": 0,
+      "B": 0,
+      "C": 0
+    },
+    {
+      "Tick": 3378,
+      "Cmd": "PlaceTower",
+      "X": 11,
+      "Y": 10,
+      "A": 1,
+      "B": 0,
+      "C": 0
+    },
+    {
+      "Tick": 3378,
+      "Cmd": "PlaceTower",
+      "X": 10,
+      "Y": 8,
+      "A": 2,
+      "B": 0,
+      "C": 0
+    },
+    {
+      "Tick": 3378,
+      "Cmd": "StartWaveNow",
+      "X": 0,
+      "Y": 0,
+      "A": 0,
+      "B": 0,
+      "C": 0
+    },
+    {
+      "Tick": 4893,
+      "Cmd": "PlaceTower",
+      "X": 11,
+      "Y": 9,
+      "A": 0,
+      "B": 0,
+      "C": 0
+    },
+    {
+      "Tick": 4893,
+      "Cmd": "PlaceTower",
+      "X": 12,
+      "Y": 8,
+      "A": 1,
+      "B": 0,
+      "C": 0
+    },
+    {
+      "Tick": 4893,
+      "Cmd": "PlaceTower",
+      "X": 6,
+      "Y": 6,
+      "A": 2,
+      "B": 0,
+      "C": 0
+    },
+    {
+      "Tick": 4893,
+      "Cmd": "PlaceTower",
+      "X": 3,
+      "Y": 3,
+      "A": 3,
+      "B": 0,
+      "C": 0
+    },
+    {
+      "Tick": 4893,
+      "Cmd": "StartWaveNow",
+      "X": 0,
+      "Y": 0,
+      "A": 0,
+      "B": 0,
+      "C": 0
+    },
+    {
+      "Tick": 6451,
+      "Cmd": "PlaceTower",
+      "X": 8,
+      "Y": 8,
+      "A": 0,
+      "B": 0,
+      "C": 0
+    },
+    {
+      "Tick": 6451,
+      "Cmd": "PlaceTower",
+      "X": 9,
+      "Y": 10,
+      "A": 1,
+      "B": 0,
+      "C": 0
+    },
+    {
+      "Tick": 6451,
+      "Cmd": "StartWaveNow",
+      "X": 0,
+      "Y": 0,
+      "A": 0,
+      "B": 0,
+      "C": 0
+    },
+    {
+      "Tick": 8038,
+      "Cmd": "PlaceTower",
+      "X": 4,
+      "Y": 3,
+      "A": 0,
+      "B": 0,
+      "C": 0
+    },
+    {
+      "Tick": 8038,
+      "Cmd": "PlaceTower",
+      "X": 9,
+      "Y": 8,
+      "A": 1,
+      "B": 0,
+      "C": 0
+    },
+    {
+      "Tick": 8038,
+      "Cmd": "PlaceTower",
+      "X": 5,
+      "Y": 4,
+      "A": 2,
+      "B": 0,
+      "C": 0
+    },
+    {
+      "Tick": 8038,
+      "Cmd": "StartWaveNow",
+      "X": 0,
+      "Y": 0,
+      "A": 0,
+      "B": 0,
+      "C": 0
     }
   ],
   "WaveHashes": [
     {
       "Wave": 1,
-      "Tick": 1736,
-      "Hash": "02db0d00a3873ed0"
+      "Tick": 1782,
+      "Hash": "7beb1f747e2c4711"
     },
     {
       "Wave": 2,
-      "Tick": 3090,
-      "Hash": "5f7e3c95782d53ae"
+      "Tick": 3378,
+      "Hash": "5068fa5ccaef83c4"
     },
     {
       "Wave": 3,
-      "Tick": 4274,
-      "Hash": "36b5c76a7df94437"
+      "Tick": 4893,
+      "Hash": "cb493d537f7fdd9c"
     },
     {
       "Wave": 4,
-      "Tick": 5475,
-      "Hash": "27b2ef4e858254bf"
+      "Tick": 6451,
+      "Hash": "cd4063739bc2b8b3"
     },
     {
       "Wave": 5,
-      "Tick": 6648,
-      "Hash": "5f7b7db986febdf2"
+      "Tick": 8038,
+      "Hash": "68894ea702fa4e05"
     },
     {
       "Wave": 6,
-      "Tick": 7901,
-      "Hash": "a6902e0a1c026ee2"
+      "Tick": 9661,
+      "Hash": "0d1f9caad643b7f2"
     }
   ],
-  "FinalTick": 7901,
-  "FinalHash": "a6902e0a1c026ee2",
+  "FinalTick": 9661,
+  "FinalHash": "0d1f9caad643b7f2",
   "TickHashes": null
 }

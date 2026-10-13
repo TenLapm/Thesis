@@ -299,9 +299,9 @@ namespace Thesis.Tests.Director
         [Test]
         public void ThePlanIsWrittenOutGroupByGroup()
         {
-            // The class-cycle planner's fourth wave sends all three classes at once.
-            EpisodeResult run = Play(waves: 4, planner: ClassCyclePlanner.Id);
-            WaveRecord row = run.Telemetry[4];
+            // The class-cycle planner's fifth wave sends all three classes at once.
+            EpisodeResult run = Play(waves: 5, planner: ClassCyclePlanner.Id);
+            WaveRecord row = run.Telemetry[5];
 
             Assert.AreEqual(ClassCyclePlanner.Id, row.Condition);
             Assert.IsNotNull(row.Plan.Strategy);

@@ -168,6 +168,7 @@ namespace Thesis.Tests.Sim
                 {
                     Map = TestSims.GameMap(),
                     Shapes = TestSims.GameShapes(),
+                    Towers = TestSims.GameTowers(),
                     Seed = 3,
                     Policy = Registry.CreatePolicy(name),
                     MaxWaves = 4,

@@ -1378,3 +1378,183 @@ loses in wave 1. Nothing is balanced; these are only to show the scripted player
   health labels are plain. Styling is the second semester's.
 - The pictures in GDD §5.3 and §9.2 show a larger example board, not the game's.
 - A flyer has no shadow (GDD, proposed).
+
+---
+
+## 2026-10-12 — WP-C5 Roster v1 and the balance sanity check
+
+**Status:** done. 526 tests pass in both runners (4 new). The check's result is
+`Results/2026-10-12_balance-v1/README.md`: four of six hypotheses hold, two fail and are
+reported as failing.
+
+**What changed**
+- **Towers:** five, as the GDD proposed (the student had not answered question 2): archer,
+  ballista, cannon, brazier, frost. `TowerDefAsset` (one asset each, `Assets/Scripts/Towers`),
+  listed in `SimHost.towerRoster`, exported by `Thesis/Export Towers` to `Maps/Towers.json`
+  (`TowerLibraryFile`). `TowerRoster.Placeholder()` is deleted; its three towers are now the
+  tests' fixture roster.
+- **Enemy types:** `EnemyArchetype` and `EnemyArchetypes` (basic, swarm, sapper, flyer), each a
+  set of multiples of that wave's basic enemy. In code, not assets. `ClassCyclePlanner` uses
+  them and its cycle is five waves (a swarm was added).
+- **The game's numbers left the C# defaults.** `SimConfig.asset` holds them, `Thesis/Export
+  Config` writes `Maps/SimConfig.json`, and `thesis run` and `thesis balance` read that file
+  when no `--config` is given. The defaults stay what they were: several hundred test
+  expectations and the pinned replays are written against them.
+- `thesis balance`; `EpisodeResult.Towers` (what every tower cost and did).
+- Pinned replays recorded again (the roster is part of a replay's setup); the restless episode
+  moved to seed 9. `unity-session-shop` deleted: it was recorded on the old planner cycle.
+
+**The numbers, before and after**
+
+| | Before | After |
+|---|---|---|
+| Wave 1 | 100 enemies, 10 HP, 0.20 s apart | 40 enemies, 8 HP, 0.40 s apart |
+| Each wave | +5 enemies, +2 HP | +5 enemies, +3.5 HP, gap −0.01 s down to 0.20 |
+| Cannon | 3 damage, splash 0.75 (placeholder) | the same, after trying 5 and splash 1 |
+| Frost | 1 damage | 2 damage |
+
+**Found**
+- With the old waves and the new roster the game was "lose in wave 1 or never": 12 of 30
+  runs ended wave 25 untouched and 9 ended in wave 1.
+- Damage per budget per minute on the board does not measure a slowing tower. Frost fails
+  that hypothesis in every run and would with any numbers.
+- `sentry` loses in wave 1 on seeds 6 and 8 in all five runs.
+- A cleared wave 1 now pays 8 budget where it paid 20, because a kill pays per enemy (S14).
+
+**Deviations**
+- The enemy types are code, not assets, and there is no export for them.
+- Two hypotheses fail in the final run (frost's value; one run of 30 untouched). Tuning
+  stopped there on purpose.
+- The pinned replays use the default numbers with the new roster, which is neither the old
+  game nor the new one. They test determinism, which does not care.
+
+**Open**
+- GDD questions 2 and 3 (the roster is built as proposed; the student may change it).
+- S14 (income per wave shape), sharper now.
+- WP7 has still not been started.
+
+---
+
+## 2026-10-12 — After the first play: Start-only waves, flat income, cards, levels, gear
+
+**Status:** built as a trial, at the student's request, outside the work plan. 540 tests pass
+in both runners (14 new). A Unity session with a coin card, a tower and an upgrade replays
+headless, telemetry included.
+
+**What the student found on playing WP-C5:** the build phase should last until the player
+starts the wave; too much money after wave 3; one chokepoint with stacked towers wins
+without attention; the random towers feel useless; only one kind of enemy ever comes.
+
+**What changed in the rules** (all behind `SimConfig`, off in the defaults)
+- `WaitForStart`: a build phase has no clock.
+- Income: the game's config pays 16 a wave and nothing per kill or per chewed wall, starting
+  at 50. Closes S14 for now: income cannot depend on a wave's shape.
+- A shop slot is a card (`CardKind`: tower, coin, gear). `ShopRoller.Roll` takes the config
+  and the gear roster; it draws a random number only for a choice that is switched on, so
+  with everything off the offers of every seed are what they were (tested), and I10 holds.
+- `TowerState` has a `Level` (1 to 3) and two gear slots; the numbers of a shot are worked
+  out from definition, level and gear by `Recompute` and are the tower's, not the
+  definition's. `TowerDef.Levels` says what rare and epic add; a level can add bolts
+  (`ExtraTargets`), which the tower pass fires at distinct enemies, one `TowerFired` each.
+- `GearRoster` (five pieces, in code). Commands `TakeCoin`, `BuyGear`, `MoveGear`,
+  `UpgradeTower`; build-log kinds `TowerUpgraded`, `GearBought`, `GearMoved`, `CoinTaken`;
+  event `TowerChanged`. Replay schema 5, telemetry schema 2.
+- `SentryPolicy` takes coin cards and buys gear; with `UpgradeWithWhatIsLeft` (policy name
+  `upgrader`) it also buys levels. Pinned episode `cards-6waves`.
+
+**In Unity:** cards of three kinds in the shop panel, tools Upgrade and Move Gear, a tower's
+level as a coloured plate and its gear as dots, several shot lines for several bolts, "press
+Start" in place of the countdown. SampleScene's condition is `DevClassCycle`, so sappers,
+flyers and a swarm come in waves 2 to 5.
+
+**Measured** (10 seeds, median wave lost in): static baseline, sentry 10.5 and upgrader 10.5;
+development planner, sentry 6 and upgrader 7. Not a balance run.
+
+**Risk, recorded:** levels and gear are investment that is not placement, and the primary
+metric counts placements. GDD question 20; to be raised with the supervisor before the
+metric is frozen.
+
+**Not done:** the work plan and the architecture document do not describe this yet; the
+pictures in the GDD do not show it; the old Unity session recording (`unity-session-mouse`)
+was deleted with the schema change and not replaced.
+
+---
+
+## 2026-10-12 — Second round after play: the wave is announced, cards are a pick, gear has a shop
+
+**Status:** built as a trial at the student's request. 551 tests pass in both runners (9 new).
+
+**What the student asked:** to know where the enemies will walk next wave; to pick only one
+card per roll (free); a separate shop, for gear only.
+
+**Rules** (behind `SimConfig`, off in the defaults)
+- `PlanAhead`: the planner is asked when a build phase begins and the plan is kept in
+  `SimState.NextPlan` until the wave starts. The planner therefore sees the board as it stood
+  when the last wave resolved, not the finished build. This is a change to WHEN the director
+  will decide, and it has to be carried into WP8 to WP11.
+- `PicksPerRoll`, `PicksAtStart`: a roll's cards cost nothing and only so many are taken
+  (`ShopState.PicksLeft`).
+- `GearShopSlots`, `GearShopRefreshWaves`: `SimState.GearShop`, stock a pure function of the
+  seed and the stock number (I10 holds for it); command `BuyShopGear`. Replay schema 6.
+- Game config: three cards a roll (towers and coins, no gear), one pick (two at the start),
+  three gear pieces restocked every five waves, 30 budget and 10 a wave.
+
+**In Unity:** the top bar names the next wave; the route lines in a build phase are those of
+the next wave; the panel is "Pick one card", a gear shop, the tools and the key.
+
+**Measured** (10 seeds, median wave lost in, static baseline / development planner):
+sentry 11.5 / 10.5, upgrader 14.5 / 13. With 16 a wave the upgrader survived 25 waves on
+half the seeds, so income was cut to 10. Seeds 5 and 7 lose in wave 1 whatever is done: their
+first cards are two Frost towers and a coin.
+
+**Not done:** work plan and architecture document; GDD pictures; a Unity session recording
+in the new format.
+
+---
+
+## 2026-10-13 — Third round after play: reroll, combining, a tower cap, moving towers, eight towers
+
+**Status:** built as a trial at the student's request. 566 tests pass in both runners (11 new).
+Nothing since WP-C4 is committed.
+
+**Rules** (behind `SimConfig`, off in the defaults)
+- `RerollCostStep`: a reroll costs `RerollCost` plus the step for every reroll already made of
+  this wave's cards (`Simulation.RerollPrice`). In a draft the unused picks carry over and a
+  reroll with no pick left is refused. Offers are still a function of seed, wave and reroll
+  count (I10).
+- `CombineCount` (`TowerCombine`): that many standing towers of one type and level merge when
+  the last is placed. The lowest id stays; the others are off the board with
+  `TowerState.Combined`. Gear moves to the keeper or is paid back. Build-log kind
+  `TowerCombined`, telemetry kind `combine`.
+- `TowerCap`, `TowerCapEveryWaves`: a limit on standing towers; a tower that completes a set
+  is exempt. `TowerCombine.HasRoomFor` is asked by the simulation, the scripted player and
+  the Unity preview.
+- `MoveTowers`: command `MoveTower`, build phases only, free. `TowerState.Tile` and `Position`
+  are no longer read-only. Build-log kind `TowerMoved`, telemetry kind `moveTower`.
+- `UpgradeCostFactor` 0 now switches the paid upgrade off (it used to make it free).
+- `TowerDef.Targets`: a tower type can fire at several enemies from level 1.
+- Replay schema 7, telemetry schema 3.
+
+**Game config:** four cards a roll, gear cards back (weight 0.25, coins 0.25), reroll 2 +1,
+sets of three, cap 4 +1 every 3 waves, moving on, paid upgrades off, rare 10% and epic 2%.
+Roster: sniper, shard and flak added (`Maps/Towers.json`, eight towers).
+
+**In Unity:** a Reroll button under the cards; "towers n / cap" in the panel's header; a card
+says "completes a set" or "you have 1 of 3" or "tower limit reached"; the tools are Wall, Sell,
+Move and Gear in one row. Checked in play mode: reroll, a move, and a merge drawn on the board.
+
+**Pinned replays:** all re-recorded. The bigger roster changed every seed's offers, so three
+older episodes got new seeds (sentry 7, mixed 27, restless 7). New: `combine-10waves`.
+
+**Measured** (sentry, 10 seeds, wave lost in, 25 = survived): static baseline
+23 25 2 14 25 3 14 20 10 25; development planner 13 3 3 15 25 3 15 18 8 3. The spread is wide
+and four seeds lose by wave 3 against sappers and flyers. Not balanced.
+
+**Deviations and open points**
+- The balance check of WP-C5 (`Results/2026-10-12_balance-v1`) describes five towers and the
+  old shop. It was not run again.
+- The scripted player never moves a tower and rerolls only when no card can be taken, so no
+  pinned recording holds a `MoveTower` or a paid reroll in a draft; unit tests cover both.
+- A free move and a merge both change the layout without a "wall" or "tower" row. Whether the
+  primary metric should count them is a study-design question (GDD 4.4).
+- Flak overlaps the cannon. Work plan and architecture document still not updated.

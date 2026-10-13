@@ -2,13 +2,14 @@ using System.Collections.Generic;
 using Thesis.Sim;
 using UnityEngine;
 
-// Shows, on the tile under the mouse, what a click would do with the tool in the hand
-// (WP-C4): the wall tile, the tower with its range ring, or the tiles a sale would
-// clear. Green-ish when the click would work, red-ish when it would not.
+// Shows, on the tile under the mouse, what a click would do with what is in the hand:
+// the wall tile, the tower with its range ring, the tiles a sale would clear, the
+// tower a piece of gear or an upgrade would go to. Green-ish when the click would
+// work, red-ish when it would not, and one line of text beside the mouse (HoverText).
 //
-// It asks PlayerBuilder the same questions the click asks (CanPlaceWall,
-// CanPlaceTower, SalePreview), and those end in Thesis.Sim.Placement.CanPlace, so the
-// preview cannot disagree with a real click (CLAUDE.md I9).
+// It asks PlayerBuilder the same questions the click asks, and those end in the
+// simulation's own rules (Thesis.Sim.Placement.CanPlace for anything that is built),
+// so the preview cannot disagree with a real click (CLAUDE.md I9).
 public class GhostPreviewer : MonoBehaviour
 {
     [Header("References")]
@@ -31,6 +32,7 @@ public class GhostPreviewer : MonoBehaviour
     private readonly List<Vector2Int> tiles = new List<Vector2Int>();
     private Material lastAppliedMaterial;
     private LineRenderer ring;
+    private bool redGhost;
 
     void Update()
     {
@@ -38,36 +40,98 @@ public class GhostPreviewer : MonoBehaviour
         tiles.Clear();
         bool valid = false;
         float ringRadius = 0f;
+        redGhost = false;
 
         Node hover = playerBuilder != null && !playerBuilder.IsBuildingBlocked ? playerBuilder.HoverNode : null;
         if (hover != null && gridManager != null)
         {
             float cell = gridManager.nodeRadius * 2f;
+            SimHost host = playerBuilder.simHost != null ? playerBuilder.simHost : SimHost.Find();
+            TowerState tower = playerBuilder.TowerAt(hover);
+
             switch (playerBuilder.Tool)
             {
                 case BuildTool.Wall:
                     tiles.AddRange(blockManager.GetTargetGridPositions(hover.gridX, hover.gridY));
                     valid = playerBuilder.CanPlaceWall(hover);
-                    HoverText = playerBuilder.AreTilesPlaceable(tiles)
-                        ? (valid ? "Wall  " + playerBuilder.WallPrice : "Not enough budget")
-                        : "";
-                    if (HoverText.Length == 0) tiles.Clear(); // nothing to say over a rock or a built tile
+                    HoverText = playerBuilder.AreTilesPlaceable(tiles) ? (valid ? "Wall  " + playerBuilder.WallPrice : "Not enough budget") : "";
+                    if (HoverText.Length == 0) tiles.Clear(); // nothing to build on a rock or a built tile
                     break;
 
                 case BuildTool.Tower:
                     TowerDef def = playerBuilder.OfferDef(playerBuilder.SelectedOffer);
                     if (def == null) break;
+                    TowerOffer card = host.State.Shop.Offers[playerBuilder.SelectedOffer];
                     tiles.Add(new Vector2Int(hover.gridX, hover.gridY));
                     valid = playerBuilder.CanPlaceTower(hover, playerBuilder.SelectedOffer);
-                    ringRadius = def.RangeTiles * cell;
-                    HoverText = valid ? def.Id + "  range " + def.RangeTiles.ToString("0.#") + " tiles" : "Cannot stand here";
+                    float range = def.RangeTiles;
+                    for (int level = 2; level <= card.Level; level++) range += def.LevelMod(level).RangeAdd;
+                    ringRadius = range * cell;
+                    bool room = playerBuilder.HasRoomFor(card);
+                    HoverText = !room ? "Tower limit reached: sell one, or complete a set of " + host.Config.CombineCount
+                              : !valid ? "Cannot stand here"
+                              : playerBuilder.WouldCombine(card) ? def.Id + ": completes a set, becomes " + TowerView.LevelName(card.Level + 1)
+                              : def.Id + "  range " + range.ToString("0.#") + " tiles";
                     break;
 
                 case BuildTool.Sell:
                     if (!playerBuilder.SalePreview(hover, tiles, out float refund)) break;
                     valid = playerBuilder.MaySell;
+                    redGhost = true; // red is what is about to go
                     HoverText = valid ? "Sell  +" + refund.ToString("0.#") : "Selling is for the time between waves";
                     break;
+
+                case BuildTool.Gear:
+                    tiles.Add(new Vector2Int(hover.gridX, hover.gridY));
+                    if (tower == null) { HoverText = "Gear goes on a tower"; break; }
+                    valid = tower.FreeGearSlot() >= 0;
+                    HoverText = valid ? "Put it on " + playerBuilder.Describe(tower) : "No free gear slot (a rare tower has two)";
+                    ringRadius = tower.RangeTiles * cell;
+                    break;
+
+                case BuildTool.MoveTower:
+                    if (!playerBuilder.MayMoveTower) { if (tower != null) HoverText = "Towers move between waves"; break; }
+                    TowerState carried = playerBuilder.TowerFrom != null ? playerBuilder.TowerAt(playerBuilder.TowerFrom) : null;
+                    if (tower != null)
+                    {
+                        tiles.Add(new Vector2Int(hover.gridX, hover.gridY));
+                        ringRadius = tower.RangeTiles * cell;
+                        valid = true;
+                        HoverText = tower == carried ? "Now click a free tile" : "Pick up " + playerBuilder.Describe(tower);
+                    }
+                    else if (carried != null)
+                    {
+                        tiles.Add(new Vector2Int(hover.gridX, hover.gridY));
+                        ringRadius = carried.RangeTiles * cell;
+                        valid = playerBuilder.IsFreeTile(hover);
+                        HoverText = valid ? "Move " + playerBuilder.Describe(carried) + " here" : "Cannot stand here";
+                    }
+                    break;
+
+                case BuildTool.MoveGear:
+                    if (tower == null) break;
+                    tiles.Add(new Vector2Int(hover.gridX, hover.gridY));
+                    ringRadius = tower.RangeTiles * cell;
+                    if (!playerBuilder.MayMoveGear) { HoverText = "Gear moves between waves"; break; }
+                    if (playerBuilder.GearFrom == null)
+                    {
+                        valid = PlayerBuilder.FirstGearSlot(tower) >= 0;
+                        HoverText = valid ? "Pick up gear from " + playerBuilder.Describe(tower) : "This tower has no gear";
+                    }
+                    else
+                    {
+                        valid = hover != playerBuilder.GearFrom && tower.FreeGearSlot() >= 0;
+                        HoverText = valid ? "Move it to " + playerBuilder.Describe(tower) : hover == playerBuilder.GearFrom ? "Click another tower" : "No free gear slot";
+                    }
+                    break;
+            }
+
+            // With nothing else to say about a tower, say what it is.
+            if (HoverText.Length == 0 && tower != null)
+            {
+                HoverText = playerBuilder.Describe(tower);
+                ringRadius = tower.RangeTiles * cell;
+                valid = true;
             }
         }
 
@@ -82,14 +146,14 @@ public class GhostPreviewer : MonoBehaviour
         {
             Vector2Int pos = tiles[i];
             bool onMap = pos.x >= 0 && pos.x < gridManager.gridSizeX && pos.y >= 0 && pos.y < gridManager.gridSizeY;
-            // A sale is previewed on top of what stands there, so the ghost sits above it.
-            float lift = playerBuilder.Tool == BuildTool.Sell ? gridManager.nodeRadius * 2f + 0.1f : 0.1f;
+            // Over something that stands there, the ghost sits on top of it.
+            bool built = playerBuilder.Tool != BuildTool.Wall && playerBuilder.Tool != BuildTool.Tower
+                         && !(playerBuilder.Tool == BuildTool.MoveTower && onMap && playerBuilder.TowerAt(gridManager.grid[pos.x, pos.y]) == null);
+            float lift = built ? gridManager.nodeRadius * 2f + 0.1f : 0.1f;
             activeGhostTiles[i].transform.position = onMap ? gridManager.grid[pos.x, pos.y].worldPosition + Vector3.up * lift : Vector3.down * 100;
         }
 
-        // A sale is drawn in the "invalid" (red) material even when it would work:
-        // red is what is about to go.
-        Material material = valid && playerBuilder.Tool != BuildTool.Sell ? validMaterial : invalidMaterial;
+        Material material = valid && !redGhost ? validMaterial : invalidMaterial;
         if (material == lastAppliedMaterial) return;
         lastAppliedMaterial = material;
         foreach (GameObject g in activeGhostTiles)

@@ -30,6 +30,7 @@ namespace Thesis.Tests
                 Config = SmallConfig(),
                 Map = AsciiMap.Parse(SmallMap, "small").Map,
                 Shapes = TestShapes.SampleSceneLibrary(),
+                Towers = TestTowers.Roster(),
                 Seed = seed,
                 Planner = planner,
                 Policy = policy ?? SequencePolicy.Mixed(wallsPerPhase: 2, towersPerPhase: 3),

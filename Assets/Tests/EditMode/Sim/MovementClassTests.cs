@@ -431,8 +431,8 @@ namespace Thesis.Tests.Sim
         [Test]
         public void CanHitIsTheOneRule()
         {
-            var aa = TestTowers.Gun(canHitFlying: true);
-            var groundOnly = TestTowers.Gun(canHitFlying: false);
+            var aa = new TowerState(0, TestTowers.Gun(canHitFlying: true), new TileCoord(0, 0), new Vec2f(0f, 0f), 2f, 0);
+            var groundOnly = new TowerState(1, TestTowers.Gun(canHitFlying: false), new TileCoord(1, 0), new Vec2f(2f, 0f), 2f, 0);
             foreach (MovementClass movement in new[] { MovementClass.Ground, MovementClass.Sapper, MovementClass.Flying })
             {
                 AgentState a = TestTowers.Agent(0, new Vec2f(0f, 0f), movement: movement);

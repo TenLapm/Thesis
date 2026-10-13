@@ -26,6 +26,7 @@ namespace Thesis.Sim
         private readonly MapData map;
         private readonly ShapeDef[] library;
         private readonly TowerDef[] towerLibrary;
+        private readonly GearDef[] gearLibrary = GearRoster.Default();
         private readonly IWavePlanner planner;
         private readonly IThreatPricer pricer;
         private readonly int maxWaveTicks;
@@ -76,6 +77,7 @@ namespace Thesis.Sim
             // The first offers are there before the first tick: the player builds
             // from them during the prep phase.
             s.Shop = RollShop(0, 0);
+            s.GearShop = RollGearShop(0);
 
             State = s;
         }
@@ -116,6 +118,9 @@ namespace Thesis.Sim
         // names a tower by its index here. Pure data, never changed during a run; a
         // replay stores it next to the shapes.
         public TowerDef[] TowerLibrary => towerLibrary;
+
+        // Every piece of gear. A gear card and a tower name a piece by its index here.
+        public GearDef[] GearLibrary => gearLibrary;
 
         // Everything that happened during the most recent Tick(), in order.
         public IReadOnlyList<SimEvent> LastTickEvents => events;
@@ -190,8 +195,13 @@ namespace Thesis.Sim
             // countdown itself, so the result is the same as decrementing first.
             if (s.Phase == SimPhase.Prep || s.Phase == SimPhase.Intermission)
             {
-                if (s.PhaseTicksRemaining - 1 <= 0 || s.StartWaveRequested) BeginWave(s);
-                else s.PhaseTicksRemaining--;
+                // With PlanAhead the next wave is decided as the build phase begins. If
+                // the planner throws, nothing has changed and the next tick asks again.
+                if (config.PlanAhead && s.NextPlan == null) s.NextPlan = PlanNextWave(s);
+
+                // With WaitForStart the build phase has no clock: only the player ends it.
+                if (s.StartWaveRequested || (!config.WaitForStart && s.PhaseTicksRemaining - 1 <= 0)) BeginWave(s);
+                else if (!config.WaitForStart) s.PhaseTicksRemaining--;
             }
             s.StartWaveRequested = false; // consumed, or meaningless mid-wave
             if (s.Phase == SimPhase.Spawning) SpawnDue(s);
@@ -231,6 +241,8 @@ namespace Thesis.Sim
                 // the next wave, until that one resolves.
                 s.Shop = RollShop(s.WaveIndex, 0);
                 events.Add(SimEvent.ShopRolled(s.Shop.WaveIndex, s.Shop.RerollCount));
+                if (config.GearShopSlots > 0 && config.GearShopRefreshWaves > 0 && s.WaveIndex % config.GearShopRefreshWaves == 0)
+                    s.GearShop = RollGearShop(s.WaveIndex / config.GearShopRefreshWaves);
             }
 
             // 6. Core destroyed. If a wave was running, close it first so the planner
@@ -284,13 +296,75 @@ namespace Thesis.Sim
                     if (command.A >= 0 && command.A < s.Shop.Offers.Length)
                     {
                         TowerOffer offer = s.Shop.Offers[command.A];
-                        if (!offer.Bought && Placement.TryPlaceTower(s.Grid, map, fields, towerLibrary[offer.TowerIndex], offer.Price,
-                                                                     new TileCoord(command.X, command.Y), ref s.BuildBudget, s.Tick,
-                                                                     s.Towers, s.PlacementLog, events))
+                        if (!offer.Bought && s.Shop.MayPick && offer.Kind == CardKind.Tower
+                            && TowerCombine.HasRoomFor(s.Towers, towerLibrary[offer.TowerIndex], offer.Level, config, s.WaveIndex)
+                            && Placement.TryPlaceTower(s.Grid, map, fields, towerLibrary[offer.TowerIndex], offer.Price,
+                                                       new TileCoord(command.X, command.Y), ref s.BuildBudget, s.Tick,
+                                                       s.Towers, s.PlacementLog, events, offer.Level))
                         {
                             offer.Bought = true; // each slot once
+                            Picked(s);
+                            TowerCombine.Combine(s.Grid, map, fields, s.Towers[s.Towers.Count - 1], config, gearLibrary, ref s.BuildBudget, s.Tick,
+                                                 s.Towers, s.PlacementLog, events);
                         }
                     }
+                    break;
+                case SimCommandKind.TakeCoin:
+                    if (command.A >= 0 && command.A < s.Shop.Offers.Length)
+                    {
+                        TowerOffer card = s.Shop.Offers[command.A];
+                        if (!card.Bought && s.Shop.MayPick && card.Kind == CardKind.Coin)
+                        {
+                            TowerUpgrades.TakeCoin(card, ref s.BuildBudget, s.Tick, s.PlacementLog);
+                            card.Bought = true;
+                            Picked(s);
+                        }
+                    }
+                    break;
+                case SimCommandKind.BuyGear:
+                    if (command.A >= 0 && command.A < s.Shop.Offers.Length)
+                    {
+                        TowerOffer card = s.Shop.Offers[command.A];
+                        if (!card.Bought && s.Shop.MayPick && card.Kind == CardKind.Gear
+                            && TowerUpgrades.TryBuyGear(s.Grid, new TileCoord(command.X, command.Y), card.GearIndex, card.Price, gearLibrary,
+                                                        ref s.BuildBudget, s.Tick, s.Towers, s.PlacementLog, events))
+                        {
+                            card.Bought = true;
+                            Picked(s);
+                        }
+                    }
+                    break;
+                case SimCommandKind.BuyShopGear:
+                    if (command.A >= 0 && command.A < s.GearShop.Offers.Length)
+                    {
+                        TowerOffer item = s.GearShop.Offers[command.A];
+                        if (!item.Bought
+                            && TowerUpgrades.TryBuyGear(s.Grid, new TileCoord(command.X, command.Y), item.GearIndex, item.Price, gearLibrary,
+                                                        ref s.BuildBudget, s.Tick, s.Towers, s.PlacementLog, events))
+                        {
+                            item.Bought = true;
+                        }
+                    }
+                    break;
+                case SimCommandKind.MoveGear:
+                    if (config.MoveGearDuringWave || s.Phase == SimPhase.Prep || s.Phase == SimPhase.Intermission)
+                    {
+                        TowerUpgrades.TryMoveGear(s.Grid, new TileCoord(command.X, command.Y), command.A, new TileCoord(command.B, command.C), gearLibrary,
+                                                  s.Tick, s.Towers, s.PlacementLog, events);
+                    }
+                    break;
+                case SimCommandKind.MoveTower:
+                    if (config.MoveTowers && (s.Phase == SimPhase.Prep || s.Phase == SimPhase.Intermission))
+                    {
+                        Placement.TryMoveTower(s.Grid, map, fields, new TileCoord(command.X, command.Y), new TileCoord(command.B, command.C), s.Tick,
+                                               s.Towers, s.PlacementLog, events);
+                    }
+                    break;
+                case SimCommandKind.UpgradeTower:
+                    // A factor of 0 switches paid upgrades off (levels then come from combining only).
+                    if (config.UpgradeCostFactor > 0f)
+                    TowerUpgrades.TryUpgrade(s.Grid, new TileCoord(command.X, command.Y), config, gearLibrary, ref s.BuildBudget, s.Tick,
+                                             s.Towers, s.PlacementLog, events);
                     break;
                 case SimCommandKind.SellTower:
                     if (MaySell(s))
@@ -310,11 +384,16 @@ namespace Thesis.Sim
                     // Off unless the config puts a price on it. The new offers are
                     // the next roll of the SAME wave, so they too depend on nothing
                     // but the seed and the two counters (I10).
-                    if (config.RerollCost >= 0f && s.BuildBudget >= config.RerollCost)
+                    // In a draft the picks not yet used carry over to the new cards, and
+                    // with none left there is nothing to reroll for.
+                    if (config.RerollCost >= 0f && s.Shop.MayPick && s.BuildBudget >= RerollPrice)
                     {
-                        s.BuildBudget -= config.RerollCost;
+                        float price = RerollPrice;
+                        int picks = s.Shop.PicksLeft;
+                        s.BuildBudget -= price;
                         s.Shop = RollShop(s.Shop.WaveIndex, s.Shop.RerollCount + 1);
-                        s.PlacementLog.Add(new PlacementRecord { Kind = PlacementKind.ShopReroll, Tick = s.Tick, Cost = config.RerollCost });
+                        s.Shop.PicksLeft = picks;
+                        s.PlacementLog.Add(new PlacementRecord { Kind = PlacementKind.ShopReroll, Tick = s.Tick, Cost = price });
                         events.Add(SimEvent.ShopRolled(s.Shop.WaveIndex, s.Shop.RerollCount));
                     }
                     break;
@@ -322,6 +401,13 @@ namespace Thesis.Sim
                     throw new InvalidOperationException("[Sim] Unknown command kind " + command.Kind + ".");
             }
         }
+
+        // What the next reroll costs: the base price, and the step for every reroll
+        // already made of this wave's cards. Meaningless while rerolls are off.
+        public float RerollPrice => (float)(config.RerollCost + (float)(config.RerollCostStep * State.Shop.RerollCount));
+
+        // How many towers may stand right now; 0 = no limit.
+        public int TowerCap => TowerCombine.CapAt(config, State.WaveIndex);
 
         // Selling is for build phases, unless the config says otherwise: see
         // SimConfig.SellDuringWave for why.
@@ -334,12 +420,43 @@ namespace Thesis.Sim
         // two counters (ShopRoller, CLAUDE.md I10).
         private ShopState RollShop(int waveIndex, int rerollCount)
         {
-            return new ShopState
+            var shop = new ShopState
             {
                 WaveIndex = waveIndex,
                 RerollCount = rerollCount,
-                Offers = ShopRoller.Roll(RngSeed, waveIndex, rerollCount, towerLibrary, config.ShopOffers),
+                Offers = ShopRoller.Roll(RngSeed, waveIndex, rerollCount, towerLibrary, config.ShopOffers, config, gearLibrary),
             };
+
+            // A draft: the cards cost nothing and only so many may be taken.
+            if (config.PicksPerRoll > 0)
+            {
+                shop.PicksLeft = waveIndex == 0 ? Math.Max(config.PicksPerRoll, config.PicksAtStart) : config.PicksPerRoll;
+                for (int i = 0; i < shop.Offers.Length; i++) shop.Offers[i].Price = 0;
+            }
+            return shop;
+        }
+
+        private static void Picked(SimState s)
+        {
+            if (s.Shop.PicksLeft > 0) s.Shop.PicksLeft--;
+        }
+
+        private ShopState RollGearShop(int stock)
+        {
+            return new ShopState { WaveIndex = stock, Offers = ShopRoller.RollGearShop(RngSeed, stock, gearLibrary, config.GearShopSlots) };
+        }
+
+        // Asks the planner for the wave after the current one and checks it, changing
+        // nothing: the caller decides what to do with the plan.
+        private WavePlan PlanNextWave(SimState s)
+        {
+            int wave = s.WaveIndex + 1;
+            var context = new WaveContext(wave, s, map, config);
+            ulong before = StateHasher.Compute(s);
+            WavePlan plan = planner.PlanWave(context);
+            GuardUnchanged(s, before, "PlanWave", wave);
+            ValidatePlan(plan, wave);
+            return plan.Copy();
         }
 
         private void BeginWave(SimState s)
@@ -352,12 +469,9 @@ namespace Thesis.Sim
             // So during PlanWave, State.WaveIndex is still the previous wave's number.
             // The wave being planned is context.WaveIndex.
             int wave = s.WaveIndex + 1;
-            var context = new WaveContext(wave, s, map, config);
-            ulong before = StateHasher.Compute(s);
-            WavePlan plan = planner.PlanWave(context);
-            GuardUnchanged(s, before, "PlanWave", wave);
-            ValidatePlan(plan, wave);
+            WavePlan plan = s.NextPlan ?? PlanNextWave(s);
 
+            s.NextPlan = null;
             s.WaveIndex = wave;
             s.CurrentPlan = plan.Copy(); // our own copy: the planner cannot edit a running wave
             BuildSchedule(s, s.CurrentPlan);

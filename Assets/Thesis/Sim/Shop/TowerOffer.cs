@@ -3,8 +3,31 @@ namespace Thesis.Sim
     // One slot of the shop: a tower type the player may buy until the next roll.
     // A PlaceTower command names the slot, not the tower type, so a player can only
     // ever build what the shop is offering (CLAUDE.md §2).
+    //
+    // Since 2026-10-12 a slot holds a CARD, and a card is one of three things: a
+    // tower (possibly rare or epic), a handful of budget, or a piece of gear. The
+    // class keeps its name: most cards are towers, and every caller that only knows
+    // towers still reads the right fields.
+    public enum CardKind
+    {
+        Tower = 0,
+        Coin = 1,   // PlaceTower does nothing with it; TakeCoin pays Amount into the budget
+        Gear = 2,   // BuyGear puts GearIndex onto a tower for Price
+    }
+
     public sealed class TowerOffer
     {
+        public CardKind Kind;
+
+        // A tower card's level: 1 common, 2 rare, 3 epic.
+        public int Level = 1;
+
+        // A gear card's piece: its index in the gear roster. -1 otherwise.
+        public int GearIndex = -1;
+
+        // A coin card's budget. 0 otherwise.
+        public int Amount;
+
         // Which tower: its index in the simulation's tower roster.
         public int TowerIndex;
 

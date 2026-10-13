@@ -12,6 +12,9 @@ public enum BuildTool
     Wall,   // click a tile, or drag to draw a line of wall tiles
     Sell,   // click a tower or a wall tile; drag over wall tiles
     Tower,  // a shop offer picked from its card, waiting for a tile
+    Gear,     // a gear card picked from the shop, waiting for a tower
+    MoveTower, // click a tower to pick it up, then the free tile it goes to
+    MoveGear, // click a tower to pick its gear up, then the tower it goes to
 }
 
 // Player input for building, and the visuals of what is built.
@@ -93,11 +96,77 @@ public class PlayerBuilder : MonoBehaviour
     // Selling is for the time between waves (SimConfig.SellDuringWave).
     public bool MaySell => IsBuildPhase || Host.Config.SellDuringWave;
 
-    public void SelectWall() { Tool = BuildTool.Wall; SelectedOffer = -1; }
+    public void SelectWall() { Hold(BuildTool.Wall); }
 
-    public void SelectSell() { Tool = BuildTool.Sell; SelectedOffer = -1; }
+    public void SelectSell() { Hold(BuildTool.Sell); }
 
-    public void PutDown() { Tool = BuildTool.None; SelectedOffer = -1; }
+    public void PutDown() { Hold(BuildTool.None); }
+
+    public void SelectMoveTower() { Hold(BuildTool.MoveTower); }
+
+    public void SelectMoveGear() { Hold(BuildTool.MoveGear); }
+
+    private void Hold(BuildTool tool)
+    {
+        Tool = tool;
+        SelectedOffer = -1;
+        SelectedShopGear = -1;
+        GearFrom = null;
+        TowerFrom = null;
+    }
+
+    // While moving a tower: the tile it was picked up from, or null before the first click.
+    public Node TowerFrom { get; private set; }
+
+    public bool MayMoveTower => Host.Config.MoveTowers && IsBuildPhase;
+
+    // --- rerolling the cards ---
+
+    public bool RerollsOn => Host.Config.RerollCost >= 0f;
+
+    public float RerollPrice => Host.Sim.RerollPrice;
+
+    public bool CanReroll => RerollsOn && Host.State.Shop.MayPick && Host.State.BuildBudget >= RerollPrice && !IsBuildingBlocked;
+
+    public void Reroll()
+    {
+        if (!CanReroll) return;
+        if (Tool == BuildTool.Tower || (Tool == BuildTool.Gear && SelectedShopGear < 0)) SelectWall();
+        Host.Submit(SimCommand.RerollShop());
+    }
+
+    // --- how many towers stand, and how many may ---
+
+    public int TowerCap => Host.Sim.TowerCap;
+
+    public int TowersStanding => TowerCombine.Standing(Host.State.Towers);
+
+    // Standing towers like this card's (same type, same level).
+    public int CopiesOf(TowerOffer card) { return TowerCombine.Copies(Host.State.Towers, Host.Sim.TowerLibrary[card.TowerIndex], card.Level); }
+
+    public bool WouldCombine(TowerOffer card) { return TowerCombine.WouldCombine(Host.State.Towers, Host.Sim.TowerLibrary[card.TowerIndex], card.Level, Host.Config); }
+
+    public bool HasRoomFor(TowerOffer card) { return TowerCombine.HasRoomFor(Host.State.Towers, Host.Sim.TowerLibrary[card.TowerIndex], card.Level, Host.Config, Host.State.WaveIndex); }
+
+    // The gear shop's slot in the hand while Tool is Gear and the piece comes from the
+    // gear shop, not from a card; -1 otherwise.
+    public int SelectedShopGear { get; private set; } = -1;
+
+    // Picks a piece up from the gear shop. It goes onto the next tower clicked.
+    public void SelectShopGear(int slot)
+    {
+        TowerOffer[] stock = Host.State.GearShop.Offers;
+        if (slot < 0 || slot >= stock.Length) return;
+        if (Tool == BuildTool.Gear && SelectedShopGear == slot) { SelectWall(); return; }
+        if (stock[slot].Bought || Host.State.BuildBudget < stock[slot].Price) return;
+        Tool = BuildTool.Gear;
+        SelectedOffer = -1;
+        SelectedShopGear = slot;
+        GearFrom = null;
+    }
+
+    // While moving gear: the tower it was picked up from, or null before the first click.
+    public Node GearFrom { get; private set; }
 
     // Picks a shop offer up. An offer that is bought, or that the budget does not
     // reach, cannot be picked up; clicking the offer already in the hand puts it down.
@@ -105,10 +174,19 @@ public class PlayerBuilder : MonoBehaviour
     {
         TowerOffer[] offers = Host.State.Shop.Offers;
         if (slot < 0 || slot >= offers.Length) return;
-        if (Tool == BuildTool.Tower && SelectedOffer == slot) { SelectWall(); return; }
-        if (offers[slot].Bought || Host.State.BuildBudget < offers[slot].Price) return;
-        Tool = BuildTool.Tower;
+        if ((Tool == BuildTool.Tower || Tool == BuildTool.Gear) && SelectedOffer == slot) { SelectWall(); return; }
+        if (!CanPickUp(slot)) return;
+
+        // A coin card is taken on the spot; a gear card goes into the hand like a tower.
+        if (offers[slot].Kind == CardKind.Coin)
+        {
+            Host.Submit(SimCommand.TakeCoin(slot));
+            return;
+        }
+        Tool = offers[slot].Kind == CardKind.Gear ? BuildTool.Gear : BuildTool.Tower;
         SelectedOffer = slot;
+        SelectedShopGear = -1;
+        GearFrom = null;
     }
 
     void Awake()
@@ -139,8 +217,16 @@ public class PlayerBuilder : MonoBehaviour
 
             if (Keyboard.current.escapeKey.wasPressedThisFrame || Mouse.current.rightButton.wasPressedThisFrame) PutDown();
 
+            // The tools and the reroll have a key each (the student, 2026-10-13).
+            if (Keyboard.current.wKey.wasPressedThisFrame) SelectWall();
+            if (Keyboard.current.xKey.wasPressedThisFrame) SelectSell();
+            if (Keyboard.current.mKey.wasPressedThisFrame) SelectMoveTower();
+            if (Keyboard.current.dKey.wasPressedThisFrame) Reroll();
+
             // The shop's offers change under a tower in the hand when a wave resolves.
             if (Tool == BuildTool.Tower && !CanPickUp(SelectedOffer)) SelectWall();
+            if (Tool == BuildTool.Gear && SelectedShopGear < 0 && !CanPickUp(SelectedOffer)) SelectWall();
+            if (Tool == BuildTool.Gear && SelectedShopGear >= 0 && (SelectedShopGear >= Host.State.GearShop.Offers.Length || Host.State.GearShop.Offers[SelectedShopGear].Bought)) SelectWall();
             if (Tool == BuildTool.Sell && !MaySell) dragging = false;
 
             // No building while paused - pause is a plan-and-look state, not a
@@ -180,6 +266,43 @@ public class PlayerBuilder : MonoBehaviour
                 break;
             case BuildTool.Tower:
                 if (first && TryBuyOffer(SelectedOffer, node.gridX, node.gridY)) SelectWall();
+                break;
+            case BuildTool.Gear:
+                if (!first) break;
+                if (SelectedShopGear >= 0) Host.Submit(SimCommand.BuyShopGear(SelectedShopGear, node.gridX, node.gridY));
+                else Host.Submit(SimCommand.BuyGear(SelectedOffer, node.gridX, node.gridY));
+                // Update() puts the hand down once the piece is sold.
+                break;
+            case BuildTool.MoveTower:
+                if (!first || !MayMoveTower) break;
+                if (TowerFrom == null || TowerAt(TowerFrom) == null)
+                {
+                    TowerFrom = TowerAt(node) != null ? node : null;
+                }
+                else if (TowerAt(node) != null)
+                {
+                    TowerFrom = node == TowerFrom ? null : node; // another tower: pick that one up
+                }
+                else
+                {
+                    Host.Submit(SimCommand.MoveTower(TowerFrom.gridX, TowerFrom.gridY, node.gridX, node.gridY));
+                    if (TowerAt(TowerFrom) == null) TowerFrom = null; // it went
+                }
+                break;
+            case BuildTool.MoveGear:
+                if (!first) break;
+                TowerState here = TowerAt(node);
+                if (GearFrom == null)
+                {
+                    if (here != null && FirstGearSlot(here) >= 0) GearFrom = node;
+                }
+                else
+                {
+                    TowerState source = TowerAt(GearFrom);
+                    if (source != null && here != null && here != source)
+                        Host.Submit(SimCommand.MoveGear(GearFrom.gridX, GearFrom.gridY, FirstGearSlot(source), node.gridX, node.gridY));
+                    GearFrom = null;
+                }
                 break;
         }
     }
@@ -234,22 +357,58 @@ public class PlayerBuilder : MonoBehaviour
     public bool CanPickUp(int slot)
     {
         TowerOffer[] offers = Host.State.Shop.Offers;
-        return slot >= 0 && slot < offers.Length && !offers[slot].Bought && Host.State.BuildBudget >= offers[slot].Price;
+        return slot >= 0 && slot < offers.Length && !offers[slot].Bought && Host.State.Shop.MayPick && Host.State.BuildBudget >= offers[slot].Price;
     }
 
     public bool CanPlaceTower(Node node, int slot)
     {
         if (node == null || !CanPickUp(slot)) return false;
+        TowerOffer card = Host.State.Shop.Offers[slot];
+        if (card.Kind == CardKind.Tower && !HasRoomFor(card)) return false;
+        return IsFreeTile(node);
+    }
+
+    // A tile a tower could stand on (Placement.CanPlace, I9).
+    public bool IsFreeTile(Node node)
+    {
+        if (node == null) return false;
         oneTile.Clear();
         oneTile.Add(new Vector2Int(node.gridX, node.gridY));
         return AreTilesPlaceable(oneTile);
+    }
+
+    // The living tower on a tile, or null.
+    public TowerState TowerAt(Node node)
+    {
+        if (node == null) return null;
+        SimNode sim = Host.State.Grid[node.gridX, node.gridY];
+        if (sim.Occupant != Occupant.Tower) return null;
+        TowerState tower = Host.State.Towers[sim.TowerId];
+        return tower.IsAlive ? tower : null;
+    }
+
+    public static int FirstGearSlot(TowerState tower)
+    {
+        for (int i = 0; i < TowerState.MaxGearSlots; i++) if (tower.Gear[i] != TowerState.NoGear) return i;
+        return -1;
+    }
+
+    public bool MayMoveGear => IsBuildPhase || Host.Config.MoveGearDuringWave;
+
+    // One line about a tower: its name, its level, its gear.
+    public string Describe(TowerState tower)
+    {
+        string text = tower.Def.Id + (tower.Level == 2 ? " (rare)" : tower.Level >= 3 ? " (epic)" : "");
+        for (int i = 0; i < TowerState.MaxGearSlots; i++)
+            if (tower.Gear[i] != TowerState.NoGear) text += "  +" + Host.Sim.GearLibrary[tower.Gear[i]].Id;
+        return text;
     }
 
     // The definition of the offer in a slot, or null.
     public TowerDef OfferDef(int slot)
     {
         TowerOffer[] offers = Host.State.Shop.Offers;
-        if (slot < 0 || slot >= offers.Length) return null;
+        if (slot < 0 || slot >= offers.Length || offers[slot].Kind != CardKind.Tower) return null;
         return Host.Sim.TowerLibrary[offers[slot].TowerIndex];
     }
 
@@ -326,19 +485,28 @@ public class PlayerBuilder : MonoBehaviour
                 for (int i = 0; i < record.Tiles.Length; i++) RemoveVisual(gridManager.grid[record.Tiles[i].X, record.Tiles[i].Y]);
                 continue;
             }
+            // A merge empties the tiles of the towers it absorbed; the one that stays
+            // is redrawn by its TowerChanged event.
+            if (record.IsCombine)
+            {
+                for (int i = 0; i < record.Tiles.Length; i++) RemoveVisual(gridManager.grid[record.Tiles[i].X, record.Tiles[i].Y]);
+                RefreshTower(record.TowerId);
+                continue;
+            }
+            // A moved tower: its view goes with it. Tiles are { from, to }.
+            if (record.Kind == PlacementKind.TowerMoved)
+            {
+                RemoveVisual(gridManager.grid[record.Tiles[0].X, record.Tiles[0].Y]);
+                DrawTower(Host.State.Towers[record.TowerId], gridManager.grid[record.Tiles[1].X, record.Tiles[1].Y], cellSize);
+                continue;
+            }
             if (!record.IsPlacement) continue; // a shop reroll puts nothing on the board
 
             if (record.Kind == PlacementKind.Tower)
             {
-                TowerState tower = Host.State.Towers[record.TowerId];
-                Node node = gridManager.grid[tower.Tile.X, tower.Tile.Y];
-                TowerView view = TowerView.Create(tower, node.worldPosition, cellSize);
-                towerViews[tower.Id] = view;
-                node.visualObject = view.gameObject;
-                wallTiles.Add(node);
+                DrawTower(Host.State.Towers[record.TowerId], gridManager.grid[record.OriginX, record.OriginY], cellSize);
                 continue;
             }
-
             // A wall is drawn a little lower than it is wide: from straight above
             // only its top shows, and a low block keeps the enemies beside it in view.
             for (int i = 0; i < record.Tiles.Length; i++)
@@ -358,6 +526,21 @@ public class PlayerBuilder : MonoBehaviour
         }
     }
 
+    private void DrawTower(TowerState tower, Node node, float cellSize)
+    {
+        RemoveVisual(node);
+        TowerView view = TowerView.Create(tower, node.worldPosition, cellSize);
+        view.Show(tower, Host.Sim.GearLibrary.Length);
+        towerViews[tower.Id] = view;
+        node.visualObject = view.gameObject;
+        wallTiles.Add(node);
+    }
+
+    private void RefreshTower(int id)
+    {
+        if (towerViews.TryGetValue(id, out TowerView view) && view != null) view.Show(Host.State.Towers[id], Host.Sim.GearLibrary.Length);
+    }
+
     private void OnSimEvent(SimEvent e)
     {
         switch (e.Kind)
@@ -372,12 +555,16 @@ public class PlayerBuilder : MonoBehaviour
                 break;
             // IntA = tower id, IntB = target agent id. The hit is already resolved;
             // this only shows it. A dead agent keeps its last position in the list.
+            // A tower's level or gear changed: its view shows both.
+            case SimEventKind.TowerChanged:
+                if (towerViews.TryGetValue(e.IntA, out TowerView changed) && changed != null) changed.Show(Host.State.Towers[e.IntA], Host.Sim.GearLibrary.Length);
+                break;
             case SimEventKind.TowerFired:
                 if (towerViews.TryGetValue(e.IntA, out TowerView view) && view != null)
                 {
                     AgentState target = Host.State.Agents[e.IntB];
                     float y = Host.GroundY + gridManager.nodeRadius * (target.Movement == MovementClass.Flying ? 2.2f : 0.6f);
-                    view.Fire(new Vector3(target.Position.X, y, target.Position.Y));
+                    view.Fire(new Vector3(target.Position.X, y, target.Position.Y), Mathf.Sqrt(Host.State.Towers[e.IntA].SplashSquared));
                 }
                 break;
         }

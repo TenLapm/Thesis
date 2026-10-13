@@ -38,6 +38,7 @@ namespace Thesis.Cli
                 Config = LoadConfig(args.Get("--config", null)),
                 Map = MapData.Load(args.Get("--map", Path.Combine("Maps", "SampleScene.map.json"))),
                 Shapes = ShapeLibraryFile.Load(args.Get("--shapes", Path.Combine("Maps", "Shapes.json"))),
+                Towers = TowerLibraryFile.Load(args.Get("--towers", Path.Combine("Maps", "Towers.json"))),
                 Seed = seed,
                 Planner = args.Get("--planner", EscalationPlanner.Id),
                 Policy = Registry.CreatePolicy(policyName),
@@ -69,9 +70,17 @@ namespace Thesis.Cli
             return 0;
         }
 
-        private static SimConfig LoadConfig(string path)
+        internal static readonly string GameConfigPath = Path.Combine("Maps", "SimConfig.json");
+
+        internal static SimConfig LoadConfig(string path)
         {
-            if (path == null) return new SimConfig();
+            // No file named: the game's own numbers, as exported from SimConfig.asset
+            // (menu Thesis/Export Config). Without that file, the C# defaults.
+            if (path == null)
+            {
+                path = GameConfigPath;
+                if (!File.Exists(path)) return new SimConfig();
+            }
             if (!File.Exists(path)) throw new FileNotFoundException("Config file not found.", path);
             try
             {

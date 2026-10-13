@@ -17,9 +17,15 @@ namespace Thesis.Sim
         public int RerollCount;
         public TowerOffer[] Offers = new TowerOffer[0];
 
+        // How many of these offers the player may still take. -1 = as many as the
+        // budget buys (the shop before the draft of 2026-10-12, SimConfig.PicksPerRoll 0).
+        public int PicksLeft = -1;
+
+        public bool MayPick => PicksLeft != 0;
+
         public ShopState Clone()
         {
-            var c = new ShopState { WaveIndex = WaveIndex, RerollCount = RerollCount, Offers = new TowerOffer[Offers.Length] };
+            var c = new ShopState { WaveIndex = WaveIndex, RerollCount = RerollCount, PicksLeft = PicksLeft, Offers = new TowerOffer[Offers.Length] };
             for (int i = 0; i < Offers.Length; i++) c.Offers[i] = Offers[i].Clone();
             return c;
         }
@@ -28,12 +34,17 @@ namespace Thesis.Sim
         {
             h.Add(WaveIndex);
             h.Add(RerollCount);
+            h.Add(PicksLeft);
             h.Add(Offers.Length);
             for (int i = 0; i < Offers.Length; i++)
             {
                 h.Add(Offers[i].TowerIndex);
                 h.Add(Offers[i].Price);
                 h.Add(Offers[i].Bought);
+                h.Add((int)Offers[i].Kind);
+                h.Add(Offers[i].Level);
+                h.Add(Offers[i].GearIndex);
+                h.Add(Offers[i].Amount);
             }
         }
     }

@@ -307,7 +307,16 @@ public class CanvasDashboard : MonoBehaviour
             if (waveSpawner.isIntermission)
             {
                 int secs = Mathf.CeilToInt(waveSpawner.intermissionTimeRemaining);
-                if (waveSpawner.currentWave == 0)
+                if (waveSpawner.WaitsForStart)
+                {
+                    // No clock: the build phase lasts until the player presses Start.
+                    string next = waveSpawner.NextWaveText;
+                    waveText.text = next.Length > 0
+                        ? $"Next, wave {waveSpawner.currentWave + 1}: {next}\nBuild, then press Start"
+                        : waveSpawner.currentWave == 0 ? "Build, then press Start"
+                        : $"Wave {waveSpawner.currentWave} cleared\nPress Start for wave {waveSpawner.currentWave + 1}";
+                }
+                else if (waveSpawner.currentWave == 0)
                 {
                     waveText.text = $"Wave 1 begins in {secs}s\n(or press Start)";
                 }

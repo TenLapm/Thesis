@@ -659,9 +659,9 @@ RectTransform:
   - {fileID: 300352991}
   m_Father: {fileID: 429773779}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0, y: 1}
-  m_AnchorMax: {x: 0, y: 1}
-  m_AnchoredPosition: {x: 83, y: -55}
+  m_AnchorMin: {x: 0, y: 0}
+  m_AnchorMax: {x: 0, y: 0}
+  m_AnchoredPosition: {x: 0, y: 0}
   m_SizeDelta: {x: 130, y: 44}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!1 &170105729
@@ -2225,9 +2225,9 @@ RectTransform:
   - {fileID: 773715409}
   m_Father: {fileID: 1922555638}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0, y: 1}
-  m_AnchorMax: {x: 0, y: 1}
-  m_AnchoredPosition: {x: 960, y: -75}
+  m_AnchorMin: {x: 0, y: 0}
+  m_AnchorMax: {x: 0, y: 0}
+  m_AnchoredPosition: {x: 0, y: 0}
   m_SizeDelta: {x: 360, y: 110}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &429773780
@@ -2968,9 +2968,9 @@ RectTransform:
   - {fileID: 135124682}
   m_Father: {fileID: 429773779}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0, y: 1}
-  m_AnchorMax: {x: 0, y: 1}
-  m_AnchoredPosition: {x: 292, y: -55}
+  m_AnchorMin: {x: 0, y: 0}
+  m_AnchorMax: {x: 0, y: 0}
+  m_AnchoredPosition: {x: 0, y: 0}
   m_SizeDelta: {x: 100, y: 44}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &773715410
@@ -3991,9 +3991,9 @@ RectTransform:
   - {fileID: 547846877}
   m_Father: {fileID: 429773779}
   m_LocalEulerAnglesHint: {x: 0, y: 0, z: 0}
-  m_AnchorMin: {x: 0, y: 1}
-  m_AnchorMax: {x: 0, y: 1}
-  m_AnchoredPosition: {x: 195, y: -55}
+  m_AnchorMin: {x: 0, y: 0}
+  m_AnchorMax: {x: 0, y: 0}
+  m_AnchoredPosition: {x: 0, y: 0}
   m_SizeDelta: {x: 70, y: 44}
   m_Pivot: {x: 0.5, y: 0.5}
 --- !u!114 &1144058888
@@ -4796,7 +4796,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 36772e77f360ca6488d7c93513a30ff4, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::DirectorHost
-  condition: 0
+  condition: 100
 --- !u!114 &1537456306
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -4815,6 +4815,15 @@ MonoBehaviour:
   maxTicksPerFrame: 20
   recordReplay: 1
   recordTickHashes: 1
+  towerRoster:
+  - {fileID: 11400000, guid: debdded3dabeae741a682d6597ab6316, type: 2}
+  - {fileID: 11400000, guid: e9196e131bf8a1b438a2bb2626150e39, type: 2}
+  - {fileID: 11400000, guid: 38d9a3e2a6100c042ad8de46dd444ec3, type: 2}
+  - {fileID: 11400000, guid: d4719a28cbb381447828017e32c39cdf, type: 2}
+  - {fileID: 11400000, guid: 1ed2d7ac9caef0c43b41f2a8cac8033b, type: 2}
+  - {fileID: 11400000, guid: fb90f4ecf9bf9cd488556b8dddefade2, type: 2}
+  - {fileID: 11400000, guid: 09db33c1d9751d744acce5bf66fed76c, type: 2}
+  - {fileID: 11400000, guid: 4baae109a0bb24344bc7aa581ed460a6, type: 2}
   gridManager: {fileID: 0}
   flowManager: {fileID: 0}
   waveSpawner: {fileID: 0}

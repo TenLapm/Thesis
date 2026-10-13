@@ -40,10 +40,12 @@ public static class ReplayMenu
         string root = Path.GetFullPath(Path.Combine(Application.dataPath, ".."));
         MapData map;
         ShapeDef[] shapes;
+        TowerDef[] towers;
         try
         {
             map = MapData.Load(Path.Combine(root, "Maps", "SampleScene.map.json"));
             shapes = ShapeLibraryFile.Load(Path.Combine(root, "Maps", "Shapes.json"));
+            towers = TowerLibraryFile.Load(Path.Combine(root, "Maps", "Towers.json"));
         }
         catch (System.Exception e) when (e is IOException || e is InvalidDataException)
         {
@@ -52,7 +54,7 @@ public static class ReplayMenu
         }
 
         string dir = Path.Combine(root, PinnedEpisodes.Folder);
-        var written = PinnedEpisodes.RecordAll(dir, PinnedEpisodes.MonoTag, "Unity " + Application.unityVersion + " editor (Mono)", map, shapes, TowerRoster.Placeholder());
+        var written = PinnedEpisodes.RecordAll(dir, PinnedEpisodes.MonoTag, "Unity " + Application.unityVersion + " editor (Mono)", map, shapes, towers);
         Debug.Log("[Replay] Recorded " + written.Count + " pinned episodes under Mono into " + dir
                   + ". Record the .NET half with `thesis pin`, then run the tests in both runners.");
     }

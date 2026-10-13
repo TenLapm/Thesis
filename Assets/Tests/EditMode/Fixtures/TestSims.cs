@@ -18,11 +18,13 @@ namespace Thesis.Tests
 
         public static ShapeDef[] GameShapes() { return ShapeLibraryFile.Load(TestPaths.ShapesFile); }
 
+        public static TowerDef[] GameTowers() { return TowerLibraryFile.Load(System.IO.Path.Combine(TestPaths.Maps, "Towers.json")); }
+
         public static Simulation Game(ulong seed = 1, SimConfig config = null, IWavePlanner planner = null)
         {
             MapData map = GameMap();
             config = config ?? new SimConfig();
-            return new Simulation(config, map, GameShapes(), TestTowers.Roster(), seed, planner ?? new EscalationPlanner(config, map));
+            return new Simulation(config, map, GameShapes(), GameTowers(), seed, planner ?? new EscalationPlanner(config, map));
         }
 
         public static Simulation Open38(ulong seed = 1, SimConfig config = null, IWavePlanner planner = null)

@@ -35,7 +35,13 @@ namespace Thesis.Harness
         private bool[] onRoute = new bool[0];
         private bool[] tried = new bool[0];
 
-        public string Name => Id;
+        // Spend what the cards leave on tower levels. Off by default: the pinned
+        // episodes and the older tests describe a player who only buys.
+        public bool UpgradeWithWhatIsLeft;
+
+        public const string UpgraderId = "upgrader";
+
+        public string Name => UpgradeWithWhatIsLeft ? UpgraderId : Id;
 
         public void OnIntermission(Simulation sim, Action<SimCommand> send, IRandom rng)
         {
@@ -43,13 +49,77 @@ namespace Thesis.Harness
             if (s.IsGameOver) return; // a finished game takes no input; do not mistake that for a refused placement
             TowerDef[] roster = sim.TowerLibrary;
 
+            // Cards that are not towers (2026-10-12). A coin card is free budget: take it
+            // first. Gear goes onto the first tower with a free slot.
+            // In a draft (a limited number of picks) a coin is what is taken when no
+            // tower is left to take, so there it comes last.
+            bool draft = s.Shop.PicksLeft >= 0;
+            SimConfig config = sim.Config;
+
+            // With rerolls on, a draft that offers nothing this player can take (every
+            // card a tower the cap refuses) is rolled again, a few times at most.
+            for (int round = 0; ; round++)
+            {
+                TakeCards(sim, send, roster, draft);
+                bool stuck = draft && s.Shop.MayPick && config.RerollCost >= 0f && s.BuildBudget >= sim.RerollPrice;
+                if (!stuck || round >= MaxRerollsPerPhase) break;
+                send(SimCommand.RerollShop());
+            }
+
+            // The gear shop: whatever is on sale and fits on a tower.
+            for (int slot = 0; slot < s.GearShop.Offers.Length; slot++)
+            {
+                TowerOffer item = s.GearShop.Offers[slot];
+                if (item.Bought || s.BuildBudget < item.Price) continue;
+                for (int t = 0; t < s.Towers.Count; t++)
+                {
+                    TowerState tower = s.Towers[t];
+                    if (!tower.IsAlive || tower.FreeGearSlot() < 0) continue;
+                    send(SimCommand.BuyShopGear(slot, tower.Tile.X, tower.Tile.Y));
+                    break;
+                }
+            }
+
+            // What is left goes into levels, cheapest upgrade first, while it lasts.
+            if (!UpgradeWithWhatIsLeft || !(config.UpgradeCostFactor > 0f)) return;
+            for (int guard = 0; guard < 64; guard++)
+            {
+                TowerState best = null;
+                int bestCost = int.MaxValue;
+                for (int t = 0; t < s.Towers.Count; t++)
+                {
+                    TowerState tower = s.Towers[t];
+                    if (!tower.IsAlive || tower.Level >= TowerState.MaxLevel) continue;
+                    int cost = TowerUpgrades.CostOf(tower.Def, tower.Level, sim.Config);
+                    if (cost < bestCost) { best = tower; bestCost = cost; }
+                }
+                if (best == null || s.BuildBudget < bestCost) break;
+                send(SimCommand.UpgradeTower(best.Tile.X, best.Tile.Y));
+            }
+        }
+
+        public int MaxRerollsPerPhase = 2;
+
+        // The cards of the current roll: towers, then gear, and coins first or last.
+        private void TakeCards(Simulation sim, Action<SimCommand> send, TowerDef[] roster, bool draft)
+        {
+            SimState s = sim.State;
+            SimConfig config = sim.Config;
+            if (!draft) TakeCoins(s, send);
+
+            // With combining on, a card of a tower already on the board comes first: it
+            // is a step towards a level. Otherwise one pass, in slot order, as before.
             int placed = 0;
+            for (int pass = config.CombineCount > 1 ? 0 : 1; pass < 2; pass++)
             for (int slot = 0; slot < s.Shop.Offers.Length && placed < MaxTowersPerPhase; slot++)
             {
                 TowerOffer offer = s.Shop.Offers[slot];
-                if (offer.Bought || s.BuildBudget < offer.Price) continue;
+                if (!s.Shop.MayPick) break;
+                if (offer.Bought || offer.Kind != CardKind.Tower || s.BuildBudget < offer.Price) continue;
 
                 TowerDef def = roster[offer.TowerIndex];
+                if (pass == 0 && TowerCombine.Copies(s.Towers, def, offer.Level) == 0) continue;
+                if (!TowerCombine.HasRoomFor(s.Towers, def, offer.Level, config, s.WaveIndex)) continue;
                 TileCoord tile;
                 if (!FindBestTile(sim, def, out tile)) continue;
 
@@ -59,6 +129,30 @@ namespace Thesis.Harness
                     throw new InvalidOperationException("[Harness] SentryPolicy chose " + def.Id + " (shop slot " + slot + ") at " + tile
                                                         + ", but the simulation refused it. The policy's legality check and Placement.CanPlace disagree.");
                 placed++;
+            }
+
+            for (int slot = 0; slot < s.Shop.Offers.Length; slot++)
+            {
+                TowerOffer card = s.Shop.Offers[slot];
+                if (!s.Shop.MayPick) break;
+                if (card.Bought || card.Kind != CardKind.Gear || s.BuildBudget < card.Price) continue;
+                for (int t = 0; t < s.Towers.Count; t++)
+                {
+                    TowerState tower = s.Towers[t];
+                    if (!tower.IsAlive || tower.FreeGearSlot() < 0) continue;
+                    send(SimCommand.BuyGear(slot, tower.Tile.X, tower.Tile.Y));
+                    break;
+                }
+            }
+            if (draft) TakeCoins(s, send);
+        }
+
+        private static void TakeCoins(SimState s, Action<SimCommand> send)
+        {
+            for (int slot = 0; slot < s.Shop.Offers.Length; slot++)
+            {
+                TowerOffer card = s.Shop.Offers[slot];
+                if (!card.Bought && card.Kind == CardKind.Coin && s.Shop.MayPick) send(SimCommand.TakeCoin(slot));
             }
         }
 

@@ -54,6 +54,14 @@ namespace Thesis.Sim
         // What the shop is offering now. Replaced whole at every roll.
         public ShopState Shop = new ShopState();
 
+        // The gear shop (2026-10-12): pieces on sale for budget, restocked every few
+        // waves. WaveIndex is its stock number here. Empty when the config has no gear shop.
+        public ShopState GearShop = new ShopState();
+
+        // With SimConfig.PlanAhead: the wave that the next Start will send, decided when
+        // this build phase began. Null during a wave, and when waves are planned late.
+        public WavePlan NextPlan;
+
         // Randomness, one stream per subsystem (RngStreams). Bag is the same
         // instance the ShapeBag draws from, so its state here is the bag's state.
         public Pcg32 BagRng;
@@ -105,6 +113,8 @@ namespace Thesis.Sim
             c.Damage = Damage.Clone();
             c.PlacementLog = new List<PlacementRecord>(PlacementLog); // records are never mutated after logging
             c.Shop = Shop.Clone();
+            c.GearShop = GearShop.Clone();
+            c.NextPlan = NextPlan?.Copy();
             c.Schedule = (SpawnSlot[])Schedule.Clone();
             c.Pending = new List<SimCommand>(Pending);
             return c;

@@ -45,16 +45,17 @@ telemetry schema 1). Eleven recordings, each with its telemetry.
 
 | Episode | What it covers |
 |---|---|
-| `unity-session-mouse` | **The screen of WP-C4**, on the 24 × 24 board with rocks. Played in the Unity editor through `SimHost`, with the input sent through the Input System by a scripted second mouse: two lines of wall drawn by drag, two towers bought from their cards, three wall tiles sold with the Sell tool (one click, one drag), a third line drawn, the Start button, then left alone until the game over in wave 1. |
+| `cards-6waves` | **Cards, levels and gear** (2026-10-12): coin and gear cards, rare and epic tower cards, a scripted player that takes coins, buys gear onto towers and spends the rest on upgrades, against every enemy type. A hash for every tick. |
 | `sentry-6waves` | Towers only, six waves: every offer the budget covers is bought, all three tower types, kills, splash, slow. |
 | `mixed-3waves` | Walls, then towers, three waves, with a hash for every tick. |
 | `walls-only-to-gameover` | Walls and no towers: nothing is killed, the enemies leak, game over in wave 1, with a hash for every tick. Its telemetry ends with a row closed by the game over. |
 | `class-cycle-6waves` | The development planner's cycle: a ground wave, a sapper wave, a flyer wave, all three together, and two more. Walls, then towers; the core has 1,000 HP so all six waves are played. A hash for every tick. (`thesis replay <file> --outcomes` prints what happened in a recording; `thesis trace <telemetry file>` does the same from the telemetry.) |
 | `restless-5waves` | **Selling.** Every build phase after the first wave the scripted player sells its weakest tower and its oldest wall piece, then builds and buys again: three towers and four wall pieces sold in five waves, with the real 10-HP core. A hash for every tick. |
-| `unity-session-shop` | Played in the Unity editor through `SimHost` with `DirectorHost.condition = DevClassCycle` and a 1,000-HP core, at ten times speed with the clock stopped for each build phase. Offers bought through the call the keys make (one refused: a slot bought twice), wall pieces, eight towers and two wall pieces sold through the call the sell key makes (one refused: open ground), two sale commands sent in the middle of a wave and refused by the simulation, a rotate and a hold. Five waves resolved (ground, sappers, flyers, all three, ground with 73 of 120 let through); the session was stopped 19 ticks into wave 6, so its last telemetry row is a wave with no outcome. 16,774 ticks, a hash for every tick. **Its `telemetry.jsonl` is the file Unity wrote live;** made again from the replay under .NET it is the same 7 rows, byte for byte. |
 
 Earlier sets were deleted here when the rules changed: the game before towers (schema 1; still in
 `Results/2026-10-02_determinism/` as the evidence for that result), the game with towers but one
 movement class (schema 2; in git history at the WP-C1 commit), and the game with movement classes
 but no shop (schema 3, with the session `unity-session-classes`; in git history at the WP-C2
-commit). All three are refused now.
+commit). All three are refused now. The session `unity-session-shop` (the development planner's old
+four-wave cycle, on the 38 x 38 board) went with WP-C5, which changed that planner; it is in git
+history at the WP-C4 commit. The session `unity-session-mouse` (the screen of WP-C4) went with replay schema 5 and has not been replaced; it is in git history at the WP-C4 commit too.

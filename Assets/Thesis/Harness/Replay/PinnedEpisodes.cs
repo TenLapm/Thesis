@@ -59,7 +59,7 @@ namespace Thesis.Harness
                 Name = "sentry-6waves",
                 Config = () => new SimConfig(),
                 Policy = () => new SentryPolicy(),
-                Seed = 3, // on the board of WP-C4, a seed whose shop lets the sentry live through six waves
+                Seed = 7, // a seed whose shop lets the sentry live through six waves (chosen again when the roster grew to eight)
                 MaxWaves = 6,
                 TickHashes = false,
             },
@@ -68,7 +68,7 @@ namespace Thesis.Harness
                 Name = "mixed-3waves",
                 Config = () => new SimConfig(),
                 Policy = () => SequencePolicy.Mixed(wallsPerPhase: 2, towersPerPhase: 6, wallSearchOrigins: 12),
-                Seed = 3,
+                Seed = 27,
                 MaxWaves = 3,
                 TickHashes = true,
             },
@@ -108,8 +108,65 @@ namespace Thesis.Harness
                 Name = "restless-5waves",
                 Config = () => new SimConfig(),
                 Policy = () => SequencePolicy.Restless(),
-                Seed = 4,
+                Seed = 7,
                 MaxWaves = 5,
+                TickHashes = true,
+            },
+            // Cards, levels and gear (2026-10-12): coin and gear cards in the shop, rare
+            // and epic tower cards, a player who takes coins, buys gear onto towers and
+            // spends what is left on upgrades, against every enemy type. The only
+            // recording in which TakeCoin, BuyGear and UpgradeTower, multi-bolt shots and
+            // a tower's worked-out numbers run on both runtimes. The core has enough hit
+            // points to see all six waves.
+            new Spec
+            {
+                Name = "cards-6waves",
+                Config = () => new SimConfig { CoreMaxHp = 1000, StartBudget = 80f, CoinCardWeight = 0.35f, GearCardWeight = 0.3f, RareTowerChance = 0.15f, EpicTowerChance = 0.04f },
+                Policy = () => new SentryPolicy { UpgradeWithWhatIsLeft = true },
+                Planner = ClassCyclePlanner.Id,
+                Seed = 5,
+                MaxWaves = 6,
+                TickHashes = true,
+            },
+            // The draft, the gear shop and waves planned ahead (2026-10-12, second round):
+            // free cards of which one is picked, gear bought in its own shop that is
+            // restocked every two waves here, and the next wave decided as each build
+            // phase begins. The only recording with BuyShopGear, a pick limit and
+            // SimState.NextPlan on both runtimes.
+            new Spec
+            {
+                Name = "draft-6waves",
+                Config = () => new SimConfig
+                {
+                    CoreMaxHp = 1000, StartBudget = 50f, StipendPerWave = 16, KillReward = 0f, WaitForStart = true, PlanAhead = true,
+                    PicksPerRoll = 1, PicksAtStart = 2, CoinCardWeight = 0.3f, RareTowerChance = 0.15f, EpicTowerChance = 0.04f,
+                    GearShopSlots = 3, GearShopRefreshWaves = 2,
+                },
+                Policy = () => new SentryPolicy { UpgradeWithWhatIsLeft = true },
+                Planner = ClassCyclePlanner.Id,
+                Seed = 4,
+                MaxWaves = 6,
+                TickHashes = true,
+            },
+            // Rerolls, combining and the tower cap (2026-10-12, third round): the draft
+            // with gear among the cards, a reroll whose price rises, three of a kind
+            // merging into a rare, and a cap on standing towers. The only recording in
+            // which TowerCombine runs on both runtimes.
+            new Spec
+            {
+                Name = "combine-10waves",
+                Config = () => new SimConfig
+                {
+                    CoreMaxHp = 1000, StartBudget = 30f, StipendPerWave = 10, KillReward = 0f, WaitForStart = true, PlanAhead = true,
+                    ShopOffers = 4, PicksPerRoll = 1, PicksAtStart = 2, CoinCardWeight = 0.25f, GearCardWeight = 0.25f,
+                    RareTowerChance = 0.1f, EpicTowerChance = 0.02f, GearShopSlots = 3, GearShopRefreshWaves = 5,
+                    RerollCost = 2f, RerollCostStep = 1f, CombineCount = 3, TowerCap = 4, TowerCapEveryWaves = 3,
+                    MoveTowers = true, UpgradeCostFactor = 0f,
+                },
+                Policy = () => new SentryPolicy { UpgradeWithWhatIsLeft = true },
+                Planner = ClassCyclePlanner.Id,
+                Seed = 4,
+                MaxWaves = 10,
                 TickHashes = true,
             },
         };

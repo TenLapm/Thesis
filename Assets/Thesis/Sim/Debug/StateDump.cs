@@ -67,7 +67,11 @@ namespace Thesis.Sim
                     Y = t.Tile.Y,
                     Alive = t.IsAlive,
                     Sold = t.Sold,
+                    Combined = t.Combined,
                     PricePaid = t.PricePaid,
+                    Level = t.Level,
+                    Gear0 = t.Gear[0],
+                    Gear1 = t.Gear[1],
                     Cooldown = t.Cooldown,
                     Shots = t.Shots,
                     Kills = t.Kills,
@@ -170,7 +174,11 @@ namespace Thesis.Sim
             public int Y;
             public bool Alive;
             public bool Sold;
+            public bool Combined;
             public int PricePaid;
+            public int Level;
+            public int Gear0;
+            public int Gear1;
             public int Cooldown;
             public int Shots;
             public int Kills;

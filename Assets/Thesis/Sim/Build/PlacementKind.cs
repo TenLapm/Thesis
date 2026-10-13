@@ -11,5 +11,18 @@ namespace Thesis.Sim
         WallSold = 2,
         TowerSold = 3,
         ShopReroll = 4,
+
+        // 2026-10-12: things done to a standing tower, and the coin card. None of them
+        // puts anything on a tile or takes anything off.
+        TowerUpgraded = 5,
+        GearBought = 6,
+        GearMoved = 7,
+        CoinTaken = 8,
+
+        // 2026-10-12, third round. TowerCombined: towers of one type merged; the row's
+        // tower is the one that stays and its Tiles are the tiles that were emptied.
+        // TowerMoved: a tower was put on another tile; Tiles are { from, to }.
+        TowerCombined = 9,
+        TowerMoved = 10,
     }
 }

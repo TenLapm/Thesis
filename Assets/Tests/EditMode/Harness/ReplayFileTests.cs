@@ -275,6 +275,7 @@ namespace Thesis.Tests.Harness
                 else if (f.FieldType == typeof(string)) f.SetValue(towers[1], (string)value + "x");
                 else if (f.FieldType == typeof(DamageType)) f.SetValue(towers[1], (DamageType)(((int)value + 1) % DamageTypes.Count));
                 else if (f.FieldType == typeof(TargetingMode)) continue; // only one mode exists; covered by the enum branch of ReplaySetup when there are more
+                else if (f.FieldType == typeof(TowerLevelMod[])) f.SetValue(towers[1], new[] { new TowerLevelMod { Label = "x", DamageMul = 2f } });
                 else Assert.Fail("TowerDef." + f.Name + " has type " + f.FieldType.Name + ": teach ReplaySetup and this test about it.");
 
                 Assert.AreNotEqual(baseline, ReplaySetup.Hash(new SimConfig(), map, shapes, towers), "TowerDef." + f.Name + " is not in the setup hash");

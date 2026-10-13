@@ -51,6 +51,18 @@ namespace Thesis.Sim
                 else if (value is bool) h.Add((bool)value);
                 else if (value is string || value == null && fields[i].FieldType == typeof(string)) h.Add((string)value);
                 else if (value is Enum) h.Add(Convert.ToInt32(value));
+                else if (value == null) h.Add(-1); // an absent array or object
+                else if (value is Array)
+                {
+                    // An array of data objects (a tower's levels): each element field by field.
+                    var items = (Array)value;
+                    h.Add(items.Length);
+                    foreach (object item in items)
+                    {
+                        if (item == null) h.Add(-1);
+                        else AddFields(ref h, item);
+                    }
+                }
                 else throw new InvalidOperationException("[Replay] " + type.Name + "." + fields[i].Name + " has type " + fields[i].FieldType.Name
                                                          + ", which ReplaySetup cannot hash. Add a case for it.");
             }

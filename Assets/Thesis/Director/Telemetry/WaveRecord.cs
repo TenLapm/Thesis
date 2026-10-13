@@ -27,7 +27,7 @@ namespace Thesis.Director
     // something else without raising CurrentSchema.
     public sealed class WaveRecord
     {
-        public const int CurrentSchema = 1;
+        public const int CurrentSchema = 3; // 2: cards (tower, coin, gear), tower levels and gear in the build log; 3: the placement kinds "combine" and "moveTower" (both 2026-10-12)
 
         [JsonProperty("schema", Order = 1)] public int Schema = CurrentSchema;
 
@@ -126,6 +126,12 @@ namespace Thesis.Director
             public const string SellWall = "sellWall";
             public const string SellTower = "sellTower";
             public const string Reroll = "reroll";
+            public const string Upgrade = "upgrade";
+            public const string Gear = "gear";
+            public const string MoveGear = "moveGear";
+            public const string Coin = "coin";
+            public const string Combine = "combine";
+            public const string MoveTower = "moveTower";
 
             [JsonProperty("tick", Order = 1)] public int Tick;
             [JsonProperty("kind", Order = 2)] public string Kind;

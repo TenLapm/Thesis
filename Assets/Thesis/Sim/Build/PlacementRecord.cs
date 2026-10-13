@@ -45,6 +45,9 @@ namespace Thesis.Sim
 
         public bool IsSale => Kind == PlacementKind.WallSold || Kind == PlacementKind.TowerSold;
 
+        // The row took things off its Tiles without a sale: the towers a merge absorbed.
+        public bool IsCombine => Kind == PlacementKind.TowerCombined;
+
         public override string ToString()
         {
             switch (Kind)

@@ -10,6 +10,20 @@ namespace Thesis.Sim
     // terrain (CLAUDE.md §2). DigCost and TowerHealth are that tile's TerrainCost
     // and WallHealth, so enemies route around a tower or chew through it by the
     // same cost model as walls, and chewing through destroys the tower.
+    // What one level above the first adds to a tower (2 = rare, 3 = epic). Each level
+    // is applied on top of the one below it (TowerState.Recompute). Label is the one
+    // line the player reads: a level should change what a tower DOES, not only a number.
+    public sealed class TowerLevelMod
+    {
+        public string Label;
+        public float DamageMul = 1f;
+        public float IntervalMul = 1f;   // below 1 = fires faster
+        public float RangeAdd;           // tiles
+        public float SplashAdd;          // tiles
+        public float SlowTicksMul = 1f;
+        public int ExtraTargets;         // more enemies shot at per shot
+    }
+
     public sealed class TowerDef
     {
         public string Id;
@@ -38,12 +52,29 @@ namespace Thesis.Sim
         // Read by the Flying movement class (WP-C2); nothing flies yet.
         public bool CanHitFlying;
 
+        // How many enemies one shot is fired at (a chain tower: three). Each gets the
+        // full hit; with fewer enemies in range the spare ones are not fired.
+        public int Targets = 1;
+
         // The tower as terrain.
         public int DigCost = 20;
         public float TowerHealth = 8f;
 
         // Relative chance of being offered in the shop (WP-C3).
         public float ShopWeight = 1f;
+
+        // What level 2 (rare) and level 3 (epic) add, in that order. A tower type that
+        // gives none still has three levels: each is then half as much damage again.
+        public TowerLevelMod[] Levels;
+
+        private static readonly TowerLevelMod PlainLevel = new TowerLevelMod { Label = "+50% damage", DamageMul = 1.5f };
+
+        // The modifier of `level` (2 or 3).
+        public TowerLevelMod LevelMod(int level)
+        {
+            int i = level - 2;
+            return Levels != null && i >= 0 && i < Levels.Length && Levels[i] != null ? Levels[i] : PlainLevel;
+        }
 
         public void Validate()
         {
@@ -54,6 +85,7 @@ namespace Thesis.Sim
             if (!(RangeTiles >= 0f) || float.IsInfinity(RangeTiles)) throw new InvalidOperationException(who + "RangeTiles " + RangeTiles + " must be a number >= 0.");
             if (FireIntervalTicks < 1) throw new InvalidOperationException(who + "FireIntervalTicks " + FireIntervalTicks + " must be at least 1.");
             if (!(SplashRadiusTiles >= 0f) || float.IsInfinity(SplashRadiusTiles)) throw new InvalidOperationException(who + "SplashRadiusTiles " + SplashRadiusTiles + " must be a number >= 0.");
+            if (Targets < 1 || Targets > 8) throw new InvalidOperationException(who + "Targets " + Targets + " must be between 1 and 8.");
             if (SlowTicks < 0) throw new InvalidOperationException(who + "SlowTicks " + SlowTicks + " is negative.");
             if (!(SlowFactor > 0f) || SlowFactor > 1f) throw new InvalidOperationException(who + "SlowFactor " + SlowFactor + " must be in (0, 1]; 1 means no slow.");
             if (DigCost < 2) throw new InvalidOperationException(who + "DigCost " + DigCost + " must be at least 2 (a tower tile must cost more than open ground).");

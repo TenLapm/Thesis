@@ -77,6 +77,14 @@ namespace Thesis.Harness
             result.BuildBudget = s.BuildBudget;
             result.Placements = s.PlacementLog.Count;
             result.TowersPlaced = s.Towers.Count;
+            foreach (TowerState t in s.Towers)
+            {
+                result.Towers.Add(new TowerSummary
+                {
+                    Id = t.Def.Id, PricePaid = t.PricePaid, DamageDealt = t.DamageDealt, Shots = t.Shots, Kills = t.Kills,
+                    TicksOnBoard = s.Tick - t.PlacedTick, Sold = t.Sold, Destroyed = !t.IsAlive && !t.Sold && !t.Combined,
+                });
+            }
             return result;
         }
     }

@@ -47,6 +47,8 @@ namespace Thesis.Sim
             for (int i = 0; i < s.PlacementLog.Count; i++) AddPlacement(ref h, s.PlacementLog[i]);
 
             s.Shop.AddToHash(ref h);
+            s.GearShop.AddToHash(ref h);
+            AddPlan(ref h, s.NextPlan);
 
             AddPlan(ref h, s.CurrentPlan);
             AddOutcome(ref h, s.CurrentOutcome);
@@ -69,6 +71,8 @@ namespace Thesis.Sim
                 h.Add(s.Pending[i].X);
                 h.Add(s.Pending[i].Y);
                 h.Add(s.Pending[i].A);
+                h.Add(s.Pending[i].B);
+                h.Add(s.Pending[i].C);
             }
 
             return h.Value;
@@ -125,9 +129,13 @@ namespace Thesis.Sim
             h.Add(t.Tile.Y);
             h.Add(t.PlacedTick);
             h.Add(t.PricePaid);
+            h.Add(t.Level);
+            h.Add(t.Gear[0]);
+            h.Add(t.Gear[1]);
             h.Add(t.Cooldown);
             h.Add(t.IsAlive);
             h.Add(t.Sold);
+            h.Add(t.Combined);
             h.Add(t.DamageDealt);
             h.Add(t.Shots);
             h.Add(t.Kills);

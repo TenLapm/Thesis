@@ -9,8 +9,8 @@ namespace Thesis.Harness
         public MapData Map;
         public ShapeDef[] Shapes;
 
-        // The tower roster. The placeholder set until WP-C5 exports the real one.
-        public TowerDef[] Towers = TowerRoster.Placeholder();
+        // The tower roster the shop sells from (the game's is Maps/Towers.json).
+        public TowerDef[] Towers;
         public ulong Seed = 1;
         public string Planner = EscalationPlanner.Id;
         public IPlayerPolicy Policy = new IdlePolicy();

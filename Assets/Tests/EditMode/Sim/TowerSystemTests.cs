@@ -365,7 +365,8 @@ namespace Thesis.Tests.Sim
             Assert.Throws<System.InvalidOperationException>(() => new TowerDef { Id = "x", Damage = float.NaN }.Validate());
             Assert.Throws<System.InvalidOperationException>(() => new TowerDef { Id = "x", DigCost = 1 }.Validate());
             Assert.Throws<System.InvalidOperationException>(() => new TowerDef { Id = "x", TowerHealth = 0f }.Validate());
-            foreach (TowerDef def in TowerRoster.Placeholder()) Assert.DoesNotThrow(() => def.Validate(), def.Id);
+            foreach (TowerDef def in TestTowers.Roster()) Assert.DoesNotThrow(() => def.Validate(), def.Id);
+            foreach (TowerDef def in TestSims.GameTowers()) Assert.DoesNotThrow(() => def.Validate(), def.Id);
         }
     }
 }

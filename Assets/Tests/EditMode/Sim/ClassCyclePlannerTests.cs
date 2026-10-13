@@ -16,20 +16,26 @@ namespace Thesis.Tests.Sim
         }
 
         [Test]
-        public void TheCycleIsGroundThenSappersThenFlyersThenAllThree()
+        public void TheCycleIsBasicSappersFlyersASwarmThenAMix()
         {
             ClassCyclePlanner planner = Planner();
-            for (int wave = 1; wave <= 12; wave++)
+            for (int wave = 1; wave <= 15; wave++)
             {
                 WavePlan plan = planner.PlanFor(wave);
                 Assert.AreEqual(wave, plan.WaveIndex);
                 Assert.AreEqual(ClassCyclePlanner.Id, plan.StrategyId);
 
-                switch ((wave - 1) % 4)
+                switch ((wave - 1) % ClassCyclePlanner.CycleLength)
                 {
                     case 0:
                         Assert.AreEqual(1, plan.Groups.Length, "wave " + wave);
                         Assert.AreEqual(MovementClass.Ground, plan.Groups[0].Movement, "wave " + wave);
+                        Assert.AreEqual(EnemyArchetypes.BasicId, plan.Groups[0].Archetype, "wave " + wave);
+                        break;
+                    case 3:
+                        Assert.AreEqual(1, plan.Groups.Length, "wave " + wave);
+                        Assert.AreEqual(MovementClass.Ground, plan.Groups[0].Movement, "a swarm walks: wave " + wave);
+                        Assert.AreEqual(EnemyArchetypes.SwarmId, plan.Groups[0].Archetype, "wave " + wave);
                         break;
                     case 1:
                         Assert.AreEqual(1, plan.Groups.Length, "wave " + wave);
@@ -52,7 +58,7 @@ namespace Thesis.Tests.Sim
         [Test]
         public void AGroundWaveIsTheEscalationWaveUnchanged()
         {
-            foreach (int wave in new[] { 1, 5, 9 })
+            foreach (int wave in new[] { 1, 6, 11 })
             {
                 AgentGroup g = Planner().PlanFor(wave).Groups[0];
                 AgentGroup e = Escalation(wave);
@@ -68,10 +74,10 @@ namespace Thesis.Tests.Sim
         // Hand-computed from the escalation numbers (EscalationPlannerTests):
         // wave 2 is 105 enemies of 12 HP at 1.2875; wave 3 is 110 of 14 HP at 1.325.
         [Test]
-        public void SappersAndFlyersAreMultiplesOfThatWavesEscalationEnemy()
+        public void EveryTypeIsAMultipleOfThatWavesEscalationEnemy()
         {
             AgentGroup sappers = Planner().PlanFor(2).Groups[0];
-            Assert.AreEqual(ClassCyclePlanner.SapperArchetype, sappers.Archetype);
+            Assert.AreEqual(EnemyArchetypes.SapperId, sappers.Archetype);
             Assert.AreEqual(52, sappers.Count, "half of 105, rounded down");
             Assert.AreEqual(18f, sappers.Hp, "12 x 1.5");
             Assert.AreEqual(1.03f, sappers.MoveSpeed, 1e-5f, "1.2875 x 0.8");
@@ -79,21 +85,31 @@ namespace Thesis.Tests.Sim
             Assert.AreEqual(Escalation(2).SpawnIntervalTicks, sappers.SpawnIntervalTicks);
 
             AgentGroup flyers = Planner().PlanFor(3).Groups[0];
-            Assert.AreEqual(ClassCyclePlanner.FlyerArchetype, flyers.Archetype);
+            Assert.AreEqual(EnemyArchetypes.FlyerId, flyers.Archetype);
             Assert.AreEqual(55, flyers.Count, "half of 110");
             Assert.AreEqual(7f, flyers.Hp, "14 x 0.5");
             Assert.AreEqual(1.59f, flyers.MoveSpeed, 1e-5f, "1.325 x 1.2");
             Assert.AreEqual(0f, flyers.DigRate, "a flyer never digs");
 
-            // Wave 4: 115 enemies of 16 HP at 1.3625, split a half and two quarters.
-            WavePlan mixed = Planner().PlanFor(4);
-            Assert.AreEqual(57, mixed.Groups[0].Count);
-            Assert.AreEqual(28, mixed.Groups[1].Count);
-            Assert.AreEqual(28, mixed.Groups[2].Count);
-            Assert.AreEqual(16f, mixed.Groups[0].Hp);
-            Assert.AreEqual(24f, mixed.Groups[1].Hp);
-            Assert.AreEqual(8f, mixed.Groups[2].Hp);
-            Assert.AreEqual(113, mixed.TotalAgents());
+            // Wave 4: 115 enemies of 16 HP at 1.3625. A swarm is twice as many, at four
+            // tenths of the hit points, 1.3 times as fast and half as far apart.
+            AgentGroup swarm = Planner().PlanFor(4).Groups[0];
+            Assert.AreEqual(EnemyArchetypes.SwarmId, swarm.Archetype);
+            Assert.AreEqual(230, swarm.Count);
+            Assert.AreEqual(6.4f, swarm.Hp, 1e-5f, "16 x 0.4");
+            Assert.AreEqual(1.77125f, swarm.MoveSpeed, 1e-5f, "1.3625 x 1.3");
+            Assert.AreEqual(System.Math.Max(1, Escalation(4).SpawnIntervalTicks / 2), swarm.SpawnIntervalTicks);
+
+            // Wave 5: 120 enemies of 18 HP: half of them basic, and half the sappers
+            // and half the flyers that a whole wave of each would be.
+            WavePlan mixed = Planner().PlanFor(5);
+            Assert.AreEqual(60, mixed.Groups[0].Count);
+            Assert.AreEqual(30, mixed.Groups[1].Count);
+            Assert.AreEqual(30, mixed.Groups[2].Count);
+            Assert.AreEqual(18f, mixed.Groups[0].Hp);
+            Assert.AreEqual(27f, mixed.Groups[1].Hp);
+            Assert.AreEqual(9f, mixed.Groups[2].Hp);
+            Assert.AreEqual(120, mixed.TotalAgents());
         }
 
         [Test]
@@ -109,7 +125,7 @@ namespace Thesis.Tests.Sim
 
             // A tiny wave still sends at least one of each.
             var tiny = new ClassCyclePlanner(new SimConfig { AgentsPerWave = 1, AgentsPerWaveIncrement = 0 }, map);
-            foreach (AgentGroup g in tiny.PlanFor(4).Groups) Assert.AreEqual(1, g.Count);
+            foreach (AgentGroup g in tiny.PlanFor(5).Groups) Assert.AreEqual(1, g.Count);
         }
 
         [Test]
@@ -137,9 +153,9 @@ namespace Thesis.Tests.Sim
             Assert.IsInstanceOf<ClassCyclePlanner>(made);
             Assert.AreEqual("class-cycle", made.Name);
 
-            Assert.AreEqual(0f, Planner().PlanFor(4).ThreatSpent, "no cost table -> 0");
+            Assert.AreEqual(0f, Planner().PlanFor(5).ThreatSpent, "no cost table -> 0");
             var priced = new ClassCyclePlanner(new SimConfig(), TestSims.Open38Map(), new FakePricer());
-            Assert.AreEqual(113f, priced.PlanFor(4).ThreatSpent, "FakePricer prices a plan at its agent count");
+            Assert.AreEqual(120f, priced.PlanFor(5).ThreatSpent, "FakePricer prices a plan at its agent count");
         }
 
         // The reason the planner exists: a recorded game with every class in it,
@@ -151,11 +167,12 @@ namespace Thesis.Tests.Sim
             Assert.AreEqual(5, run.WavesResolved);
             Assert.AreEqual(ClassCyclePlanner.Id, run.Replay.Planner);
 
-            WaveOutcome ground = run.Outcomes[0], sappers = run.Outcomes[1], flyers = run.Outcomes[2], mixed = run.Outcomes[3];
+            WaveOutcome ground = run.Outcomes[0], sappers = run.Outcomes[1], flyers = run.Outcomes[2], swarm = run.Outcomes[3], mixed = run.Outcomes[4];
             CollectionAssert.AreEqual(new[] { 12, 0, 0 }, ground.SpawnedByClass);
             CollectionAssert.AreEqual(new[] { 0, 7, 0 }, sappers.SpawnedByClass, "half of 14");
             CollectionAssert.AreEqual(new[] { 0, 0, 8 }, flyers.SpawnedByClass, "half of 16");
-            CollectionAssert.AreEqual(new[] { 9, 4, 4 }, mixed.SpawnedByClass, "18: a half and two quarters");
+            CollectionAssert.AreEqual(new[] { 36, 0, 0 }, swarm.SpawnedByClass, "twice 18, and a swarm walks");
+            CollectionAssert.AreEqual(new[] { 10, 5, 5 }, mixed.SpawnedByClass, "20: a half and two quarters");
 
             foreach (WaveOutcome o in run.Outcomes)
             {

@@ -44,6 +44,27 @@ public class WaveSpawner : MonoBehaviour
 
     public float intermissionTimeRemaining => isIntermission ? Host.State.PhaseTicksRemaining * Host.Config.TickSeconds : 0f;
 
+    // True when a build phase has no clock (SimConfig.WaitForStart).
+    public bool WaitsForStart => Host.Config.WaitForStart;
+
+    // What the next wave is made of, when it is already decided (SimConfig.PlanAhead):
+    // "26 sapper", or "30 basic + 15 sapper + 15 flyer". Empty when it is not known.
+    public string NextWaveText
+    {
+        get
+        {
+            WavePlan plan = Host.State.NextPlan;
+            if (plan == null || plan.Groups == null) return "";
+            var text = new System.Text.StringBuilder();
+            foreach (AgentGroup group in plan.Groups)
+            {
+                if (text.Length > 0) text.Append(" + ");
+                text.Append(group.Count).Append(' ').Append(group.Archetype);
+            }
+            return text.ToString();
+        }
+    }
+
     // Live enemies still on the field.
     public int ActiveAgentCount => Host.State.LiveAgentCount;
 

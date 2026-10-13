@@ -35,6 +35,9 @@ public class PathPreviewer : MonoBehaviour
     public Color flyerColor = new Color(0.38f, 0.65f, 0.98f);
     [Tooltip("The sappers' line is drawn this far to one side, so it stays visible where it shares a stretch with the walkers' line.")]
     public float sapperOffset = 0.45f;
+    [Tooltip("While a wave is on the board the lines are this much thinner and fainter, so they do not cover the enemies walking along them.")]
+    public float waveWidthFactor = 0.3f;
+    [Range(0f, 1f)] public float waveAlpha = 0.3f;
 
     private LineRenderer walkerLine;
     private LineRenderer sapperLine;
@@ -43,6 +46,8 @@ public class PathPreviewer : MonoBehaviour
     private readonly List<Vector3> points = new List<Vector3>();
     private int drawnVersion = int.MinValue;
     private int drawnMask = -1;
+    private bool faint;
+    private bool styled;
 
     // Bit per MovementClass. Ground is met from the start.
     private int met = 1 << (int)MovementClass.Ground;
@@ -65,8 +70,22 @@ public class PathPreviewer : MonoBehaviour
 
     private void Style(LineRenderer line, Color color)
     {
-        line.startWidth = line.endWidth = lineWidth;
+        line.startWidth = line.endWidth = faint ? lineWidth * waveWidthFactor : lineWidth;
+        if (faint) color.a *= waveAlpha;
         line.startColor = line.endColor = color;
+    }
+
+    // Bold while the player builds against the route; thin and faint during a wave,
+    // when the enemies themselves show where they walk (the student, 2026-10-13: the
+    // line was covering them).
+    private void StyleFor(bool inWave)
+    {
+        if (styled && inWave == faint) return;
+        styled = true;
+        faint = inWave;
+        Style(walkerLine, walkerColor);
+        Style(sapperLine, sapperColor);
+        Style(flyerLine, flyerColor);
     }
 
     void Update()
@@ -79,6 +98,9 @@ public class PathPreviewer : MonoBehaviour
             drawnMask = -1;
             return;
         }
+
+        SimHost styleHost = Host;
+        StyleFor(styleHost != null && (styleHost.State.Phase == SimPhase.Spawning || styleHost.State.Phase == SimPhase.Resolving));
 
         int mask = VisibleMask();
         if (flowManager.FieldVersion == drawnVersion && mask == drawnMask) return;
@@ -95,6 +117,15 @@ public class PathPreviewer : MonoBehaviour
 
         SimState state = host.State;
         bool inWave = state.Phase == SimPhase.Spawning || state.Phase == SimPhase.Resolving;
+
+        // When the next wave is already decided (SimConfig.PlanAhead), a build phase
+        // shows where THAT wave will walk: the player builds against what is coming.
+        if (!inWave && state.NextPlan != null && state.NextPlan.Groups != null)
+        {
+            int next = 0;
+            foreach (AgentGroup group in state.NextPlan.Groups) next |= 1 << (int)group.Movement;
+            return next;
+        }
         if (!inWave || state.CurrentPlan == null || state.CurrentPlan.Groups == null) return met;
 
         int wave = 0;

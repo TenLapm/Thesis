@@ -4,7 +4,10 @@
 after WP-C4, which built the four things you decided then: the board is seen from straight
 above, during a wave too (§3.1); walls are single tiles and no longer tetromino pieces
 (§4.1); the map has rocks (§3.2); and the board draws a route line for every kind of enemy
-you have met (§5.3, which also says where enemies walk). The board is 24 × 24 for now (§3.3). No name has been chosen for the game yet (§12,
+you have met (§5.3, which also says where enemies walk). The board is 24 × 24 for now (§3.3).
+WP-C5 then built the five towers and four enemy types this file proposed, with new wave
+numbers (§4.2, §5.4, §6.1). After you played that, a trial of cards, tower levels and gear
+was built the same day (§4.4). No name has been chosen for the game yet (§12,
 question 12).
 
 This file describes the game from the player's side: what is on the screen, what the
@@ -228,29 +231,121 @@ What the change does:
   A slowing tower makes its target walk slower for a moment.
 - Between waves you can **sell** a tower for half of what you paid.
 
-The three towers in the game today. The numbers are placeholders and nothing is balanced:
+**Built** (WP-C5): the five towers this file proposed (question 2 is still yours). The
+numbers passed a sanity check and are not balanced:
 
 | Tower | Price | Damage type | What it does | Range | Hits flyers |
 |---|---|---|---|---|---|
 | Archer | 10 | physical | 4 damage every 0.5 s to one enemy | 3.5 tiles | yes |
+| Ballista | 16 | physical | 22 damage every 2 s to one enemy | 5.5 tiles | yes |
 | Cannon | 18 | fire | 3 damage every 1.2 s to its target and everything within 0.75 tile | 2.5 tiles | no |
-| Frost | 12 | frost | 1 damage every 0.6 s; the target moves at half speed for 1.5 s | 2.5 tiles | no |
+| Brazier | 12 | fire | 1.2 damage every 0.1 s to one enemy | 1.5 tiles | no |
+| Frost | 12 | frost | 2 damage every 0.6 s; the target moves at half speed for 1.5 s | 2.5 tiles | no |
 
-**Proposed: a roster of five for the study** (question 2). With three tower types, a
-shop of four almost always shows the same tower twice, so there is little to choose.
-Five types make a roll a real choice, and all five use only rules the game already has:
+What each is for:
 
-| Tower | Damage type | Role | Hits flyers | Strong against | Weak against |
-|---|---|---|---|---|---|
-| Archer | physical | quick single shots, medium range | yes | flyers, stragglers | a dense swarm |
-| Ballista | physical | one heavy shot, long range, slow to reload | yes | tough enemies, diggers stuck at a wall | a dense swarm |
-| Cannon | fire | splash | no | a swarm on a narrow route | flyers, enemies spread out |
-| Brazier | fire | very short range, fires very fast | no | a route that runs right past it | anything that goes round it or over it |
-| Frost | frost | slows, little damage | no | makes every tower near it better | being alone |
+| Tower | Strong against | Weak against |
+|---|---|---|
+| Archer | flyers, stragglers | a dense swarm |
+| Ballista | tough enemies, diggers stuck at a wall | a dense swarm (its one heavy shot is wasted on a weak enemy) |
+| Cannon | a swarm on a narrow route | flyers, enemies spread out |
+| Brazier | a route that runs right past it | anything that goes round it or over it |
+| Frost | makes every tower near it better | being alone |
 
-The work plan asks for four to six towers covering single target, splash, slow and
-anti-air across three damage types (WP-C5); this is one way to meet it. Prices and
-numbers would be set in WP-C5 and tuned in the balance pass.
+In the sanity check the four damage towers gave about the same damage for their price
+(within a fifth of each other). Frost cannot be judged that way, since what it does is
+slow. The numbers are tuned in the balance pass.
+
+### 4.4 Cards, levels and gear
+
+**Built** (2026-10-12), as a trial after your first play: the game was too rich after wave
+3, one stacked chokepoint won it, and the random towers did not matter. Nothing here is
+balanced, and whether it stays is **Open** (question 20).
+
+- **The build phase has no clock.** A wave starts when you press Start.
+- **Money is tighter and no longer depends on kills.** You start with 50 and get 16 for
+  every wave cleared. A kill pays nothing, and neither does a chewed wall. (This also
+  closes question 6: income no longer depends on what a wave is made of.)
+- **A shop slot holds a card,** and a card is one of three things:
+
+  | Card | What it is |
+  |---|---|
+  | Tower | as before; about one in five is **rare** or **epic** and costs what the tower and its upgrades would |
+  | Coin | 8 budget, free: click it to take it |
+  | Gear | a piece a tower wears, 8 budget: click the card, then a tower |
+
+- **A tower has three levels:** common, rare, epic. The Upgrade tool raises a tower one
+  level for its card's price (half as much again for the second). A level changes what
+  the tower does:
+
+  | Tower | Rare | Epic |
+  |---|---|---|
+  | Archer | faster shots | hits two enemies |
+  | Ballista | two bolts | three bolts, +1 range |
+  | Cannon | bigger blast | +60% damage |
+  | Brazier | wider ring | burns the neighbours too |
+  | Frost | longer slow | slows an area |
+
+- **Gear.** A common tower has one gear slot, a rare or epic one has two.
+
+  | Gear | What it does |
+  |---|---|
+  | Scope | +1 range |
+  | Whetstone | +35% damage |
+  | Sky-sight | the tower can hit flyers |
+  | Powder | +0.5 splash |
+  | Chill | slows what it hits |
+
+  Between waves the Move Gear tool takes a piece from one tower to another for nothing,
+  so gear rewards re-arranging a defence. Selling a tower returns half of everything
+  paid into it, its upgrades and the gear it wears included.
+- **On the board** a rare tower stands on a blue plate and an epic one on a purple plate;
+  each piece of gear is a small coloured dot on the tower.
+
+**Second round, the same day** (also **Built**, also a trial):
+
+- **You are told what comes next.** The next wave is decided when a build phase begins,
+  from the board as it stood when the last wave ended. The top of the screen names it
+  ("Next, wave 2: 22 sapper") and the route lines show where it will walk, so you build
+  against it before you press Start. This settles question 7: the announcement comes at
+  the start of the build phase, not as the wave starts.
+- **Cards are a free pick.** After each wave three cards are shown (towers, sometimes
+  rare or epic, and coins) and you take one. Before the first wave you take two. Towers
+  come from nowhere else, so a defence grows by at most one tower a wave.
+- **Gear is bought in a gear shop:** three pieces on sale for 8 budget each, a new stock
+  every five waves. Gear is no longer a card.
+- **Money** is 30 at the start and 10 a wave, and it goes on walls, upgrades and gear.
+
+Known problem: the first cards decide too much. A start that offers two Frost towers and
+a coin cannot kill the first wave (two of ten seeds in the scripted runs).
+
+**Third round, 2026-10-13** (also **Built**, also a trial; borrowed from Teamfight Tactics):
+
+- **Reroll.** A button under the cards buys a new set: 2 budget, then 3, then 4, back to 2
+  when the next wave's cards come. A pick you have not used carries over.
+- **Three of a kind combine.** Three towers of one type and one level become one tower of
+  the next level (three commons a rare, three rares an epic). The one you placed first
+  stays where it is; the other two tiles become empty. Their gear moves onto it, and a
+  piece that finds no slot is paid back. A card that would complete a set says so.
+- **The Upgrade tool is gone.** Levels come from combining and from rare and epic cards.
+- **A tower limit.** Four towers at the start, one more every three waves, shown as
+  "towers 3 / 4". A tower that completes a set may always be placed.
+- **Move.** Between waves a tower can be picked up and put on another free tile for
+  nothing, with its level and its gear.
+- **Gear is a card again** as well as being in the gear shop, and a roll shows four cards.
+- **Three more towers,** eight in all: Sniper (physical, range 8, one heavy shot, ground
+  only), Shard (frost, hits three enemies at once, ground only) and Flak (fire, splash,
+  range 4.5, hits flyers). Their numbers are first guesses; Flak is at least as good as the
+  Cannon on the ground and also hits flyers, which the next balance check has to settle.
+
+**What this risks for the study** (to raise with your supervisor): a free move is a change
+to the layout that the primary measure does not count today (it counts tiles built), and a
+merge empties two tiles the player did not choose to empty. Both are written to telemetry
+(`moveTower`, `combine`), so the measure can be defined either way before it is frozen. Also: money put into levels
+is money not spent on placing or moving anything, and a tower with levels and gear is one
+a player is slower to sell. Both work against the rebuilding the study measures, in both
+versions. Upgrades and gear moves are in the build log and the telemetry, so they can be
+counted; the placement measure of §5.9 of the architecture does not see them.
 
 ### 4.3 How the two work together
 
@@ -336,18 +431,18 @@ one of the things the screens of the two versions differ by.
 
 ### 5.4 Enemy types
 
-**Planned (WP-C5):** three or four named types, each a fixed set of numbers on top of a
-movement class. **Proposed** names and roles (question 3):
+**Built** (WP-C5), as this file proposed (question 3 is still yours): four named types,
+each a fixed set of numbers on top of a movement class.
 
 | Type | Class | Compared with the plain walker |
 |---|---|---|
-| Walker | ground | the baseline |
-| Swarmling | ground | many more of them, fewer hit points each, faster |
-| Sapper | sapper | fewer, tougher, slower, digs four times as fast |
-| Flyer | flying | fewer, half the hit points, faster |
+| Basic (the walker) | ground | the baseline |
+| Swarm | ground | twice as many, four tenths of the hit points, 1.3 times as fast, half as far apart |
+| Sapper | sapper | half as many, 1.5 times the hit points, 0.8 times as fast, digs four times as fast |
+| Flyer | flying | half as many, half the hit points, 1.2 times as fast |
 
-The sapper and flyer numbers above are the placeholders used by the development planner
-today. Which waves use resistances is **Open** (question 4).
+Only the development planner sends anything but the basic type today. Which waves use
+resistances is **Open** (question 4).
 
 ---
 
@@ -360,15 +455,18 @@ walkers from the one spawn, and every wave is a little worse than the one before
 
 | Wave | Enemies | Hit points each | Speed (tiles per second) | Gap between enemies |
 |---|---|---|---|---|
-| 1 | 100 | 10 | 0.63 | 0.20 s |
-| 5 | 120 | 18 | 0.70 | 0.15 s |
-| 10 | 145 | 28 | 0.79 | 0.15 s |
-| 15 | 170 | 38 | 0.89 | 0.15 s |
-| 20 | 195 | 48 | 0.98 | 0.15 s |
-| 25 | 220 | 58 | 1.08 | 0.15 s |
+| 1 | 40 | 8 | 0.63 | 0.40 s |
+| 5 | 60 | 22 | 0.70 | 0.36 s |
+| 10 | 85 | 39.5 | 0.79 | 0.31 s |
+| 15 | 110 | 57 | 0.89 | 0.26 s |
+| 20 | 135 | 74.5 | 0.98 | 0.21 s |
+| 25 | 160 | 92 | 1.08 | 0.20 s |
 
-(+5 enemies, +2 hit points and a little more speed each wave.) These numbers are
-placeholders until the balance pass.
+(+5 enemies, +3.5 hit points, a little more speed and a slightly shorter gap each wave.)
+These numbers are from the sanity check of WP-C5 (`Results/2026-10-12_balance-v1`), where
+a scripted player that only buys towers loses around wave 11. Until then every wave was
+100 or more enemies a fifth of a second apart, and a run ended in wave 1 or not at all.
+They are not balanced: that is the second semester's pass, against people.
 
 ### 6.2 The adaptive version
 
@@ -459,19 +557,21 @@ it the text of the banner (question 7) and which route lines there are to draw (
 
 | | Amount |
 |---|---|
-| At the start | 60 |
-| After every wave | +20 |
-| An enemy killed | +0.2 (wave 1 killed to the last enemy: +20) |
-| A wall tile chewed through | +1 |
+| At the start | 30 |
+| After every wave | +10 |
+| An enemy killed | nothing (it was +0.2 until 2026-10-12) |
+| A wall tile chewed through | nothing (it was +1) |
+| A coin card | +8 |
+| An upgrade | the tower's price; half as much again for the second |
+| A piece of gear | −8 |
 | A tower chewed through | nothing |
 | A wall | today −3 to −7 for a piece of four tiles; planned −1 a tile |
-| A tower | −10 to −18 |
+| A tower | −10 to −18 (§4.2) |
 | Selling a tower | half its price back |
 | Selling a wall | half its cost back (today a whole piece at once, in proportion to the tiles still standing; planned tile by tile) |
 | Rerolling the shop | not in the game (the rule exists and is switched off) |
 
-Sixty at the start is about four towers, or three towers and some twenty wall tiles at
-that price.
+Towers are free picks now; thirty at the start is two upgrades, or an upgrade, a piece of gear and some walls.
 
 ---
 
@@ -602,11 +702,11 @@ not a decision. Questions 15 to 19 came out of your first read on 2026-10-12. Yo
 | # | Question | Suggestion | Who decides | Needed by |
 |---|---|---|---|---|
 | 1 | **How long is a session, and what ends it?** | A fixed length of 25 waves; the session still ends early if the core falls; balance so that an ordinary player gets past wave 15. Reaching the last wave is the win. | you and your supervisor | the balance check (WP-C5), firmly before the pilot |
-| 2 | **Which towers?** (spec gap S12) | The five in §4.2. | you | WP-C5 |
-| 3 | **Which enemy types?** (S12) | The four in §5.4. | you | WP-C5 |
+| 2 | **Which towers?** (spec gap S12) | The five in §4.2 are built, because WP-C5 needed a roster. Still yours to change. | you | the balance pass |
+| 3 | **Which enemy types?** (S12) | The four in §5.4 are built. Still yours to change. | you | WP9 |
 | 4 | **What exactly is in each of the four wave types,** and do they use resistances? (S10) | Take it from the proposal's §6.3, which is not in the repository yet. | you (add the proposal to `Docs/`) | WP9 |
 | 5 | **The exact formulas of the five measures.** (S9) | Take them from the proposal's §6.2. Starting definitions are in `ARCHITECTURE.md` §5.3. | you (add the proposal to `Docs/`) | WP8 |
-| 6 | **Income must not depend on the wave's shape.** (S14) | Pay a kill in proportion to what that enemy costs on the shared price list, so a wave that is wiped out pays the same whatever it was made of. | delegated; I will propose it with WP9 | WP9 |
+| 6 | **Income must not depend on the wave's shape.** (S14) | Closed in the trial of §4.4: a kill pays nothing and every cleared wave pays the same. If kill rewards come back, they must be priced by the shared list. | delegated | WP9 |
 | 7 | **The banner.** Does the static version show one? Is "as the wave starts" enough warning? | Both versions show a banner. The static one states the wave plainly ("Wave 7. 130 walkers."); the adaptive one also says why. Give every wave a few seconds between the banner and the first enemy, and playtest it. | you and your supervisor (it is part of the study design) | WP14 |
 | 8 | **How does a participant learn the game?** | A short practice run of three waves on a third seed, static, not analysed. | you and your supervisor | the pilot |
 | 9 | **Balance questions:** does a chewed wall keep paying +1; the refund of a sale; rerolls. | Leave as they are until the balance check has numbers. | delegated | WP-C5, then the second-semester balance pass |
@@ -615,6 +715,7 @@ not a decision. Questions 15 to 19 came out of your first read on 2026-10-12. Yo
 | 12 | **A name for the game,** and the company and product name in the build settings (still `DefaultCompany/InternProj`). They decide where a build writes its data. | — | you | the first build that records data |
 | 13 | **Sound.** | A handful of effects (place, shot, enemy through, wave start) in the UX pass, only if there is time. Not needed for the study. | you | the second-semester UX pass |
 | 14 | **May a participant pause and change speed?** They can today. | Yes to both: pause is for thinking, and building is off while paused. | you and your supervisor | the pilot |
+| 20 | **Do cards, levels and gear stay?** They were built as a trial (§4.4) and work against rebuilding in one way and for it in another. | Play it; then decide with the supervisor, since it bears on the measure. | you and your supervisor | before the pilot |
 | 19 | **How big is the board?** It is 24 × 24 "for now" (your word, 2026-10-12). | Play on it; settle it with the balance check. | you | WP-C5 |
 
 ### Answered
@@ -635,7 +736,7 @@ What each coming package changes for the person playing.
 | Package | What the player will notice |
 |---|---|
 | **WP-C4** towers and shop on screen (**done**) | The board from above, with rocks on it; walls drawn tile by tile; a route line for every kind of enemy you have met. The shop as cards, a range ring before placing, a Sell tool with a preview, towers that turn and fire, a shape per enemy class. |
-| **WP-C5** roster and balance check | The real towers and enemy types; numbers that are not absurd. |
+| **WP-C5** roster and balance check (**done**) | Five towers and four enemy types; waves that start smaller and grow tougher. |
 | **WP7** the learner | Nothing. It runs without the game. |
 | **WP8** build profile | Nothing. |
 | **WP9** wave types | The four wave types exist; more than one spawn. |
@@ -660,5 +761,5 @@ on top of it.
 - **Not a puzzle of fitting shapes.** That was the tetromino version of the walls (§4.1).
 - **No generated text or behaviour.** Every banner line is written by hand, and every
   run can be replayed exactly.
-- **Not in the plan:** tower upgrades, more than one map, anything carried over from one
-  session to the next, more than one player.
+- **Not in the plan:** more than one map, anything carried over from one session to the
+  next, more than one player. (Tower upgrades were on this list until 2026-10-12.)

@@ -23,6 +23,7 @@ namespace Thesis.Tests.Harness
                 Config = new SimConfig { CoreMaxHp = 100000 },
                 Map = TestSims.Open38Map(),
                 Shapes = TestShapes.SampleSceneLibrary(),
+                Towers = TestTowers.Roster(),
                 Seed = 1,
                 // Walls, then towers. A smaller search than the default keeps this test in seconds.
                 Policy = SequencePolicy.Mixed(wallsPerPhase: 2, towersPerPhase: 3, wallSearchOrigins: 12),
@@ -73,6 +74,7 @@ namespace Thesis.Tests.Harness
             {
                 Map = TestSims.Open38Map(),
                 Shapes = TestShapes.SampleSceneLibrary(),
+                Towers = TestTowers.Roster(),
                 Seed = 1,
                 Policy = policy,
                 MaxWaves = 25,
@@ -115,6 +117,7 @@ namespace Thesis.Tests.Harness
             {
                 Map = TestSims.Open38Map(),
                 Shapes = TestShapes.SampleSceneLibrary(),
+                Towers = TestTowers.Roster(),
                 Policy = new IdlePolicy(),
             };
 

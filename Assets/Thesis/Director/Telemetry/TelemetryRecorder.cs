@@ -165,6 +165,8 @@ namespace Thesis.Director
                 switch (r.Kind)
                 {
                     case PlacementKind.Tower: bought.Add(r.ShapeName); break;
+                    case PlacementKind.GearBought: bought.Add("gear:" + r.ShapeName); break;
+                    case PlacementKind.CoinTaken: bought.Add("coin"); break;
                     case PlacementKind.TowerSold: sold.Add(new WaveRecord.SaleRow { Def = r.ShapeName, X = r.OriginX, Y = r.OriginY, Refund = r.Refund }); break;
                     case PlacementKind.ShopReroll: rerolls++; break;
                 }
@@ -205,8 +207,23 @@ namespace Thesis.Director
         private string[] OfferedNames(ShopState shop)
         {
             var names = new string[shop.Offers.Length];
-            for (int i = 0; i < names.Length; i++) names[i] = sim.TowerLibrary[shop.Offers[i].TowerIndex].Id;
+            for (int i = 0; i < names.Length; i++) names[i] = CardName(shop.Offers[i]);
             return names;
+        }
+
+        // What a card is called in a row: a tower by its id ("archer"), with its level
+        // when it is above the first ("archer:rare"); "coin"; a piece of gear as
+        // "gear:scope". A bought tower is listed by its id alone, as before.
+        private string CardName(TowerOffer card)
+        {
+            switch (card.Kind)
+            {
+                case CardKind.Coin: return "coin";
+                case CardKind.Gear: return "gear:" + sim.GearLibrary[card.GearIndex].Id;
+                default:
+                    string id = sim.TowerLibrary[card.TowerIndex].Id;
+                    return card.Level == 2 ? id + ":rare" : card.Level >= 3 ? id + ":epic" : id;
+            }
         }
 
         private static WaveRecord.PlanRow PlanRow(WavePlan p)
@@ -299,6 +316,12 @@ namespace Thesis.Director
                 case PlacementKind.WallSold: return WaveRecord.PlacementRow.SellWall;
                 case PlacementKind.TowerSold: return WaveRecord.PlacementRow.SellTower;
                 case PlacementKind.ShopReroll: return WaveRecord.PlacementRow.Reroll;
+                case PlacementKind.TowerUpgraded: return WaveRecord.PlacementRow.Upgrade;
+                case PlacementKind.GearBought: return WaveRecord.PlacementRow.Gear;
+                case PlacementKind.GearMoved: return WaveRecord.PlacementRow.MoveGear;
+                case PlacementKind.CoinTaken: return WaveRecord.PlacementRow.Coin;
+                case PlacementKind.TowerCombined: return WaveRecord.PlacementRow.Combine;
+                case PlacementKind.TowerMoved: return WaveRecord.PlacementRow.MoveTower;
                 default: throw new InvalidOperationException("[Telemetry] Unknown build-log kind " + kind + ".");
             }
         }

@@ -23,19 +23,24 @@ namespace Thesis.Sim
         // far: only a tower with CanHitFlying reaches a flyer (WP-C2). It covers the
         // whole shot, not just the aim: such a tower never picks a flyer as its
         // target, and its splash and its slow pass a flyer by.
-        public static bool CanHit(TowerDef def, AgentState agent)
+        public static bool CanHit(TowerState tower, AgentState agent)
         {
-            return agent.Movement != MovementClass.Flying || def.CanHitFlying;
+            return agent.Movement != MovementClass.Flying || tower.CanHitFlying;
         }
 
         // The index in `live` of the enemy this tower shoots, or -1 for none.
         // `live` must be in ascending id order (SimState.Live is). `core` is the
         // grid's node for the core tile.
-        public static int Pick(TargetingMode mode, TowerState tower, SimGrid grid, SimNode core, IList<AgentState> live)
+        //
+        // A tower that fires at several enemies in one shot (a rare ballista's two
+        // bolts) asks once per enemy and names those it has already taken in `taken`
+        // (the first `takenCount` entries): each bolt goes to the next enemy in the
+        // same order.
+        public static int Pick(TargetingMode mode, TowerState tower, SimGrid grid, SimNode core, IList<AgentState> live, int[] taken = null, int takenCount = 0)
         {
             switch (mode)
             {
-                case TargetingMode.First: return PickFirst(tower, grid, core, live);
+                case TargetingMode.First: return PickFirst(tower, grid, core, live, taken, takenCount);
                 default: throw new InvalidOperationException("[Sim] Unknown targeting mode " + mode + ".");
             }
         }
@@ -45,7 +50,7 @@ namespace Thesis.Sim
         // a flyer is ranked by its straight line and a sapper by the sapper field.
         // Ties go to the lowest id: with a strict '<' the first one found keeps the
         // shot, and the list is in id order.
-        private static int PickFirst(TowerState tower, SimGrid grid, SimNode core, IList<AgentState> live)
+        private static int PickFirst(TowerState tower, SimGrid grid, SimNode core, IList<AgentState> live, int[] taken, int takenCount)
         {
             int best = -1;
             int bestCost = int.MaxValue;
@@ -53,8 +58,11 @@ namespace Thesis.Sim
             {
                 AgentState a = live[i];
                 if (!a.IsAlive) continue; // killed earlier this tick, not yet removed
-                if (!CanHit(tower.Def, a)) continue;
+                if (!CanHit(tower, a)) continue;
                 if (!InRange(a.Position, tower.Position, tower.RangeSquared)) continue;
+                bool already = false;
+                for (int k = 0; k < takenCount; k++) if (taken[k] == i) already = true;
+                if (already) continue;
 
                 int cost = RouteCost.ToCore(a, grid.NodeFromPosition(a.Position), core, grid.TileSize);
                 if (best < 0 || cost < bestCost)

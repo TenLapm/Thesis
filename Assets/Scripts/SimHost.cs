@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using Thesis.Director;
 using Thesis.Sim;
@@ -45,6 +46,10 @@ public class SimHost : MonoBehaviour
     public bool recordReplay = true;
     [Tooltip("Also store one state hash per tick. Costs one hash per tick and about 1 MB per 25 minutes; without it a divergence can only be narrowed to a wave, not a tick.")]
     public bool recordTickHashes = true;
+
+    [Header("Tower roster")]
+    [Tooltip("The towers the shop sells from. ORDER MATTERS: an offer names a tower by its place in this list, so reordering it changes what every seeded shop offers. Export with Thesis/Export Towers after any change.")]
+    public List<TowerDefAsset> towerRoster = new List<TowerDefAsset>();
 
     [Header("Scene references (auto-found when empty)")]
     public GridManager gridManager;
@@ -121,6 +126,21 @@ public class SimHost : MonoBehaviour
 
     public static SimHost Find() { return FindFirstObjectByType<SimHost>(); }
 
+    // The simulation's copy of the roster, in towerRoster order (TowerExporter makes the same call).
+    public TowerDef[] BuildTowerRoster()
+    {
+        if (towerRoster == null || towerRoster.Count == 0)
+            throw new InvalidOperationException("[Sim] SimHost.towerRoster is empty: the shop would have nothing to sell.");
+        var defs = new TowerDef[towerRoster.Count];
+        for (int i = 0; i < defs.Length; i++)
+        {
+            if (towerRoster[i] == null) throw new InvalidOperationException("[Sim] SimHost.towerRoster[" + i + "] is not set.");
+            defs[i] = towerRoster[i].ToDef();
+            defs[i].Validate();
+        }
+        return defs;
+    }
+
     void Awake()
     {
         EnsureStarted();
@@ -145,8 +165,7 @@ public class SimHost : MonoBehaviour
         map = SceneMapBuilder.Build(gridManager, flowManager.targetGoal, new[] { waveSpawner.spawnPoint }, SceneManager.GetActiveScene().name);
         runConfig = (configAsset != null ? configAsset.config : new SimConfig()).Clone();
         IWavePlanner planner = directorHost != null ? directorHost.CreatePlanner(runConfig, map) : new EscalationPlanner(runConfig, map);
-        // The tower roster is the placeholder set until WP-C5 turns it into assets.
-        sim = new Simulation(runConfig, map, blockManager.BuildShapeLibrary(), TowerRoster.Placeholder(), Seed, planner);
+        sim = new Simulation(runConfig, map, blockManager.BuildShapeLibrary(), BuildTowerRoster(), Seed, planner);
         flowManager.Bind(sim.State.Grid);
 
         Debug.Log("[Sim] Started: map '" + map.Name + "' " + map.Width + "x" + map.Height + ", seed " + Seed + ", planner '" + planner.Name

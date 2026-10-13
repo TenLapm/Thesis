@@ -157,7 +157,8 @@ namespace Thesis.Tests.Harness
                 }
             }
 
-            foreach (string kind in new[] { WaveRecord.PlacementRow.Wall, WaveRecord.PlacementRow.Tower, WaveRecord.PlacementRow.SellWall, WaveRecord.PlacementRow.SellTower })
+            foreach (string kind in new[] { WaveRecord.PlacementRow.Wall, WaveRecord.PlacementRow.Tower, WaveRecord.PlacementRow.SellWall, WaveRecord.PlacementRow.SellTower,
+                                            WaveRecord.PlacementRow.Upgrade, WaveRecord.PlacementRow.Gear, WaveRecord.PlacementRow.Coin })
                 Assert.IsTrue(seen.ContainsKey(kind) && seen[kind] > 0, "no recording has a '" + kind + "' row");
         }
 

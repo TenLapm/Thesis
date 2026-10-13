@@ -19,12 +19,16 @@ namespace Thesis.Sim
         public int X;
         public int Y;
 
-        // PlaceTower: the shop's offer slot. Zero otherwise.
+        // PlaceTower, TakeCoin, BuyGear: the shop's slot. MoveGear: the gear slot. Zero otherwise.
         public int A;
+
+        // MoveGear, MoveTower: the tile the gear or the tower goes to. Zero otherwise.
+        public int B;
+        public int C;
 
         public static ReplayCommand From(int tick, SimCommand command)
         {
-            return new ReplayCommand { Tick = tick, Cmd = command.Kind.ToString(), X = command.X, Y = command.Y, A = command.A };
+            return new ReplayCommand { Tick = tick, Cmd = command.Kind.ToString(), X = command.X, Y = command.Y, A = command.A, B = command.B, C = command.C };
         }
 
         public SimCommand ToCommand()
@@ -45,6 +49,12 @@ namespace Thesis.Sim
                 case SimCommandKind.SellTower: return SimCommand.SellTower(X, Y);
                 case SimCommandKind.SellWall: return SimCommand.SellWall(X, Y);
                 case SimCommandKind.RerollShop: return SimCommand.RerollShop();
+                case SimCommandKind.TakeCoin: return SimCommand.TakeCoin(A);
+                case SimCommandKind.BuyGear: return SimCommand.BuyGear(A, X, Y);
+                case SimCommandKind.MoveGear: return SimCommand.MoveGear(X, Y, A, B, C);
+                case SimCommandKind.UpgradeTower: return SimCommand.UpgradeTower(X, Y);
+                case SimCommandKind.BuyShopGear: return SimCommand.BuyShopGear(A, X, Y);
+                case SimCommandKind.MoveTower: return SimCommand.MoveTower(X, Y, B, C);
                 default: throw new InvalidDataException("[Replay] Command '" + Cmd + "' at tick " + Tick + " cannot be replayed by this version.");
             }
         }

@@ -17,6 +17,12 @@ namespace Thesis.Sim
         SellTower,    // sell the tower on tile (X, Y)
         SellWall,     // sell the whole wall piece that tile (X, Y) belongs to
         RerollShop,   // pay for a new set of offers (a no-op while rerolls are off)
+        TakeCoin,     // take the coin card in slot A
+        BuyGear,      // buy the gear card in slot A onto the tower on tile (X, Y)
+        MoveGear,     // move the gear in slot A of the tower on (X, Y) to the tower on (B, C)
+        UpgradeTower, // raise the tower on tile (X, Y) one level
+        BuyShopGear,  // buy the gear shop's item in slot A onto the tower on tile (X, Y)
+        MoveTower,    // put the tower on tile (X, Y) on tile (B, C)
     }
 
     public readonly struct SimCommand
@@ -33,12 +39,18 @@ namespace Thesis.Sim
         // index into the tower roster. Zero otherwise.
         public readonly int A;
 
-        private SimCommand(SimCommandKind kind, int x, int y, int a)
+        // MoveGear: the tile of the tower the gear goes to. MoveTower: the tile the tower goes to. Zero otherwise.
+        public readonly int B;
+        public readonly int C;
+
+        private SimCommand(SimCommandKind kind, int x, int y, int a, int b = 0, int c = 0)
         {
             Kind = kind;
             X = x;
             Y = y;
             A = a;
+            B = b;
+            C = c;
         }
 
         public static SimCommand PlaceShape(int originX, int originY) { return new SimCommand(SimCommandKind.PlaceShape, originX, originY, 0); }
@@ -57,14 +69,32 @@ namespace Thesis.Sim
 
         public static SimCommand RerollShop() { return new SimCommand(SimCommandKind.RerollShop, 0, 0, 0); }
 
+        public static SimCommand TakeCoin(int offerSlot) { return new SimCommand(SimCommandKind.TakeCoin, 0, 0, offerSlot); }
+
+        public static SimCommand BuyGear(int offerSlot, int x, int y) { return new SimCommand(SimCommandKind.BuyGear, x, y, offerSlot); }
+
+        public static SimCommand MoveGear(int fromX, int fromY, int gearSlot, int toX, int toY) { return new SimCommand(SimCommandKind.MoveGear, fromX, fromY, gearSlot, toX, toY); }
+
+        public static SimCommand UpgradeTower(int x, int y) { return new SimCommand(SimCommandKind.UpgradeTower, x, y, 0); }
+
+        public static SimCommand BuyShopGear(int shopSlot, int x, int y) { return new SimCommand(SimCommandKind.BuyShopGear, x, y, shopSlot); }
+
+        public static SimCommand MoveTower(int fromX, int fromY, int toX, int toY) { return new SimCommand(SimCommandKind.MoveTower, fromX, fromY, 0, toX, toY); }
+
         public override string ToString()
         {
             switch (Kind)
             {
+                case SimCommandKind.MoveTower: return "MoveTower(" + X + "," + Y + " -> " + B + "," + C + ")";
                 case SimCommandKind.PlaceShape: return "PlaceShape(" + X + "," + Y + ")";
                 case SimCommandKind.PlaceTower: return "PlaceTower(slot " + A + " @" + X + "," + Y + ")";
                 case SimCommandKind.SellTower: return "SellTower(" + X + "," + Y + ")";
                 case SimCommandKind.SellWall: return "SellWall(" + X + "," + Y + ")";
+                case SimCommandKind.TakeCoin: return "TakeCoin(slot " + A + ")";
+                case SimCommandKind.BuyGear: return "BuyGear(slot " + A + " @" + X + "," + Y + ")";
+                case SimCommandKind.MoveGear: return "MoveGear(" + X + "," + Y + " slot " + A + " -> " + B + "," + C + ")";
+                case SimCommandKind.UpgradeTower: return "UpgradeTower(" + X + "," + Y + ")";
+                case SimCommandKind.BuyShopGear: return "BuyShopGear(slot " + A + " @" + X + "," + Y + ")";
                 default: return Kind.ToString();
             }
         }

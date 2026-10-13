@@ -15,6 +15,9 @@ namespace Thesis.Sim
     // Who a tower may hit is Targeting.CanHit: a tower without CanHitFlying never
     // touches a flyer, as a target or with its splash (WP-C2).
     //
+    // The numbers of a shot are the TOWER's (TowerState: its definition, its level
+    // and its gear), not the definition's alone.
+    //
     // Damage everywhere means EFFECTIVE damage: the hit points actually removed.
     // A 6-damage shot at an enemy with 2 HP deals 2. Otherwise the damage map and
     // the per-type totals would reward overkill, and the director's features read both.
@@ -26,6 +29,8 @@ namespace Thesis.Sim
         public static void Step(SimGrid grid, SimNode core, IList<TowerState> towers, IList<AgentState> live, DamageMap damage,
                                 float[] damageByType, float minSlowFactor, ref float buildBudget, IList<SimEvent> events)
         {
+            // Scratch for one shot's targets; a tower never has more bolts than this.
+            int[] taken = new int[8];
             for (int t = 0; t < towers.Count; t++)
             {
                 TowerState tower = towers[t];
@@ -35,28 +40,37 @@ namespace Thesis.Sim
                 if (tower.Cooldown > 0) continue;
 
                 // Nothing in range: keep the shot and fire the tick a target appears.
-                int index = Targeting.Pick(tower.Def.Mode, tower, grid, core, live);
-                if (index < 0) continue;
-
-                AgentState target = live[index];
-                Vec2f centre = target.Position; // a splash is centred where the target stood
-                Hit(tower, target, grid, damage, damageByType, minSlowFactor, ref buildBudget, events);
-
-                if (tower.SplashSquared > 0f)
+                // A tower with several targets a shot (TowerState.Targets) picks them one
+                // after another in the same order; with fewer enemies in range than
+                // bolts, the spare bolts are not fired.
+                int fired = 0;
+                for (int bolt = 0; bolt < tower.Targets && bolt < taken.Length; bolt++)
                 {
-                    for (int i = 0; i < live.Count; i++)
-                    {
-                        AgentState other = live[i];
-                        if (i == index || !other.IsAlive) continue;
-                        if (!Targeting.CanHit(tower.Def, other)) continue;
-                        if (!Targeting.InRange(other.Position, centre, tower.SplashSquared)) continue;
-                        Hit(tower, other, grid, damage, damageByType, minSlowFactor, ref buildBudget, events);
-                    }
-                }
+                    int index = Targeting.Pick(tower.Def.Mode, tower, grid, core, live, taken, fired);
+                    if (index < 0) break;
+                    taken[fired++] = index;
 
-                tower.Cooldown = tower.Def.FireIntervalTicks;
+                    AgentState target = live[index];
+                    Vec2f centre = target.Position; // a splash is centred where the target stood
+                    Hit(tower, target, grid, damage, damageByType, minSlowFactor, ref buildBudget, events);
+
+                    if (tower.SplashSquared > 0f)
+                    {
+                        for (int i = 0; i < live.Count; i++)
+                        {
+                            AgentState other = live[i];
+                            if (i == index || !other.IsAlive) continue;
+                            if (!Targeting.CanHit(tower, other)) continue;
+                            if (!Targeting.InRange(other.Position, centre, tower.SplashSquared)) continue;
+                            Hit(tower, other, grid, damage, damageByType, minSlowFactor, ref buildBudget, events);
+                        }
+                    }
+                    events?.Add(SimEvent.TowerFired(tower.Id, target.Id));
+                }
+                if (fired == 0) continue;
+
+                tower.Cooldown = tower.FireIntervalTicks;
                 tower.Shots++;
-                events?.Add(SimEvent.TowerFired(tower.Id, target.Id));
             }
         }
 
@@ -70,7 +84,7 @@ namespace Thesis.Sim
             // Resist 0 is immunity: no damage and no slow either.
             if (!(resist > 0f)) return;
 
-            float dealt = (float)(def.Damage * resist);
+            float dealt = (float)(tower.Damage * resist);
             if (dealt > agent.Hp) dealt = agent.Hp; // overkill is not damage
             if (dealt > 0f)
             {
@@ -83,10 +97,10 @@ namespace Thesis.Sim
             // Slow keeps the LONGEST remaining time and the STRONGEST (smallest)
             // factor, so two slowing towers never weaken each other. The floor is what
             // guarantees a slowed enemy still advances and its wave still ends.
-            if (def.SlowTicks > 0)
+            if (tower.SlowTicks > 0)
             {
-                if (def.SlowTicks > agent.SlowTicks) agent.SlowTicks = def.SlowTicks;
-                float factor = Math.Max(def.SlowFactor, minSlowFactor);
+                if (tower.SlowTicks > agent.SlowTicks) agent.SlowTicks = tower.SlowTicks;
+                float factor = Math.Max(tower.SlowFactor, minSlowFactor);
                 if (factor < agent.SlowFactor) agent.SlowFactor = factor;
             }
 

@@ -6,13 +6,25 @@ work is an adaptive wave director driven by a contextual bandit.
 **Status (2026-10-12).** The game runs on a deterministic, headless simulation core
 (`Assets/Thesis`), with Unity as a thin host around it (`Docs/WORKPLAN.md` WP0–WP5,
 the hardening pass WP-H, the combat core WP-C1, the movement classes WP-C2, the
-shop, selling and telemetry package WP-C3 and the board and tower UI package WP-C4
-are done). Enemies have hit points, towers shoot them, an enemy can be a ground
+shop, selling and telemetry package WP-C3, the board and tower UI package WP-C4 and
+the first roster with its balance check WP-C5 are done). Enemies have hit points, towers shoot them, an enemy can be a ground
 walker, a sapper or a flyer, towers are bought from a random shop, towers and walls
 can be sold, and every session writes one telemetry row per wave. The board is 24 × 24
-with rocks on it, seen from straight above, and a wall is one tile. **Not built
-yet:** balance and the real roster (WP-C5), the learner (WP7, not started) and the
-director itself. Next package: WP-C5.
+with rocks on it, seen from straight above, and a wall is one tile. There are five
+towers and four enemy types, sanity-checked and not balanced. **Since the student's
+first play (2026-10-12) the game also has a trial of cards, tower levels and gear**
+(GDD §4.4): shop slots hold tower, coin or gear cards; a tower has three levels and gear
+slots; the build phase waits for Start; income is a flat 10 a wave; a roll of cards
+is a free pick of one; gear is sold in a gear shop restocked every five waves; and the
+next wave is planned as the build phase begins and shown to the player (`PlanAhead`). **A third
+round (2026-10-13)** added a paid reroll of the cards, three towers of a kind combining into the
+next level (`TowerCombine`; the paid Upgrade tool is off in the game), a cap on standing towers,
+free moving of towers between waves (`MoveTower`), gear among the cards again, and three more
+towers (sniper, shard, flak: eight in all). All of it is
+switched by `SimConfig` and off in the C# defaults. SampleScene is set to
+`DevClassCycle` for play-testing, not to a study condition. **Not built yet:** the
+learner (WP7, not started), the build profile (WP8) and the director itself. Next:
+WP7, which nothing else is waiting for but which WP11 needs; then WP8.
 
 Read §1 and §2 before writing any code.
 
@@ -85,9 +97,15 @@ No study condition sends sappers or flyers yet: the strategies that will are WP9
 To play them now, set `DirectorHost.condition` to `DevClassCycle` in SampleScene
 (headless: `--planner class-cycle`). That planner is a development aid, not a condition.
 
-What is still a placeholder: three unbalanced tower types (`TowerRoster`: a
-single-target, a splash and a slowing tower, one per damage type; only the first
-can hit flyers); the shop's numbers (four offers, half back on a sale, no rerolls);
+The roster (WP-C5): five towers (archer, ballista, cannon, brazier, frost; the first
+two can hit flyers), as `TowerDefAsset`s listed in `SimHost.towerRoster` and exported to
+`Maps/Towers.json`; four enemy types (`EnemyArchetypes`: basic, swarm, sapper, flyer).
+**The game's numbers are `SimConfig.asset`, exported to `Maps/SimConfig.json`;
+`SimConfig`'s C# defaults are the older numbers the tests are written against.**
+`thesis run` and `thesis balance` read the file. The numbers passed a sanity check
+(`Results/2026-10-12_balance-v1`) and are not balanced.
+
+What is still a placeholder: the shop's numbers (four offers, half back on a sale, no rerolls);
 the sapper and flyer numbers; and how the classes look (a tint, and height for
 flyers: a square, an orange disc and a blue diamond). The screen is functional, not
 styled (WP-C4): the shop is a panel of cards (click a card, then a tile; the tower
@@ -158,13 +176,14 @@ Assets/Thesis/                pure C#, no UnityEngine; each folder is one assemb
     Movement/ MovementClass (Ground, Sapper, Flying), FlowFieldSet (both fields,
               rebuilt together), FlyingMovement, RouteCost (way left, per class)
     Combat/   TowerDef, TowerState, TowerSystem (the tower pass), Targeting,
-              DamageMap, DamageType, TowerRoster (placeholder roster)
+              DamageMap, DamageType, TowerLibraryFile (the roster file, Maps/Towers.json)
     Build/    ShapeDef, ShapeBag (7-bag, hold, rotate), Placement (CanPlace = I9; building
               and selling), PlacementRecord (a row of the build log: built, sold, rerolled)
     Shop/     ShopState, TowerOffer, ShopRoller (offers from seed, wave, reroll count = I10)
     Waves/    IWavePlanner, EscalationPlanner (static baseline), SafePlanner,
-              PlanValidator, WavePlan, WaveOutcome, ClassCyclePlanner (development
-              only: sends sappers and flyers until the strategies exist)
+              PlanValidator, WavePlan, WaveOutcome, EnemyArchetype (the four enemy
+              types), ClassCyclePlanner (development only: sends every enemy type
+              in a five-wave cycle until the strategies exist)
     Replay/   ReplayFile, ReplayRecorder, ReplaySetup
     Debug/    StateHasher, StateDump, AsciiMap, AsciiState, BenchScenarios
     Map/ Commands/ Events/ Stats/
@@ -193,14 +212,16 @@ Assets/Scripts/               Unity host and views
   TopDownCamera.cs         the fixed view from above (SampleScene); CameraMovement.cs is the
                            free camera of the benchmark scenes
   Billboard.cs WallSpawnAnimator.cs BlockShape.cs
-  Config/SimConfigAsset.cs inspector home of SimConfig
+  Config/SimConfigAsset.cs inspector home of SimConfig; Config/TowerDefAsset.cs of one tower
+  Towers/                  the five tower assets
   Benchmark/ScenarioBenchmark.cs   the Unity-only frame-time scenarios
-  Editor/                  MapExporter, ShapeExporter, ReplayMenu, BuildGuard
+  Editor/                  MapExporter, ShapeExporter, TowerExporter, ConfigExporter, ReplayMenu, BuildGuard
 Assets/Tests/EditMode/        one set of tests, run by Unity and by `dotnet test`
 Tools/dotnet/                 headless build of Assets/Thesis, and Thesis.Cli
-                              (run, replay, ascii, pin, bench, telemetry, trace, entropy)
+                              (run, replay, ascii, pin, bench, telemetry, trace, entropy, balance)
 Tools/gdd/                    makes Docs/GDD.pdf and the pictures in Docs/gdd from Docs/GDD.md
-Maps/                         exported maps and Shapes.json
+Maps/                         exported maps, Shapes.json, Towers.json and SimConfig.json (the game's
+                              numbers); Fixture_Open38 is a test fixture
 Results/                      committed results; Results/pinned-replays (recordings and their
                               telemetry) is re-run by tests
 Runs/                         (gitignored) raw output and Unity sessions (replay and telemetry)

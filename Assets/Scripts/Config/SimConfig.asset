@@ -14,30 +14,48 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::SimConfigAsset
   config:
     TickSeconds: 0.02
-    StartBudget: 60
+    StartBudget: 30
     CoreMaxHp: 10
-    StipendPerWave: 20
+    StipendPerWave: 10
     PrepSeconds: 45
     IntermissionSeconds: 10
     DigRate: 1
-    KillReward: 0.2
-    WallBreakReward: 1
+    KillReward: 0
+    WallBreakReward: 0
     TowerBreachReward: 0
-    AgentsPerWave: 100
+    AgentsPerWave: 40
     AgentsPerWaveIncrement: 5
-    SpawnDelay: 0.2
-    SpawnDelayDecrement: 0.02
-    MinSpawnDelay: 0.15
+    SpawnDelay: 0.4
+    SpawnDelayDecrement: 0.01
+    MinSpawnDelay: 0.2
     BaseMoveSpeed: 1.25
     MoveSpeedIncrementPerWave: 0.0375
     MaxMoveSpeed: 2.25
-    BaseHp: 10
-    HpIncrementPerWave: 2
+    BaseHp: 8
+    HpIncrementPerWave: 3.5
     ShopOffers: 4
-    RerollCost: -1
+    RerollCost: 2
+    RerollCostStep: 1
     SellRefund: 0.5
     WallSellRefund: 0.5
     SellDuringWave: 0
+    WaitForStart: 1
+    CoinCardWeight: 0.25
+    CoinCardAmount: 8
+    GearCardWeight: 0.25
+    RareTowerChance: 0.1
+    EpicTowerChance: 0.02
+    UpgradeCostFactor: 0
+    MoveGearDuringWave: 0
+    PlanAhead: 1
+    PicksPerRoll: 1
+    PicksAtStart: 2
+    GearShopSlots: 3
+    GearShopRefreshWaves: 5
+    CombineCount: 3
+    TowerCap: 4
+    TowerCapEveryWaves: 3
+    MoveTowers: 1
     SapperDigCostFactor: 0.2
     MinSlowFactor: 0.25
     MaxWaveSeconds: 600

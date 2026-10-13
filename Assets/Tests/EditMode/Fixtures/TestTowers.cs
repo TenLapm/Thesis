@@ -4,12 +4,22 @@ using Thesis.Sim;
 
 namespace Thesis.Tests
 {
-    // Tower definitions for tests. Roster() is the game's placeholder roster; the
+    // Tower definitions for tests. Roster() is a fixed roster of three (it was the
+    // game's placeholder roster until WP-C5, and many tests are written against its
+    // numbers); TestSims.GameTowers() is the roster the game sells from today. The
     // builders below make one-purpose towers that cost nothing, so a test can place
     // them without caring about the budget.
     public static class TestTowers
     {
-        public static TowerDef[] Roster() { return TowerRoster.Placeholder(); }
+        public static TowerDef[] Roster()
+        {
+            return new[]
+            {
+                new TowerDef { Id = "archer", Cost = 10, DamageType = DamageType.Physical, Damage = 4f, RangeTiles = 3.5f, FireIntervalTicks = 25, CanHitFlying = true },
+                new TowerDef { Id = "cannon", Cost = 18, DamageType = DamageType.Fire, Damage = 3f, RangeTiles = 2.5f, FireIntervalTicks = 60, SplashRadiusTiles = 0.75f },
+                new TowerDef { Id = "frost", Cost = 12, DamageType = DamageType.Frost, Damage = 1f, RangeTiles = 2.5f, FireIntervalTicks = 30, SlowTicks = 75, SlowFactor = 0.5f },
+            };
+        }
 
         public static TowerDef Gun(float damage = 1f, float range = 3f, int interval = 25, DamageType type = DamageType.Physical, int cost = 0, string id = "gun", bool canHitFlying = false)
         {
