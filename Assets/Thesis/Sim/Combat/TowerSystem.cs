@@ -34,7 +34,7 @@ namespace Thesis.Sim
             for (int t = 0; t < towers.Count; t++)
             {
                 TowerState tower = towers[t];
-                if (!tower.IsAlive) continue;
+                if (!tower.IsAlive || tower.OnBench) continue;
 
                 if (tower.Cooldown > 0) tower.Cooldown--;
                 if (tower.Cooldown > 0) continue;

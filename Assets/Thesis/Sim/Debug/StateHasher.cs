@@ -26,6 +26,19 @@ namespace Thesis.Sim
             h.Add(s.WaveIndex);
             h.Add(s.BuildBudget);
             h.Add(s.CoreHp);
+            h.Add(s.Core.X);
+            h.Add(s.Core.Y);
+            h.Add(s.WallsLeft);
+            h.Add(s.RelaysLeft);
+            h.Add(s.MovesLeft);
+            h.Add(s.MovesBought);
+            h.Add(s.PhaseLogStart);
+            h.Add(s.GearOverflow.Count);
+            for (int i = 0; i < s.GearOverflow.Count; i++) h.Add(s.GearOverflow[i]);
+            h.Add(s.GearInventory.Length);
+            for (int i = 0; i < s.GearInventory.Length; i++) h.Add(s.GearInventory[i]);
+            h.Add(s.Bench.Length);
+            for (int i = 0; i < s.Bench.Length; i++) h.Add(s.Bench[i]);
 
             AddGrid(ref h, s.Grid);
 
@@ -136,6 +149,7 @@ namespace Thesis.Sim
             h.Add(t.IsAlive);
             h.Add(t.Sold);
             h.Add(t.Combined);
+            h.Add(t.OnBench);
             h.Add(t.DamageDealt);
             h.Add(t.Shots);
             h.Add(t.Kills);

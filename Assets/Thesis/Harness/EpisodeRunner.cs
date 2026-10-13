@@ -33,6 +33,7 @@ namespace Thesis.Harness
             var result = new EpisodeResult();
             SimState s = sim.State;
             bool builtThisPhase = false;
+            bool waitedForPlan = false;
 
             while (!s.IsGameOver && result.WavesResolved < o.MaxWaves)
             {
@@ -44,16 +45,37 @@ namespace Thesis.Harness
 
                 if (s.Phase == SimPhase.Prep || s.Phase == SimPhase.Intermission)
                 {
-                    if (!builtThisPhase)
+                    // With waves planned ahead (SimConfig.PlanAhead) the plan is made on the
+                    // first tick of the build phase. The player is told what comes before
+                    // building, so the scripted one waits that one tick too.
+                    if (!builtThisPhase && sim.Config.PlanAhead && s.NextPlan == null && !waitedForPlan)
+                    {
+                        waitedForPlan = true;
+                    }
+                    else if (!builtThisPhase)
                     {
                         o.Policy.OnIntermission(sim, send, policyRng);
-                        if (o.StartWavesEarly) send(SimCommand.StartWaveNow());
                         builtThisPhase = true;
+                        // The player moved the core: the wave is planned again, and the
+                        // player gets to answer that plan.
+                        if (sim.Config.PlanAhead && s.NextPlan == null && s.WaveIndex == 0 && !s.IsGameOver)
+                        {
+                            builtThisPhase = false;
+                            waitedForPlan = false;
+                        }
+                        else
+                        {
+                            // No wave starts while spare gear waits (SimState.GearOverflow): a
+                            // policy that left some sells it, so that no episode hangs on it.
+                            for (int guard = 0; guard < 64 && s.GearOverflow.Count > 0; guard++) send(SimCommand.SellOverflow(0));
+                            if (o.StartWavesEarly) send(SimCommand.StartWaveNow());
+                        }
                     }
                 }
                 else
                 {
                     builtThisPhase = false;
+                    waitedForPlan = false;
                 }
 
                 sim.Tick();

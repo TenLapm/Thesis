@@ -27,7 +27,7 @@ namespace Thesis.Sim
         // A is now an offer slot, not a roster index, and there are three new
         // commands. A file of another schema is refused: its commands and hashes
         // describe a different game.
-        public const int CurrentSchema = 7; // 5: cards, tower levels and gear; 6: the draft, the gear shop, waves planned ahead; 7: combining, the tower cap, MoveTower (all 2026-10-12)
+        public const int CurrentSchema = 10; // 10: merging by choice, gear coming back from sold and merged towers (2026-10-14); // 9: the gear inventory (2026-10-14); // 8: generated maps, the core placed by the player, entry points, the wall stock, moves, the bench (2026-10-13); // 5: cards, tower levels and gear; 6: the draft, the gear shop, waves planned ahead; 7: combining, the tower cap, MoveTower (all 2026-10-12)
 
         public int Schema = CurrentSchema;
 

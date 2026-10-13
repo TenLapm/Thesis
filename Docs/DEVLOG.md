@@ -1558,3 +1558,177 @@ and four seeds lose by wave 3 against sappers and flyers. Not balanced.
 - A free move and a merge both change the layout without a "wall" or "tower" row. Whether the
   primary metric should count them is a study-design question (GDD 4.4).
 - Flak overlaps the cannon. Work plan and architecture document still not updated.
+
+---
+
+## 2026-10-13 — Fourth round: few, heavy actions (generated map, entries, wall stock, moves, bench)
+
+**Status:** built as a trial at the student's request, after a design discussion (chess-like
+turns; RimWorld's raids as the model for where enemies come from). 584 tests pass in both
+runners (18 new). The state before it is commit `341a31f`.
+
+**Rules** (behind `SimConfig`, off in the defaults)
+- `MapGenerator.Generate(seed, ...)`: ridges of rock from the seed, a ring of `BuildMargin`
+  tiles kept open and unbuildable (`Placement.CanPlace`), every second tile of the outermost
+  line an entry point (`MapData.Spawns`, 60 on 32 x 32), pockets turned to rock with the real
+  flow field so every open tile reaches every other.
+- `CorePlacement`: command `PlaceCore`, before the first wave only. The simulation now owns a
+  CLONE of the map and moves the core on it; `Simulation.InitialMap` is the map as given and is
+  what the replay stores. `SimState.Core` is hashed.
+- `RaidPlanner` (development, id `raid`): the class cycle's enemies shared over 1, 2 or 3
+  entries (from waves 1, 4, 8). Odd waves take the entries whose routes are least covered by
+  towers, even waves a spread by wave number. An entry needs `MinEntryRouteTiles` of route and
+  entries are `MinEntrySpacingTiles` apart.
+- `WallStock`, `WallStockPerWave`, `WallRelayPerWave`, wall card, `BuyWalls`: walls cost no
+  budget; `SellWall` takes a wall up (free if laid this phase, else one pick-up).
+- `MovesPerWave`, `BuyMove`: moving, selling, benching, deploying or swapping a tower on the
+  board costs a move; a refused action costs none.
+- `BenchSlots` (`TowerBench`): `BenchCard`, `DeployTower` (onto a tower = swap), `RecallTower`,
+  `SwapBench`, `SellBenched`. A benched tower is alive, on no tile, and does not shoot.
+- `FeedDuplicates`: `FeedCard` merges a tower card into a tower of its type.
+- Replay schema 8, telemetry schema 4 (rows walls, buyMove, bench, deploy, recall, feed, core).
+
+**Harness:** `RaidPolicy` ("raider") uses every new command; `SentryPolicy` reads the announced
+wave's entries and has a `RouteTail` option ("turtle": towers round the core); the episode
+runner waits one tick for the announced plan and calls the policy again after a core move.
+`thesis run --gen-map <seed>`. New pinned episode `raid-10waves`.
+
+**In Unity:** SampleScene is 32 x 32, generated, random seed each run, planner `DevRaid`. A left
+panel (`BenchPanel`) shows the core prompt, moves, wall tiles and the bench; `PathPreviewer`
+draws a line per entry and enemy kind and a marker on each entry. Checked in play mode: core
+placed, a card benched, deployed and recalled, the third action refused for want of a move,
+walls from the stock, and a wave announced "from 2 sides".
+
+**Measured** (10 generated maps, wave lost in). The way from the edge to a core in the middle
+is about half as long as the old corner-to-corner route, and the tower limit keeps towers few:
+
+| Waves | sentry | turtle (towers round the core) |
+|---|---|---|
+| 40 +5 enemies, 8 +3.5 hp (the old numbers) | 4 2 2 3 2 3 2 2 2 4 | 2 2 2 2 4 5 2 2 2 10 |
+| 24 +3 enemies, 6 +2.5 hp (now the game's) | 4 3 2 3 4 4 4 4 3 9 | 4 3 2 5 9 13 5 5 3 14 |
+
+The sentry never moves a tower, so a wave from another side passes it by: that is the design
+working, not a fault. The second row is a first guess to make the game playable; it is not a
+balance.
+
+**Deviations and open points**
+- Every route ends at the core, so the "turtle" may be the one good layout (GDD 4.4).
+- Wave strength does not yet account for the entries used (I2): a wave split over three sides
+  is as many enemies as one from one side, but harder to cover. That belongs to the threat
+  cost table (WP9).
+- The static baseline (`EscalationPlanner`) still always uses entry 0.
+- Telemetry's `mapSeed` is still 0; the map's name carries the seed.
+- The balance check of WP-C5 no longer describes the game. Work plan and architecture document
+  still not updated; WP7 not started.
+
+---
+
+## 2026-10-14 — Gear inventory, and a trial scene with a tilted board, stand-up figures and drag and drop
+
+**Status:** built at the student's request after playing the fourth round ("the interface is
+hard to understand"). 585 tests pass in both runners (1 new). Nothing since `341a31f` is committed.
+
+**Rules** (behind `SimConfig.GearInventorySlots`, 0 = off; the game's config has 6)
+- `SimState.GearInventory`: gear owned without being on a tower. Commands `StoreGearCard`,
+  `StoreShopGear` (into the inventory), `EquipGear`, `UnequipGear` (onto and off a tower on the
+  board or the bench; free; in build phases unless `MoveGearDuringWave`). Build-log kinds
+  GearStored, GearEquipped, GearUnequipped; telemetry rows gearStore, equip, unequip.
+- Unequipping leaves a tower's `PricePaid` alone. A piece bought straight ONTO a tower (the old
+  commands, still there) therefore stays in that tower's sale price after it is taken off: a
+  small leak that only exists when both ways of buying are used in one game.
+- Replay schema 9, telemetry schema 5. Pinned replays re-recorded; `raid-10waves` now also
+  holds StoreShopGear, EquipGear and UnequipGear.
+
+**Unity: a second scene, `Assets/Scenes/ArknightsTest.unity`** (SampleScene is kept as it was,
+with the top-down camera and the left panel).
+- `TiltCamera`: orthographic, 52 degrees, fitted to the free part of the screen; the mouse
+  wheel zooms (up to 3x), the middle button or the arrow keys move the view.
+- `PlayerBuilder.billboards`: a tower is a flat figure that faces the camera
+  (`TowerView.Figure`: a placeholder body and head in the damage type's colour, a frame in the
+  level's colour, the first two letters of its name). The tower in the hand is shown standing on
+  the tile under the mouse.
+- `DeckBar` (bottom of the screen): moves and wall tiles with their buy buttons, the bench as
+  tower cards, the gear inventory, and a card with a tower's full numbers for the tower or bench
+  card under the mouse. `DragCard`: bench cards, inventory pieces and the shop's cards are
+  dragged onto a tile, a tower or a slot; a tower on the board is dragged to a tile or the bench.
+  Clicking still works. With the bar present, gear from a card or the gear shop goes into the
+  inventory.
+- The card overlay is hidden by a CanvasGroup instead of being switched off, so a drag that
+  starts on it survives (both scenes).
+
+**Checked in play mode** (driven from code): the scene starts, the figures, the bench card and
+the inventory piece are drawn, the buttons moved under the shop panel. **Not checked by hand:**
+every drag gesture. Enemies are still the 3D shapes; only towers are figures.
+
+**Open:** on 32 x 32 a tile is about 16 pixels at 720p, so a figure is small until zoomed in; an
+Arknights board is roughly 10 x 7. Whether the board should shrink is a design question.
+
+---
+
+## 2026-10-14 — Merging three of a kind by choice; gear comes back from sold and merged towers
+
+**Status:** built at the student's request ("how do I merge, I got three towers"). 587 tests
+pass in both runners (2 new). Nothing since `341a31f` is committed.
+
+**Rules**
+- `SimConfig.MergeCount` (default 2; the game's config 3) and `TowerMerge`: that many towers of
+  one type and level make the next level. Command `MergeTower` (source and target each a board
+  tile or a bench slot): the tower dropped ON stays and gains the level, the source and the
+  other copies are used up wherever they are (benched copies first). One move if any of them is
+  on the board. Logged as `TowerCombined`, telemetry `combine`.
+- A tower card is one copy of a set: with `MergeCount` 3, `FeedCard` needs a card of the tower's
+  level and one more copy, which is used up. With 2 it works as before. A card above the
+  tower's level still simply gives the tower that level.
+- With a gear inventory, the gear of a tower that is sold or merged away comes back into it.
+  What does not fit goes to `SimState.GearOverflow`: `EquipOverflow` puts a piece on a tower,
+  `SellOverflow` sells it for half its price, a freed inventory slot takes one by itself, and
+  `StartWaveNow` is ignored while any waits. The episode runner sells what a scripted player
+  leaves, so no episode can hang on it.
+- Replay schema 10, telemetry schema 6 (row `gearSold`). Pinned replays re-recorded.
+
+**In Unity (ArknightsTest):** dropping a benched tower or a board tower on another of its kind
+merges when the set is complete (else it changes places or picks up, as before); the preview
+says which. A "spare gear" panel appears above the bottom bar while pieces wait, each with a
+sell button. `SimHost` switches the gear inventory off in a scene without the bottom bar, so
+SampleScene cannot be blocked by spare gear it has no way to show.
+
+**Checked in play mode** (from code, through PlayerBuilder's own click path): three braziers,
+one benched, merged into a rare; the piece that did not fit showed in the spare panel.
+
+**Open:** no pinned recording holds a `MergeTower` (the scripted player merges with cards before
+it owns three); unit tests cover it. 
+
+---
+
+## 2026-10-14 — After the first outside tester: the core prompt, a free first build, distinct cards, the pink build, text, difficulty
+
+**Status:** six points from the student after sending a build to a friend. 589 tests pass in both
+runners (2 new). Nothing since `341a31f` is committed.
+
+1. **Placing the core was not understood.** A banner over the board now says "STEP 1: PLACE YOUR
+   CORE" with the instruction and one large button; a gold frame marks where the core may stand;
+   the core pulses. Until the first wave a MOVE CORE button reopens it. (`TowerShopPanel`,
+   `PlayerBuilder.ShowCoreZone`, both scenes.)
+2. **Before the first wave nothing is limited:** `SimConfig.FreeFirstBuild`; a move costs
+   nothing while `WaveIndex` is 0 (`Simulation.MovesAreFree`). Walls laid in a build phase were
+   already free to take up again.
+3. **No two cards of a roll are alike:** `SimConfig.DistinctCards`; a slot that repeats is drawn
+   again from the same generator (up to 24 times), so a roll is still a function of seed, wave and
+   reroll count (I10). The panel shows the income ("+5 after the wave") under the budget.
+4. **The pink build.** Shapes made at run time with `GameObject.CreatePrimitive` (towers, rocks,
+   entry markers) kept the primitive's built-in default material, which the editor swaps for
+   URP's and a built player does not. They now take `Assets/Resources/ViewLit.mat`
+   (`TowerView.UseSolidMaterial`). **Not verified in a build:** the student's own Player.log
+   shows no shader error, so if the friend's machine alone was pink the cause may be its
+   graphics card or driver instead.
+5. **Overlapping text.** Every label the panels make shrinks to its box and is then cut with
+   dots; the card's type, state and tags each have their own box; the wave line at the top
+   auto-sizes.
+6. **Too easy.** The student reached wave 11 without a leak after wave 3. The waves had been
+   made smaller on 2026-10-13 because scripted players could not cope; a person can. Now 32 +5
+   enemies with 8 +4 hit points (was 24 +3 and 6 +2.5). Tower and gear numbers are unchanged.
+   The scripted players lose in waves 1 to 5 again, which says more about them than about the
+   game: they do not regroup when the entry changes.
+
+**Open:** difficulty is tuned by one person's play; whether gear or tower levels should be
+weakened instead is undecided.

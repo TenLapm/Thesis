@@ -160,7 +160,7 @@ namespace Thesis.Tests.Sim
             Assert.AreEqual("p", file.Policy);
             Assert.AreEqual("fixed", file.Planner);
             Assert.AreEqual(sim.RngSeed, file.RngSeed);
-            Assert.AreSame(sim.Map, file.MapData);
+            Assert.AreSame(sim.InitialMap, file.MapData);
             Assert.AreEqual(7, file.Shapes.Length);
             Assert.AreEqual(ReplayFile.Hex(sim.ComputeHash()), file.InitialHash);
         }

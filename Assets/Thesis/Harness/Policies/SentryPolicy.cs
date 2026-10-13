@@ -29,6 +29,13 @@ namespace Thesis.Harness
         // How far from the route a tower may stand, in tiles (Chebyshev distance).
         public int MaxDistanceFromRoute = 2;
 
+        // Above 0: only the last so many tiles of each route count, so the towers gather
+        // round the core, where every route ends whichever side it starts from (the
+        // "turtle", 2026-10-13). 0 = the whole route.
+        public int RouteTail;
+
+        public const string TurtleId = "turtle";
+
         private readonly List<SimNode> route = new List<SimNode>();
         private readonly List<TileCoord> routeTiles = new List<TileCoord>();
         private readonly TileCoord[] one = new TileCoord[1];
@@ -41,7 +48,7 @@ namespace Thesis.Harness
 
         public const string UpgraderId = "upgrader";
 
-        public string Name => UpgradeWithWhatIsLeft ? UpgraderId : Id;
+        public string Name => RouteTail > 0 ? TurtleId : UpgradeWithWhatIsLeft ? UpgraderId : Id;
 
         public void OnIntermission(Simulation sim, Action<SimCommand> send, IRandom rng)
         {
@@ -74,7 +81,7 @@ namespace Thesis.Harness
                 for (int t = 0; t < s.Towers.Count; t++)
                 {
                     TowerState tower = s.Towers[t];
-                    if (!tower.IsAlive || tower.FreeGearSlot() < 0) continue;
+                    if (!tower.IsAlive || tower.OnBench || tower.FreeGearSlot() < 0) continue;
                     send(SimCommand.BuyShopGear(slot, tower.Tile.X, tower.Tile.Y));
                     break;
                 }
@@ -139,7 +146,7 @@ namespace Thesis.Harness
                 for (int t = 0; t < s.Towers.Count; t++)
                 {
                     TowerState tower = s.Towers[t];
-                    if (!tower.IsAlive || tower.FreeGearSlot() < 0) continue;
+                    if (!tower.IsAlive || tower.OnBench || tower.FreeGearSlot() < 0) continue;
                     send(SimCommand.BuyGear(slot, tower.Tile.X, tower.Tile.Y));
                     break;
                 }
@@ -156,7 +163,7 @@ namespace Thesis.Harness
             }
         }
 
-        private bool FindBestTile(Simulation sim, TowerDef def, out TileCoord best)
+        public bool FindBestTile(Simulation sim, TowerDef def, out TileCoord best)
         {
             SimGrid grid = sim.State.Grid;
             MapData map = sim.Map;
@@ -168,11 +175,17 @@ namespace Thesis.Harness
             Array.Clear(onRoute, 0, onRoute.Length);
             Array.Clear(tried, 0, tried.Length);
 
+            // Where enemies will walk: from the entries of the wave that was announced
+            // (SimConfig.PlanAhead), else from every spawn of a map with a few, else from
+            // the first (a generated map has dozens of entry points).
             routeTiles.Clear();
-            for (int sp = 0; sp < map.Spawns.Length; sp++)
+            WavePlan next = sim.State.NextPlan;
+            int sources = next != null ? next.Groups.Length : map.Spawns.Length <= 4 ? map.Spawns.Length : 1;
+            for (int k = 0; k < sources; k++)
             {
+                int sp = next != null ? next.Groups[k].SpawnIndex : k;
                 Route.Collect(grid, grid.Get(map.Spawns[sp]), route);
-                for (int i = 0; i < route.Count; i++)
+                for (int i = RouteTail > 0 ? Math.Max(0, route.Count - RouteTail) : 0; i < route.Count; i++)
                 {
                     if (onRoute[route[i].Index]) continue;
                     onRoute[route[i].Index] = true;

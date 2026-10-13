@@ -23,6 +23,22 @@ namespace Thesis.Sim
         UpgradeTower, // raise the tower on tile (X, Y) one level
         BuyShopGear,  // buy the gear shop's item in slot A onto the tower on tile (X, Y)
         MoveTower,    // put the tower on tile (X, Y) on tile (B, C)
+        PlaceCore,    // put the core on tile (X, Y), before the first wave
+        BuyWalls,     // pay for a pack of wall tiles
+        BuyMove,      // pay for one more move this build phase
+        BenchCard,    // take the tower card in slot A onto bench slot B
+        DeployTower,  // put the tower in bench slot A on tile (X, Y); a tower standing there goes to that slot
+        RecallTower,  // take the tower on tile (X, Y) onto bench slot A
+        SwapBench,    // swap bench slots A and B
+        SellBenched,  // sell the tower in bench slot A
+        StoreGearCard,   // take the gear card in slot A into the gear inventory
+        StoreShopGear,   // buy the gear shop's item in slot A into the gear inventory
+        EquipGear,       // put the piece in inventory slot A on the tower on (X, Y), or, with B > 0, in bench slot B - 1
+        UnequipGear,     // take the piece in gear slot A off the tower on (X, Y), or, with B > 0, in bench slot B - 1, into the inventory
+        MergeTower,      // merge the tower on (X, Y), or with A > 0 in bench slot A - 1, into the tower on (B, C), or with C < 0 in bench slot B
+        EquipOverflow,   // put spare piece A on the tower on (X, Y), or, with B > 0, in bench slot B - 1
+        SellOverflow,    // sell spare piece A
+        FeedCard,     // merge the tower card in slot A into the tower on (X, Y), or, with B > 0, in bench slot B - 1
     }
 
     public readonly struct SimCommand
@@ -81,10 +97,69 @@ namespace Thesis.Sim
 
         public static SimCommand MoveTower(int fromX, int fromY, int toX, int toY) { return new SimCommand(SimCommandKind.MoveTower, fromX, fromY, 0, toX, toY); }
 
+        public static SimCommand PlaceCore(int x, int y) { return new SimCommand(SimCommandKind.PlaceCore, x, y, 0); }
+
+        public static SimCommand BuyWalls() { return new SimCommand(SimCommandKind.BuyWalls, 0, 0, 0); }
+
+        public static SimCommand BuyMove() { return new SimCommand(SimCommandKind.BuyMove, 0, 0, 0); }
+
+        public static SimCommand BenchCard(int offerSlot, int benchSlot) { return new SimCommand(SimCommandKind.BenchCard, 0, 0, offerSlot, benchSlot); }
+
+        public static SimCommand DeployTower(int benchSlot, int x, int y) { return new SimCommand(SimCommandKind.DeployTower, x, y, benchSlot); }
+
+        public static SimCommand RecallTower(int x, int y, int benchSlot) { return new SimCommand(SimCommandKind.RecallTower, x, y, benchSlot); }
+
+        public static SimCommand SwapBench(int a, int b) { return new SimCommand(SimCommandKind.SwapBench, 0, 0, a, b); }
+
+        public static SimCommand SellBenched(int benchSlot) { return new SimCommand(SimCommandKind.SellBenched, 0, 0, benchSlot); }
+
+        public static SimCommand StoreGearCard(int offerSlot) { return new SimCommand(SimCommandKind.StoreGearCard, 0, 0, offerSlot); }
+
+        public static SimCommand StoreShopGear(int shopSlot) { return new SimCommand(SimCommandKind.StoreShopGear, 0, 0, shopSlot); }
+
+        public static SimCommand EquipGear(int inventorySlot, int x, int y) { return new SimCommand(SimCommandKind.EquipGear, x, y, inventorySlot); }
+
+        public static SimCommand EquipGearOnBench(int inventorySlot, int benchSlot) { return new SimCommand(SimCommandKind.EquipGear, 0, 0, inventorySlot, benchSlot + 1); }
+
+        public static SimCommand UnequipGear(int x, int y, int gearSlot) { return new SimCommand(SimCommandKind.UnequipGear, x, y, gearSlot); }
+
+        public static SimCommand UnequipGearOnBench(int benchSlot, int gearSlot) { return new SimCommand(SimCommandKind.UnequipGear, 0, 0, gearSlot, benchSlot + 1); }
+
+        // Source and target of a merge: each is a tile on the board or a bench slot.
+        public static SimCommand MergeTower(int fromX, int fromY, int fromBench, int toX, int toY, int toBench)
+        {
+            return new SimCommand(SimCommandKind.MergeTower, fromBench >= 0 ? 0 : fromX, fromBench >= 0 ? 0 : fromY, fromBench >= 0 ? fromBench + 1 : 0,
+                                  toBench >= 0 ? toBench : toX, toBench >= 0 ? -1 : toY);
+        }
+
+        public static SimCommand EquipOverflow(int index, int x, int y) { return new SimCommand(SimCommandKind.EquipOverflow, x, y, index); }
+
+        public static SimCommand EquipOverflowOnBench(int index, int benchSlot) { return new SimCommand(SimCommandKind.EquipOverflow, 0, 0, index, benchSlot + 1); }
+
+        public static SimCommand SellOverflow(int index) { return new SimCommand(SimCommandKind.SellOverflow, 0, 0, index); }
+
+        public static SimCommand FeedCard(int offerSlot, int x, int y) { return new SimCommand(SimCommandKind.FeedCard, x, y, offerSlot); }
+
+        public static SimCommand FeedCardOnBench(int offerSlot, int benchSlot) { return new SimCommand(SimCommandKind.FeedCard, 0, 0, offerSlot, benchSlot + 1); }
+
         public override string ToString()
         {
             switch (Kind)
             {
+                case SimCommandKind.PlaceCore: return "PlaceCore(" + X + "," + Y + ")";
+                case SimCommandKind.MergeTower: return "MergeTower(" + (A > 0 ? "bench " + (A - 1) : X + "," + Y) + " -> " + (C < 0 ? "bench " + B : B + "," + C) + ")";
+                case SimCommandKind.EquipOverflow: return B > 0 ? "EquipOverflow(" + A + " -> bench " + (B - 1) + ")" : "EquipOverflow(" + A + " @" + X + "," + Y + ")";
+                case SimCommandKind.SellOverflow: return "SellOverflow(" + A + ")";
+                case SimCommandKind.StoreGearCard: return "StoreGearCard(slot " + A + ")";
+                case SimCommandKind.StoreShopGear: return "StoreShopGear(slot " + A + ")";
+                case SimCommandKind.EquipGear: return B > 0 ? "EquipGear(inventory " + A + " -> bench " + (B - 1) + ")" : "EquipGear(inventory " + A + " @" + X + "," + Y + ")";
+                case SimCommandKind.UnequipGear: return B > 0 ? "UnequipGear(bench " + (B - 1) + " gear " + A + ")" : "UnequipGear(" + X + "," + Y + " gear " + A + ")";
+                case SimCommandKind.BenchCard: return "BenchCard(slot " + A + " -> bench " + B + ")";
+                case SimCommandKind.DeployTower: return "DeployTower(bench " + A + " @" + X + "," + Y + ")";
+                case SimCommandKind.RecallTower: return "RecallTower(" + X + "," + Y + " -> bench " + A + ")";
+                case SimCommandKind.SwapBench: return "SwapBench(" + A + "," + B + ")";
+                case SimCommandKind.SellBenched: return "SellBenched(bench " + A + ")";
+                case SimCommandKind.FeedCard: return B > 0 ? "FeedCard(slot " + A + " -> bench " + (B - 1) + ")" : "FeedCard(slot " + A + " @" + X + "," + Y + ")";
                 case SimCommandKind.MoveTower: return "MoveTower(" + X + "," + Y + " -> " + B + "," + C + ")";
                 case SimCommandKind.PlaceShape: return "PlaceShape(" + X + "," + Y + ")";
                 case SimCommandKind.PlaceTower: return "PlaceTower(slot " + A + " @" + X + "," + Y + ")";

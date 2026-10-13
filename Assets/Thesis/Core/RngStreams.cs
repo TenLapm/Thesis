@@ -16,5 +16,8 @@ namespace Thesis.Core
         // Fnv1a64(rngSeed, "shop", waveIndex, rerollCount) on this stream id, so offers
         // never depend on what happened earlier in the run (CLAUDE.md I10).
         public const ulong Shop = 7;
+
+        // The map generator (2026-10-13): rocks from the map seed.
+        public const ulong Map = 8;
     }
 }

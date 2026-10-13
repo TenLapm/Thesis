@@ -103,7 +103,7 @@ namespace Thesis.Sim
                 RngSeed = sim.RngSeed,
                 Planner = sim.Planner.Name,
                 Config = sim.Config,
-                MapData = sim.Map,
+                MapData = sim.InitialMap, // as the run began: a PlaceCore command moves the core again on replay
                 Shapes = sim.ShapeLibrary,
                 Towers = sim.TowerLibrary,
                 SetupHash = setupHash,

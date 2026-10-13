@@ -36,12 +36,35 @@ namespace Thesis.Sim
 
         public string[] Rows;
 
+        // A ring this many tiles deep along the map's edge on which nothing can be built
+        // (2026-10-13). Enemies enter there, so an entry point can never be built over.
+        // 0 = the whole map can be built on, as on every map before the generated ones.
+        public int BuildMargin;
+
         public TileCoord Core;
         public TileCoord[] Spawns = new TileCoord[0];
         public WorldPoint CoreWorld;
         public WorldPoint[] SpawnWorlds = new WorldPoint[0];
 
         public float NodeDiameter => NodeRadius * 2f;
+
+        // How many tiles (x, y) is from the nearest edge: 0 on the outermost line.
+        public int EdgeDistance(int x, int y)
+        {
+            return Math.Min(Math.Min(x, y), Math.Min(Width - 1 - x, Height - 1 - y));
+        }
+
+        public bool InBuildMargin(TileCoord t) { return BuildMargin > 0 && EdgeDistance(t.X, t.Y) < BuildMargin; }
+
+        // The simulation keeps a copy of its own, because the one thing about a map that
+        // can change during a run, the core's tile (SimConfig.CorePlacement), changes
+        // there. Rows and the spawn arrays are never written, so they are shared.
+        public MapData Clone()
+        {
+            var c = (MapData)MemberwiseClone();
+            if (CoreWorld != null) c.CoreWorld = new WorldPoint(CoreWorld.X, CoreWorld.Y, CoreWorld.Z);
+            return c;
+        }
 
         public bool IsWalkable(int x, int y)
         {

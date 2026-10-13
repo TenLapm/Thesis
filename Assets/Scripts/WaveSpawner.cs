@@ -16,6 +16,9 @@ public class WaveSpawner : MonoBehaviour
     [Header("Scene References")]
     [Tooltip("Where agents enter. Read once by SimHost when the simulation starts.")]
     public Transform spawnPoint;
+
+    [Tooltip("How much bigger than the prefab an enemy is drawn. The prefab is small for a tile of two units.")]
+    public float agentScale = 1f;
     public SimHost simHost;
 
     [Header("Agent Views")]
@@ -55,12 +58,24 @@ public class WaveSpawner : MonoBehaviour
         {
             WavePlan plan = Host.State.NextPlan;
             if (plan == null || plan.Groups == null) return "";
-            var text = new System.Text.StringBuilder();
+            // One entry per enemy type, however many places it comes in at.
+            var names = new System.Collections.Generic.List<string>();
+            var counts = new System.Collections.Generic.List<int>();
+            var entries = new System.Collections.Generic.List<int>();
             foreach (AgentGroup group in plan.Groups)
             {
-                if (text.Length > 0) text.Append(" + ");
-                text.Append(group.Count).Append(' ').Append(group.Archetype);
+                int at = names.IndexOf(group.Archetype);
+                if (at < 0) { names.Add(group.Archetype); counts.Add(group.Count); }
+                else counts[at] += group.Count;
+                if (!entries.Contains(group.SpawnIndex)) entries.Add(group.SpawnIndex);
             }
+            var text = new System.Text.StringBuilder();
+            for (int i = 0; i < names.Count; i++)
+            {
+                if (text.Length > 0) text.Append(" + ");
+                text.Append(counts[i]).Append(' ').Append(names[i]);
+            }
+            if (entries.Count > 1) text.Append(", from ").Append(entries.Count).Append(" sides");
             return text.ToString();
         }
     }
@@ -141,6 +156,9 @@ public class WaveSpawner : MonoBehaviour
         go.SetActive(false);
         agentPool.Add(go);
         FlowAgent view = go.GetComponent<FlowAgent>();
+        // Drawn bigger than the prefab (view only: an enemy is a point to the simulation).
+        go.transform.localScale *= agentScale;
+        if (view != null) view.groundHeight *= agentScale;
         if (view == null) Debug.LogError("WaveSpawner: agent prefab has no FlowAgent component!");
         return view;
     }

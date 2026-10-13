@@ -62,6 +62,9 @@ namespace Thesis.Sim
         // (TowerCombine). Neither sold nor destroyed.
         public bool Combined;
 
+        // Owned but not on the board (TowerBench): it stands on no tile and does not shoot.
+        public bool OnBench;
+
         // Lifetime totals. DamageDealt is EFFECTIVE damage: hit points actually
         // removed, never the overkill on a dying enemy.
         public float DamageDealt;
@@ -108,6 +111,7 @@ namespace Thesis.Sim
             IsAlive = source.IsAlive;
             Sold = source.Sold;
             Combined = source.Combined;
+            OnBench = source.OnBench;
             DamageDealt = source.DamageDealt;
             Shots = source.Shots;
             Kills = source.Kills;

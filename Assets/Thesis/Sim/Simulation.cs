@@ -41,7 +41,8 @@ namespace Thesis.Sim
         public Simulation(SimConfig config, MapData map, ShapeDef[] shapeLibrary, TowerDef[] towerLibrary, ulong rngSeed, IWavePlanner planner, IThreatPricer pricer = null)
         {
             this.config = config ?? throw new ArgumentNullException(nameof(config));
-            this.map = map ?? throw new ArgumentNullException(nameof(map));
+            InitialMap = map ?? throw new ArgumentNullException(nameof(map));
+            this.map = map.Clone(); // our own: PlaceCore moves the core on it
             library = shapeLibrary ?? throw new ArgumentNullException(nameof(shapeLibrary));
             this.towerLibrary = towerLibrary ?? throw new ArgumentNullException(nameof(towerLibrary));
             this.planner = planner ?? throw new ArgumentNullException(nameof(planner));
@@ -50,6 +51,7 @@ namespace Thesis.Sim
 
             config.Validate();
             map.Validate();
+            map = this.map;
             if (map.Spawns.Length == 0) throw new InvalidOperationException("Map '" + map.Name + "' has no spawn; a simulation needs at least one.");
             for (int i = 0; i < towerLibrary.Length; i++)
             {
@@ -66,6 +68,12 @@ namespace Thesis.Sim
                 SpawnRng = new Pcg32(rngSeed, RngStreams.Spawn),
                 BuildBudget = config.StartBudget,
                 CoreHp = config.CoreMaxHp,
+                Core = map.Core,
+                WallsLeft = config.WallStock,
+                RelaysLeft = config.WallRelayPerWave,
+                MovesLeft = config.MovesPerWave,
+                Bench = NewBench(config.BenchSlots),
+                GearInventory = NewBench(config.GearInventorySlots),
                 Phase = SimPhase.Prep,
                 PhaseTicksRemaining = config.Ticks(config.PrepSeconds),
             };
@@ -85,7 +93,8 @@ namespace Thesis.Sim
         private Simulation(Simulation source, IWavePlanner planner)
         {
             config = source.config;
-            map = source.map;
+            map = source.map.Clone();
+            InitialMap = source.InitialMap;
             library = source.library;
             towerLibrary = source.towerLibrary;
             pricer = source.pricer;
@@ -104,6 +113,10 @@ namespace Thesis.Sim
         public SimConfig Config => config;
 
         public MapData Map => map;
+
+        // The map as the run began. Map differs from it only in the core's tile, once
+        // the player has placed it; a replay stores this one and replays the command.
+        public MapData InitialMap { get; }
 
         public IWavePlanner Planner => planner;
 
@@ -234,6 +247,11 @@ namespace Thesis.Sim
                 CloseWave(s, coreDestroyed: false);
                 // Stipend at intermission start, as WaveSpawner.IntermissionRoutine did.
                 s.BuildBudget += config.StipendPerWave;
+                if (config.WallStock > 0) s.WallsLeft += config.WallStockPerWave;
+                s.RelaysLeft = config.WallRelayPerWave;
+                s.MovesLeft = config.MovesPerWave;
+                s.MovesBought = 0;
+                s.PhaseLogStart = s.PlacementLog.Count;
                 s.Phase = SimPhase.Intermission;
                 s.PhaseTicksRemaining = config.Ticks(config.IntermissionSeconds);
 
@@ -270,6 +288,19 @@ namespace Thesis.Sim
             switch (command.Kind)
             {
                 case SimCommandKind.PlaceShape:
+                    if (config.WallStock > 0)
+                    {
+                        // From the stock: no budget, one tile of stock per tile laid.
+                        int need = s.Bag.CurrentShape != null ? s.Bag.CurrentShape.LocalTiles.Length : 0;
+                        if (need > 0 && s.WallsLeft >= need
+                            && Placement.TryPlace(s.Grid, map, fields, s.Bag.CurrentShape, s.Bag.CurrentRotationTurns,
+                                                  new TileCoord(command.X, command.Y), ref s.BuildBudget, s.Tick, s.PlacementLog, events, free: true))
+                        {
+                            s.WallsLeft -= need;
+                            s.Bag.PullNextShape();
+                        }
+                        break;
+                    }
                     if (Placement.TryPlace(s.Grid, map, fields, s.Bag.CurrentShape, s.Bag.CurrentRotationTurns,
                                            new TileCoord(command.X, command.Y), ref s.BuildBudget, s.Tick,
                                            s.PlacementLog, events))
@@ -286,7 +317,7 @@ namespace Thesis.Sim
                 case SimCommandKind.StartWaveNow:
                     // Only meaningful between waves; ignored mid-wave, like the
                     // original StartWave() returning early when a wave was active.
-                    if (s.Phase == SimPhase.Prep || s.Phase == SimPhase.Intermission) s.StartWaveRequested = true;
+                    if ((s.Phase == SimPhase.Prep || s.Phase == SimPhase.Intermission) && s.GearOverflow.Count == 0) s.StartWaveRequested = true;
                     break;
                 case SimCommandKind.PlaceTower:
                     // A is the shop's offer slot. A slot that does not exist or is
@@ -313,7 +344,14 @@ namespace Thesis.Sim
                     if (command.A >= 0 && command.A < s.Shop.Offers.Length)
                     {
                         TowerOffer card = s.Shop.Offers[command.A];
-                        if (!card.Bought && s.Shop.MayPick && card.Kind == CardKind.Coin)
+                        if (!card.Bought && s.Shop.MayPick && card.Kind == CardKind.Wall)
+                        {
+                            s.WallsLeft += card.Amount;
+                            s.PlacementLog.Add(new PlacementRecord { Kind = PlacementKind.WallsGained, Tick = s.Tick, ShapeName = "walls", Refund = card.Amount });
+                            card.Bought = true;
+                            Picked(s);
+                        }
+                        else if (!card.Bought && s.Shop.MayPick && card.Kind == CardKind.Coin)
                         {
                             TowerUpgrades.TakeCoin(card, ref s.BuildBudget, s.Tick, s.PlacementLog);
                             card.Bought = true;
@@ -354,12 +392,104 @@ namespace Thesis.Sim
                     }
                     break;
                 case SimCommandKind.MoveTower:
-                    if (config.MoveTowers && (s.Phase == SimPhase.Prep || s.Phase == SimPhase.Intermission))
+                    if (config.MoveTowers && InBuildPhase(s) && HasMove(s)
+                        && Placement.TryMoveTower(s.Grid, map, fields, new TileCoord(command.X, command.Y), new TileCoord(command.B, command.C), s.Tick,
+                                                  s.Towers, s.PlacementLog, events))
                     {
-                        Placement.TryMoveTower(s.Grid, map, fields, new TileCoord(command.X, command.Y), new TileCoord(command.B, command.C), s.Tick,
-                                               s.Towers, s.PlacementLog, events);
+                        UseMove(s);
                     }
                     break;
+                case SimCommandKind.PlaceCore: PlaceCore(s, new TileCoord(command.X, command.Y)); break;
+                case SimCommandKind.BuyWalls:
+                    if (config.WallStock > 0 && config.WallPackSize > 0 && s.BuildBudget >= config.WallPackPrice)
+                    {
+                        s.BuildBudget -= config.WallPackPrice;
+                        s.WallsLeft += config.WallPackSize;
+                        s.PlacementLog.Add(new PlacementRecord { Kind = PlacementKind.WallsGained, Tick = s.Tick, ShapeName = "walls", Cost = config.WallPackPrice });
+                    }
+                    break;
+                case SimCommandKind.BuyMove:
+                    if (config.MovesPerWave > 0 && config.ExtraMovePrice >= 0f && InBuildPhase(s) && s.BuildBudget >= ExtraMovePrice)
+                    {
+                        float price = ExtraMovePrice;
+                        s.BuildBudget -= price;
+                        s.MovesLeft++;
+                        s.MovesBought++;
+                        s.PlacementLog.Add(new PlacementRecord { Kind = PlacementKind.MoveBought, Tick = s.Tick, ShapeName = "move", Cost = price });
+                    }
+                    break;
+                case SimCommandKind.BenchCard: BenchCard(s, command.A, command.B); break;
+                case SimCommandKind.DeployTower: DeployTower(s, command.A, new TileCoord(command.X, command.Y)); break;
+                case SimCommandKind.RecallTower: RecallTower(s, new TileCoord(command.X, command.Y), command.A); break;
+                case SimCommandKind.SwapBench:
+                    if (OnBenchRange(s, command.A) && OnBenchRange(s, command.B))
+                    {
+                        int held = s.Bench[command.A];
+                        s.Bench[command.A] = s.Bench[command.B];
+                        s.Bench[command.B] = held;
+                    }
+                    break;
+                case SimCommandKind.SellBenched:
+                    if (OnBenchRange(s, command.A) && s.Bench[command.A] != TowerBench.Empty && MaySell(s))
+                    {
+                        TowerState sold = s.Towers[s.Bench[command.A]];
+                        float refund = (float)(sold.PricePaid * config.SellRefund);
+                        ReturnGear(s, sold);
+                        sold.IsAlive = false;
+                        sold.Sold = true;
+                        sold.OnBench = false;
+                        s.Bench[command.A] = TowerBench.Empty;
+                        s.BuildBudget += refund;
+                        s.PlacementLog.Add(new PlacementRecord { Kind = PlacementKind.TowerSold, Tick = s.Tick, ShapeName = sold.Def.Id, OriginX = -1, OriginY = -1, TowerId = sold.Id, Refund = refund });
+                    }
+                    break;
+                case SimCommandKind.FeedCard: FeedCard(s, command); break;
+                case SimCommandKind.MergeTower: MergeTower(s, command); break;
+                case SimCommandKind.EquipOverflow:
+                    if (command.A >= 0 && command.A < s.GearOverflow.Count)
+                    {
+                        TowerState onto = GearTarget(s, command);
+                        int free = onto != null ? onto.FreeGearSlot() : -1;
+                        if (free >= 0)
+                        {
+                            int spare = s.GearOverflow[command.A];
+                            s.GearOverflow.RemoveAt(command.A);
+                            onto.Gear[free] = spare;
+                            onto.Recompute(gearLibrary);
+                            LogGear(s, PlacementKind.GearEquipped, spare, onto);
+                        }
+                    }
+                    break;
+                case SimCommandKind.SellOverflow:
+                    if (command.A >= 0 && command.A < s.GearOverflow.Count)
+                    {
+                        int spare = s.GearOverflow[command.A];
+                        float back = (float)(gearLibrary[spare].Price * config.SellRefund);
+                        s.GearOverflow.RemoveAt(command.A);
+                        s.BuildBudget += back;
+                        s.PlacementLog.Add(new PlacementRecord { Kind = PlacementKind.GearSold, Tick = s.Tick, ShapeName = gearLibrary[spare].Id, OriginX = -1, OriginY = -1, Refund = back });
+                    }
+                    break;
+                case SimCommandKind.StoreGearCard:
+                    if (command.A >= 0 && command.A < s.Shop.Offers.Length)
+                    {
+                        TowerOffer card = s.Shop.Offers[command.A];
+                        if (!card.Bought && s.Shop.MayPick && card.Kind == CardKind.Gear && StoreGear(s, card.GearIndex, card.Price))
+                        {
+                            card.Bought = true;
+                            Picked(s);
+                        }
+                    }
+                    break;
+                case SimCommandKind.StoreShopGear:
+                    if (command.A >= 0 && command.A < s.GearShop.Offers.Length)
+                    {
+                        TowerOffer item = s.GearShop.Offers[command.A];
+                        if (!item.Bought && StoreGear(s, item.GearIndex, item.Price)) item.Bought = true;
+                    }
+                    break;
+                case SimCommandKind.EquipGear: EquipGear(s, command); break;
+                case SimCommandKind.UnequipGear: UnequipGear(s, command); break;
                 case SimCommandKind.UpgradeTower:
                     // A factor of 0 switches paid upgrades off (levels then come from combining only).
                     if (config.UpgradeCostFactor > 0f)
@@ -367,13 +497,21 @@ namespace Thesis.Sim
                                              s.Towers, s.PlacementLog, events);
                     break;
                 case SimCommandKind.SellTower:
-                    if (MaySell(s))
+                    TowerState toSell = TowerOn(s, new TileCoord(command.X, command.Y));
+                    if (MaySell(s) && HasMove(s)
+                        && Placement.TrySellTower(s.Grid, map, fields, new TileCoord(command.X, command.Y), config.SellRefund,
+                                                  ref s.BuildBudget, s.Tick, s.Towers, s.PlacementLog, events))
                     {
-                        Placement.TrySellTower(s.Grid, map, fields, new TileCoord(command.X, command.Y), config.SellRefund,
-                                               ref s.BuildBudget, s.Tick, s.Towers, s.PlacementLog, events);
+                        UseMove(s);
+                        if (toSell != null) ReturnGear(s, toSell);
                     }
                     break;
                 case SimCommandKind.SellWall:
+                    if (config.WallStock > 0)
+                    {
+                        TakeUpWall(s, new TileCoord(command.X, command.Y));
+                        break;
+                    }
                     if (MaySell(s))
                     {
                         Placement.TrySellWall(s.Grid, map, fields, new TileCoord(command.X, command.Y), config.WallSellRefund,
@@ -400,6 +538,15 @@ namespace Thesis.Sim
                 default:
                     throw new InvalidOperationException("[Sim] Unknown command kind " + command.Kind + ".");
             }
+
+            // Spare gear takes the first inventory slot that has become free.
+            while (s.GearOverflow.Count > 0)
+            {
+                int free = Array.IndexOf(s.GearInventory, TowerState.NoGear);
+                if (free < 0) break;
+                s.GearInventory[free] = s.GearOverflow[0];
+                s.GearOverflow.RemoveAt(0);
+            }
         }
 
         // What the next reroll costs: the base price, and the step for every reroll
@@ -408,6 +555,327 @@ namespace Thesis.Sim
 
         // How many towers may stand right now; 0 = no limit.
         public int TowerCap => TowerCombine.CapAt(config, State.WaveIndex);
+
+        // What the next extra move costs. Meaningless while none are for sale.
+        public float ExtraMovePrice => (float)(config.ExtraMovePrice + (float)(config.ExtraMovePriceStep * State.MovesBought));
+
+        private static int[] NewBench(int slots)
+        {
+            var bench = new int[slots];
+            for (int i = 0; i < slots; i++) bench[i] = TowerBench.Empty;
+            return bench;
+        }
+
+        private static bool InBuildPhase(SimState s) { return s.Phase == SimPhase.Prep || s.Phase == SimPhase.Intermission; }
+
+        private static bool OnBenchRange(SimState s, int slot) { return slot >= 0 && slot < s.Bench.Length; }
+
+        // A move is what touching a tower on the board costs (SimConfig.MovesPerWave).
+        // Asked before the action and spent only when the action happened.
+        private bool HasMove(SimState s) { return config.MovesPerWave <= 0 || MovesAreFree || s.MovesLeft > 0; }
+
+        private void UseMove(SimState s) { if (config.MovesPerWave > 0 && !MovesAreFree) s.MovesLeft--; }
+
+        // Before the first wave, with SimConfig.FreeFirstBuild, a move costs nothing.
+        public bool MovesAreFree => config.FreeFirstBuild && State.WaveIndex == 0;
+
+        // The living tower standing on a tile, or null.
+        private static TowerState TowerOn(SimState s, TileCoord tile)
+        {
+            if (!s.Grid.InBounds(tile)) return null;
+            SimNode node = s.Grid.Get(tile);
+            if (node.Occupant != Occupant.Tower) return null;
+            TowerState tower = s.Towers[node.TowerId];
+            return tower.IsAlive ? tower : null;
+        }
+
+        // With a wall stock a wall is not sold but taken up: its tiles go back to the
+        // stock. One laid in this build phase comes up for nothing; an older one uses
+        // one of the phase's pick-ups.
+        private void TakeUpWall(SimState s, TileCoord tile)
+        {
+            if (!InBuildPhase(s) || !s.Grid.InBounds(tile)) return;
+            SimNode node = s.Grid.Get(tile);
+            if (node.Occupant != Occupant.Wall || node.PieceId < 0) return;
+            bool fresh = node.PieceId >= s.PhaseLogStart;
+            if (!fresh && s.RelaysLeft <= 0) return;
+            if (!Placement.TrySellWall(s.Grid, map, fields, tile, 0f, ref s.BuildBudget, s.Tick, s.PlacementLog, events)) return;
+            s.WallsLeft += s.PlacementLog[s.PlacementLog.Count - 1].Tiles.Length;
+            if (!fresh) s.RelaysLeft--;
+        }
+
+        // The player chooses the core's tile, before the first wave only. The tile must
+        // be open ground away from the edge, and every entry point must still reach it.
+        private void PlaceCore(SimState s, TileCoord tile)
+        {
+            if (!config.CorePlacement || s.WaveIndex != 0 || s.Phase != SimPhase.Prep || !s.Grid.InBounds(tile) || tile == s.Core) return;
+            SimNode node = s.Grid.Get(tile);
+            if (!node.IsWalkable || node.Occupant != Occupant.None) return;
+            if (map.EdgeDistance(tile.X, tile.Y) < Math.Max(map.BuildMargin, config.CoreEdgeMargin)) return;
+            for (int i = 0; i < map.Spawns.Length; i++) if (map.Spawns[i] == tile) return;
+
+            TileCoord old = s.Core;
+            fields.Generate(s.Grid, tile);
+            for (int i = 0; i < map.Spawns.Length; i++)
+            {
+                if (s.Grid.Get(map.Spawns[i]).BestCost != SimNode.Infinity) continue;
+                fields.Generate(s.Grid, old); // an entry point would be cut off: refuse
+                return;
+            }
+
+            map.Core = tile;
+            map.CoreWorld = new WorldPoint(node.Position.X, map.CoreWorld != null ? map.CoreWorld.Y : 0f, node.Position.Y);
+            s.Core = tile;
+            s.NextPlan = null; // planned for the old core: the next tick plans again
+            s.PlacementLog.Add(new PlacementRecord { Kind = PlacementKind.CorePlaced, Tick = s.Tick, ShapeName = "core", OriginX = tile.X, OriginY = tile.Y, Tiles = new[] { tile } });
+            events.Add(SimEvent.CoreMoved(tile.X, tile.Y));
+        }
+
+        // The tower card in `slot` goes onto the bench instead of the board.
+        private void BenchCard(SimState s, int slot, int benchSlot)
+        {
+            if (slot < 0 || slot >= s.Shop.Offers.Length || !OnBenchRange(s, benchSlot) || s.Bench[benchSlot] != TowerBench.Empty) return;
+            TowerOffer offer = s.Shop.Offers[slot];
+            if (offer.Bought || !s.Shop.MayPick || offer.Kind != CardKind.Tower || s.BuildBudget < offer.Price) return;
+
+            s.BuildBudget -= offer.Price;
+            TowerState tower = TowerBench.Create(s.Towers, towerLibrary[offer.TowerIndex], map.NodeDiameter, s.Tick, offer.Price, offer.Level, s.PlacementLog);
+            s.Bench[benchSlot] = tower.Id;
+            offer.Bought = true;
+            Picked(s);
+        }
+
+        // Bench to board, for one move. Onto a tile where a tower stands, the two
+        // change places: that one goes to the bench slot.
+        private void DeployTower(SimState s, int benchSlot, TileCoord tile)
+        {
+            if (!OnBenchRange(s, benchSlot) || s.Bench[benchSlot] == TowerBench.Empty || !InBuildPhase(s) || !HasMove(s)) return;
+            TowerState tower = s.Towers[s.Bench[benchSlot]];
+            TowerState standing = TowerOn(s, tile);
+            if (standing != null)
+            {
+                TowerBench.TakeOffBoard(s.Grid, standing, s.Tick, s.PlacementLog);
+                TowerBench.PutOnBoard(s.Grid, tower, tile, s.Tick, s.PlacementLog);
+                s.Bench[benchSlot] = standing.Id;
+            }
+            else
+            {
+                int cap = TowerCap;
+                if (cap > 0 && TowerCombine.Standing(s.Towers) >= cap) return;
+                if (!Placement.CanPlace(s.Grid, map, new[] { tile })) return;
+                TowerBench.PutOnBoard(s.Grid, tower, tile, s.Tick, s.PlacementLog);
+                s.Bench[benchSlot] = TowerBench.Empty;
+            }
+            tower.Recompute(gearLibrary);
+            fields.Generate(s.Grid, map.Core);
+            UseMove(s);
+            events.Add(SimEvent.TowerChanged(tower.Id));
+        }
+
+        // Board to an empty bench slot, for one move.
+        private void RecallTower(SimState s, TileCoord tile, int benchSlot)
+        {
+            if (!OnBenchRange(s, benchSlot) || s.Bench[benchSlot] != TowerBench.Empty || !InBuildPhase(s) || !HasMove(s)) return;
+            TowerState tower = TowerOn(s, tile);
+            if (tower == null) return;
+            TowerBench.TakeOffBoard(s.Grid, tower, s.Tick, s.PlacementLog);
+            s.Bench[benchSlot] = tower.Id;
+            fields.Generate(s.Grid, map.Core);
+            UseMove(s);
+        }
+
+        // A duplicate card merged into a tower the player has: one level up, or the
+        // card's level when that is higher. The card is the wave's pick; no move.
+        private void FeedCard(SimState s, SimCommand command)
+        {
+            if (!config.FeedDuplicates || command.A < 0 || command.A >= s.Shop.Offers.Length) return;
+            TowerOffer offer = s.Shop.Offers[command.A];
+            if (offer.Bought || !s.Shop.MayPick || offer.Kind != CardKind.Tower || s.BuildBudget < offer.Price) return;
+
+            TowerState target;
+            if (command.B > 0)
+            {
+                int benchSlot = command.B - 1;
+                if (!OnBenchRange(s, benchSlot) || s.Bench[benchSlot] == TowerBench.Empty) return;
+                target = s.Towers[s.Bench[benchSlot]];
+            }
+            else target = TowerOn(s, new TileCoord(command.X, command.Y));
+            if (target == null || target.Def != towerLibrary[offer.TowerIndex]) return;
+
+            int level = TowerMerge.LevelAfterCard(s, config, towerLibrary[offer.TowerIndex], offer.Level, target, mergeOthers);
+            if (level <= 0 || level > TowerState.MaxLevel) return;
+
+            var emptied = new List<TileCoord>();
+            for (int i = 0; i < mergeOthers.Count; i++) Absorb(s, mergeOthers[i], target, emptied);
+            if (emptied.Count > 0)
+            {
+                fields.Generate(s.Grid, map.Core);
+                s.PlacementLog.Add(new PlacementRecord
+                {
+                    Kind = PlacementKind.TowerCombined, Tick = s.Tick, ShapeName = target.Def.Id, OriginX = target.OnBench ? -1 : target.Tile.X,
+                    OriginY = target.OnBench ? -1 : target.Tile.Y, Tiles = emptied.ToArray(), TowerId = target.Id,
+                });
+            }
+
+            s.BuildBudget -= offer.Price;
+            target.Level = level;
+            target.PricePaid += offer.Price;
+            target.Recompute(gearLibrary);
+            offer.Bought = true;
+            Picked(s);
+            TileCoord at = target.OnBench ? TowerBench.NoTile : target.Tile;
+            s.PlacementLog.Add(new PlacementRecord
+            {
+                Kind = PlacementKind.TowerFed, Tick = s.Tick, ShapeName = target.Def.Id, OriginX = at.X, OriginY = at.Y,
+                Tiles = target.OnBench ? new TileCoord[0] : new[] { at }, TowerId = target.Id, Cost = offer.Price,
+            });
+            events.Add(SimEvent.TowerChanged(target.Id));
+        }
+
+        // --- merging by choice ---
+
+        private readonly List<TowerState> mergeOthers = new List<TowerState>();
+
+        // One tower dropped on another of its type and level: the target gains a level,
+        // the source and the other copies of the set are used up. One move when any of
+        // them is on the board.
+        private void MergeTower(SimState s, SimCommand command)
+        {
+            if (!InBuildPhase(s)) return;
+            TowerState source = command.A > 0 ? Benched(s, command.A - 1) : TowerOn(s, new TileCoord(command.X, command.Y));
+            TowerState target = command.C < 0 ? Benched(s, command.B) : TowerOn(s, new TileCoord(command.B, command.C));
+            if (!TowerMerge.CanMerge(s, config, source, target, mergeOthers)) return;
+
+            bool touchesBoard = !source.OnBench || !target.OnBench;
+            for (int i = 0; i < mergeOthers.Count; i++) if (!mergeOthers[i].OnBench) touchesBoard = true;
+            if (touchesBoard && !HasMove(s)) return;
+
+            var emptied = new List<TileCoord>();
+            Absorb(s, source, target, emptied);
+            for (int i = 0; i < mergeOthers.Count; i++) Absorb(s, mergeOthers[i], target, emptied);
+            target.Level++;
+            target.Recompute(gearLibrary);
+            if (emptied.Count > 0) fields.Generate(s.Grid, map.Core);
+            if (touchesBoard) UseMove(s);
+            s.PlacementLog.Add(new PlacementRecord
+            {
+                Kind = PlacementKind.TowerCombined, Tick = s.Tick, ShapeName = target.Def.Id, OriginX = target.OnBench ? -1 : target.Tile.X,
+                OriginY = target.OnBench ? -1 : target.Tile.Y, Tiles = emptied.ToArray(), TowerId = target.Id,
+            });
+            events.Add(SimEvent.TowerChanged(target.Id));
+        }
+
+        private static TowerState Benched(SimState s, int slot)
+        {
+            return OnBenchRange(s, slot) && s.Bench[slot] != TowerBench.Empty ? s.Towers[s.Bench[slot]] : null;
+        }
+
+        // A tower used up by a merge: its gear comes back, what was paid for it goes to
+        // the tower that stays, and it leaves its tile or its bench slot.
+        private void Absorb(SimState s, TowerState gone, TowerState keeper, List<TileCoord> emptied)
+        {
+            ReturnGear(s, gone);
+            keeper.PricePaid += gone.PricePaid;
+            if (gone.OnBench)
+            {
+                int slot = Array.IndexOf(s.Bench, gone.Id);
+                if (slot >= 0) s.Bench[slot] = TowerBench.Empty;
+                gone.OnBench = false;
+            }
+            else
+            {
+                emptied.Add(gone.Tile);
+                s.Grid.ClearWall(s.Grid.Get(gone.Tile));
+            }
+            gone.IsAlive = false;
+            gone.Combined = true;
+        }
+
+        // With a gear inventory, the gear of a tower that is sold or merged away comes
+        // back: into the inventory, or, when that is full, into the spare pieces the
+        // player must deal with. Without an inventory it is gone with the tower, as before.
+        private void ReturnGear(SimState s, TowerState tower)
+        {
+            if (config.GearInventorySlots <= 0) return;
+            for (int slot = 0; slot < TowerState.MaxGearSlots; slot++)
+            {
+                int piece = tower.Gear[slot];
+                if (piece == TowerState.NoGear) continue;
+                tower.Gear[slot] = TowerState.NoGear;
+                int free = Array.IndexOf(s.GearInventory, TowerState.NoGear);
+                if (free >= 0) s.GearInventory[free] = piece;
+                else s.GearOverflow.Add(piece);
+            }
+        }
+
+        // --- the gear inventory ---
+
+        // A piece into the first free inventory slot, for `price`. False, changing
+        // nothing, when the inventory is full or the budget does not reach.
+        private bool StoreGear(SimState s, int piece, int price)
+        {
+            if (piece < 0 || piece >= gearLibrary.Length || s.BuildBudget < price) return false;
+            int free = Array.IndexOf(s.GearInventory, TowerState.NoGear);
+            if (free < 0) return false;
+            s.BuildBudget -= price;
+            s.GearInventory[free] = piece;
+            s.PlacementLog.Add(new PlacementRecord { Kind = PlacementKind.GearStored, Tick = s.Tick, ShapeName = gearLibrary[piece].Id, OriginX = -1, OriginY = -1, Cost = price });
+            return true;
+        }
+
+        // The tower a gear command means: on the board at (X, Y), or with B > 0 in bench slot B - 1.
+        private TowerState GearTarget(SimState s, SimCommand command)
+        {
+            if (command.B <= 0) return TowerOn(s, new TileCoord(command.X, command.Y));
+            int benchSlot = command.B - 1;
+            return OnBenchRange(s, benchSlot) && s.Bench[benchSlot] != TowerBench.Empty ? s.Towers[s.Bench[benchSlot]] : null;
+        }
+
+        // Inventory to tower. Free, at any time gear may be moved.
+        private void EquipGear(SimState s, SimCommand command)
+        {
+            if (!(config.MoveGearDuringWave || InBuildPhase(s)) || command.A < 0 || command.A >= s.GearInventory.Length) return;
+            int piece = s.GearInventory[command.A];
+            TowerState tower = GearTarget(s, command);
+            if (piece == TowerState.NoGear || tower == null) return;
+            int slot = tower.FreeGearSlot();
+            if (slot < 0) return;
+
+            s.GearInventory[command.A] = TowerState.NoGear;
+            tower.Gear[slot] = piece;
+            tower.Recompute(gearLibrary);
+            LogGear(s, PlacementKind.GearEquipped, piece, tower);
+        }
+
+        // Tower to the first free inventory slot. Free.
+        private void UnequipGear(SimState s, SimCommand command)
+        {
+            if (!(config.MoveGearDuringWave || InBuildPhase(s)) || command.A < 0 || command.A >= TowerState.MaxGearSlots) return;
+            TowerState tower = GearTarget(s, command);
+            if (tower == null || tower.Gear[command.A] == TowerState.NoGear) return;
+            int free = Array.IndexOf(s.GearInventory, TowerState.NoGear);
+            if (free < 0) return;
+
+            int piece = tower.Gear[command.A];
+            // The tower's PricePaid is left alone: a piece that came from the inventory was
+            // never part of it. (One bought straight onto the tower stays in it; with an
+            // inventory, gear is bought into the inventory.)
+            tower.Gear[command.A] = TowerState.NoGear;
+            s.GearInventory[free] = piece;
+            tower.Recompute(gearLibrary);
+            LogGear(s, PlacementKind.GearUnequipped, piece, tower);
+        }
+
+        private void LogGear(SimState s, PlacementKind kind, int piece, TowerState tower)
+        {
+            TileCoord at = tower.OnBench ? TowerBench.NoTile : tower.Tile;
+            s.PlacementLog.Add(new PlacementRecord
+            {
+                Kind = kind, Tick = s.Tick, ShapeName = gearLibrary[piece].Id, OriginX = at.X, OriginY = at.Y,
+                Tiles = tower.OnBench ? new TileCoord[0] : new[] { at }, TowerId = tower.Id,
+            });
+            events.Add(SimEvent.TowerChanged(tower.Id));
+        }
 
         // Selling is for build phases, unless the config says otherwise: see
         // SimConfig.SellDuringWave for why.

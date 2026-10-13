@@ -338,7 +338,43 @@ a coin cannot kill the first wave (two of ten seeds in the scripted runs).
   range 4.5, hits flyers). Their numbers are first guesses; Flak is at least as good as the
   Cannon on the ground and also hits flyers, which the next balance check has to settle.
 
-**What this risks for the study** (to raise with your supervisor): a free move is a change
+**Fourth round, 2026-10-13: few, heavy actions** (also **Built**, also a trial). The idea
+is yours: the game should feel like chess, every act weighing something, both sides seeing
+everything, and the enemy coming from where you are weak, as a raid does in RimWorld.
+
+- **The map is made new every run** from the seed: 32 x 32, ridges of rock, and a ring two
+  tiles deep along the edge on which nothing is built.
+- **You place the core** before the first wave (at least six tiles from the edge), then
+  say it stays.
+- **Enemies come in where the wave decides:** one place in the first waves, two from wave
+  4, three from wave 8. The places and the routes from them are shown when the build
+  phase begins; nothing is drawn on the edge before that. An entry is never close to the
+  core, and two entries of a wave are apart. The game takes turns: the wave is shown, you
+  answer, it runs.
+- **Walls are a stock**, not a purchase: 12 tiles at the start, 2 more after every wave,
+  3 on a wall card. A wall laid in this build phase comes up again freely; of older walls
+  you may take up 4 a wave. A wall that is chewed through is gone.
+- **Two moves a wave.** Anything done to a tower on the board costs one: moving it,
+  selling it, taking it to the bench, bringing one from the bench, or changing two over
+  (one move for the pair). Placing the wave's card, gear, and the order of the bench are free.
+- **A bench** of four slots for towers you own and have not put down.
+- **A duplicate card can be merged** into a tower of its type, which gains a level (or
+  takes the card's level if that is higher). You choose; nothing merges by itself. The
+  automatic three-of-a-kind merge of the third round is switched off. Levels come from
+  merging and from luck with rare and epic cards, never from budget.
+- **Budget** is small (10 at the start, 5 a wave) and buys room to do more: an extra move
+  (10, then 20), a reroll, a piece of gear, three wall tiles (5).
+
+Open, to be judged in play: every route ends at the core, so gathering the towers round
+it answers an attack from any side. If that turns out to be the one good layout, the
+entries change nothing and the design needs another lever (a core that is weak to being
+crowded, or enemies that avoid towers as RimWorld's sappers do).
+
+**What this risks for the study** (to raise with your supervisor): the measure of how much
+a player rebuilds counts tiles built. With two moves and a wall stock everyone has about
+the same number of actions, so the measure has to look at WHERE they go and whether moves
+are left unused or bought, not at how many there are. The map being new every run adds
+noise between participants; the study should use a few checked seeds. Also: a free move is a change
 to the layout that the primary measure does not count today (it counts tiles built), and a
 merge empties two tiles the player did not choose to empty. Both are written to telemetry
 (`moveTower`, `combine`), so the measure can be defined either way before it is frozen. Also: money put into levels

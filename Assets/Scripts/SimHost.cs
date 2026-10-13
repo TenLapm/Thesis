@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using Thesis.Core;
 using Thesis.Director;
 using Thesis.Sim;
 using UnityEngine;
@@ -38,6 +39,13 @@ public class SimHost : MonoBehaviour
     public int seed = 1;
     [Tooltip("Pick a fresh seed each play session instead. It is logged, so a session can still be reproduced.")]
     public bool randomSeed = false;
+
+    [Header("Map")]
+    [Tooltip("Make the map from the seed (MapGenerator) instead of reading the scene. The GridManager must be as big as the generated map.")]
+    public bool generateMap = false;
+    [Tooltip("The ring along the edge on which nothing is built, in tiles.")]
+    public int mapMargin = 2;
+    public int mapRidges = 10;
     [Tooltip("Upper bound on ticks per rendered frame. After a long hitch the game slows down instead of freezing to catch up.")]
     public int maxTicksPerFrame = 20;
 
@@ -94,13 +102,22 @@ public class SimHost : MonoBehaviour
 
     public SimState State => Sim.State;
 
+    // The simulation's map: the one it was started with, with the core where the player put it.
     public MapData Map
     {
         get
         {
             EnsureStarted();
-            return map;
+            return sim.Map;
         }
+    }
+
+    // Puts the scene's core object where the simulation's core is.
+    public void ShowCore()
+    {
+        if (flowManager == null || flowManager.targetGoal == null || sim == null) return;
+        Vec2f p = sim.State.Grid.Get(sim.State.Core).Position;
+        flowManager.targetGoal.position = new Vector3(p.X, flowManager.targetGoal.position.y, p.Y);
     }
 
     // The running session's own copy of the config, taken when the simulation
@@ -162,11 +179,26 @@ public class SimHost : MonoBehaviour
         }
 
         Seed = randomSeed ? (ulong)(uint)Environment.TickCount : (ulong)(uint)seed;
+        if (generateMap)
+        {
+            float diameter = gridManager.nodeRadius * 2f;
+            int width = Mathf.RoundToInt(gridManager.gridWorldSize.x / diameter);
+            int height = Mathf.RoundToInt(gridManager.gridWorldSize.y / diameter);
+            Vector3 origin = gridManager.transform.position;
+            map = MapGenerator.Generate(Seed, width, height, gridManager.nodeRadius, mapMargin, mapRidges, origin.x == 0f ? 0f : origin.x, origin.z == 0f ? 0f : origin.z);
+            // Entries are drawn wave by wave (PathPreviewer); the scene's one spawn marker is not one of them.
+            Renderer marker = waveSpawner.spawnPoint.GetComponent<Renderer>();
+            if (marker != null) marker.enabled = false;
+        }
+        else
         map = SceneMapBuilder.Build(gridManager, flowManager.targetGoal, new[] { waveSpawner.spawnPoint }, SceneManager.GetActiveScene().name);
         runConfig = (configAsset != null ? configAsset.config : new SimConfig()).Clone();
+        // The gear inventory needs the bottom bar to be seen and used: a scene without it plays without one.
+        if (FindFirstObjectByType<DeckBar>() == null) runConfig.GearInventorySlots = 0;
         IWavePlanner planner = directorHost != null ? directorHost.CreatePlanner(runConfig, map) : new EscalationPlanner(runConfig, map);
         sim = new Simulation(runConfig, map, blockManager.BuildShapeLibrary(), BuildTowerRoster(), Seed, planner);
         flowManager.Bind(sim.State.Grid);
+        if (generateMap) ShowCore();
 
         Debug.Log("[Sim] Started: map '" + map.Name + "' " + map.Width + "x" + map.Height + ", seed " + Seed + ", planner '" + planner.Name
                   + "', " + (configAsset != null ? "config '" + configAsset.name + "'" : "default config") + ".");

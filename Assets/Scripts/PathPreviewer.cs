@@ -3,27 +3,27 @@ using Thesis.Core;
 using Thesis.Sim;
 using UnityEngine;
 
-// Draws where enemies will walk (GDD §5.3): one line per kind of enemy.
+// Draws where enemies will walk (GDD §5.3): one line per kind of enemy AND per place
+// they come in.
 //
-//   walkers   the ground field's next-tile chain from the spawn to the core
+//   walkers   the ground field's next-tile chain from the entry to the core
 //   sappers   the same chain on the sapper field, where built tiles are cheap
-//   flyers    a straight line from the spawn to the core
+//   flyers    a straight line from the entry to the core
 //
-// Which lines are drawn (WP-C4, the student's decision of 2026-10-12): in a build
-// phase, one for every kind the player has MET so far in this session; during a
-// wave, the kinds in that wave. Walkers count as met from the start, so under the
-// static baseline, which only ever sends walkers, this is the one line the game has
-// always drawn. The rule is the same in both study conditions; only what the waves
-// contain differs.
+// Which lines are drawn: in a build phase with the next wave announced
+// (SimConfig.PlanAhead), that wave's; during a wave, the wave's own; otherwise one for
+// every kind the player has met, from the map's first entry. Since 2026-10-13 a wave
+// may come in at up to three places (RaidPlanner), each drawn with a marker on its
+// entry tile: nothing is drawn on the edge of the board until a wave is announced.
 //
-// View only. "Met" is read from the plans of the waves the simulation started and is
-// never written back. The lines are rebuilt when a field changes or the set of
-// lines does, not every frame.
+// View only: read from the plans the simulation holds, never written back. The lines
+// are rebuilt when a field changes or the set of lines does, not every frame.
 [RequireComponent(typeof(LineRenderer))]
 public class PathPreviewer : MonoBehaviour
 {
     [Header("Engine References")]
     public FlowFieldManager flowManager;
+    [Tooltip("Used only in scenes without a SimHost (the benchmarks): the one place enemies start.")]
     public Transform enemySpawnPoint;
     public SimHost simHost;
 
@@ -38,16 +38,24 @@ public class PathPreviewer : MonoBehaviour
     [Tooltip("While a wave is on the board the lines are this much thinner and fainter, so they do not cover the enemies walking along them.")]
     public float waveWidthFactor = 0.3f;
     [Range(0f, 1f)] public float waveAlpha = 0.3f;
+    public Color entryColor = new Color(1f, 0.3f, 0.25f);
 
-    private LineRenderer walkerLine;
-    private LineRenderer sapperLine;
-    private LineRenderer flyerLine;
+    // One line: where it starts and what walks it.
+    private struct Lane
+    {
+        public int Spawn;
+        public MovementClass Movement;
+    }
+
+    private readonly List<Lane> lanes = new List<Lane>();
+    private readonly List<LineRenderer> lines = new List<LineRenderer>();
+    private readonly List<GameObject> markers = new List<GameObject>();
     private readonly List<SimNode> route = new List<SimNode>();
     private readonly List<Vector3> points = new List<Vector3>();
     private int drawnVersion = int.MinValue;
-    private int drawnMask = -1;
+    private ulong drawnLanes;
+    private int shownMask = -1;
     private bool faint;
-    private bool styled;
 
     // Bit per MovementClass. Ground is met from the start.
     private int met = 1 << (int)MovementClass.Ground;
@@ -55,127 +63,172 @@ public class PathPreviewer : MonoBehaviour
     private SimHost Host => simHost != null ? simHost : (simHost = SimHost.Find());
 
     // The kinds whose lines are on the board right now (for the key in the HUD).
-    public bool Shows(MovementClass movement) { return drawnMask >= 0 && (drawnMask & (1 << (int)movement)) != 0; }
+    public bool Shows(MovementClass movement) { return shownMask >= 0 && (shownMask & (1 << (int)movement)) != 0; }
+
+    // How many places the announced (or running) wave comes in at.
+    public int EntryCount { get; private set; }
 
     void Awake()
     {
-        walkerLine = GetComponent<LineRenderer>();
-        walkerLine.useWorldSpace = true;
-        Style(walkerLine, walkerColor);
-        sapperLine = TowerView.Line(transform, "SapperRoute", sapperColor, lineWidth, false);
-        flyerLine = TowerView.Line(transform, "FlyerRoute", flyerColor, lineWidth, false);
-        Style(sapperLine, sapperColor);
-        Style(flyerLine, flyerColor);
-    }
-
-    private void Style(LineRenderer line, Color color)
-    {
-        line.startWidth = line.endWidth = faint ? lineWidth * waveWidthFactor : lineWidth;
-        if (faint) color.a *= waveAlpha;
-        line.startColor = line.endColor = color;
-    }
-
-    // Bold while the player builds against the route; thin and faint during a wave,
-    // when the enemies themselves show where they walk (the student, 2026-10-13: the
-    // line was covering them).
-    private void StyleFor(bool inWave)
-    {
-        if (styled && inWave == faint) return;
-        styled = true;
-        faint = inWave;
-        Style(walkerLine, walkerColor);
-        Style(sapperLine, sapperColor);
-        Style(flyerLine, flyerColor);
+        // The component's own LineRenderer was the walkers' line; the lines are pooled now.
+        GetComponent<LineRenderer>().positionCount = 0;
     }
 
     void Update()
     {
-        if (flowManager == null || flowManager.Grid == null || enemySpawnPoint == null)
+        if (flowManager == null || flowManager.Grid == null)
         {
-            walkerLine.positionCount = 0;
-            sapperLine.enabled = flyerLine.enabled = false;
+            Show(0, 0);
             drawnVersion = int.MinValue;
-            drawnMask = -1;
+            shownMask = -1;
             return;
         }
 
-        SimHost styleHost = Host;
-        StyleFor(styleHost != null && (styleHost.State.Phase == SimPhase.Spawning || styleHost.State.Phase == SimPhase.Resolving));
+        SimHost host = Host;
+        bool inWave = host != null && (host.State.Phase == SimPhase.Spawning || host.State.Phase == SimPhase.Resolving);
+        CollectLanes(host, inWave);
 
-        int mask = VisibleMask();
-        if (flowManager.FieldVersion == drawnVersion && mask == drawnMask) return;
+        // A fingerprint of what is to be drawn, so nothing is rebuilt while it stays the same.
+        var h = new Fnv1a64();
+        h.Add(inWave);
+        h.Add(lanes.Count);
+        for (int i = 0; i < lanes.Count; i++) { h.Add(lanes[i].Spawn); h.Add((int)lanes[i].Movement); }
+        if (host != null) { h.Add(host.State.Core.X); h.Add(host.State.Core.Y); }
+        if (flowManager.FieldVersion == drawnVersion && h.Value == drawnLanes) return;
         drawnVersion = flowManager.FieldVersion;
-        drawnMask = mask;
-        Draw(flowManager.Grid, mask);
+        drawnLanes = h.Value;
+        faint = inWave;
+        Draw(host);
     }
 
-    // The benchmark scenes have no SimHost: there it is the walkers' line, as before.
-    private int VisibleMask()
+    private void CollectLanes(SimHost host, bool inWave)
     {
-        SimHost host = Host;
-        if (host == null) return 1 << (int)MovementClass.Ground;
+        lanes.Clear();
+        if (host == null)
+        {
+            lanes.Add(new Lane { Spawn = -1, Movement = MovementClass.Ground }); // a benchmark scene
+            return;
+        }
 
         SimState state = host.State;
-        bool inWave = state.Phase == SimPhase.Spawning || state.Phase == SimPhase.Resolving;
-
-        // When the next wave is already decided (SimConfig.PlanAhead), a build phase
-        // shows where THAT wave will walk: the player builds against what is coming.
-        if (!inWave && state.NextPlan != null && state.NextPlan.Groups != null)
+        WavePlan plan = inWave ? state.CurrentPlan : state.NextPlan;
+        if (plan != null && plan.Groups != null)
         {
-            int next = 0;
-            foreach (AgentGroup group in state.NextPlan.Groups) next |= 1 << (int)group.Movement;
-            return next;
+            foreach (AgentGroup group in plan.Groups)
+            {
+                if (inWave) met |= 1 << (int)group.Movement;
+                bool known = false;
+                for (int i = 0; i < lanes.Count; i++) if (lanes[i].Spawn == group.SpawnIndex && lanes[i].Movement == group.Movement) known = true;
+                if (!known) lanes.Add(new Lane { Spawn = group.SpawnIndex, Movement = group.Movement });
+            }
+            return;
         }
-        if (!inWave || state.CurrentPlan == null || state.CurrentPlan.Groups == null) return met;
 
-        int wave = 0;
-        foreach (AgentGroup group in state.CurrentPlan.Groups) wave |= 1 << (int)group.Movement;
-        met |= wave;
-        return wave;
+        // No wave is announced: every kind met so far, from the first entry.
+        for (int m = 0; m < 3; m++) if ((met & (1 << m)) != 0) lanes.Add(new Lane { Spawn = 0, Movement = (MovementClass)m });
     }
 
-    private void Draw(SimGrid grid, int mask)
+    private void Draw(SimHost host)
     {
-        Vector3 spawn = enemySpawnPoint.position;
-        SimNode start = grid.NodeFromPosition(new Vec2f(spawn.x, spawn.z));
+        SimGrid grid = flowManager.Grid;
         float y = (flowManager.gridManager != null ? flowManager.gridManager.transform.position.y : 0f) + lineHoverHeight;
+        float cell = flowManager.gridManager != null ? flowManager.gridManager.nodeRadius * 2f : 1f;
 
-        // A line MAY legitimately pass through a wall - that simply means the
-        // enemies have decided chewing through it is cheaper than the detour.
-        bool reachable = start.IsWalkable && start.BestCost != SimNode.Infinity;
+        Vector3 core = host != null ? Tile(grid, host.State.Core, y)
+                     : flowManager.targetGoal != null ? flowManager.targetGoal.position : Vector3.zero;
 
-        if (reachable && (mask & (1 << (int)MovementClass.Ground)) != 0)
+        var entries = new List<int>();
+        shownMask = 0;
+        int used = 0;
+        for (int i = 0; i < lanes.Count; i++)
         {
-            Collect(grid, start, MovementClass.Ground, y, Vector3.zero);
-            walkerLine.positionCount = points.Count;
-            walkerLine.SetPositions(points.ToArray());
-        }
-        else walkerLine.positionCount = 0;
+            Lane lane = lanes[i];
+            Vector3 from;
+            SimNode start;
+            if (lane.Spawn < 0)
+            {
+                if (enemySpawnPoint == null) continue;
+                from = enemySpawnPoint.position;
+                start = grid.NodeFromPosition(new Vec2f(from.x, from.z));
+            }
+            else
+            {
+                if (lane.Spawn >= host.Map.Spawns.Length) continue;
+                start = grid.Get(host.Map.Spawns[lane.Spawn]);
+                from = SceneMapBuilder.ToWorld(start.Position, y);
+                if (!entries.Contains(lane.Spawn)) entries.Add(lane.Spawn);
+            }
 
-        if (reachable && (mask & (1 << (int)MovementClass.Sapper)) != 0)
-        {
-            Collect(grid, start, MovementClass.Sapper, y + 0.05f, new Vector3(sapperOffset, 0f, -sapperOffset));
-            sapperLine.positionCount = points.Count;
-            sapperLine.SetPositions(points.ToArray());
-            sapperLine.enabled = true;
-        }
-        else sapperLine.enabled = false;
+            points.Clear();
+            Color color;
+            if (lane.Movement == MovementClass.Flying)
+            {
+                color = flyerColor;
+                points.Add(new Vector3(from.x, y + 0.1f, from.z));
+                points.Add(new Vector3(core.x, y + 0.1f, core.z));
+            }
+            else
+            {
+                // A line MAY legitimately pass through a wall - that simply means the
+                // enemies have decided chewing through it is cheaper than the detour.
+                if (!start.IsWalkable || start.BestCost == SimNode.Infinity) continue;
+                bool sapper = lane.Movement == MovementClass.Sapper;
+                color = sapper ? sapperColor : walkerColor;
+                Vector3 offset = sapper ? new Vector3(sapperOffset, 0.05f, -sapperOffset) : Vector3.zero;
+                Route.Collect(grid, start, route, lane.Movement);
+                for (int k = 0; k < route.Count; k++) points.Add(SceneMapBuilder.ToWorld(route[k].Position, y) + offset);
+            }
 
-        if ((mask & (1 << (int)MovementClass.Flying)) != 0 && flowManager.targetGoal != null)
-        {
-            Vector3 core = flowManager.targetGoal.position;
-            flyerLine.positionCount = 2;
-            flyerLine.SetPosition(0, new Vector3(spawn.x, y + 0.1f, spawn.z));
-            flyerLine.SetPosition(1, new Vector3(core.x, y + 0.1f, core.z));
-            flyerLine.enabled = true;
+            LineRenderer line = LineAt(used++);
+            line.startWidth = line.endWidth = faint ? lineWidth * waveWidthFactor : lineWidth;
+            if (faint) color.a *= waveAlpha;
+            line.startColor = line.endColor = color;
+            line.positionCount = points.Count;
+            line.SetPositions(points.ToArray());
+            shownMask |= 1 << (int)lane.Movement;
         }
-        else flyerLine.enabled = false;
+
+        // A marker on every entry tile of the wave.
+        for (int i = 0; i < entries.Count; i++)
+        {
+            GameObject marker = MarkerAt(i, cell);
+            Vector3 p = SceneMapBuilder.ToWorld(grid.Get(host.Map.Spawns[entries[i]]).Position, y - lineHoverHeight + 0.06f);
+            marker.transform.position = p;
+        }
+        EntryCount = entries.Count;
+        Show(used, entries.Count);
     }
 
-    private void Collect(SimGrid grid, SimNode start, MovementClass movement, float y, Vector3 offset)
+    private static Vector3 Tile(SimGrid grid, TileCoord tile, float y) { return SceneMapBuilder.ToWorld(grid.Get(tile).Position, y); }
+
+    private LineRenderer LineAt(int index)
     {
-        Route.Collect(grid, start, route, movement);
-        points.Clear();
-        for (int i = 0; i < route.Count; i++) points.Add(SceneMapBuilder.ToWorld(route[i].Position, y) + offset);
+        while (lines.Count <= index) lines.Add(TowerView.Line(transform, "Route " + lines.Count, walkerColor, lineWidth, false));
+        return lines[index];
+    }
+
+    private GameObject MarkerAt(int index, float cell)
+    {
+        while (markers.Count <= index)
+        {
+            GameObject marker = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+            marker.name = "Entry " + markers.Count;
+            Destroy(marker.GetComponent<Collider>());
+            TowerView.UseSolidMaterial(marker);
+            marker.transform.SetParent(transform, false);
+            marker.transform.localScale = new Vector3(cell * 1.5f, 0.05f, cell * 1.5f);
+            var block = new MaterialPropertyBlock();
+            block.SetColor("_BaseColor", entryColor);
+            block.SetColor("_EmissionColor", entryColor * 1.5f);
+            marker.GetComponent<MeshRenderer>().SetPropertyBlock(block);
+            markers.Add(marker);
+        }
+        return markers[index];
+    }
+
+    private void Show(int lineCount, int markerCount)
+    {
+        for (int i = 0; i < lines.Count; i++) lines[i].enabled = i < lineCount;
+        for (int i = 0; i < markers.Count; i++) if (markers[i].activeSelf != (i < markerCount)) markers[i].SetActive(i < markerCount);
     }
 }

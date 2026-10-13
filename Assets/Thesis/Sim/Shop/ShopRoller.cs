@@ -49,6 +49,8 @@ namespace Thesis.Sim
 
             double coinWeight = config != null && config.CoinCardWeight > 0f ? config.CoinCardWeight : 0.0;
             double gearWeight = config != null && config.GearCardWeight > 0f && gear != null && gear.Length > 0 ? config.GearCardWeight : 0.0;
+            double wallWeight = config != null && config.WallCardWeight > 0f && config.WallStock > 0 ? config.WallCardWeight : 0.0;
+            if (config != null && config.FirstRollTowersOnly && waveIndex == 0) coinWeight = gearWeight = wallWeight = 0.0;
             double rare = config != null && config.RareTowerChance > 0f ? config.RareTowerChance : 0.0;
             double epic = config != null && config.EpicTowerChance > 0f ? config.EpicTowerChance : 0.0;
 
@@ -61,21 +63,53 @@ namespace Thesis.Sim
 
             var rng = new Pcg32(SeedFor(rngSeed, waveIndex, rerollCount), RngStreams.Shop);
             var offers = new TowerOffer[count];
+            bool distinct = config != null && config.DistinctCards;
             for (int slot = 0; slot < count; slot++)
             {
-                if (coinWeight + gearWeight > 0.0)
+                // With DistinctCards a slot that repeats an earlier one is drawn again, from
+                // the same generator, so the roll is still a function of the three numbers.
+                // After a fixed number of tries the repeat is kept: a roster smaller than
+                // the roll could not be filled otherwise.
+                for (int attempt = 0; attempt < 24; attempt++)
                 {
-                    double kind = rng.NextDouble() * (1.0 + coinWeight + gearWeight);
+                    offers[slot] = Draw(rng, roster, total, config, gear, coinWeight, gearWeight, wallWeight, rare, epic);
+                    if (!distinct || !Repeats(offers, slot)) break;
+                }
+            }
+            return offers;
+        }
+
+        private static bool Repeats(TowerOffer[] offers, int slot)
+        {
+            for (int i = 0; i < slot; i++)
+            {
+                if (offers[i].Kind != offers[slot].Kind) continue;
+                if (offers[i].Kind == CardKind.Tower && offers[i].TowerIndex != offers[slot].TowerIndex) continue;
+                if (offers[i].Kind == CardKind.Gear && offers[i].GearIndex != offers[slot].GearIndex) continue;
+                return true;
+            }
+            return false;
+        }
+
+        private static TowerOffer Draw(Pcg32 rng, TowerDef[] roster, double total, SimConfig config, GearDef[] gear,
+                                       double coinWeight, double gearWeight, double wallWeight, double rare, double epic)
+        {
+            {
+                if (coinWeight + gearWeight + wallWeight > 0.0)
+                {
+                    double kind = rng.NextDouble() * (1.0 + coinWeight + gearWeight + wallWeight);
                     if (kind < coinWeight)
                     {
-                        offers[slot] = new TowerOffer { Kind = CardKind.Coin, Amount = config.CoinCardAmount };
-                        continue;
+                        return new TowerOffer { Kind = CardKind.Coin, Amount = config.CoinCardAmount };
                     }
                     if (kind < coinWeight + gearWeight)
                     {
                         int piece = Math.Min(gear.Length - 1, (int)(rng.NextDouble() * gear.Length));
-                        offers[slot] = new TowerOffer { Kind = CardKind.Gear, GearIndex = piece, Price = gear[piece].Price };
-                        continue;
+                        return new TowerOffer { Kind = CardKind.Gear, GearIndex = piece, Price = gear[piece].Price };
+                    }
+                    if (kind < coinWeight + gearWeight + wallWeight)
+                    {
+                        return new TowerOffer { Kind = CardKind.Wall, Amount = config.WallCardAmount };
                     }
                 }
 
@@ -86,9 +120,8 @@ namespace Thesis.Sim
                     double u = rng.NextDouble();
                     level = u < epic ? 3 : u < epic + rare ? 2 : 1;
                 }
-                offers[slot] = new TowerOffer { TowerIndex = index, Level = level, Price = level == 1 ? roster[index].Cost : TowerUpgrades.CardPrice(roster[index], level, config) };
+                return new TowerOffer { TowerIndex = index, Level = level, Price = level == 1 ? roster[index].Cost : TowerUpgrades.CardPrice(roster[index], level, config) };
             }
-            return offers;
         }
 
         // The gear shop's stock number `stock` (0 at game start, then one more each time

@@ -54,6 +54,10 @@ public class GhostPreviewer : MonoBehaviour
                 case BuildTool.Wall:
                     tiles.AddRange(blockManager.GetTargetGridPositions(hover.gridX, hover.gridY));
                     valid = playerBuilder.CanPlaceWall(hover);
+                    if (playerBuilder.WallsFromStock)
+                        HoverText = playerBuilder.AreTilesPlaceable(tiles) ? (valid ? "Wall  (" + host.State.WallsLeft + " left)" : "No wall tiles left")
+                                  : host.Map.InBuildMargin(new Thesis.Core.TileCoord(hover.gridX, hover.gridY)) ? "Nothing is built on the border" : "";
+                    else
                     HoverText = playerBuilder.AreTilesPlaceable(tiles) ? (valid ? "Wall  " + playerBuilder.WallPrice : "Not enough budget") : "";
                     if (HoverText.Length == 0) tiles.Clear(); // nothing to build on a rock or a built tile
                     break;
@@ -63,6 +67,17 @@ public class GhostPreviewer : MonoBehaviour
                     if (def == null) break;
                     TowerOffer card = host.State.Shop.Offers[playerBuilder.SelectedOffer];
                     tiles.Add(new Vector2Int(hover.gridX, hover.gridY));
+                    if (tower != null)
+                    {
+                        // On a tower: the card is merged into it, if it is the same tower.
+                        valid = playerBuilder.CanFeed(card, tower);
+                        ringRadius = tower.RangeTiles * cell;
+                        HoverText = valid ? "Merge into " + playerBuilder.Describe(tower) + ": becomes " + TowerView.LevelName(playerBuilder.FedLevel(card, tower))
+                                  : tower.Def != def ? "Only a " + def.Id + " card merges into a " + def.Id
+                                  : tower.Level >= TowerState.MaxLevel ? "Already at the top level"
+                                  : "A merge needs " + playerBuilder.MergeCount + " of the same level (this card counts as one)";
+                        break;
+                    }
                     valid = playerBuilder.CanPlaceTower(hover, playerBuilder.SelectedOffer);
                     float range = def.RangeTiles;
                     for (int level = 2; level <= card.Level; level++) range += def.LevelMod(level).RangeAdd;
@@ -79,6 +94,13 @@ public class GhostPreviewer : MonoBehaviour
                     valid = playerBuilder.MaySell;
                     redGhost = true; // red is what is about to go
                     HoverText = valid ? "Sell  +" + refund.ToString("0.#") : "Selling is for the time between waves";
+                    if (valid && tower != null && !playerBuilder.HasMove) { valid = false; HoverText = "No moves left this wave"; }
+                    if (valid && tower == null && playerBuilder.WallsFromStock)
+                    {
+                        bool fresh = playerBuilder.IsFreshWall(hover);
+                        valid = fresh || host.State.RelaysLeft > 0;
+                        HoverText = fresh ? "Take up: back to your stock" : valid ? "Take up an old wall  (" + host.State.RelaysLeft + " left this wave)" : "No more old walls can be taken up this wave";
+                    }
                     break;
 
                 case BuildTool.Gear:
@@ -89,22 +111,53 @@ public class GhostPreviewer : MonoBehaviour
                     ringRadius = tower.RangeTiles * cell;
                     break;
 
+                case BuildTool.EquipGear:
+                    tiles.Add(new Vector2Int(hover.gridX, hover.gridY));
+                    if (tower == null) { HoverText = "Gear goes on a tower"; break; }
+                    valid = tower.FreeGearSlot() >= 0;
+                    HoverText = valid ? "Put it on " + playerBuilder.Describe(tower) : "No free gear slot (a rare tower has two)";
+                    ringRadius = tower.RangeTiles * cell;
+                    break;
+
+                case BuildTool.Core:
+                    tiles.Add(new Vector2Int(hover.gridX, hover.gridY));
+                    valid = playerBuilder.CanPlaceCore(hover);
+                    HoverText = valid ? "Put the core here" : "The core needs open ground, away from the edge";
+                    break;
+
+                case BuildTool.Deploy:
+                    TowerState benched = playerBuilder.Benched(playerBuilder.SelectedBench);
+                    if (benched == null) break;
+                    tiles.Add(new Vector2Int(hover.gridX, hover.gridY));
+                    ringRadius = benched.RangeTiles * cell;
+                    if (!playerBuilder.IsBuildPhase) { HoverText = "The bench is for the time between waves"; break; }
+                    if (!playerBuilder.HasMove) { HoverText = "No moves left this wave"; break; }
+                    if (tower != null && playerBuilder.CanMerge(benched, tower)) { valid = true; HoverText = "Merge: this " + tower.Def.Id + " becomes " + TowerView.LevelName(tower.Level + 1) + "  (uses " + playerBuilder.MergeCount + ", 1 move)"; break; }
+                    if (tower != null) { valid = true; HoverText = "Change places with " + playerBuilder.Describe(tower) + "  (1 move)"; break; }
+                    bool space = playerBuilder.TowerCap <= 0 || playerBuilder.TowersStanding < playerBuilder.TowerCap;
+                    valid = space && playerBuilder.IsFreeTile(hover);
+                    HoverText = !space ? "Tower limit reached: change places with a tower instead" : valid ? "Put " + playerBuilder.Describe(benched) + " here  (1 move)" : "Cannot stand here";
+                    break;
+
                 case BuildTool.MoveTower:
                     if (!playerBuilder.MayMoveTower) { if (tower != null) HoverText = "Towers move between waves"; break; }
+                    if (!playerBuilder.HasMove) { if (tower != null) HoverText = "No moves left this wave"; break; }
                     TowerState carried = playerBuilder.TowerFrom != null ? playerBuilder.TowerAt(playerBuilder.TowerFrom) : null;
                     if (tower != null)
                     {
                         tiles.Add(new Vector2Int(hover.gridX, hover.gridY));
                         ringRadius = tower.RangeTiles * cell;
                         valid = true;
-                        HoverText = tower == carried ? "Now click a free tile" : "Pick up " + playerBuilder.Describe(tower);
+                        HoverText = tower == carried ? "Now click a free tile"
+                                  : playerBuilder.CanMerge(carried, tower) ? "Merge: this " + tower.Def.Id + " becomes " + TowerView.LevelName(tower.Level + 1) + "  (uses " + playerBuilder.MergeCount + ", 1 move)"
+                                  : "Pick up " + playerBuilder.Describe(tower);
                     }
                     else if (carried != null)
                     {
                         tiles.Add(new Vector2Int(hover.gridX, hover.gridY));
                         ringRadius = carried.RangeTiles * cell;
                         valid = playerBuilder.IsFreeTile(hover);
-                        HoverText = valid ? "Move " + playerBuilder.Describe(carried) + " here" : "Cannot stand here";
+                        HoverText = valid ? "Move " + playerBuilder.Describe(carried) + " here  (1 move)" : "Cannot stand here";
                     }
                     break;
 
@@ -137,6 +190,31 @@ public class GhostPreviewer : MonoBehaviour
 
         ShowTiles(valid);
         ShowRing(hover, ringRadius, valid);
+        ShowFigure(hover, valid);
+    }
+
+    // In the tilted scene the tower in the hand is seen standing on the tile under the
+    // mouse, faintly, before it is put down.
+    private GameObject figure;
+    private TowerDef figureDef;
+    private int figureLevel;
+
+    private void ShowFigure(Node hover, bool valid)
+    {
+        TowerDef def = null;
+        int level = 1;
+        if (playerBuilder != null && playerBuilder.billboards && hover != null && !playerBuilder.IsBuildingBlocked) def = playerBuilder.HandTower(out level);
+        // Over a tower the hand's figure would hide the one that stands there.
+        if (def != null && playerBuilder.TowerAt(hover) != null) def = null;
+
+        if (def != figureDef || level != figureLevel)
+        {
+            if (figure != null) Destroy(figure);
+            figure = def != null ? TowerView.Figure(def, level, gridManager.nodeRadius * 2f, 0.6f) : null;
+            figureDef = def;
+            figureLevel = level;
+        }
+        if (figure != null) figure.transform.position = hover.worldPosition + Vector3.up * 0.1f;
     }
 
     private void ShowTiles(bool valid)
@@ -147,7 +225,7 @@ public class GhostPreviewer : MonoBehaviour
             Vector2Int pos = tiles[i];
             bool onMap = pos.x >= 0 && pos.x < gridManager.gridSizeX && pos.y >= 0 && pos.y < gridManager.gridSizeY;
             // Over something that stands there, the ghost sits on top of it.
-            bool built = playerBuilder.Tool != BuildTool.Wall && playerBuilder.Tool != BuildTool.Tower
+            bool built = playerBuilder.Tool != BuildTool.Wall && playerBuilder.Tool != BuildTool.Tower && playerBuilder.Tool != BuildTool.Core && playerBuilder.Tool != BuildTool.Deploy
                          && !(playerBuilder.Tool == BuildTool.MoveTower && onMap && playerBuilder.TowerAt(gridManager.grid[pos.x, pos.y]) == null);
             float lift = built ? gridManager.nodeRadius * 2f + 0.1f : 0.1f;
             activeGhostTiles[i].transform.position = onMap ? gridManager.grid[pos.x, pos.y].worldPosition + Vector3.up * lift : Vector3.down * 100;

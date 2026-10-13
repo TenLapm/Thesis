@@ -26,6 +26,7 @@ public class TowerView : MonoBehaviour
     private float cell;
     private Color color;
     private Transform marks;
+    private bool billboard;
     private static Material lineMaterial;
 
     private static readonly Color[] GearColors =
@@ -68,7 +69,53 @@ public class TowerView : MonoBehaviour
         return lineMaterial;
     }
 
-    public static TowerView Create(TowerState tower, Vector3 tileCentre, float cell)
+    // A flat figure that stands upright and faces the camera (the tilted trial scene):
+    // a body and a head in the colour of the damage type, on a frame in the colour of
+    // the level, with the tower's first letters. A placeholder for a drawn character.
+    public static GameObject Figure(TowerDef def, int level, float cell, float alpha = 1f)
+    {
+        var root = new GameObject("Figure");
+        root.AddComponent<Billboard>();
+        Color color = ColorOf(def.DamageType);
+        Color frame = ColorOfLevel(level);
+        color.a = frame.a = alpha;
+        Color dark = new Color(0.05f, 0.07f, 0.11f, alpha);
+
+        float w = cell * 1.5f, h = cell * 2.3f;
+        Flat(root.transform, new Vector3(0f, h * 0.5f, 0f), new Vector3(w, h, 1f), frame, 0);
+        Flat(root.transform, new Vector3(0f, h * 0.5f, 0f), new Vector3(w * 0.9f, h * 0.93f, 1f), dark, 1);
+        Flat(root.transform, new Vector3(0f, h * 0.36f, 0f), new Vector3(w * 0.6f, h * 0.5f, 1f), color, 2);
+        Flat(root.transform, new Vector3(0f, h * 0.76f, 0f), new Vector3(w * 0.36f, w * 0.36f, 1f), color, 2);
+
+        var text = new GameObject("Name").AddComponent<TMPro.TextMeshPro>();
+        text.transform.SetParent(root.transform, false);
+        text.transform.localPosition = new Vector3(0f, h * 0.34f, -0.02f);
+        text.rectTransform.sizeDelta = new Vector2(w, h * 0.4f);
+        text.text = def.Id.Length <= 2 ? def.Id.ToUpperInvariant() : def.Id.Substring(0, 2).ToUpperInvariant();
+        text.fontSize = cell * 5.5f;
+        text.fontStyle = TMPro.FontStyles.Bold;
+        text.alignment = TMPro.TextAlignmentOptions.Center;
+        text.color = dark;
+        text.sortingOrder = 3;
+        return root;
+    }
+
+    private static void Flat(Transform parent, Vector3 at, Vector3 scale, Color color, int order)
+    {
+        GameObject quad = GameObject.CreatePrimitive(PrimitiveType.Quad);
+        Destroy(quad.GetComponent<Collider>());
+        quad.transform.SetParent(parent, false);
+        quad.transform.localPosition = at + new Vector3(0f, 0f, -0.004f * order);
+        quad.transform.localScale = scale;
+        MeshRenderer renderer = quad.GetComponent<MeshRenderer>();
+        renderer.sharedMaterial = LineMaterial();
+        renderer.sortingOrder = order;
+        var block = new MaterialPropertyBlock();
+        block.SetColor("_Color", color);
+        renderer.SetPropertyBlock(block);
+    }
+
+    public static TowerView Create(TowerState tower, Vector3 tileCentre, float cell, bool billboard = false)
     {
         Color color = ColorOf(tower.Def.DamageType);
         var root = new GameObject("Tower " + tower.Id + " " + tower.Def.Id);
@@ -77,6 +124,18 @@ public class TowerView : MonoBehaviour
         view.TowerId = tower.Id;
         view.cell = cell;
         view.color = color;
+
+        if (billboard)
+        {
+            // A low base on the tile, and the figure standing on it.
+            Part(PrimitiveType.Cylinder, root.transform, new Vector3(0f, cell * 0.06f, 0f), new Vector3(cell * 0.9f, cell * 0.06f, cell * 0.9f), color);
+            view.billboard = true;
+            view.turret = new GameObject("Turret").transform;
+            view.turret.SetParent(root.transform, false);
+            view.turret.localPosition = new Vector3(0f, cell * 1.1f, 0f);
+            view.splash = Line(root.transform, "Splash", color, cell * 0.05f, true);
+            return view;
+        }
 
         // From above: a ring in the colour of the damage type round a dark middle, so
         // that a tower reads as a tower and not as a wall tile.
@@ -99,6 +158,21 @@ public class TowerView : MonoBehaviour
         if (marks != null) Destroy(marks.gameObject);
         marks = new GameObject("Marks").transform;
         marks.SetParent(transform, false);
+
+        if (billboard)
+        {
+            // The figure carries the level in its frame; gear is a row of dots at its feet.
+            GameObject figure = Figure(tower.Def, tower.Level, cell);
+            figure.transform.SetParent(marks, false);
+            int dots = 0;
+            for (int slot = 0; slot < TowerState.MaxGearSlots; slot++)
+            {
+                if (tower.Gear[slot] == TowerState.NoGear) continue;
+                Part(PrimitiveType.Sphere, marks, new Vector3((dots - 0.5f) * cell * 0.34f, cell * 0.2f, -cell * 0.42f), new Vector3(cell * 0.24f, cell * 0.24f, cell * 0.24f), ColorOfGear(tower.Gear[slot]));
+                dots++;
+            }
+            return;
+        }
 
         float y = cell * 0.7f;
         Color level = ColorOfLevel(tower.Level);
@@ -188,9 +262,28 @@ public class TowerView : MonoBehaviour
         return line;
     }
 
+    // The material of every shape the views make at run time. A primitive's own default
+    // material is the built-in one, which a built URP player draws pink (seen in the
+    // first build sent to a tester, 2026-10-14); in the editor Unity swaps it silently.
+    // This one is an asset in a Resources folder, so it and its shader are in every build.
+    public static Material SolidMaterial()
+    {
+        if (solidMaterial == null) solidMaterial = Resources.Load<Material>("ViewLit");
+        return solidMaterial;
+    }
+
+    private static Material solidMaterial;
+
+    public static void UseSolidMaterial(GameObject primitive)
+    {
+        Material solid = SolidMaterial();
+        if (solid != null) primitive.GetComponent<MeshRenderer>().sharedMaterial = solid;
+    }
+
     private static void Part(PrimitiveType type, Transform parent, Vector3 localPosition, Vector3 scale, Color color)
     {
         GameObject part = GameObject.CreatePrimitive(type);
+        UseSolidMaterial(part);
         Destroy(part.GetComponent<Collider>());
         part.transform.SetParent(parent, false);
         part.transform.localPosition = localPosition;

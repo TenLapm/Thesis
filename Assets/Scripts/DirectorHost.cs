@@ -17,6 +17,7 @@ public class DirectorHost : MonoBehaviour
         // the movement classes of WP-C2 can be played before the director's
         // strategies exist. See Thesis.Sim.ClassCyclePlanner.
         DevClassCycle = 100,
+        DevRaid = 101,
     }
 
     public Condition condition = Condition.StaticEscalation;
@@ -30,6 +31,10 @@ public class DirectorHost : MonoBehaviour
                 planner = new ClassCyclePlanner(config, map);
                 Debug.Log("[Director] DEVELOPMENT planner 'class-cycle': waves cycle ground, sappers (orange, dig through walls), flyers (blue, fly over everything; "
                           + "only the archer can hit them), then all three. Not a study condition. Set DirectorHost.condition back to StaticEscalation for the baseline.");
+                break;
+            case Condition.DevRaid:
+                planner = new RaidPlanner(config, map);
+                Debug.Log("[Director] DEVELOPMENT planner 'raid': the class cycle's enemies, coming in at one to three entry points chosen wave by wave. Not a study condition.");
                 break;
             case Condition.StaticEscalation:
             default:

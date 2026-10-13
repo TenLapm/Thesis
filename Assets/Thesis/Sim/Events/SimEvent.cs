@@ -28,6 +28,7 @@ namespace Thesis.Sim
         TowerSold,
         WallSold,
         TowerChanged,
+        CoreMoved,
     }
 
     public readonly struct SimEvent
@@ -99,6 +100,9 @@ namespace Thesis.Sim
 
         // A tower's level or gear changed, so what it does has. IntA = tower id.
         public static SimEvent TowerChanged(int towerId) { return new SimEvent(SimEventKind.TowerChanged, towerId, 0, 0, 0f); }
+
+        // The player put the core on another tile. IntA = tile X, IntB = tile Y.
+        public static SimEvent CoreMoved(int x, int y) { return new SimEvent(SimEventKind.CoreMoved, x, y, 0, 0f); }
 
         public override string ToString()
         {

@@ -24,5 +24,29 @@ namespace Thesis.Sim
         // TowerMoved: a tower was put on another tile; Tiles are { from, to }.
         TowerCombined = 9,
         TowerMoved = 10,
+
+        // 2026-10-13, the fourth round. WallsGained: wall tiles added to the stock (a
+        // card, or a pack bought with Cost). MoveBought: an extra move paid for.
+        // TowerBenched: a card taken onto the bench. TowerDeployed / TowerRecalled: a
+        // tower put on its tile from the bench, or taken off it onto the bench.
+        // TowerFed: a duplicate card merged into the tower, which gained a level.
+        // CorePlaced: the player chose the core's tile.
+        WallsGained = 11,
+        MoveBought = 12,
+        TowerBenched = 13,
+        TowerDeployed = 14,
+        TowerRecalled = 15,
+        TowerFed = 16,
+        CorePlaced = 17,
+
+        // 2026-10-14, the gear inventory. GearStored: a piece taken into the inventory
+        // (a card, or bought with Cost). GearEquipped / GearUnequipped: a piece put on
+        // the row's tower from the inventory, or taken off it into the inventory.
+        GearStored = 18,
+        GearEquipped = 19,
+        GearUnequipped = 20,
+
+        // A spare piece (SimState.GearOverflow) sold for Refund.
+        GearSold = 21,
     }
 }

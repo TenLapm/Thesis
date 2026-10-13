@@ -1,5 +1,5 @@
 {
-  "Schema": 7,
+  "Schema": 10,
   "Build": "headless .NET 9.0.10",
   "Session": "dotnet-sentry-6waves",
   "Policy": "sentry",
@@ -35,6 +35,8 @@
     "WallSellRefund": 0.5,
     "SellDuringWave": false,
     "WaitForStart": false,
+    "DistinctCards": false,
+    "FirstRollTowersOnly": false,
     "CoinCardWeight": 0.0,
     "CoinCardAmount": 8,
     "GearCardWeight": 0.0,
@@ -51,6 +53,25 @@
     "TowerCap": 0,
     "TowerCapEveryWaves": 0,
     "MoveTowers": false,
+    "WallStock": 0,
+    "WallStockPerWave": 0,
+    "WallRelayPerWave": 0,
+    "WallCardWeight": 0.0,
+    "WallCardAmount": 3,
+    "WallPackSize": 0,
+    "WallPackPrice": 5.0,
+    "MovesPerWave": 0,
+    "FreeFirstBuild": false,
+    "ExtraMovePrice": -1.0,
+    "ExtraMovePriceStep": 0.0,
+    "BenchSlots": 0,
+    "GearInventorySlots": 0,
+    "FeedDuplicates": false,
+    "MergeCount": 2,
+    "CorePlacement": false,
+    "CoreEdgeMargin": 6,
+    "MinEntryRouteTiles": 12.0,
+    "MinEntrySpacingTiles": 10,
     "SapperDigCostFactor": 0.2,
     "MinSlowFactor": 0.25,
     "MaxWaveSeconds": 600.0,
@@ -93,6 +114,7 @@
       "..............XX........",
       "..............XX........"
     ],
+    "BuildMargin": 0,
     "Core": {
       "X": 21,
       "Y": 21
@@ -429,8 +451,8 @@
       ]
     }
   ],
-  "SetupHash": "c4befdec22535cbc",
-  "InitialHash": "cc984ff0f2011a8d",
+  "SetupHash": "3dffcd6658b67f52",
+  "InitialHash": "69ac12f40cded2bd",
   "Commands": [
     {
       "Tick": 0,
@@ -662,35 +684,35 @@
     {
       "Wave": 1,
       "Tick": 1782,
-      "Hash": "7beb1f747e2c4711"
+      "Hash": "b4bf3f292982eb89"
     },
     {
       "Wave": 2,
       "Tick": 3378,
-      "Hash": "5068fa5ccaef83c4"
+      "Hash": "ab4ebedbe3514c6b"
     },
     {
       "Wave": 3,
       "Tick": 4893,
-      "Hash": "cb493d537f7fdd9c"
+      "Hash": "86b20f2e238c9f8e"
     },
     {
       "Wave": 4,
       "Tick": 6451,
-      "Hash": "cd4063739bc2b8b3"
+      "Hash": "ce8a5c503c671e0f"
     },
     {
       "Wave": 5,
       "Tick": 8038,
-      "Hash": "68894ea702fa4e05"
+      "Hash": "c3cbbd7f69428729"
     },
     {
       "Wave": 6,
       "Tick": 9661,
-      "Hash": "0d1f9caad643b7f2"
+      "Hash": "7f12b5edfef1624f"
     }
   ],
   "FinalTick": 9661,
-  "FinalHash": "0d1f9caad643b7f2",
+  "FinalHash": "7f12b5edfef1624f",
   "TickHashes": null
 }

@@ -27,7 +27,7 @@ namespace Thesis.Director
     // something else without raising CurrentSchema.
     public sealed class WaveRecord
     {
-        public const int CurrentSchema = 3; // 2: cards (tower, coin, gear), tower levels and gear in the build log; 3: the placement kinds "combine" and "moveTower" (both 2026-10-12)
+        public const int CurrentSchema = 6; // 6: gearSold rows; combine rows now also come from a merge by choice (2026-10-14); // 5: gearStore, equip and unequip rows (2026-10-14); // 4: walls, buyMove, bench, deploy, recall, feed and core rows (2026-10-13); // 2: cards (tower, coin, gear), tower levels and gear in the build log; 3: the placement kinds "combine" and "moveTower" (both 2026-10-12)
 
         [JsonProperty("schema", Order = 1)] public int Schema = CurrentSchema;
 
@@ -132,6 +132,17 @@ namespace Thesis.Director
             public const string Coin = "coin";
             public const string Combine = "combine";
             public const string MoveTower = "moveTower";
+            public const string Walls = "walls";
+            public const string BuyMove = "buyMove";
+            public const string Bench = "bench";
+            public const string Deploy = "deploy";
+            public const string Recall = "recall";
+            public const string Feed = "feed";
+            public const string Core = "core";
+            public const string GearStore = "gearStore";
+            public const string Equip = "equip";
+            public const string Unequip = "unequip";
+            public const string GearSold = "gearSold";
 
             [JsonProperty("tick", Order = 1)] public int Tick;
             [JsonProperty("kind", Order = 2)] public string Kind;

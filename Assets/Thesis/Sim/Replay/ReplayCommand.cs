@@ -55,6 +55,22 @@ namespace Thesis.Sim
                 case SimCommandKind.UpgradeTower: return SimCommand.UpgradeTower(X, Y);
                 case SimCommandKind.BuyShopGear: return SimCommand.BuyShopGear(A, X, Y);
                 case SimCommandKind.MoveTower: return SimCommand.MoveTower(X, Y, B, C);
+                case SimCommandKind.PlaceCore: return SimCommand.PlaceCore(X, Y);
+                case SimCommandKind.BuyWalls: return SimCommand.BuyWalls();
+                case SimCommandKind.BuyMove: return SimCommand.BuyMove();
+                case SimCommandKind.BenchCard: return SimCommand.BenchCard(A, B);
+                case SimCommandKind.DeployTower: return SimCommand.DeployTower(A, X, Y);
+                case SimCommandKind.RecallTower: return SimCommand.RecallTower(X, Y, A);
+                case SimCommandKind.SwapBench: return SimCommand.SwapBench(A, B);
+                case SimCommandKind.SellBenched: return SimCommand.SellBenched(A);
+                case SimCommandKind.StoreGearCard: return SimCommand.StoreGearCard(A);
+                case SimCommandKind.StoreShopGear: return SimCommand.StoreShopGear(A);
+                case SimCommandKind.EquipGear: return B > 0 ? SimCommand.EquipGearOnBench(A, B - 1) : SimCommand.EquipGear(A, X, Y);
+                case SimCommandKind.UnequipGear: return B > 0 ? SimCommand.UnequipGearOnBench(B - 1, A) : SimCommand.UnequipGear(X, Y, A);
+                case SimCommandKind.MergeTower: return SimCommand.MergeTower(X, Y, A - 1, B, C, C < 0 ? B : -1);
+                case SimCommandKind.EquipOverflow: return B > 0 ? SimCommand.EquipOverflowOnBench(A, B - 1) : SimCommand.EquipOverflow(A, X, Y);
+                case SimCommandKind.SellOverflow: return SimCommand.SellOverflow(A);
+                case SimCommandKind.FeedCard: return B > 0 ? SimCommand.FeedCardOnBench(A, B - 1) : SimCommand.FeedCard(A, X, Y);
                 default: throw new InvalidDataException("[Replay] Command '" + Cmd + "' at tick " + Tick + " cannot be replayed by this version.");
             }
         }

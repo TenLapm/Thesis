@@ -89,6 +89,14 @@ namespace Thesis.Sim
 
         // A shop slot holds a tower card, a coin card or a gear card. The two weights
         // are relative to a tower card's weight of 1; 0 means that kind never comes.
+        // No two cards of one roll are the same thing (the same tower type, the same piece
+        // of gear, two coin cards, two wall cards). A slot that would repeat is drawn again.
+        public bool DistinctCards = false;
+
+        // The cards before the first wave are all towers: a start with coins and gear
+        // and nothing to put them on is not a start.
+        public bool FirstRollTowersOnly = false;
+
         public float CoinCardWeight = 0f;
         public int CoinCardAmount = 8;
         public float GearCardWeight = 0f;
@@ -137,6 +145,61 @@ namespace Thesis.Sim
         // A standing tower can be put on another tile for nothing, between waves, with
         // its level and its gear.
         public bool MoveTowers = false;
+
+        // --- the fourth round (2026-10-13): few, heavy actions. All off by default. ---
+        // Walls come from a stock of tiles, not from the budget: WallStock at the start,
+        // WallStockPerWave more after every wave. A wall laid in this build phase can be
+        // taken up again freely; an older one costs one of WallRelayPerWave pick-ups.
+        // A taken-up tile goes back to the stock; a breached one is lost. 0 = off.
+        public int WallStock = 0;
+        public int WallStockPerWave = 0;
+        public int WallRelayPerWave = 0;
+
+        // A card that adds wall tiles to the stock (weight relative to a tower card's 1),
+        // and a pack of tiles for budget (size 0 = not for sale).
+        public float WallCardWeight = 0f;
+        public int WallCardAmount = 3;
+        public int WallPackSize = 0;
+        public float WallPackPrice = 5f;
+
+        // Moves: how many times per build phase a tower ON THE BOARD may be touched
+        // (moved, sold, taken to the bench, brought from it, swapped with it). Placing
+        // the wave's card, gear, and the bench's own order are free. 0 = no limit.
+        // An extra move costs ExtraMovePrice, plus the step for each one already
+        // bought this build phase; a negative price means none are for sale.
+        public int MovesPerWave = 0;
+
+        // Before the first wave nothing is limited: moves cost nothing, so the opening
+        // layout can be tried and changed freely (2026-10-14).
+        public bool FreeFirstBuild = false;
+        public float ExtraMovePrice = -1f;
+        public float ExtraMovePriceStep = 0f;
+
+        // The bench: this many slots for towers that are owned but not on the board.
+        public int BenchSlots = 0;
+
+        // The gear inventory (2026-10-14): this many pieces of gear can be owned without
+        // being on a tower. Gear is then bought or picked INTO it, and put on a tower,
+        // taken off again, or moved, for nothing and as often as wanted. 0 = off.
+        public int GearInventorySlots = 0;
+
+        // A tower card can be merged into a tower of its type the player already has,
+        // which then gains a level (or takes the card's level, if that is higher).
+        public bool FeedDuplicates = false;
+
+        // How many copies make the next level when the player merges (TowerMerge): 2 =
+        // one card or one tower into another, 3 = three of a kind. Counts the one that stays.
+        public int MergeCount = 2;
+
+        // Before the first wave the player may put the core on another tile, at least
+        // CoreEdgeMargin tiles from the edge.
+        public bool CorePlacement = false;
+        public int CoreEdgeMargin = 6;
+
+        // Entry points (RaidPlanner): an entry needs a route to the core at least this
+        // many tiles long, and two entries of one wave are at least this far apart.
+        public float MinEntryRouteTiles = 12f;
+        public int MinEntrySpacingTiles = 10;
 
         // --- movement classes (WP-C2) ---
         // The share of a built tile's price that a SAPPER pays when it chooses a
@@ -190,6 +253,10 @@ namespace Thesis.Sim
             if (!(SapperDigCostFactor >= 0f) || SapperDigCostFactor > 1f) throw new InvalidOperationException("SimConfig.SapperDigCostFactor must be in [0, 1], was " + SapperDigCostFactor + ".");
             if (ShopOffers < 0 || ShopOffers > 16) throw new InvalidOperationException("SimConfig.ShopOffers must be between 0 and 16, was " + ShopOffers + ".");
             if (!(RerollCostStep >= 0f) || float.IsInfinity(RerollCostStep)) throw new InvalidOperationException("SimConfig.RerollCostStep must be a number >= 0, was " + RerollCostStep + ".");
+            if (MergeCount < 2 || MergeCount > 9) throw new InvalidOperationException("SimConfig.MergeCount must be between 2 and 9, was " + MergeCount + ".");
+            if (GearInventorySlots < 0 || GearInventorySlots > 32) throw new InvalidOperationException("SimConfig.GearInventorySlots must be between 0 and 32.");
+            if (WallStock < 0 || WallStockPerWave < 0 || WallRelayPerWave < 0 || MovesPerWave < 0 || BenchSlots < 0 || BenchSlots > 16 || CoreEdgeMargin < 0)
+                throw new InvalidOperationException("SimConfig: the wall stock, the moves, the bench slots (at most 16) and the core margin must not be negative.");
             if (CombineCount < 0 || TowerCap < 0 || TowerCapEveryWaves < 0) throw new InvalidOperationException("SimConfig.CombineCount, TowerCap and TowerCapEveryWaves must not be negative.");
             if (float.IsNaN(RerollCost) || float.IsInfinity(RerollCost)) throw new InvalidOperationException("SimConfig.RerollCost must be a number (negative turns rerolls off), was " + RerollCost + ".");
             // Above 1 a sale would pay more than the purchase cost: free budget for buying and selling in a loop.

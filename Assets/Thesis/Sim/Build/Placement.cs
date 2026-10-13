@@ -35,6 +35,7 @@ namespace Thesis.Sim
                 if (!node.IsWalkable) return false; // static geometry
                 if (node.HasWall) return false;      // existing wall
                 if (IsProtected(map, t)) return false; // spawn / core
+                if (map.InBuildMargin(t)) return false; // the ring enemies enter through
             }
             return true;
         }
@@ -80,15 +81,18 @@ namespace Thesis.Sim
         // wall cannot be sold.
         public static bool TryPlace(SimGrid grid, MapData map, FlowFieldSet fields, ShapeDef shape, int rotationTurns,
                                      TileCoord origin, ref float buildBudget, int tick,
-                                     IList<PlacementRecord> log, IList<SimEvent> events)
+                                     IList<PlacementRecord> log, IList<SimEvent> events, bool free = false)
         {
             if (shape == null) throw new ArgumentNullException(nameof(shape));
 
+            // `free`: the piece comes out of the wall stock (SimConfig.WallStock) and
+            // costs no budget; the caller counts the tiles.
+            int cost = free ? 0 : shape.BuildCost;
             TileCoord[] tiles = ToWorldTiles(shape.LocalTiles, origin);
             if (!CanPlace(grid, map, tiles)) return false;
-            if (buildBudget < shape.BuildCost) return false;
+            if (buildBudget < cost) return false;
 
-            buildBudget -= shape.BuildCost;
+            buildBudget -= cost;
 
             int pieceId = log != null ? log.Count : -1;
             int terrainCost = WallTerrainCost(shape);
@@ -112,7 +116,7 @@ namespace Thesis.Sim
                 OriginY = origin.Y,
                 Tiles = tiles,
                 PieceId = pieceId,
-                Cost = shape.BuildCost,
+                Cost = cost,
             });
             return true;
         }

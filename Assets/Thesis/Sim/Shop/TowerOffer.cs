@@ -13,6 +13,7 @@ namespace Thesis.Sim
         Tower = 0,
         Coin = 1,   // PlaceTower does nothing with it; TakeCoin pays Amount into the budget
         Gear = 2,   // BuyGear puts GearIndex onto a tower for Price
+        Wall = 3,   // TakeCoin adds Amount wall tiles to the wall stock (2026-10-13)
     }
 
     public sealed class TowerOffer

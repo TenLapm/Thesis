@@ -82,6 +82,7 @@ namespace Thesis.Sim
             h.Add(map.Rows.Length);
             for (int i = 0; i < map.Rows.Length; i++) h.Add(map.Rows[i]);
 
+            h.Add(map.BuildMargin);
             h.Add(map.Core.X);
             h.Add(map.Core.Y);
             AddPoint(ref h, map.CoreWorld);

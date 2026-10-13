@@ -31,6 +31,29 @@ namespace Thesis.Sim
         public float BuildBudget;
         public int CoreHp;
 
+        // The core's tile. The map's own until the player places it (SimConfig.CorePlacement).
+        public TileCoord Core;
+
+        // The fourth round (2026-10-13). Wall tiles left to lay, pick-ups of older walls
+        // and moves left in this build phase, extra moves bought in it, and the build
+        // log's length when it began (a wall whose row is at or after it was laid in
+        // this phase and comes up again for nothing).
+        public int WallsLeft;
+        public int RelaysLeft;
+        public int MovesLeft;
+        public int MovesBought;
+        public int PhaseLogStart;
+
+        // The bench: a tower id per slot, TowerBench.Empty for a free one.
+        public int[] Bench = new int[0];
+
+        // The gear inventory: a gear index per slot, TowerState.NoGear for a free one.
+        public int[] GearInventory = new int[0];
+
+        // Gear that came back from a sold or merged tower and found the inventory full.
+        // The player must put each piece on a tower or sell it; no wave starts while one waits.
+        public List<int> GearOverflow = new List<int>();
+
         // The validated copy of the plan for the current/last wave.
         public WavePlan CurrentPlan;
 
@@ -115,6 +138,9 @@ namespace Thesis.Sim
             c.Shop = Shop.Clone();
             c.GearShop = GearShop.Clone();
             c.NextPlan = NextPlan?.Copy();
+            c.Bench = (int[])Bench.Clone();
+            c.GearInventory = (int[])GearInventory.Clone();
+            c.GearOverflow = new List<int>(GearOverflow);
             c.Schedule = (SpawnSlot[])Schedule.Clone();
             c.Pending = new List<SimCommand>(Pending);
             return c;

@@ -92,18 +92,34 @@ public class RockLayout : MonoBehaviour
         var block = new MaterialPropertyBlock();
         block.SetColor("_BaseColor", rockColor);
 
+        // A generated map (SimHost.generateMap) has its rocks in the simulation's map, not in this text.
+        SimHost host = SimHost.Find();
+        Thesis.Sim.MapData generated = host != null && host.generateMap ? host.Map : null;
+
+        // The ring nothing is built on: a faint line along its inner edge.
+        if (generated != null && generated.BuildMargin > 0)
+        {
+            LineRenderer ring = TowerView.Line(transform, "BuildBorder", new Color(1f, 1f, 1f, 0.28f), 0.12f, true);
+            float halfX = gridManager.gridWorldSize.x / 2f - generated.BuildMargin * cell;
+            float halfZ = gridManager.gridWorldSize.y / 2f - generated.BuildMargin * cell;
+            Vector3 c = gridManager.transform.position + Vector3.up * 0.08f;
+            ring.positionCount = 4;
+            ring.SetPositions(new[] { c + new Vector3(-halfX, 0f, -halfZ), c + new Vector3(halfX, 0f, -halfZ), c + new Vector3(halfX, 0f, halfZ), c + new Vector3(-halfX, 0f, halfZ) });
+        }
+
         var parent = new GameObject("Rocks").transform;
         parent.SetParent(transform, false);
         for (int x = 0; x < width; x++)
         {
             for (int y = 0; y < height; y++)
             {
-                if (!IsRock(x, y, width, height)) continue;
+                if (generated != null ? generated.IsWalkable(x, y) : !IsRock(x, y, width, height)) continue;
                 GameObject rock = GameObject.CreatePrimitive(PrimitiveType.Cube);
                 rock.name = "Rock " + x + "," + y;
                 // No collider: a rock is a rule of the map, not a physics object, and the
                 // ground under it must stay what the mouse ray hits.
                 Destroy(rock.GetComponent<Collider>());
+                TowerView.UseSolidMaterial(rock);
                 rock.transform.SetParent(parent, false);
                 rock.transform.position = gridManager.grid[x, y].worldPosition + new Vector3(0f, tall / 2f, 0f);
                 rock.transform.localScale = new Vector3(cell, tall, cell);

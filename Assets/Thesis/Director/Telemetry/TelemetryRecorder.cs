@@ -165,7 +165,11 @@ namespace Thesis.Director
                 switch (r.Kind)
                 {
                     case PlacementKind.Tower: bought.Add(r.ShapeName); break;
+                    case PlacementKind.TowerBenched: bought.Add(r.ShapeName); break;
+                    case PlacementKind.TowerFed: bought.Add(r.ShapeName); break;
+                    case PlacementKind.WallsGained: bought.Add("walls"); break;
                     case PlacementKind.GearBought: bought.Add("gear:" + r.ShapeName); break;
+                    case PlacementKind.GearStored: bought.Add("gear:" + r.ShapeName); break;
                     case PlacementKind.CoinTaken: bought.Add("coin"); break;
                     case PlacementKind.TowerSold: sold.Add(new WaveRecord.SaleRow { Def = r.ShapeName, X = r.OriginX, Y = r.OriginY, Refund = r.Refund }); break;
                     case PlacementKind.ShopReroll: rerolls++; break;
@@ -219,6 +223,7 @@ namespace Thesis.Director
             switch (card.Kind)
             {
                 case CardKind.Coin: return "coin";
+                case CardKind.Wall: return "walls";
                 case CardKind.Gear: return "gear:" + sim.GearLibrary[card.GearIndex].Id;
                 default:
                     string id = sim.TowerLibrary[card.TowerIndex].Id;
@@ -322,6 +327,17 @@ namespace Thesis.Director
                 case PlacementKind.CoinTaken: return WaveRecord.PlacementRow.Coin;
                 case PlacementKind.TowerCombined: return WaveRecord.PlacementRow.Combine;
                 case PlacementKind.TowerMoved: return WaveRecord.PlacementRow.MoveTower;
+                case PlacementKind.WallsGained: return WaveRecord.PlacementRow.Walls;
+                case PlacementKind.MoveBought: return WaveRecord.PlacementRow.BuyMove;
+                case PlacementKind.TowerBenched: return WaveRecord.PlacementRow.Bench;
+                case PlacementKind.TowerDeployed: return WaveRecord.PlacementRow.Deploy;
+                case PlacementKind.TowerRecalled: return WaveRecord.PlacementRow.Recall;
+                case PlacementKind.TowerFed: return WaveRecord.PlacementRow.Feed;
+                case PlacementKind.CorePlaced: return WaveRecord.PlacementRow.Core;
+                case PlacementKind.GearStored: return WaveRecord.PlacementRow.GearStore;
+                case PlacementKind.GearEquipped: return WaveRecord.PlacementRow.Equip;
+                case PlacementKind.GearUnequipped: return WaveRecord.PlacementRow.Unequip;
+                case PlacementKind.GearSold: return WaveRecord.PlacementRow.GearSold;
                 default: throw new InvalidOperationException("[Telemetry] Unknown build-log kind " + kind + ".");
             }
         }

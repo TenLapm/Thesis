@@ -20,7 +20,13 @@ next wave is planned as the build phase begins and shown to the player (`PlanAhe
 round (2026-10-13)** added a paid reroll of the cards, three towers of a kind combining into the
 next level (`TowerCombine`; the paid Upgrade tool is off in the game), a cap on standing towers,
 free moving of towers between waves (`MoveTower`), gear among the cards again, and three more
-towers (sniper, shard, flak: eight in all). All of it is
+towers (sniper, shard, flak: eight in all). **A fourth round (2026-10-13, "few, heavy actions")**
+is what SampleScene plays now: a 32 x 32 map generated from the seed (`MapGenerator`) with a
+two-tile ring nothing is built on, the core placed by the player (`PlaceCore`), waves entering at
+one to three entry points chosen wave by wave (`RaidPlanner`, a development planner), walls from a
+stock, two moves a wave, a bench (`TowerBench`), and duplicate cards merged into towers by choice
+(the automatic merge is off). The simulation keeps its own copy of the map (`Simulation.Map`;
+`InitialMap` is what a replay stores). All of it is
 switched by `SimConfig` and off in the C# defaults. SampleScene is set to
 `DevClassCycle` for play-testing, not to a study condition. **Not built yet:** the
 learner (WP7, not started), the build profile (WP8) and the director itself. Next:

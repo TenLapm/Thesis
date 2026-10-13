@@ -57,7 +57,8 @@ public class TowerShopPanel : MonoBehaviour
     private RectTransform panel;
     private RectTransform cardArea;
     private RectTransform lower;
-    private TextMeshProUGUI budget;
+    private TextMeshProUGUI budget, income;
+    private RectTransform coreBanner, moveCore;
     private TextMeshProUGUI legendNote;
     private Image wallButton, sellButton, moveTowerButton, moveButton, rerollButton;
     private TextMeshProUGUI toolNote, rerollLabel, rerollNote;
@@ -94,6 +95,18 @@ public class TowerShopPanel : MonoBehaviour
     {
         canvasRect = GetComponent<RectTransform>();
         Build();
+
+        // The line at the top that names the next wave grows with the wave ("30 basic +
+        // 15 sapper + 15 flyer, from 3 sides"): it shrinks to its box and never runs
+        // over the health readout beside it.
+        CanvasDashboard dashboard = GetComponent<CanvasDashboard>();
+        if (dashboard != null && dashboard.waveText != null)
+        {
+            dashboard.waveText.fontSizeMax = dashboard.waveText.fontSize;
+            dashboard.waveText.fontSizeMin = 14f;
+            dashboard.waveText.enableAutoSizing = true;
+            dashboard.waveText.overflowMode = TextOverflowModes.Ellipsis;
+        }
     }
 
     // ------------------------------------------------------------------ building the UI
@@ -113,7 +126,8 @@ public class TowerShopPanel : MonoBehaviour
         title = Label(panel, "TOWER SHOP", 26, Bright, TextAlignmentOptions.TopLeft, new Vector2(18f, -14f), new Vector2(260f, 34f), true);
         subtitle = Label(panel, "new offers after every wave", 17, Dim, TextAlignmentOptions.TopLeft, new Vector2(18f, -46f), new Vector2(300f, 24f), false);
         Label(panel, "Budget", 17, Dim, TextAlignmentOptions.TopRight, new Vector2(-18f, -12f), new Vector2(140f, 24f), false, true);
-        budget = Label(panel, "", 30, Gold, TextAlignmentOptions.TopRight, new Vector2(-18f, -32f), new Vector2(160f, 38f), true, true);
+        budget = Label(panel, "", 30, Gold, TextAlignmentOptions.TopRight, new Vector2(-18f, -30f), new Vector2(160f, 36f), true, true);
+        income = Label(panel, "", 14, Dim, TextAlignmentOptions.TopRight, new Vector2(-18f, -62f), new Vector2(170f, 18f), false, true);
 
         cardArea = Rect("Cards", panel);
         Top(cardArea, 80f, 0f);
@@ -220,16 +234,33 @@ public class TowerShopPanel : MonoBehaviour
         card.icon = icon.gameObject.AddComponent<Image>();
         card.icon.raycastTarget = false;
 
-        card.name = Label(root, "", 22, Bright, TextAlignmentOptions.TopLeft, new Vector2(82f, -4f), new Vector2(220f, 28f), true);
-        card.type = Label(root, "", 15, Bright, TextAlignmentOptions.TopLeft, new Vector2(82f, -30f), new Vector2(250f, 20f), true);
-        card.tags = Label(root, "", 14, Dim, TextAlignmentOptions.TopLeft, new Vector2(82f, -49f), new Vector2(300f, 20f), false);
+        card.name = Label(root, "", 22, Bright, TextAlignmentOptions.TopLeft, new Vector2(82f, -4f), new Vector2(200f, 28f), true);
+        // Each text has a box of its own on the card: the type on the left of the middle row and the
+        // card's state on its right, under the price; the tags have the bottom row.
+        card.type = Label(root, "", 15, Bright, TextAlignmentOptions.TopLeft, new Vector2(82f, -30f), new Vector2(172f, 20f), true);
+        card.tags = Label(root, "", 14, Dim, TextAlignmentOptions.TopLeft, new Vector2(82f, -49f), new Vector2(304f, 20f), false);
         card.price = Label(root, "", 24, Gold, TextAlignmentOptions.TopRight, new Vector2(-16f, -4f), new Vector2(100f, 30f), true, true);
-        card.state = Label(root, "", 14, Dim, TextAlignmentOptions.TopRight, new Vector2(-16f, -31f), new Vector2(230f, 20f), false, true);
+        card.state = Label(root, "", 14, Dim, TextAlignmentOptions.TopRight, new Vector2(-16f, -31f), new Vector2(128f, 20f), false, true);
 
-        Button button = card.root.AddComponent<Button>();
+        AddClickOrDrag(card.root, slot);
+        return card;
+    }
+
+    // A card is clicked, as always; with the bottom bar (the tilted trial scene) it can
+    // also be dragged onto a tile, a tower of its type, or a bench slot.
+    private void AddClickOrDrag(GameObject root, int slot)
+    {
+        if (playerBuilder.deckBar != null)
+        {
+            DragCard drag = root.AddComponent<DragCard>();
+            drag.kind = DragCard.Kind.Offer;
+            drag.slot = slot;
+            playerBuilder.deckBar.Wire(drag);
+            return;
+        }
+        Button button = root.AddComponent<Button>();
         button.transition = Selectable.Transition.None;
         button.onClick.AddListener(() => playerBuilder.SelectOffer(slot));
-        return card;
     }
 
     // One line of the gear shop: a dot, the piece, what it does, its price.
@@ -328,6 +359,11 @@ public class TowerShopPanel : MonoBehaviour
         SimState state = Host.State;
         TowerOffer[] offers = state.Shop.Offers;
         Set(budget, state.BuildBudget.ToString("0.#"));
+        Set(income, "+" + Host.Config.StipendPerWave + " after the wave");
+        bool choosingCore = playerBuilder.ChoosingCore;
+        if (coreBanner.gameObject.activeSelf != choosingCore) coreBanner.gameObject.SetActive(choosingCore);
+        bool mayReopen = playerBuilder.MayReopenCore;
+        if (moveCore.gameObject.activeSelf != mayReopen) moveCore.gameObject.SetActive(mayReopen);
 
         // A draft (SimConfig.PicksPerRoll): the cards are free and only so many are taken.
         bool draft = state.Shop.PicksLeft >= 0;
@@ -410,11 +446,14 @@ public class TowerShopPanel : MonoBehaviour
         string note = "";
         switch (playerBuilder.Tool)
         {
-            case BuildTool.Wall: note = "click or drag" + (wallPrice >= 0 ? "  \u00b7  " + wallPrice + " a tile" : ""); break;
-            case BuildTool.Sell: note = maySell ? "click it: half its price back" : "between waves"; break;
+            case BuildTool.Wall: note = playerBuilder.WallsFromStock ? "click or drag  \u00b7  " + state.WallsLeft + " tiles left" : "click or drag" + (wallPrice >= 0 ? "  \u00b7  " + wallPrice + " a tile" : ""); break;
+            case BuildTool.Sell: note = !maySell ? "between waves" : playerBuilder.WallsFromStock ? "take up a wall, or sell a tower" : "click it: half its price back"; break;
+            case BuildTool.Core: note = "click the tile your core goes on"; break;
+            case BuildTool.Deploy: note = "click a tile, or a tower to change places"; break;
+            case BuildTool.EquipGear: note = "drop it on a tower"; break;
             case BuildTool.MoveTower: note = !playerBuilder.MayMoveTower ? "between waves" : playerBuilder.TowerFrom != null ? "now click a free tile" : "click a tower, then a free tile; free"; break;
             case BuildTool.MoveGear: note = !playerBuilder.MayMoveGear ? "between waves" : playerBuilder.GearFrom != null ? "now click where it goes" : "gear from tower to tower; free"; break;
-            case BuildTool.Tower: note = "click a tile to place the tower"; break;
+            case BuildTool.Tower: note = "a tile, the bench, or a tower like it"; break;
             case BuildTool.Gear: note = "click the tower it goes on"; break;
         }
         Set(toolNote, note);
@@ -454,6 +493,15 @@ public class TowerShopPanel : MonoBehaviour
                 Set(card.price, "+" + offers[i].Amount);
                 hint = "";
                 break;
+            case CardKind.Wall:
+                Set(card.name, "Walls");
+                Set(card.type, "wall tiles");
+                card.type.color = playerBuilder.wallColor;
+                card.icon.color = playerBuilder.wallColor;
+                Set(card.tags, "added to your stock");
+                Set(card.price, "+" + offers[i].Amount);
+                hint = "";
+                break;
             case CardKind.Gear:
                 GearDef gear = Host.Sim.GearLibrary[offers[i].GearIndex];
                 Color gearColor = TowerView.ColorOfGear(offers[i].GearIndex);
@@ -488,8 +536,10 @@ public class TowerShopPanel : MonoBehaviour
             if (playerBuilder.WouldCombine(offers[i])) { setNote = "completes a set: " + TowerView.LevelName(offers[i].Level + 1); setColor = Teal; }
             else if (!playerBuilder.HasRoomFor(offers[i])) { setNote = "tower limit reached"; setColor = Red; }
             else if (setSize > 1 && copies > 0 && offers[i].Level < TowerState.MaxLevel) setNote = "you have " + copies + " of " + setSize;
+            if (playerBuilder.CanFeedSomewhere(offers[i])) { setNote = "you own one: place it, or merge"; setColor = Teal; }
+            else if (!playerBuilder.HasRoomFor(offers[i]) && Host.Config.BenchSlots > 0) { setNote = "board full: goes on the bench"; setColor = Dim; }
         }
-        if (draft && offers[i].Kind != CardKind.Coin) Set(card.price, "FREE");
+        if (draft && (offers[i].Kind == CardKind.Tower || offers[i].Kind == CardKind.Gear)) Set(card.price, "FREE");
         card.price.color = poor ? Red : Gold;
         Set(card.state, offers[i].Bought ? (draft ? "PICKED" : offers[i].Kind == CardKind.Coin ? "TAKEN" : "BOUGHT") : passed ? "" : poor ? "not enough budget" : selected && setNote.Length == 0 ? hint : setNote);
         card.state.color = poor ? Red : setNote.Length > 0 ? setColor : selected ? Teal : Dim;
@@ -511,6 +561,7 @@ public class TowerShopPanel : MonoBehaviour
         overlay.anchorMax = Vector2.one;
         overlay.offsetMin = overlay.offsetMax = Vector2.zero;
         overlay.gameObject.AddComponent<Image>().color = new Color(0.02f, 0.03f, 0.06f, 0.72f); // also takes the clicks meant for the board
+        overlayGroup = overlay.gameObject.AddComponent<CanvasGroup>();
 
         overlayTitle = Label(overlay, "", 40, Bright, TextAlignmentOptions.Top, Vector2.zero, new Vector2(900f, 52f), true);
         Centre(overlayTitle.rectTransform, 0f, 250f);
@@ -528,8 +579,32 @@ public class TowerShopPanel : MonoBehaviour
         showCards.anchorMin = showCards.anchorMax = new Vector2(0.5f, 1f);
         showCards.pivot = new Vector2(0.5f, 1f);
         showCards.anchoredPosition = new Vector2(-120f, -104f);
-        overlay.gameObject.SetActive(false);
+        ShowOverlay(false);
         showCards.gameObject.SetActive(false);
+
+        // The first thing the game asks: where the core goes. Large, in the middle, and
+        // with the one button that ends it (a tester did not find the small one).
+        coreBanner = Rect("CoreBanner", transform);
+        coreBanner.anchorMin = coreBanner.anchorMax = new Vector2(0.5f, 1f);
+        coreBanner.pivot = new Vector2(0.5f, 1f);
+        coreBanner.anchoredPosition = new Vector2(-120f, -100f);
+        coreBanner.sizeDelta = new Vector2(860f, 196f);
+        Image bannerBack = coreBanner.gameObject.AddComponent<Image>();
+        bannerBack.color = new Color(0.16f, 0.1f, 0.03f, 0.93f);
+        bannerBack.raycastTarget = false; // the board behind it is still clicked through
+        TextMeshProUGUI bannerTitle = Label(coreBanner, "STEP 1:  PLACE YOUR CORE", 40, Gold, TextAlignmentOptions.Top, new Vector2(20f, -12f), new Vector2(820f, 50f), true);
+        TextMeshProUGUI bannerText = Label(coreBanner, "The glowing ball is your core. CLICK ANY TILE inside the gold frame to move it there.\nEnemies come in from the edges and walk to it. You can change your mind until the first wave.", 20, Bright, TextAlignmentOptions.Top, new Vector2(20f, -64f), new Vector2(820f, 56f), false);
+        bannerText.textWrappingMode = TextWrappingModes.Normal;
+        bannerTitle.raycastTarget = bannerText.raycastTarget = false;
+        Image confirm = OverlayButton(coreBanner, "DONE: THE CORE STAYS HERE", new Vector2(0f, -54f), 420f, () => playerBuilder.ConfirmCore(), out _, out _);
+        confirm.color = Gold;
+        coreBanner.gameObject.SetActive(false);
+
+        moveCore = OverlayButton(transform, "MOVE CORE", Vector2.zero, 200f, () => playerBuilder.ReopenCore(), out _, out _).rectTransform;
+        moveCore.anchorMin = moveCore.anchorMax = new Vector2(0.5f, 1f);
+        moveCore.pivot = new Vector2(0.5f, 1f);
+        moveCore.anchoredPosition = new Vector2(-380f, -104f);
+        moveCore.gameObject.SetActive(false);
     }
 
     private static void Centre(RectTransform rect, float x, float y)
@@ -560,6 +635,19 @@ public class TowerShopPanel : MonoBehaviour
         button.onClick.AddListener(onClick);
         return outline;
     }
+
+    // Hidden means unseen and untouchable, not switched off: a card dragged off the
+    // overlay hides it, and switching its object off would end the drag.
+    private void ShowOverlay(bool show)
+    {
+        overlayShown = show;
+        overlayGroup.alpha = show ? 1f : 0f;
+        overlayGroup.blocksRaycasts = show;
+        overlayGroup.interactable = show;
+    }
+
+    private CanvasGroup overlayGroup;
+    private bool overlayShown;
 
     private Card AddBigCard(int slot)
     {
@@ -597,9 +685,7 @@ public class TowerShopPanel : MonoBehaviour
         card.type.textWrappingMode = TextWrappingModes.Normal;
         card.tags.textWrappingMode = TextWrappingModes.Normal;
 
-        Button button = card.root.AddComponent<Button>();
-        button.transition = Selectable.Transition.None;
-        button.onClick.AddListener(() => playerBuilder.SelectOffer(slot));
+        AddClickOrDrag(card.root, slot);
         return card;
     }
 
@@ -614,8 +700,9 @@ public class TowerShopPanel : MonoBehaviour
 
         bool toPick = draft && state.Shop.MayPick && offers.Length > 0 && playerBuilder.IsBuildPhase && !playerBuilder.IsBuildingBlocked;
         bool inHand = (playerBuilder.Tool == BuildTool.Tower || playerBuilder.Tool == BuildTool.Gear) && playerBuilder.SelectedOffer >= 0;
+        if (playerBuilder.ChoosingCore) toPick = false; // the core first
         bool show = toPick && !cardsHidden && !inHand;
-        if (overlay.gameObject.activeSelf != show) overlay.gameObject.SetActive(show);
+        ShowOverlay(show);
         bool offerBack = toPick && cardsHidden && !inHand;
         if (showCards.gameObject.activeSelf != offerBack) showCards.gameObject.SetActive(offerBack);
         if (!show) return;
@@ -719,7 +806,11 @@ public class TowerShopPanel : MonoBehaviour
         label.alignment = align;
         label.fontStyle = bold ? FontStyles.Bold : FontStyles.Normal;
         label.textWrappingMode = TextWrappingModes.NoWrap;
-        label.overflowMode = TextOverflowModes.Overflow;
+        // A text too long for its box shrinks to fit, and past that is cut with dots; it never runs over its neighbour.
+        label.enableAutoSizing = true;
+        label.fontSizeMax = size;
+        label.fontSizeMin = Mathf.Max(10f, size * 0.6f);
+        label.overflowMode = TextOverflowModes.Ellipsis;
         label.raycastTarget = false;
         return label;
     }

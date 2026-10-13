@@ -1447,7 +1447,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::TopDownCamera
   gridManager: {fileID: 1537456292}
-  insetLeft: 0.01
+  insetLeft: 0.175
   insetRight: 0.25
   insetTop: 0.08
   insetBottom: 0.17
@@ -1579,6 +1579,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::WaveSpawner
   spawnPoint: {fileID: 342859809}
+  agentScale: 2.2
   simHost: {fileID: 0}
   agentPrefab: {fileID: 6972117724143071601, guid: c089fd024713beb42bb1a70b6702ff84, type: 3}
   agentPool: []
@@ -2323,10 +2324,10 @@ LineRenderer:
   m_SortingOrder: 0
   m_MaskInteraction: 0
   m_Positions:
-  - {x: -24, y: 0.06, z: -24}
-  - {x: 24, y: 0.06, z: -24}
-  - {x: 24, y: 0.06, z: 24}
-  - {x: -24, y: 0.06, z: 24}
+  - {x: -32, y: 0.06, z: -32}
+  - {x: 32, y: 0.06, z: -32}
+  - {x: 32, y: 0.06, z: 32}
+  - {x: -32, y: 0.06, z: 32}
   m_Parameters:
     serializedVersion: 3
     widthMultiplier: 1
@@ -2560,6 +2561,7 @@ GameObject:
   - component: {fileID: 662907083}
   - component: {fileID: 662907082}
   - component: {fileID: 662907087}
+  - component: {fileID: 662907088}
   m_Layer: 5
   m_Name: Canvas
   m_TagString: Untagged
@@ -2720,6 +2722,23 @@ MonoBehaviour:
   pathPreviewer: {fileID: 1537456299}
   simHost: {fileID: 1537456306}
   width: 430
+  topInset: 96
+  bottomInset: 196
+--- !u!114 &662907088
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 662907081}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 504352eac51836240943a287ab90e07e, type: 3}
+  m_Name: 
+  m_EditorClassIdentifier: Assembly-CSharp::BenchPanel
+  playerBuilder: {fileID: 1537456295}
+  simHost: {fileID: 1537456306}
+  width: 300
   topInset: 96
   bottomInset: 196
 --- !u!1 &664249888
@@ -3678,7 +3697,7 @@ Transform:
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
   m_LocalPosition: {x: 0, y: 0, z: -0}
-  m_LocalScale: {x: 4.8, y: 1, z: 4.8}
+  m_LocalScale: {x: 6.4, y: 1, z: 6.4}
   m_ConstrainProportionsScale: 0
   m_Children: []
   m_Father: {fileID: 0}
@@ -4523,7 +4542,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: f7066bf80507ec742afa81edaf8b38cc, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::GridManager
-  gridWorldSize: {x: 48, y: 48}
+  gridWorldSize: {x: 64, y: 64}
   nodeRadius: 1
   unwalkableMask:
     serializedVersion: 2
@@ -4567,6 +4586,8 @@ MonoBehaviour:
     serializedVersion: 2
     m_Bits: 8
   wallColor: {r: 0.65, g: 0.71, b: 0.99, a: 1}
+  wallHeight: 1
+  billboards: 0
 --- !u!114 &1537456298
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -4602,6 +4623,9 @@ MonoBehaviour:
   sapperColor: {r: 0.98, g: 0.57, b: 0.24, a: 1}
   flyerColor: {r: 0.38, g: 0.65, b: 0.98, a: 1}
   sapperOffset: 0.45
+  waveWidthFactor: 0.3
+  waveAlpha: 0.3
+  entryColor: {r: 1, g: 0.3, b: 0.25, a: 1}
 --- !u!120 &1537456300
 LineRenderer:
   serializedVersion: 3
@@ -4796,7 +4820,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 36772e77f360ca6488d7c93513a30ff4, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::DirectorHost
-  condition: 100
+  condition: 101
 --- !u!114 &1537456306
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -4811,7 +4835,10 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::SimHost
   configAsset: {fileID: 11400000, guid: 86c75f7252626c1419fde6906361767e, type: 2}
   seed: 1
-  randomSeed: 0
+  randomSeed: 1
+  generateMap: 1
+  mapMargin: 2
+  mapRidges: 10
   maxTicksPerFrame: 20
   recordReplay: 1
   recordTickHashes: 1

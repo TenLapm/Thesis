@@ -42,6 +42,7 @@ namespace Thesis.Harness
             public Func<SimConfig> Config;
             public Func<IPlayerPolicy> Policy;
             public string Planner = EscalationPlanner.Id;
+            public Func<MapData> Map; // null = the game's exported map
             public ulong Seed;
             public int MaxWaves;
             public bool TickHashes;
@@ -169,7 +170,39 @@ namespace Thesis.Harness
                 MaxWaves = 10,
                 TickHashes = true,
             },
+            // The fourth round (2026-10-13): a generated map, the core placed by the
+            // player, entry points chosen wave by wave, walls from a stock, two moves a
+            // wave, the bench, duplicates merged into towers, and budget spent on extra
+            // moves and walls. The only recording of MapGenerator, RaidPlanner and the
+            // commands PlaceCore, BenchCard, DeployTower, FeedCard, BuyWalls and BuyMove
+            // on both runtimes.
+            new Spec
+            {
+                Name = "raid-10waves",
+                Config = RaidConfig,
+                Map = () => MapGenerator.Generate(11),
+                Policy = () => new RaidPolicy(),
+                Planner = RaidPlanner.Id,
+                Seed = 11,
+                MaxWaves = 10,
+                TickHashes = true,
+            },
         };
+
+        // The rules of the fourth round with a core that survives ten waves.
+        public static SimConfig RaidConfig()
+        {
+            return new SimConfig
+            {
+                CoreMaxHp = 1000, StartBudget = 10f, StipendPerWave = 5, KillReward = 0f, WallBreakReward = 0f, WaitForStart = true, PlanAhead = true,
+                ShopOffers = 4, PicksPerRoll = 1, PicksAtStart = 2, CoinCardWeight = 0.2f, GearCardWeight = 0.2f, WallCardWeight = 0.2f,
+                RareTowerChance = 0.1f, EpicTowerChance = 0.02f, GearShopSlots = 3, GearShopRefreshWaves = 5,
+                RerollCost = 2f, RerollCostStep = 1f, TowerCap = 2, TowerCapEveryWaves = 4, MoveTowers = true, UpgradeCostFactor = 0f,
+                WallStock = 12, WallStockPerWave = 2, WallRelayPerWave = 4, WallPackSize = 3, WallPackPrice = 5f,
+                MovesPerWave = 2, ExtraMovePrice = 10f, ExtraMovePriceStep = 10f, BenchSlots = 4, FeedDuplicates = true, CorePlacement = true,
+                GearInventorySlots = 2, MergeCount = 3,
+            };
+        }
 
         // A narrower search than the default keeps recording to a few seconds.
         private static IPlayerPolicy SmallGreedy() { return new GreedyDetourPolicy { MaxPlacementsPerIntermission = 3, MaxOriginsPerPlacement = 12 }; }
@@ -194,7 +227,7 @@ namespace Thesis.Harness
                 var options = new EpisodeOptions
                 {
                     Config = spec.Config(),
-                    Map = map,
+                    Map = spec.Map != null ? spec.Map() : map,
                     Shapes = shapes,
                     Towers = towers,
                     Seed = spec.Seed,

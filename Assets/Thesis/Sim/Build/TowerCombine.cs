@@ -30,7 +30,7 @@ namespace Thesis.Sim
         public static int Standing(IList<TowerState> towers)
         {
             int n = 0;
-            for (int i = 0; i < towers.Count; i++) if (towers[i].IsAlive) n++;
+            for (int i = 0; i < towers.Count; i++) if (towers[i].IsAlive && !towers[i].OnBench) n++;
             return n;
         }
 
@@ -38,7 +38,7 @@ namespace Thesis.Sim
         public static int Copies(IList<TowerState> towers, TowerDef def, int level)
         {
             int n = 0;
-            for (int i = 0; i < towers.Count; i++) if (towers[i].IsAlive && towers[i].Def == def && towers[i].Level == level) n++;
+            for (int i = 0; i < towers.Count; i++) if (towers[i].IsAlive && !towers[i].OnBench && towers[i].Def == def && towers[i].Level == level) n++;
             return n;
         }
 
@@ -72,7 +72,7 @@ namespace Thesis.Sim
                 for (int i = 0; i < towers.Count && set.Count < count; i++)
                 {
                     TowerState t = towers[i];
-                    if (t.IsAlive && t.Def == current.Def && t.Level == current.Level) set.Add(t);
+                    if (t.IsAlive && !t.OnBench && t.Def == current.Def && t.Level == current.Level) set.Add(t);
                 }
                 if (set.Count < count) break;
 
