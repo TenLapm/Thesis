@@ -48,5 +48,8 @@ namespace Thesis.Sim
 
         // A spare piece (SimState.GearOverflow) sold for Refund.
         GearSold = 21,
+
+        // The gear shop's stock rolled again for Cost.
+        GearShopReroll = 22,
     }
 }

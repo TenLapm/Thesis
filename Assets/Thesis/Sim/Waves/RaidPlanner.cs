@@ -6,7 +6,7 @@ namespace Thesis.Sim
 {
     // DEVELOPMENT ONLY, like ClassCyclePlanner: not a study condition (2026-10-13).
     //
-    // It sends the development cycle of enemy types and, on a map with many entry
+    // It sends every enemy type in a twelve-wave cycle (Compose) and, on a map with many entry
     // points (MapGenerator), chooses WHERE each wave comes in: one entry in the first
     // waves, two from wave 4, three from wave 8. The choice alternates between two
     // rules, so both can be felt in play before the director exists:
@@ -26,12 +26,12 @@ namespace Thesis.Sim
     {
         public const string Id = "raid";
 
-        private readonly ClassCyclePlanner cycle;
+        private readonly EscalationPlanner escalation;
         private readonly List<SimNode> route = new List<SimNode>();
 
         public RaidPlanner(SimConfig config, MapData map)
         {
-            cycle = new ClassCyclePlanner(config, map);
+            escalation = new EscalationPlanner(config, map);
         }
 
         public string Name => Id;
@@ -42,7 +42,7 @@ namespace Thesis.Sim
 
         public WavePlan PlanWave(WaveContext context)
         {
-            WavePlan plan = cycle.PlanFor(context.WaveIndex);
+            WavePlan plan = Compose(context.WaveIndex);
             int[] entries = ChooseEntries(context);
 
             var groups = new List<AgentGroup>();
@@ -60,6 +60,34 @@ namespace Thesis.Sim
                 }
             }
             return new WavePlan { WaveIndex = context.WaveIndex, StrategyId = Id, Groups = groups.ToArray(), ThreatSpent = 0f };
+        }
+
+        public const int CycleLength = 12;
+
+        // What a wave is made of: a twelve-wave cycle through every enemy type, the
+        // plain ones first so that a new player meets them one at a time. Each group is
+        // that wave's escalation enemy turned into a type (EnemyArchetypes), so every
+        // type grows with the wave number as the baseline does.
+        public WavePlan Compose(int wave)
+        {
+            AgentGroup basic = escalation.PlanFor(wave).Groups[0];
+            AgentGroup[] groups;
+            switch ((wave - 1) % CycleLength)
+            {
+                case 0: groups = new[] { basic }; break;
+                case 1: groups = new[] { EnemyArchetypes.Runner().Apply(basic, 1f) }; break;
+                case 2: groups = new[] { EnemyArchetypes.Sapper().Apply(basic, 1f) }; break;
+                case 3: groups = new[] { EnemyArchetypes.Armored().Apply(basic, 1f) }; break;
+                case 4: groups = new[] { EnemyArchetypes.Flyer().Apply(basic, 1f) }; break;
+                case 5: groups = new[] { EnemyArchetypes.Swarm().Apply(basic, 1f) }; break;
+                case 6: groups = new[] { EnemyArchetypes.Brute().Apply(basic, 1f), EnemyArchetypes.Basic().Apply(basic, 0.5f) }; break;
+                case 7: groups = new[] { EnemyArchetypes.Ember().Apply(basic, 0.6f), EnemyArchetypes.Sapper().Apply(basic, 0.4f) }; break;
+                case 8: groups = new[] { EnemyArchetypes.Bats().Apply(basic, 1f) }; break;
+                case 9: groups = new[] { EnemyArchetypes.Frostborn().Apply(basic, 0.6f), EnemyArchetypes.Runner().Apply(basic, 0.4f) }; break;
+                case 10: groups = new[] { EnemyArchetypes.Armored().Apply(basic, 0.5f), EnemyArchetypes.Flyer().Apply(basic, 0.5f) }; break;
+                default: groups = new[] { EnemyArchetypes.Brute().Apply(basic, 0.5f), EnemyArchetypes.Swarm().Apply(basic, 0.5f), EnemyArchetypes.Bats().Apply(basic, 0.5f) }; break;
+            }
+            return new WavePlan { WaveIndex = wave, StrategyId = Id, Groups = groups };
         }
 
         private int[] ChooseEntries(WaveContext context)

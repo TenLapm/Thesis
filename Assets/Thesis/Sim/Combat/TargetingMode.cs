@@ -10,5 +10,10 @@ namespace Thesis.Sim
     {
         // The enemy closest to the core by route cost: the one about to leak.
         First = 0,
+
+        // 2026-10-14: the player may choose, tower by tower (TowerState.Mode).
+        Strongest = 1,  // the most hit points left
+        Weakest = 2,    // the fewest hit points left
+        Nearest = 3,    // closest to the tower itself
     }
 }

@@ -87,8 +87,8 @@ namespace Thesis.Tests.Sim
             AgentGroup flyers = Planner().PlanFor(3).Groups[0];
             Assert.AreEqual(EnemyArchetypes.FlyerId, flyers.Archetype);
             Assert.AreEqual(55, flyers.Count, "half of 110");
-            Assert.AreEqual(7f, flyers.Hp, "14 x 0.5");
-            Assert.AreEqual(1.59f, flyers.MoveSpeed, 1e-5f, "1.325 x 1.2");
+            Assert.AreEqual(4.9f, flyers.Hp, 1e-5f, "14 x 0.35");
+            Assert.AreEqual(1.325f, flyers.MoveSpeed, 1e-5f, "as fast as a walker");
             Assert.AreEqual(0f, flyers.DigRate, "a flyer never digs");
 
             // Wave 4: 115 enemies of 16 HP at 1.3625. A swarm is twice as many, at four
@@ -108,7 +108,7 @@ namespace Thesis.Tests.Sim
             Assert.AreEqual(30, mixed.Groups[2].Count);
             Assert.AreEqual(18f, mixed.Groups[0].Hp);
             Assert.AreEqual(27f, mixed.Groups[1].Hp);
-            Assert.AreEqual(9f, mixed.Groups[2].Hp);
+            Assert.AreEqual(6.3f, mixed.Groups[2].Hp, 1e-5f, "18 x 0.35");
             Assert.AreEqual(120, mixed.TotalAgents());
         }
 

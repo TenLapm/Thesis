@@ -67,12 +67,55 @@ namespace Thesis.Sim
             return new EnemyArchetype { Id = SapperId, Movement = MovementClass.Sapper, CountFactor = 0.5f, HpFactor = 1.5f, SpeedFactor = 0.8f, DigRateFactor = 4f };
         }
 
-        // Fewer, weaker, faster, and over everything.
+        // Fewer, weaker, and over everything. Weaker and no faster than a walker since
+        // 2026-10-14: they skip the whole maze and only some towers reach them, which
+        // at half the hit points and 1.2 times the speed was too much (the student's play).
         public static EnemyArchetype Flyer()
         {
-            return new EnemyArchetype { Id = FlyerId, Movement = MovementClass.Flying, CountFactor = 0.5f, HpFactor = 0.5f, SpeedFactor = 1.2f, DigRateFactor = 0f };
+            return new EnemyArchetype { Id = FlyerId, Movement = MovementClass.Flying, CountFactor = 0.5f, HpFactor = 0.35f, SpeedFactor = 1f, DigRateFactor = 0f };
         }
 
         public static EnemyArchetype[] All() { return new[] { Basic(), Swarm(), Sapper(), Flyer() }; }
+
+        // --- more of them (2026-10-14). Few KINDS of behaviour, many variants: each of
+        // these is a walker or a flyer with other numbers, or one that shrugs off a
+        // damage type, which is what makes a mix of tower types worth having. First
+        // guesses, like the four above. ---
+        public const string BruteId = "brute";
+        public const string RunnerId = "runner";
+        public const string ArmoredId = "armored";
+        public const string EmberId = "ember";
+        public const string FrostbornId = "frostborn";
+        public const string BatsId = "bats";
+
+        // A few, each four times as tough, slow.
+        public static EnemyArchetype Brute() { return new EnemyArchetype { Id = BruteId, CountFactor = 0.25f, HpFactor = 4f, SpeedFactor = 0.7f, SpawnIntervalFactor = 3f }; }
+
+        // Fast and frail: through a short kill zone before it has fired twice.
+        public static EnemyArchetype Runner() { return new EnemyArchetype { Id = RunnerId, CountFactor = 0.8f, HpFactor = 0.6f, SpeedFactor = 1.7f }; }
+
+        // Takes 35% of physical damage: arrows and bolts glance off.
+        public static EnemyArchetype Armored() { return new EnemyArchetype { Id = ArmoredId, CountFactor = 0.7f, HpFactor = 1.2f, SpeedFactor = 0.9f, Resist = Resists(0.35f, 1f, 1f) }; }
+
+        // Takes 25% of fire damage.
+        public static EnemyArchetype Ember() { return new EnemyArchetype { Id = EmberId, CountFactor = 0.8f, HpFactor = 1f, SpeedFactor = 1.1f, Resist = Resists(1f, 0.25f, 1f) }; }
+
+        // Immune to frost: no frost damage and no slow from it.
+        public static EnemyArchetype Frostborn() { return new EnemyArchetype { Id = FrostbornId, CountFactor = 0.8f, HpFactor = 1.1f, SpeedFactor = 1f, Resist = Resists(1f, 1f, 0f) }; }
+
+        // Many small flyers close together.
+        public static EnemyArchetype Bats() { return new EnemyArchetype { Id = BatsId, Movement = MovementClass.Flying, CountFactor = 1f, HpFactor = 0.15f, SpeedFactor = 1.2f, SpawnIntervalFactor = 0.5f, DigRateFactor = 0f }; }
+
+        public static EnemyArchetype[] Everything() { return new[] { Basic(), Swarm(), Sapper(), Flyer(), Brute(), Runner(), Armored(), Ember(), Frostborn(), Bats() }; }
+
+        // One multiplier per DamageType, in the enum's order: physical, fire, frost.
+        private static float[] Resists(float physical, float fire, float frost)
+        {
+            float[] r = DamageTypes.AllOnes();
+            r[(int)DamageType.Physical] = physical;
+            r[(int)DamageType.Fire] = fire;
+            r[(int)DamageType.Frost] = frost;
+            return r;
+        }
     }
 }

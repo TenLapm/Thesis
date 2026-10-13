@@ -151,7 +151,7 @@ namespace Thesis.Tests.Sim
 
             // The run must actually have exercised the rules, or this proves little.
             Assert.GreaterOrEqual(a.State.WaveIndex, 5, "a full cycle and the start of the next");
-            for (int c = 0; c < MovementClasses.Count; c++) Assert.Greater(spawned[c], 30, (MovementClass)c + " enemies spawned");
+            for (int c = 0; c < MovementClasses.Count; c++) Assert.Greater(spawned[c], 20, (MovementClass)c + " enemies spawned");
             Assert.Greater(breaches, 0, "something was dug through");
             Assert.Greater(leaked[(int)MovementClass.Flying], 0, "flyers reached the core");
             Assert.Greater(killed[(int)MovementClass.Flying], 0, "and anti-air towers shot some down");

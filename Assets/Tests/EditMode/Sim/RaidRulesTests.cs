@@ -177,7 +177,7 @@ namespace Thesis.Tests.Sim
                     total += g.Count;
                 }
                 Assert.AreEqual(RaidPlanner.EntriesFor(wave), entries.Count, "wave " + wave);
-                Assert.AreEqual(new ClassCyclePlanner(config, map).PlanFor(wave).TotalAgents(), total, "wave " + wave + ": as many enemies as the cycle's wave, shared out");
+                Assert.AreEqual(planner.Compose(wave).TotalAgents(), total, "wave " + wave + ": as many enemies as the wave is made of, shared out");
 
                 foreach (int e in entries)
                 {
@@ -639,6 +639,162 @@ namespace Thesis.Tests.Sim
             Assert.AreEqual(SimPhase.Spawning, s.Phase);
         }
 
+        // ------------------------------------------------------------------ one upgrade, chosen
+
+        [Test]
+        public void ATowerIsUpgradedOnceForBudgetWithTheBuffThePlayerChooses()
+        {
+            SimConfig config = Config();
+            config.ChoiceUpgradeCost = 12f;
+            config.BenchSlots = 1;
+            Simulation sim = New(config);
+            SimState s = sim.State;
+
+            TowerState tower = TestTowers.BuySlot(sim, 0, 3, 1);
+            float range = tower.RangeTiles;
+            TestSims.Send(sim, SimCommand.ChooseUpgrade(3, 1, 2)); // Reach
+            Assert.AreEqual(2, tower.Upgrade);
+            Assert.AreEqual(range + 1.5f, tower.RangeTiles);
+            Assert.AreEqual(83f, s.BuildBudget);
+            Assert.AreEqual(17, tower.PricePaid, "a sale gives half of it back with the tower's");
+
+            TestSims.Send(sim, SimCommand.ChooseUpgrade(3, 1, 0));
+            Assert.AreEqual(2, tower.Upgrade, "once only");
+            Assert.AreEqual(83f, s.BuildBudget);
+
+            // Each choice does what it says, also on the bench.
+            TestSims.Send(sim, SimCommand.BenchCard(1, 0));
+            TowerState benched = s.Towers[1];
+            TestSims.Send(sim, SimCommand.ChooseUpgradeOnBench(0, 3)); // Volley
+            Assert.AreEqual(2, benched.Targets);
+            TowerState power = TestTowers.BuySlot(sim, 2, 5, 1);
+            TestSims.Send(sim, SimCommand.ChooseUpgrade(5, 1, 0));
+            Assert.AreEqual(1.5f, power.Damage);
+            TowerState rapid = TestTowers.BuySlot(sim, 3, 6, 1);
+            int interval = rapid.FireIntervalTicks;
+            TestSims.Send(sim, SimCommand.ChooseUpgrade(6, 1, 1));
+            Assert.AreEqual((int)(interval * 0.7f), rapid.FireIntervalTicks);
+
+            // Not a choice that does not exist, not without the budget, not when off.
+            TowerState last = TestTowers.BuySlot(sim, 4, 7, 1);
+            TestSims.Send(sim, SimCommand.ChooseUpgrade(7, 1, 9));
+            Assert.AreEqual(TowerUpgradeChoices.None, last.Upgrade);
+            Simulation plain = New(Config());
+            TowerState plainTower = TestTowers.BuySlot(plain, 0, 3, 1);
+            TestSims.Send(plain, SimCommand.ChooseUpgrade(3, 1, 0));
+            Assert.AreEqual(TowerUpgradeChoices.None, plainTower.Upgrade);
+        }
+
+        // ------------------------------------------------------------------ which enemy a tower shoots
+
+        [Test]
+        public void ATowerShootsTheEnemyItsOrderNames()
+        {
+            // Three enemies in range of a tower at (4,2): one nearly at the core, one tough, one hurt.
+            AsciiFixture f = AsciiMap.Parse(Open);
+            var grid = new SimGrid(f.Map);
+            new FlowField().Generate(grid, f.Map.Core);
+            TowerState tower = TestTowers.StateOn(f, 0, TestTowers.Gun(range: 6f), 4, 2);
+            var live = new List<AgentState>
+            {
+                TestTowers.Agent(0, grid[3, 2].Position, hp: 50f),
+                TestTowers.Agent(1, grid[6, 2].Position, hp: 20f),
+                TestTowers.Agent(2, grid[2, 2].Position, hp: 5f),
+            };
+            SimNode core = grid.Get(f.Map.Core);
+
+            Assert.AreEqual(1, Targeting.Pick(TargetingMode.First, tower, grid, core, live), "the one closest to the core");
+            Assert.AreEqual(0, Targeting.Pick(TargetingMode.Strongest, tower, grid, core, live));
+            Assert.AreEqual(2, Targeting.Pick(TargetingMode.Weakest, tower, grid, core, live));
+            Assert.AreEqual(0, Targeting.Pick(TargetingMode.Nearest, tower, grid, core, live), "one tile from the tower");
+
+            // A second bolt goes to the next in the same order.
+            Assert.AreEqual(1, Targeting.Pick(TargetingMode.Strongest, tower, grid, core, live, new[] { 0 }, 1));
+        }
+
+        [Test]
+        public void ThePlayerSetsATowersOrderWhenTheConfigAllowsIt()
+        {
+            SimConfig config = Config();
+            config.ChooseTargeting = true;
+            Simulation sim = New(config);
+            TowerState tower = TestTowers.BuySlot(sim, 0, 3, 1);
+            Assert.AreEqual(TargetingMode.First, tower.Mode);
+
+            ulong before = sim.ComputeHash();
+            TestSims.Send(sim, SimCommand.SetTargeting(3, 1, TargetingMode.Weakest));
+            Assert.AreEqual(TargetingMode.Weakest, tower.Mode);
+            Assert.AreNotEqual(before, sim.ComputeHash(), "the order is part of the state");
+
+            Simulation plain = New(Config());
+            TowerState plainTower = TestTowers.BuySlot(plain, 0, 3, 1);
+            TestSims.Send(plain, SimCommand.SetTargeting(3, 1, TargetingMode.Weakest));
+            Assert.AreEqual(TargetingMode.First, plainTower.Mode);
+        }
+
+        // ------------------------------------------------------------------ more enemy types
+
+        [Test]
+        public void TheNewEnemyTypesAreVariantsWithTheirOwnNamesAndSomeShrugOffADamageType()
+        {
+            var config = new SimConfig();
+            MapData map = TestMaps.Parse(Open).Map;
+            AgentGroup basic = new EscalationPlanner(config, map).PlanFor(3).Groups[0];
+
+            var names = new HashSet<string>();
+            foreach (EnemyArchetype type in EnemyArchetypes.Everything())
+            {
+                Assert.IsTrue(names.Add(type.Id), "two types are called " + type.Id);
+                AgentGroup g = type.Apply(basic, 1f);
+                Assert.Greater(g.Count, 0);
+                Assert.Greater(g.Hp, 0f);
+                Assert.Greater(g.MoveSpeed, 0f);
+            }
+            Assert.AreEqual(10, names.Count);
+
+            Assert.AreEqual(0.35f, EnemyArchetypes.Armored().Apply(basic, 1f).Resist[(int)DamageType.Physical]);
+            Assert.AreEqual(1f, EnemyArchetypes.Armored().Apply(basic, 1f).Resist[(int)DamageType.Fire]);
+            Assert.AreEqual(0.25f, EnemyArchetypes.Ember().Apply(basic, 1f).Resist[(int)DamageType.Fire]);
+            Assert.AreEqual(0f, EnemyArchetypes.Frostborn().Apply(basic, 1f).Resist[(int)DamageType.Frost], "immune");
+            Assert.AreEqual(MovementClass.Flying, EnemyArchetypes.Bats().Apply(basic, 1f).Movement);
+            Assert.AreEqual(basic.Hp * 4f, EnemyArchetypes.Brute().Apply(basic, 1f).Hp);
+        }
+
+        [Test]
+        public void TheRaidPlannersCycleSendsEveryTypeAndEveryPlanIsValid()
+        {
+            MapData map = MapGenerator.Generate(4);
+            var config = new SimConfig();
+            var planner = new RaidPlanner(config, map);
+            var seen = new HashSet<string>();
+            for (int wave = 1; wave <= 2 * RaidPlanner.CycleLength; wave++)
+            {
+                WavePlan plan = planner.Compose(wave);
+                Assert.IsNull(PlanValidator.Check(plan, wave, map, config, null), "wave " + wave);
+                foreach (AgentGroup g in plan.Groups) seen.Add(g.Archetype);
+            }
+            foreach (EnemyArchetype type in EnemyArchetypes.Everything()) CollectionAssert.Contains(seen, type.Id);
+        }
+
+        // ------------------------------------------------------------------ any wall comes up
+
+        [Test]
+        public void WithFreeWallPickupAnyWallComesUpInABuildPhase()
+        {
+            SimConfig config = Config();
+            config.WallStock = 4;
+            config.WallRelayPerWave = 0;
+            config.FreeWallPickup = true;
+            Simulation sim = New(config);
+            SimState s = sim.State;
+            for (int x = 1; x <= 4; x++) TestSims.Send(sim, SimCommand.PlaceShape(x, 0));
+            PlayOneWave(sim);
+
+            for (int x = 1; x <= 4; x++) TestSims.Send(sim, SimCommand.SellWall(x, 0));
+            Assert.AreEqual(4, s.WallsLeft, "all four old walls came up, with no pick-ups to spend");
+            Assert.AreEqual(Occupant.None, s.Grid[2, 0].Occupant);
+        }
+
         // ------------------------------------------------------------------ the gear inventory
 
         [Test]
@@ -695,6 +851,45 @@ namespace Thesis.Tests.Sim
             Assert.IsFalse(plain.State.GearShop.Offers[0].Bought);
         }
 
+        [Test]
+        public void TheGearShopCanBeRolledAgainForAPriceThatRises()
+        {
+            SimConfig config = Config();
+            config.GearShopSlots = 3;
+            config.GearShopRefreshWaves = 2;
+            config.GearShopRerollCost = 3f;
+            config.GearShopRerollStep = 2f;
+            Simulation sim = New(config);
+            SimState s = sim.State;
+
+            ShopState first = s.GearShop;
+            Assert.AreEqual(3f, sim.GearRerollPrice);
+            TestSims.Send(sim, SimCommand.RerollGearShop());
+            Assert.AreNotSame(first, s.GearShop);
+            Assert.AreEqual(97f, s.BuildBudget);
+            Assert.AreEqual(1, s.GearShop.RerollCount);
+            Assert.AreEqual(0, s.GearShop.WaveIndex, "the same stock number, rolled again");
+            Assert.AreEqual(5f, sim.GearRerollPrice, "dearer the second time");
+            foreach (TowerOffer item in s.GearShop.Offers) Assert.IsFalse(item.Bought);
+
+            // The reroll is a function of the seed, the stock and the reroll count.
+            TowerOffer[] again = ShopRoller.RollGearShop(sim.RngSeed, 0, sim.GearLibrary, 3, 1);
+            for (int i = 0; i < 3; i++) Assert.AreEqual(again[i].GearIndex, s.GearShop.Offers[i].GearIndex);
+
+            // The next free restock puts the price back.
+            PlayOneWave(sim);
+            PlayOneWave(sim);
+            Assert.AreEqual(1, s.GearShop.WaveIndex);
+            Assert.AreEqual(3f, sim.GearRerollPrice);
+
+            // Off by default.
+            SimConfig plainConfig = Config();
+            plainConfig.GearShopSlots = 3;
+            Simulation plain = New(plainConfig);
+            TestSims.Send(plain, SimCommand.RerollGearShop());
+            Assert.AreEqual(100f, plain.State.BuildBudget);
+        }
+
         // ------------------------------------------------------------------ the commands survive the file
 
         [Test]
@@ -707,7 +902,8 @@ namespace Thesis.Tests.Sim
                 SimCommand.StoreGearCard(2), SimCommand.StoreShopGear(1), SimCommand.EquipGear(3, 4, 5), SimCommand.EquipGearOnBench(2, 1),
                 SimCommand.UnequipGear(4, 5, 1), SimCommand.UnequipGearOnBench(2, 1),
                 SimCommand.MergeTower(3, 4, -1, 6, 7, -1), SimCommand.MergeTower(0, 0, 2, 6, 7, -1), SimCommand.MergeTower(3, 4, -1, 0, 0, 1), SimCommand.MergeTower(0, 0, 0, 0, 0, 3),
-                SimCommand.EquipOverflow(1, 4, 5), SimCommand.EquipOverflowOnBench(0, 2), SimCommand.SellOverflow(1),
+                SimCommand.EquipOverflow(1, 4, 5), SimCommand.EquipOverflowOnBench(0, 2), SimCommand.SellOverflow(1), SimCommand.RerollGearShop(),
+                SimCommand.ChooseUpgrade(4, 5, 2), SimCommand.ChooseUpgradeOnBench(1, 3), SimCommand.SetTargeting(4, 5, TargetingMode.Weakest), SimCommand.SetTargetingOnBench(2, TargetingMode.Nearest),
             };
             foreach (SimCommand c in commands)
             {

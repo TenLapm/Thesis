@@ -1732,3 +1732,84 @@ runners (2 new). Nothing since `341a31f` is committed.
 
 **Open:** difficulty is tuned by one person's play; whether gear or tower levels should be
 weakened instead is undecided.
+
+---
+
+## 2026-10-14 — Five points after more play: gear-shop reroll, taking gear off, flyers, the single file, rare cards
+
+**Status:** 590 tests pass in both runners (1 new). Not committed (the last commit is `132d8ca`).
+
+1. **The gear shop can be rolled again:** `GearShopRerollCost` 3, `GearShopRerollStep` 2, command
+   `RerollGearShop`, build-log kind `GearShopReroll`, telemetry row `gearReroll`. The new stock is a
+   function of the seed, the stock number and the reroll count. Replay schema 11, telemetry 7.
+2. **Taking gear off a tower** is one click in the scene with the bottom bar: the Gear tool
+   (now "UNGEAR", key G) on a tower or a bench card sends its first piece to the inventory.
+3. **Flyers** have 0.35 of a walker's hit points (was 0.5) and a walker's speed (was 1.2 times).
+4. **Enemies no longer walk in single file on screen:** each is drawn up to 0.65 world units from
+   its true position, by an amount fixed by its id (`FlowAgent.spread`). View only; the
+   simulation, the replays and where a tower's shot is drawn to are unchanged.
+5. **Rare and epic cards** come up 4% and 0.5% of the time (were 10% and 2%), so that a level is
+   mostly something the player merges for.
+
+**Open:** with one pick a wave and no two cards of a roll alike, three of a kind takes at least
+three waves of picks, and an epic nine commons. Whether a merge should need two copies instead
+of three is the student's call.
+
+---
+
+## 2026-10-14 — A lost wave is played again; moves are unlimited
+
+**Status:** built at the student's request. No rule of the simulation changed, so no recording
+was re-made; the 590 tests are as they were. Not committed (the last commit is `132d8ca`).
+
+- **Try the wave again.** The game-over screen has a second button, "TRY WAVE n AGAIN". Nothing
+  is rewound: `SimHost.RetryWave` loads the scene again and plays the same run from its own
+  recording (same seed, the commands before the build phase that preceded the lost wave) up to
+  that build phase, with no frame drawn, and the player goes on from there. Checked in play mode:
+  after a loss in wave 2 the state hash at a tick of that build phase is the one the first
+  attempt had at the same tick. Core hit points are those the player had then, not a full core.
+- **What that means for the data.** The lost session keeps its replay and telemetry. The new
+  session is a full recording from tick 0 whose label says `human, wave n again after <session>`;
+  its first rows repeat the lost session's. An analysis must count a player's retries and must
+  not count those rows twice.
+- `PlayerBuilder` draws a wall or a tower from the build log only if it stands there now, so the
+  whole log can be walked at once after a retry.
+- **Moves:** `MovesPerWave` is 0 in the game's config, so moves are unlimited in every build
+  phase. The "two moves a wave" of the fourth round is off, not removed.
+
+**Open:** with unlimited moves and the wave announced, moving every tower to the announced route
+each wave is free. Whether that makes the answer to every wave obvious is to be seen in play.
+
+---
+
+## 2026-10-14 — After Emberward: one chosen upgrade instead of merging, free walls, target orders, ten enemy types
+
+**Status:** built at the student's request, who had played Emberward and listed how it works.
+596 tests pass in both runners (6 new). Not committed (the last commit is `132d8ca`).
+
+- **One upgrade per tower, with a choice** (`ChoiceUpgradeCost` 12, `TowerUpgradeChoices`): Power
+  (+50% damage), Rapid (40% faster), Reach (+1.5 range) or Volley (one more enemy). Command
+  `ChooseUpgrade`; build phases only; the build-log row is `TowerUpgraded` with the name
+  `<tower>+<choice>`. **Merging is off** in the game's config (`FeedDuplicates` false); its rules
+  and tests stay. Rare and epic cards still exist as luck.
+- **Any wall comes up again in a build phase** (`FreeWallPickup`). With moves already unlimited,
+  everything can be rearranged between waves.
+- **A target order per tower** (`ChooseTargeting`, `TowerState.Mode`, command `SetTargeting`):
+  closest to the core, strongest, weakest, nearest. Free, at any time.
+- **Six more enemy types**, all variants of a walker or a flyer: brute, runner, armored (35% of
+  physical damage), ember (25% of fire), frostborn (immune to frost), bats. `RaidPlanner` now has
+  a twelve-wave cycle of its own through all ten. `AgentState.Archetype` is a label for the views.
+- Replay schema 12. Pinned replays re-recorded.
+
+**In Unity:** tools are two rows of three (Wall, Sell, Move / Gear, Upgrade [U], Target [T]); the
+Upgrade tool opens a window with the four choices; the tower card names the upgrade and the
+order; enemy types differ in size and colour; the line at the top says what an unusual type
+does. Checked in play mode: the order changed, the chooser opened, Reach took the range from 3
+to 4.5 and 12 budget.
+
+**Open**
+- The numbers of the new types and of the four upgrades are first guesses. The scripted player
+  that gathers its towers round the core now loses in waves 2 to 3 on nine of ten maps (runners
+  come in wave 2); a person will do better, but the opening may be too hard.
+- Resistances make the mix of damage types matter, which the proposal's `damage_type_mix`
+  feature assumes; the director's strategies (WP9) will have to price these types.

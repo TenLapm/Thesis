@@ -167,7 +167,7 @@ public class BenchPanel : MonoBehaviour
             Place(wallsBlock, ref y);
             Set(wallsValue, state.WallsLeft.ToString());
             wallsValue.color = state.WallsLeft > 0 ? Bright : Dim;
-            Set(wallsNote, "old walls you may still take up: " + state.RelaysLeft);
+            Set(wallsNote, config.FreeWallPickup ? "take any wall up again with SELL [X]" : "old walls you may still take up: " + state.RelaysLeft);
             bool sold = config.WallPackSize > 0;
             buyWalls.root.SetActive(sold);
             if (sold)

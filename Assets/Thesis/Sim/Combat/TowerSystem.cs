@@ -46,7 +46,7 @@ namespace Thesis.Sim
                 int fired = 0;
                 for (int bolt = 0; bolt < tower.Targets && bolt < taken.Length; bolt++)
                 {
-                    int index = Targeting.Pick(tower.Def.Mode, tower, grid, core, live, taken, fired);
+                    int index = Targeting.Pick(tower.Mode, tower, grid, core, live, taken, fired);
                     if (index < 0) break;
                     taken[fired++] = index;
 

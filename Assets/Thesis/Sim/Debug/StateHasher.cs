@@ -150,6 +150,8 @@ namespace Thesis.Sim
             h.Add(t.Sold);
             h.Add(t.Combined);
             h.Add(t.OnBench);
+            h.Add(t.Upgrade);
+            h.Add((int)t.Mode);
             h.Add(t.DamageDealt);
             h.Add(t.Shots);
             h.Add(t.Kills);

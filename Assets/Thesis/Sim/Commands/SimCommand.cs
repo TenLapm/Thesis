@@ -35,6 +35,9 @@ namespace Thesis.Sim
         StoreShopGear,   // buy the gear shop's item in slot A into the gear inventory
         EquipGear,       // put the piece in inventory slot A on the tower on (X, Y), or, with B > 0, in bench slot B - 1
         UnequipGear,     // take the piece in gear slot A off the tower on (X, Y), or, with B > 0, in bench slot B - 1, into the inventory
+        RerollGearShop,  // pay for a new stock in the gear shop
+        ChooseUpgrade,   // pay for the tower on (X, Y), or with B > 0 in bench slot B - 1, to gain upgrade A
+        SetTargeting,    // the tower on (X, Y), or with B > 0 in bench slot B - 1, shoots by order A (a TargetingMode)
         MergeTower,      // merge the tower on (X, Y), or with A > 0 in bench slot A - 1, into the tower on (B, C), or with C < 0 in bench slot B
         EquipOverflow,   // put spare piece A on the tower on (X, Y), or, with B > 0, in bench slot B - 1
         SellOverflow,    // sell spare piece A
@@ -131,6 +134,16 @@ namespace Thesis.Sim
             return new SimCommand(SimCommandKind.MergeTower, fromBench >= 0 ? 0 : fromX, fromBench >= 0 ? 0 : fromY, fromBench >= 0 ? fromBench + 1 : 0,
                                   toBench >= 0 ? toBench : toX, toBench >= 0 ? -1 : toY);
         }
+
+        public static SimCommand ChooseUpgrade(int x, int y, int choice) { return new SimCommand(SimCommandKind.ChooseUpgrade, x, y, choice); }
+
+        public static SimCommand ChooseUpgradeOnBench(int benchSlot, int choice) { return new SimCommand(SimCommandKind.ChooseUpgrade, 0, 0, choice, benchSlot + 1); }
+
+        public static SimCommand SetTargeting(int x, int y, TargetingMode mode) { return new SimCommand(SimCommandKind.SetTargeting, x, y, (int)mode); }
+
+        public static SimCommand SetTargetingOnBench(int benchSlot, TargetingMode mode) { return new SimCommand(SimCommandKind.SetTargeting, 0, 0, (int)mode, benchSlot + 1); }
+
+        public static SimCommand RerollGearShop() { return new SimCommand(SimCommandKind.RerollGearShop, 0, 0, 0); }
 
         public static SimCommand EquipOverflow(int index, int x, int y) { return new SimCommand(SimCommandKind.EquipOverflow, x, y, index); }
 

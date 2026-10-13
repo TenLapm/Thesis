@@ -57,8 +57,12 @@ public class TowerShopPanel : MonoBehaviour
     private RectTransform panel;
     private RectTransform cardArea;
     private RectTransform lower;
-    private TextMeshProUGUI budget, income;
-    private RectTransform coreBanner, moveCore;
+    private TextMeshProUGUI budget, income, gearRerollLabel;
+    private CanvasGroup gearRerollGroup;
+    private RectTransform coreBanner, moveCore, upgradePanel;
+    private Image upgradeButton, targetButton;
+    private CanvasGroup upgradeGroup, targetGroup;
+    private TextMeshProUGUI upgradeTitle;
     private TextMeshProUGUI legendNote;
     private Image wallButton, sellButton, moveTowerButton, moveButton, rerollButton;
     private TextMeshProUGUI toolNote, rerollLabel, rerollNote;
@@ -83,11 +87,11 @@ public class TowerShopPanel : MonoBehaviour
     private const float BigCardHeight = 320f;
 
     private const float CardHeight = 72f;
-    private const float CardGap = 6f;
-    private const float ToolHeight = 44f;
-    private const float GearRowHeight = 34f;
-    private const float RerollHeight = 40f;
-    private const float LowerHeight = 214f;
+    private const float CardGap = 5f;
+    private const float ToolHeight = 34f;
+    private const float GearRowHeight = 30f;
+    private const float RerollHeight = 34f;
+    private const float LowerHeight = 240f;
 
     private SimHost Host => simHost != null ? simHost : (simHost = SimHost.Find());
 
@@ -160,7 +164,28 @@ public class TowerShopPanel : MonoBehaviour
 
         gearArea = Rect("GearShop", panel);
         Top(gearArea, 80f, 0f);
-        gearTitle = Label(gearArea, "GEAR SHOP", 17, Dim, TextAlignmentOptions.TopLeft, new Vector2(18f, -2f), new Vector2(390f, 24f), true);
+        gearTitle = Label(gearArea, "GEAR SHOP", 17, Dim, TextAlignmentOptions.TopLeft, new Vector2(18f, -2f), new Vector2(250f, 24f), true);
+        // A new stock for budget: a small button at the right of the heading.
+        RectTransform gr = Rect("RerollGear", gearArea);
+        gr.anchorMin = gr.anchorMax = new Vector2(1f, 1f);
+        gr.pivot = new Vector2(1f, 1f);
+        gr.anchoredPosition = new Vector2(-14f, 2f);
+        gr.sizeDelta = new Vector2(124f, 26f);
+        gearRerollGroup = gr.gameObject.AddComponent<CanvasGroup>();
+        Image grEdge = gr.gameObject.AddComponent<Image>();
+        grEdge.color = Teal;
+        RectTransform grFill = Rect("Fill", gr);
+        grFill.anchorMin = Vector2.zero;
+        grFill.anchorMax = Vector2.one;
+        grFill.offsetMin = new Vector2(2f, 2f);
+        grFill.offsetMax = new Vector2(-2f, -2f);
+        Image grImage = grFill.gameObject.AddComponent<Image>();
+        grImage.color = CardColor;
+        grImage.raycastTarget = false;
+        gearRerollLabel = Label(gr, "", 14, Gold, TextAlignmentOptions.Center, Vector2.zero, new Vector2(124f, 26f), true);
+        Button grButton = gr.gameObject.AddComponent<Button>();
+        grButton.transition = Selectable.Transition.None;
+        grButton.onClick.AddListener(() => playerBuilder.RerollGear());
 
         lower = Rect("Lower", panel);
         Top(lower, 80f, LowerHeight);
@@ -168,17 +193,23 @@ public class TowerShopPanel : MonoBehaviour
         Label(lower, "TOOLS", 17, Dim, TextAlignmentOptions.TopLeft, new Vector2(18f, -6f), new Vector2(200f, 24f), true);
         // What the tool in the hand does, in one line beside the heading.
         toolNote = Label(lower, "", 15, Dim, TextAlignmentOptions.TopRight, new Vector2(-18f, -7f), new Vector2(320f, 24f), false, true);
-        float quarter = (width - 36f - 3f * 8f) / 4f;
+        // Six tools in two rows of three.
+        float quarter = (width - 36f - 2f * 8f) / 3f;
+        float row2 = -32f - ToolHeight - 6f;
         wallButton = ToolButton("WALL [W]", new Vector2(18f, -32f), quarter, () => playerBuilder.SelectWall());
         sellButton = ToolButton("SELL [X]", new Vector2(18f + (quarter + 8f), -32f), quarter, () => playerBuilder.SelectSell());
+        upgradeButton = ToolButton("UPGRADE [U]", new Vector2(18f + (quarter + 8f), row2), quarter, () => playerBuilder.SelectUpgrade());
+        upgradeGroup = upgradeButton.gameObject.AddComponent<CanvasGroup>();
+        targetButton = ToolButton("TARGET [T]", new Vector2(18f + 2f * (quarter + 8f), row2), quarter, () => playerBuilder.SelectTarget());
+        targetGroup = targetButton.gameObject.AddComponent<CanvasGroup>();
         sellGroup = sellButton.gameObject.AddComponent<CanvasGroup>();
         moveTowerButton = ToolButton("MOVE [M]", new Vector2(18f + 2f * (quarter + 8f), -32f), quarter, () => playerBuilder.SelectMoveTower());
         moveTowerGroup = moveTowerButton.gameObject.AddComponent<CanvasGroup>();
-        moveButton = ToolButton("GEAR", new Vector2(18f + 3f * (quarter + 8f), -32f), quarter, () => playerBuilder.SelectMoveGear());
+        moveButton = ToolButton(playerBuilder.deckBar != null ? "UNGEAR [G]" : "GEAR", new Vector2(18f, row2), quarter, () => playerBuilder.SelectMoveGear());
         moveGroup = moveButton.gameObject.AddComponent<CanvasGroup>();
 
-        Label(lower, "ROUTES", 17, Dim, TextAlignmentOptions.TopLeft, new Vector2(18f, -86f), new Vector2(120f, 24f), true);
-        legendNote = Label(lower, "", 15, Dim, TextAlignmentOptions.TopRight, new Vector2(-18f, -87f), new Vector2(290f, 24f), false, true);
+        Label(lower, "ROUTES", 17, Dim, TextAlignmentOptions.TopLeft, new Vector2(18f, -114f), new Vector2(120f, 24f), true);
+        legendNote = Label(lower, "", 15, Dim, TextAlignmentOptions.TopRight, new Vector2(-18f, -115f), new Vector2(290f, 24f), false, true);
         Color walker = pathPreviewer != null ? pathPreviewer.walkerColor : Color.magenta;
         Color sapper = pathPreviewer != null ? pathPreviewer.sapperColor : new Color(1f, 0.6f, 0.2f);
         Color flyer = pathPreviewer != null ? pathPreviewer.flyerColor : Color.cyan;
@@ -272,7 +303,7 @@ public class TowerShopPanel : MonoBehaviour
         root.anchorMax = new Vector2(1f, 1f);
         root.pivot = new Vector2(0.5f, 1f);
         root.sizeDelta = new Vector2(-28f, GearRowHeight - 4f);
-        root.anchoredPosition = new Vector2(0f, -26f - slot * GearRowHeight);
+        root.anchoredPosition = new Vector2(0f, -28f - slot * GearRowHeight);
         row.root = root.gameObject;
         row.group = row.root.AddComponent<CanvasGroup>();
         row.outline = row.root.AddComponent<Image>();
@@ -430,6 +461,13 @@ public class TowerShopPanel : MonoBehaviour
             int every = Host.Config.GearShopRefreshWaves;
             int left = every > 0 ? every - state.WaveIndex % every : 0;
             Set(gearTitle, "GEAR SHOP" + (every > 0 ? "   new stock in " + left + (left == 1 ? " wave" : " waves") : ""));
+            bool gearRerolls = playerBuilder.GearRerollsOn;
+            if (gearRerollGroup.gameObject.activeSelf != gearRerolls) gearRerollGroup.gameObject.SetActive(gearRerolls);
+            if (gearRerolls)
+            {
+                Set(gearRerollLabel, "REROLL   " + playerBuilder.GearRerollPrice.ToString("0.#"));
+                gearRerollGroup.alpha = playerBuilder.CanRerollGear ? 1f : 0.4f;
+            }
         }
 
         Top(lower, 80f + cardsHeight + 4f + gearHeight + 4f, LowerHeight);
@@ -443,6 +481,15 @@ public class TowerShopPanel : MonoBehaviour
         moveTowerGroup.alpha = playerBuilder.MayMoveTower ? 1f : 0.4f;
         moveButton.color = playerBuilder.Tool == BuildTool.MoveGear ? Teal : Edge;
         moveGroup.alpha = playerBuilder.MayMoveGear ? 1f : 0.4f;
+        upgradeButton.color = playerBuilder.Tool == BuildTool.Upgrade ? Teal : Edge;
+        upgradeGroup.alpha = playerBuilder.UpgradesOn && playerBuilder.IsBuildPhase ? 1f : 0.4f;
+        targetButton.color = playerBuilder.Tool == BuildTool.Target ? Teal : Edge;
+        targetGroup.alpha = playerBuilder.TargetingOn ? 1f : 0.4f;
+
+        // The choice of buffs for the tower being upgraded.
+        TowerState pending = playerBuilder.UpgradePending;
+        if (upgradePanel.gameObject.activeSelf != (pending != null)) upgradePanel.gameObject.SetActive(pending != null);
+        if (pending != null) Set(upgradeTitle, "UPGRADE " + Title(pending.Def.Id).ToUpperInvariant() + "   " + playerBuilder.UpgradeCost.ToString("0.#") + " budget, once.  Choose:");
         string note = "";
         switch (playerBuilder.Tool)
         {
@@ -451,8 +498,10 @@ public class TowerShopPanel : MonoBehaviour
             case BuildTool.Core: note = "click the tile your core goes on"; break;
             case BuildTool.Deploy: note = "click a tile, or a tower to change places"; break;
             case BuildTool.EquipGear: note = "drop it on a tower"; break;
+            case BuildTool.Upgrade: note = !playerBuilder.UpgradesOn ? "not in this game" : "click a tower: " + playerBuilder.UpgradeCost.ToString("0.#") + ", once, you choose the buff"; break;
+            case BuildTool.Target: note = "click a tower to change what it shoots"; break;
             case BuildTool.MoveTower: note = !playerBuilder.MayMoveTower ? "between waves" : playerBuilder.TowerFrom != null ? "now click a free tile" : "click a tower, then a free tile; free"; break;
-            case BuildTool.MoveGear: note = !playerBuilder.MayMoveGear ? "between waves" : playerBuilder.GearFrom != null ? "now click where it goes" : "gear from tower to tower; free"; break;
+            case BuildTool.MoveGear: note = !playerBuilder.MayMoveGear ? "between waves" : playerBuilder.UsesInventory ? "click a tower: its gear comes off" : playerBuilder.GearFrom != null ? "now click where it goes" : "gear from tower to tower; free"; break;
             case BuildTool.Tower: note = "a tile, the bench, or a tower like it"; break;
             case BuildTool.Gear: note = "click the tower it goes on"; break;
         }
@@ -460,14 +509,14 @@ public class TowerShopPanel : MonoBehaviour
 
         bool inWave = !playerBuilder.IsBuildPhase;
         Set(legendNote, inWave ? "the wave now on the board" : state.NextPlan != null ? "the wave that comes next" : "every kind you have met");
-        float y = -112f;
+        float y = -140f;
         for (int i = 0; i < legend.Count; i++)
         {
             bool shown = pathPreviewer != null && pathPreviewer.Shows(legend[i].movement);
             legend[i].root.SetActive(shown);
             if (!shown) continue;
             ((RectTransform)legend[i].root.transform).anchoredPosition = new Vector2(0f, y);
-            y -= 30f;
+            y -= 26f;
         }
 
         UpdateOverlay(state, offers, draft, setSize);
@@ -599,6 +648,22 @@ public class TowerShopPanel : MonoBehaviour
         Image confirm = OverlayButton(coreBanner, "DONE: THE CORE STAYS HERE", new Vector2(0f, -54f), 420f, () => playerBuilder.ConfirmCore(), out _, out _);
         confirm.color = Gold;
         coreBanner.gameObject.SetActive(false);
+
+        // The upgrade's choices: a small window in the middle, one button per buff.
+        upgradePanel = Rect("UpgradeChoices", transform);
+        upgradePanel.anchorMin = upgradePanel.anchorMax = upgradePanel.pivot = new Vector2(0.5f, 0.5f);
+        upgradePanel.anchoredPosition = new Vector2(-120f, 40f);
+        upgradePanel.sizeDelta = new Vector2(640f, 110f + TowerUpgradeChoices.All.Length * 58f);
+        upgradePanel.gameObject.AddComponent<Image>().color = new Color(0.04f, 0.06f, 0.1f, 0.97f);
+        upgradeTitle = Label(upgradePanel, "", 22, Gold, TextAlignmentOptions.Top, new Vector2(20f, -14f), new Vector2(600f, 30f), true);
+        for (int i = 0; i < TowerUpgradeChoices.All.Length; i++)
+        {
+            int choice = i;
+            float fromCentre = (upgradePanel.sizeDelta.y / 2f) - 82f - i * 58f;
+            OverlayButton(upgradePanel, TowerUpgradeChoices.All[i].Label, new Vector2(0f, fromCentre), 560f, () => playerBuilder.ChooseUpgrade(choice), out _, out _);
+        }
+        OverlayButton(upgradePanel, "NOT NOW", new Vector2(0f, -(upgradePanel.sizeDelta.y / 2f) + 34f), 200f, () => playerBuilder.CancelUpgrade(), out _, out _).color = Edge;
+        upgradePanel.gameObject.SetActive(false);
 
         moveCore = OverlayButton(transform, "MOVE CORE", Vector2.zero, 200f, () => playerBuilder.ReopenCore(), out _, out _).rectTransform;
         moveCore.anchorMin = moveCore.anchorMax = new Vector2(0.5f, 1f);

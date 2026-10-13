@@ -49,6 +49,9 @@ namespace Thesis.Sim
         // The wave that spawned this agent (1-based). Set by Simulation at spawn.
         public int WaveIndex;
 
+        // The enemy type's name, for views and telemetry. A label: the numbers above are what the simulation uses.
+        public string Archetype = "basic";
+
         // The nearest this agent has come to the core so far, in flow-field units
         // (tiles x 10), measured the way it travels: see RouteCost. SimNode.Infinity
         // until it takes its first live step. Feeds WaveOutcome.PressureShare.
@@ -92,6 +95,7 @@ namespace Thesis.Sim
             Leaked = source.Leaked;
             Killed = source.Killed;
             WaveIndex = source.WaveIndex;
+            Archetype = source.Archetype;
             MinCostSeen = source.MinCostSeen;
         }
 

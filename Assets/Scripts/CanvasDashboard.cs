@@ -46,6 +46,8 @@ public class CanvasDashboard : MonoBehaviour
     public GameObject gameOverPanel;
     public TextMeshProUGUI gameOverTimeText;
     public Button restartButton;
+    private Button retryButton;
+    private TextMeshProUGUI retryLabel;
 
     public GameSpeedController speedController;
     public Button speedToggleButton;
@@ -80,6 +82,17 @@ public class CanvasDashboard : MonoBehaviour
         if (restartButton != null)
         {
             restartButton.onClick.AddListener(OnRestartClicked);
+
+            // A second button above it: play the lost wave again from its build phase,
+            // not the whole run (the student, 2026-10-14). Restart still starts a new run.
+            retryButton = Instantiate(restartButton, restartButton.transform.parent);
+            retryButton.name = "RetryWaveButton";
+            var retryRect = (RectTransform)retryButton.transform;
+            var restartRect = (RectTransform)restartButton.transform;
+            retryRect.sizeDelta = new Vector2(Mathf.Max(restartRect.sizeDelta.x, 320f), restartRect.sizeDelta.y);
+            retryRect.anchoredPosition = restartRect.anchoredPosition + new Vector2(0f, restartRect.sizeDelta.y + 16f);
+            retryLabel = retryButton.GetComponentInChildren<TextMeshProUGUI>();
+            retryButton.onClick.AddListener(() => { SimHost host = SimHost.Find(); if (host != null) host.RetryWave(); });
         }
 
         if (speedToggleButton != null)
@@ -312,7 +325,7 @@ public class CanvasDashboard : MonoBehaviour
                     // No clock: the build phase lasts until the player presses Start.
                     string next = waveSpawner.NextWaveText;
                     waveText.text = next.Length > 0
-                        ? $"Next, wave {waveSpawner.currentWave + 1}: {next}\nBuild, then press Start"
+                        ? $"Next, wave {waveSpawner.currentWave + 1}: {next}\n" + (waveSpawner.NextWaveHint.Length > 0 ? waveSpawner.NextWaveHint : "Build, then press Start")
                         : waveSpawner.currentWave == 0 ? "Build, then press Start"
                         : $"Wave {waveSpawner.currentWave} cleared\nPress Start for wave {waveSpawner.currentWave + 1}";
                 }
@@ -383,6 +396,12 @@ public class CanvasDashboard : MonoBehaviour
             // intermissions happened to run for.
             int waveReached = waveSpawner != null ? waveSpawner.currentWave : 0;
             gameOverTimeText.text = $"You reached Wave {waveReached}";
+        }
+        if (retryLabel != null)
+        {
+            SimHost host = SimHost.Find();
+            retryLabel.text = "TRY WAVE " + (host != null ? host.RetryWaveNumber : 1) + " AGAIN";
+            retryButton.gameObject.SetActive(host != null && host.CanRetryWave);
         }
     }
 

@@ -78,6 +78,70 @@ public class SimHost : MonoBehaviour
     private readonly System.Collections.Generic.List<SimEvent> dispatchQueue = new System.Collections.Generic.List<SimEvent>();
     private bool dispatching;
     private float accumulator;
+
+    // --- trying a lost wave again (2026-10-14) ---
+    //
+    // A lost wave is not the end of the run: the player goes back to the build phase
+    // before it. Nothing is rewound. The scene is loaded again and the SAME run is
+    // played up to that build phase from its own recording (same seed, same commands,
+    // so the same state, I1), and from there the player goes on. The new session is a
+    // recording of its own, valid from tick 0; the lost one keeps its files.
+    private sealed class Retry
+    {
+        public ulong Seed;
+        public List<ReplayCommand> Commands;
+        public int UntilTick;
+        public int Wave;
+        public string From;
+    }
+
+    private static Retry pendingRetry;
+    private string sessionPolicy = "human";
+
+    [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+    private static void ForgetRetry() { pendingRetry = null; }
+
+    // State.Tick when the build phase began that the current wave followed.
+    private int phaseStartTick;
+    private bool wasInWave;
+
+    public bool CanRetryWave => sim != null && sim.State.IsGameOver && recorder != null;
+
+    // The wave that would be played again.
+    public int RetryWaveNumber => sim != null ? Mathf.Max(1, sim.State.WaveIndex) : 1;
+
+    public void RetryWave()
+    {
+        if (!CanRetryWave) return;
+        var kept = new List<ReplayCommand>();
+        foreach (ReplayCommand c in recorder.Snapshot().Commands) if (c.Tick < phaseStartTick) kept.Add(c);
+        pendingRetry = new Retry { Seed = Seed, Commands = kept, UntilTick = phaseStartTick, Wave = RetryWaveNumber, From = recorder.Session };
+        Time.timeScale = 1f; // the game-over screen froze it
+        SceneManager.LoadScene(SceneManager.GetActiveScene().name);
+    }
+
+    // Plays the run again up to the build phase the player returns to. No frame is
+    // drawn and no event is handed out: the views draw the state they find.
+    private void FastForward(Retry retry)
+    {
+        int next = 0;
+        while (sim.State.Tick < retry.UntilTick && !sim.State.IsGameOver)
+        {
+            while (next < retry.Commands.Count && retry.Commands[next].Tick <= sim.State.Tick)
+            {
+                SimCommand command = retry.Commands[next++].ToCommand();
+                recorder?.OnCommand(command);
+                sim.Enqueue(command);
+                sim.FlushInput();
+            }
+            sim.Tick();
+            recorder?.AfterTick();
+            if (telemetry != null) WriteTelemetry(telemetry.AfterTick());
+        }
+        phaseStartTick = sim.State.Tick;
+        WriteReplay();
+        Debug.Log("[Sim] Wave " + retry.Wave + " again: the run of session " + retry.From + " was played up to tick " + sim.State.Tick + " (" + retry.Commands.Count + " commands).");
+    }
     private ReplayRecorder recorder;
     private string replayPath;
     private bool replayWriteFailed;
@@ -178,7 +242,9 @@ public class SimHost : MonoBehaviour
             throw new InvalidOperationException("[Sim] SimHost needs a GridManager, a FlowFieldManager with targetGoal, a WaveSpawner with spawnPoint and a BlockManager in the scene.");
         }
 
-        Seed = randomSeed ? (ulong)(uint)Environment.TickCount : (ulong)(uint)seed;
+        Retry retry = pendingRetry;
+        pendingRetry = null;
+        Seed = retry != null ? retry.Seed : randomSeed ? (ulong)(uint)Environment.TickCount : (ulong)(uint)seed;
         if (generateMap)
         {
             float diameter = gridManager.nodeRadius * 2f;
@@ -203,7 +269,14 @@ public class SimHost : MonoBehaviour
         Debug.Log("[Sim] Started: map '" + map.Name + "' " + map.Width + "x" + map.Height + ", seed " + Seed + ", planner '" + planner.Name
                   + "', " + (configAsset != null ? "config '" + configAsset.name + "'" : "default config") + ".");
 
+        // The label goes into the replay and into every telemetry row, so it is set before either exists.
+        sessionPolicy = retry != null ? "human, wave " + retry.Wave + " again after " + retry.From : "human";
         if (recordReplay) StartRecording();
+        if (retry != null)
+        {
+            FastForward(retry);
+            if (generateMap) ShowCore();
+        }
     }
 
     // Must run before the first command and the first tick: the recorder takes the
@@ -218,7 +291,7 @@ public class SimHost : MonoBehaviour
         {
             Build = "Unity " + Application.unityVersion + (Application.isEditor ? " editor" : " player " + Application.version),
             Session = session,
-            Policy = "human",
+            Policy = sessionPolicy,
         };
         replayPath = Path.Combine(SessionsRoot(), session, "replay.json");
         Debug.Log("[Replay] Recording to " + replayPath);
@@ -341,6 +414,10 @@ public class SimHost : MonoBehaviour
             sim.Tick();
             accumulator -= dt;
             ticks++;
+            // Remember where each build phase begins: that is where a lost wave is taken up again.
+            bool inWave = sim.State.Phase == SimPhase.Spawning || sim.State.Phase == SimPhase.Resolving;
+            if (wasInWave && !inWave && !sim.State.IsGameOver) phaseStartTick = sim.State.Tick;
+            wasInWave = inWave;
             // Before Dispatch: a view reacting to an event may Submit(), which
             // replaces LastTickEvents, and the recorder reads them.
             bool waveBoundary = recorder != null && recorder.AfterTick();

@@ -70,6 +70,9 @@ namespace Thesis.Sim
                 case SimCommandKind.MergeTower: return SimCommand.MergeTower(X, Y, A - 1, B, C, C < 0 ? B : -1);
                 case SimCommandKind.EquipOverflow: return B > 0 ? SimCommand.EquipOverflowOnBench(A, B - 1) : SimCommand.EquipOverflow(A, X, Y);
                 case SimCommandKind.SellOverflow: return SimCommand.SellOverflow(A);
+                case SimCommandKind.RerollGearShop: return SimCommand.RerollGearShop();
+                case SimCommandKind.ChooseUpgrade: return B > 0 ? SimCommand.ChooseUpgradeOnBench(B - 1, A) : SimCommand.ChooseUpgrade(X, Y, A);
+                case SimCommandKind.SetTargeting: return B > 0 ? SimCommand.SetTargetingOnBench(B - 1, (TargetingMode)A) : SimCommand.SetTargeting(X, Y, (TargetingMode)A);
                 case SimCommandKind.FeedCard: return B > 0 ? SimCommand.FeedCardOnBench(A, B - 1) : SimCommand.FeedCard(A, X, Y);
                 default: throw new InvalidDataException("[Replay] Command '" + Cmd + "' at tick " + Tick + " cannot be replayed by this version.");
             }

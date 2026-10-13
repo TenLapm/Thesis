@@ -445,6 +445,43 @@ namespace Thesis.Sim
                     break;
                 case SimCommandKind.FeedCard: FeedCard(s, command); break;
                 case SimCommandKind.MergeTower: MergeTower(s, command); break;
+                case SimCommandKind.ChooseUpgrade:
+                    if (config.ChoiceUpgradeCost >= 0f && InBuildPhase(s) && TowerUpgradeChoices.IsValid(command.A) && s.BuildBudget >= config.ChoiceUpgradeCost)
+                    {
+                        TowerState chosen = GearTarget(s, command);
+                        if (chosen != null && chosen.Upgrade == TowerUpgradeChoices.None)
+                        {
+                            s.BuildBudget -= config.ChoiceUpgradeCost;
+                            chosen.Upgrade = command.A;
+                            chosen.PricePaid += (int)config.ChoiceUpgradeCost;
+                            chosen.Recompute(gearLibrary);
+                            TileCoord at = chosen.OnBench ? TowerBench.NoTile : chosen.Tile;
+                            s.PlacementLog.Add(new PlacementRecord
+                            {
+                                Kind = PlacementKind.TowerUpgraded, Tick = s.Tick, ShapeName = chosen.Def.Id + "+" + TowerUpgradeChoices.Ids[command.A], OriginX = at.X, OriginY = at.Y,
+                                Tiles = chosen.OnBench ? new TileCoord[0] : new[] { at }, TowerId = chosen.Id, Cost = config.ChoiceUpgradeCost,
+                            });
+                            events.Add(SimEvent.TowerChanged(chosen.Id));
+                        }
+                    }
+                    break;
+                case SimCommandKind.SetTargeting:
+                    if (config.ChooseTargeting && command.A >= 0 && command.A <= (int)TargetingMode.Nearest)
+                    {
+                        TowerState aimed = GearTarget(s, command);
+                        if (aimed != null) aimed.Mode = (TargetingMode)command.A;
+                    }
+                    break;
+                case SimCommandKind.RerollGearShop:
+                    if (config.GearShopSlots > 0 && config.GearShopRerollCost >= 0f && s.BuildBudget >= GearRerollPrice)
+                    {
+                        float cost = GearRerollPrice;
+                        s.BuildBudget -= cost;
+                        int stock = s.GearShop.WaveIndex, rerolls = s.GearShop.RerollCount + 1;
+                        s.GearShop = new ShopState { WaveIndex = stock, RerollCount = rerolls, Offers = ShopRoller.RollGearShop(RngSeed, stock, gearLibrary, config.GearShopSlots, rerolls) };
+                        s.PlacementLog.Add(new PlacementRecord { Kind = PlacementKind.GearShopReroll, Tick = s.Tick, ShapeName = "gear", Cost = cost });
+                    }
+                    break;
                 case SimCommandKind.EquipOverflow:
                     if (command.A >= 0 && command.A < s.GearOverflow.Count)
                     {
@@ -556,6 +593,9 @@ namespace Thesis.Sim
         // How many towers may stand right now; 0 = no limit.
         public int TowerCap => TowerCombine.CapAt(config, State.WaveIndex);
 
+        // What the next reroll of the gear shop costs. Meaningless while it cannot be rerolled.
+        public float GearRerollPrice => (float)(config.GearShopRerollCost + (float)(config.GearShopRerollStep * State.GearShop.RerollCount));
+
         // What the next extra move costs. Meaningless while none are for sale.
         public float ExtraMovePrice => (float)(config.ExtraMovePrice + (float)(config.ExtraMovePriceStep * State.MovesBought));
 
@@ -597,7 +637,7 @@ namespace Thesis.Sim
             if (!InBuildPhase(s) || !s.Grid.InBounds(tile)) return;
             SimNode node = s.Grid.Get(tile);
             if (node.Occupant != Occupant.Wall || node.PieceId < 0) return;
-            bool fresh = node.PieceId >= s.PhaseLogStart;
+            bool fresh = node.PieceId >= s.PhaseLogStart || config.FreeWallPickup;
             if (!fresh && s.RelaysLeft <= 0) return;
             if (!Placement.TrySellWall(s.Grid, map, fields, tile, 0f, ref s.BuildBudget, s.Tick, s.PlacementLog, events)) return;
             s.WallsLeft += s.PlacementLog[s.PlacementLog.Count - 1].Tiles.Length;
@@ -991,6 +1031,7 @@ namespace Thesis.Sim
                                            group.DigRate, config.KillReward, config.WallBreakReward, group.Movement)
                 {
                     WaveIndex = s.WaveIndex,
+                    Archetype = group.Archetype,
                 };
                 s.Agents.Add(agent);
                 s.Live.Add(agent);

@@ -231,6 +231,33 @@ namespace Thesis.Harness
                 else send(SimCommand.BuyShopGear(slot, tower.Tile.X, tower.Tile.Y));
             }
 
+            // The one upgrade, for the oldest tower that has none; which one goes by the tower's number.
+            if (config.ChoiceUpgradeCost >= 0f && s.BuildBudget >= config.ChoiceUpgradeCost + 4f)
+            {
+                for (int t = 0; t < s.Towers.Count; t++)
+                {
+                    TowerState tower = s.Towers[t];
+                    if (!tower.IsAlive || tower.OnBench || tower.Upgrade != TowerUpgradeChoices.None) continue;
+                    send(SimCommand.ChooseUpgrade(tower.Tile.X, tower.Tile.Y, tower.Id % TowerUpgradeChoices.All.Length));
+                    break;
+                }
+            }
+
+            // Every second tower shoots the strongest enemy instead of the first.
+            if (config.ChooseTargeting)
+            {
+                for (int t = 0; t < s.Towers.Count; t++)
+                {
+                    TowerState tower = s.Towers[t];
+                    if (tower.IsAlive && !tower.OnBench && tower.Id % 2 == 1 && tower.Mode != TargetingMode.Strongest) send(SimCommand.SetTargeting(tower.Tile.X, tower.Tile.Y, TargetingMode.Strongest));
+                }
+            }
+
+            // A new stock for the gear shop when everything in it is sold and there is budget to spare.
+            bool allSold = s.GearShop.Offers.Length > 0;
+            for (int i = 0; i < s.GearShop.Offers.Length; i++) if (!s.GearShop.Offers[i].Bought) allSold = false;
+            if (allSold && config.GearShopRerollCost >= 0f && s.BuildBudget >= sim.GearRerollPrice + 8f) send(SimCommand.RerollGearShop());
+
             // Spare gear from sold and merged towers: onto a tower with room, else sold.
             for (int guard = 0; guard < 16 && s.GearOverflow.Count > 0; guard++)
             {

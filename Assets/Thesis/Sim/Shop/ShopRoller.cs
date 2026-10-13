@@ -127,7 +127,7 @@ namespace Thesis.Sim
         // The gear shop's stock number `stock` (0 at game start, then one more each time
         // it is restocked): `count` pieces, each drawn on its own, so a piece can be on
         // sale twice. A pure function of the seed and the stock number.
-        public static TowerOffer[] RollGearShop(ulong rngSeed, int stock, GearDef[] gear, int count)
+        public static TowerOffer[] RollGearShop(ulong rngSeed, int stock, GearDef[] gear, int count, int reroll = 0)
         {
             if (gear == null || gear.Length == 0 || count <= 0) return new TowerOffer[0];
 
@@ -135,6 +135,7 @@ namespace Thesis.Sim
             h.Add(rngSeed);
             h.Add("gearshop");
             h.Add(stock);
+            if (reroll > 0) h.Add(reroll); // a paid reroll of the same stock: still only the seed and two counters
             var rng = new Pcg32(h.Value, RngStreams.Shop);
             var items = new TowerOffer[count];
             for (int slot = 0; slot < count; slot++)

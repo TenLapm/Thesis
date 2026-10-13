@@ -338,6 +338,7 @@ namespace Thesis.Director
                 case PlacementKind.GearEquipped: return WaveRecord.PlacementRow.Equip;
                 case PlacementKind.GearUnequipped: return WaveRecord.PlacementRow.Unequip;
                 case PlacementKind.GearSold: return WaveRecord.PlacementRow.GearSold;
+                case PlacementKind.GearShopReroll: return WaveRecord.PlacementRow.GearReroll;
                 default: throw new InvalidOperationException("[Telemetry] Unknown build-log kind " + kind + ".");
             }
         }

@@ -62,6 +62,12 @@ namespace Thesis.Sim
         // (TowerCombine). Neither sold nor destroyed.
         public bool Combined;
 
+        // The one upgrade the player chose for it (TowerUpgradeChoices), or None.
+        public int Upgrade = TowerUpgradeChoices.None;
+
+        // Which enemy in range it shoots. The type's own order until the player changes it.
+        public TargetingMode Mode;
+
         // Owned but not on the board (TowerBench): it stands on no tile and does not shoot.
         public bool OnBench;
 
@@ -82,6 +88,7 @@ namespace Thesis.Sim
             PlacedTick = placedTick;
             PricePaid = pricePaid;
             Level = level;
+            Mode = def.Mode;
             this.tileSize = tileSize;
             Recompute(null);
         }
@@ -112,6 +119,8 @@ namespace Thesis.Sim
             Sold = source.Sold;
             Combined = source.Combined;
             OnBench = source.OnBench;
+            Upgrade = source.Upgrade;
+            Mode = source.Mode;
             DamageDealt = source.DamageDealt;
             Shots = source.Shots;
             Kills = source.Kills;
@@ -155,6 +164,18 @@ namespace Thesis.Sim
             for (int level = 2; level <= Level; level++)
             {
                 TowerLevelMod mod = Def.LevelMod(level);
+                damage = (float)(damage * mod.DamageMul);
+                interval = (float)(interval * mod.IntervalMul);
+                range = (float)(range + mod.RangeAdd);
+                splash = (float)(splash + mod.SplashAdd);
+                slowTicks = (int)(float)(slowTicks * mod.SlowTicksMul);
+                targets += mod.ExtraTargets;
+            }
+
+            // The upgrade the player chose, after the levels and before the gear.
+            if (TowerUpgradeChoices.IsValid(Upgrade))
+            {
+                TowerLevelMod mod = TowerUpgradeChoices.All[Upgrade];
                 damage = (float)(damage * mod.DamageMul);
                 interval = (float)(interval * mod.IntervalMul);
                 range = (float)(range + mod.RangeAdd);

@@ -1,5 +1,5 @@
 {
-  "Schema": 10,
+  "Schema": 12,
   "Build": "Unity 6000.4.10f1 editor (Mono)",
   "Session": "mono-sentry-6waves",
   "Policy": "sentry",
@@ -49,6 +49,8 @@
     "PicksAtStart": 2,
     "GearShopSlots": 0,
     "GearShopRefreshWaves": 5,
+    "GearShopRerollCost": -1.0,
+    "GearShopRerollStep": 0.0,
     "CombineCount": 0,
     "TowerCap": 0,
     "TowerCapEveryWaves": 0,
@@ -56,6 +58,7 @@
     "WallStock": 0,
     "WallStockPerWave": 0,
     "WallRelayPerWave": 0,
+    "FreeWallPickup": false,
     "WallCardWeight": 0.0,
     "WallCardAmount": 3,
     "WallPackSize": 0,
@@ -67,6 +70,8 @@
     "BenchSlots": 0,
     "GearInventorySlots": 0,
     "FeedDuplicates": false,
+    "ChoiceUpgradeCost": -1.0,
+    "ChooseTargeting": false,
     "MergeCount": 2,
     "CorePlacement": false,
     "CoreEdgeMargin": 6,
@@ -451,7 +456,7 @@
       ]
     }
   ],
-  "SetupHash": "3dffcd6658b67f52",
+  "SetupHash": "621474ba4d329568",
   "InitialHash": "69ac12f40cded2bd",
   "Commands": [
     {
@@ -684,35 +689,35 @@
     {
       "Wave": 1,
       "Tick": 1782,
-      "Hash": "b4bf3f292982eb89"
+      "Hash": "0aede304836fa389"
     },
     {
       "Wave": 2,
       "Tick": 3378,
-      "Hash": "ab4ebedbe3514c6b"
+      "Hash": "ff16be1d074945df"
     },
     {
       "Wave": 3,
       "Tick": 4893,
-      "Hash": "86b20f2e238c9f8e"
+      "Hash": "91f7ab91a52660de"
     },
     {
       "Wave": 4,
       "Tick": 6451,
-      "Hash": "ce8a5c503c671e0f"
+      "Hash": "46e3e6b4559adf97"
     },
     {
       "Wave": 5,
       "Tick": 8038,
-      "Hash": "c3cbbd7f69428729"
+      "Hash": "a55d812299e64c51"
     },
     {
       "Wave": 6,
       "Tick": 9661,
-      "Hash": "7f12b5edfef1624f"
+      "Hash": "d55fdc31bb1c076b"
     }
   ],
   "FinalTick": 9661,
-  "FinalHash": "7f12b5edfef1624f",
+  "FinalHash": "d55fdc31bb1c076b",
   "TickHashes": null
 }

@@ -1,5 +1,5 @@
 {
-  "Schema": 10,
+  "Schema": 12,
   "Build": "headless .NET 9.0.10",
   "Session": "dotnet-walls-only-to-gameover",
   "Policy": "greedy",
@@ -49,6 +49,8 @@
     "PicksAtStart": 2,
     "GearShopSlots": 0,
     "GearShopRefreshWaves": 5,
+    "GearShopRerollCost": -1.0,
+    "GearShopRerollStep": 0.0,
     "CombineCount": 0,
     "TowerCap": 0,
     "TowerCapEveryWaves": 0,
@@ -56,6 +58,7 @@
     "WallStock": 0,
     "WallStockPerWave": 0,
     "WallRelayPerWave": 0,
+    "FreeWallPickup": false,
     "WallCardWeight": 0.0,
     "WallCardAmount": 3,
     "WallPackSize": 0,
@@ -67,6 +70,8 @@
     "BenchSlots": 0,
     "GearInventorySlots": 0,
     "FeedDuplicates": false,
+    "ChoiceUpgradeCost": -1.0,
+    "ChooseTargeting": false,
     "MergeCount": 2,
     "CorePlacement": false,
     "CoreEdgeMargin": 6,
@@ -451,7 +456,7 @@
       ]
     }
   ],
-  "SetupHash": "3dffcd6658b67f52",
+  "SetupHash": "621474ba4d329568",
   "InitialHash": "367c2d9e132257e6",
   "Commands": [
     {

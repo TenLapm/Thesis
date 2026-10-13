@@ -80,6 +80,45 @@ public class WaveSpawner : MonoBehaviour
         }
     }
 
+    // One short line about the unusual enemy types of the next wave, so that a name the
+    // player has not met says what it means. Empty when the wave holds none of them.
+    public string NextWaveHint
+    {
+        get
+        {
+            WavePlan plan = Host.State.NextPlan;
+            if (plan == null || plan.Groups == null) return "";
+            var said = new System.Collections.Generic.List<string>();
+            var text = new System.Text.StringBuilder();
+            foreach (AgentGroup group in plan.Groups)
+            {
+                string hint = HintFor(group.Archetype);
+                if (hint == null || said.Contains(group.Archetype)) continue;
+                said.Add(group.Archetype);
+                if (text.Length > 0) text.Append("   ");
+                text.Append(group.Archetype).Append(": ").Append(hint);
+            }
+            return text.ToString();
+        }
+    }
+
+    private static string HintFor(string archetype)
+    {
+        switch (archetype)
+        {
+            case "sapper": return "digs through walls";
+            case "flyer": return "flies over everything";
+            case "swarm": return "many, weak";
+            case "brute": return "few, very tough";
+            case "runner": return "fast";
+            case "armored": return "shrugs off physical damage";
+            case "ember": return "shrugs off fire";
+            case "frostborn": return "immune to frost and slow";
+            case "bats": return "many small flyers";
+            default: return null;
+        }
+    }
+
     // Live enemies still on the field.
     public int ActiveAgentCount => Host.State.LiveAgentCount;
 

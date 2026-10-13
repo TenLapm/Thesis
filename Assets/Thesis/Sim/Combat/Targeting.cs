@@ -41,8 +41,42 @@ namespace Thesis.Sim
             switch (mode)
             {
                 case TargetingMode.First: return PickFirst(tower, grid, core, live, taken, takenCount);
+                case TargetingMode.Strongest:
+                case TargetingMode.Weakest:
+                case TargetingMode.Nearest: return PickBy(mode, tower, live, taken, takenCount);
                 default: throw new InvalidOperationException("[Sim] Unknown targeting mode " + mode + ".");
             }
+        }
+
+        // The other orders. Each ranks the enemies in range by one number, and with a strict
+        // comparison the first one found keeps a tie: the list is in id order, so that is the
+        // lowest id. Hit points and squared distances are floats that the simulation already
+        // keeps bit for bit the same on both runtimes.
+        private static int PickBy(TargetingMode mode, TowerState tower, IList<AgentState> live, int[] taken, int takenCount)
+        {
+            int best = -1;
+            float bestValue = 0f;
+            for (int i = 0; i < live.Count; i++)
+            {
+                AgentState a = live[i];
+                if (!a.IsAlive || !CanHit(tower, a)) continue;
+                float dx = (float)(a.Position.X - tower.Position.X);
+                float dy = (float)(a.Position.Y - tower.Position.Y);
+                float distance = (float)((float)(dx * dx) + (float)(dy * dy));
+                if (distance > tower.RangeSquared) continue;
+                bool already = false;
+                for (int k = 0; k < takenCount; k++) if (taken[k] == i) already = true;
+                if (already) continue;
+
+                // Smaller is better in every mode: the strongest is ranked by its hit points negated.
+                float value = mode == TargetingMode.Strongest ? -a.Hp : mode == TargetingMode.Weakest ? a.Hp : distance;
+                if (best < 0 || value < bestValue)
+                {
+                    best = i;
+                    bestValue = value;
+                }
+            }
+            return best;
         }
 
         // The enemy with the least way left to the core, i.e. the one that will leak

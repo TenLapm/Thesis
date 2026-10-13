@@ -18,6 +18,8 @@ public enum BuildTool
     Core,     // before the first wave: click the tile the core goes on
     Deploy,   // a tower picked up from the bench, waiting for a tile (or a tower to change places with)
     EquipGear, // a piece picked up from the gear inventory, waiting for a tower
+    Upgrade,   // click a tower to give it its one upgrade; a choice of buffs then opens
+    Target,    // click a tower to change which enemy it shoots
 }
 
 // Player input for building, and the visuals of what is built.
@@ -118,6 +120,57 @@ public class PlayerBuilder : MonoBehaviour
 
     public void SelectMoveGear() { Hold(BuildTool.MoveGear); }
 
+    public void SelectUpgrade() { Hold(BuildTool.Upgrade); }
+
+    public void SelectTarget() { Hold(BuildTool.Target); }
+
+    // --- the one upgrade, with a choice (2026-10-14) ---
+
+    public bool UpgradesOn => Host.Config.ChoiceUpgradeCost >= 0f;
+
+    public float UpgradeCost => Host.Config.ChoiceUpgradeCost;
+
+    public bool CanUpgrade(TowerState tower)
+    {
+        return UpgradesOn && tower != null && tower.Upgrade == TowerUpgradeChoices.None && IsBuildPhase && Host.State.BuildBudget >= UpgradeCost;
+    }
+
+    // The tower whose upgrade is being chosen (the panel shows the choices), or null.
+    private Node upgradeNode;
+    private int upgradeBench = -1;
+
+    public TowerState UpgradePending => upgradeBench >= 0 ? Benched(upgradeBench) : upgradeNode != null ? TowerAt(upgradeNode) : null;
+
+    public void ChooseUpgrade(int choice)
+    {
+        if (UpgradePending == null) return;
+        Host.Submit(upgradeBench >= 0 ? SimCommand.ChooseUpgradeOnBench(upgradeBench, choice) : SimCommand.ChooseUpgrade(upgradeNode.gridX, upgradeNode.gridY, choice));
+        CancelUpgrade();
+    }
+
+    public void CancelUpgrade()
+    {
+        upgradeNode = null;
+        upgradeBench = -1;
+    }
+
+    // --- which enemy a tower shoots ---
+
+    public bool TargetingOn => Host.Config.ChooseTargeting;
+
+    public static string ModeName(TargetingMode mode)
+    {
+        switch (mode)
+        {
+            case TargetingMode.Strongest: return "the strongest";
+            case TargetingMode.Weakest: return "the weakest";
+            case TargetingMode.Nearest: return "the nearest to it";
+            default: return "the one closest to the core";
+        }
+    }
+
+    public static TargetingMode NextMode(TargetingMode mode) { return (TargetingMode)(((int)mode + 1) % 4); }
+
     private void Hold(BuildTool tool)
     {
         Tool = tool;
@@ -128,6 +181,7 @@ public class PlayerBuilder : MonoBehaviour
         SelectedBench = -1;
         SelectedInventory = -1;
         SelectedOverflow = -1;
+        CancelUpgrade();
     }
 
     // --- the core, the bench, moves and the wall stock (2026-10-13) ---
@@ -197,6 +251,21 @@ public class PlayerBuilder : MonoBehaviour
         MapData map = Host.Map;
         return sim.IsWalkable && sim.Occupant == Occupant.None
                && map.EdgeDistance(node.gridX, node.gridY) >= Mathf.Max(map.BuildMargin, Host.Config.CoreEdgeMargin);
+    }
+
+    // --- rolling the gear shop again ---
+
+    public bool GearRerollsOn => Host.Config.GearShopSlots > 0 && Host.Config.GearShopRerollCost >= 0f;
+
+    public float GearRerollPrice => Host.Sim.GearRerollPrice;
+
+    public bool CanRerollGear => GearRerollsOn && Host.State.BuildBudget >= GearRerollPrice && !IsBuildingBlocked;
+
+    public void RerollGear()
+    {
+        if (!CanRerollGear) return;
+        if (Tool == BuildTool.Gear && SelectedShopGear >= 0) SelectWall();
+        Host.Submit(SimCommand.RerollGearShop());
     }
 
     public bool MovesLimited => Host.Config.MovesPerWave > 0;
@@ -320,6 +389,15 @@ public class PlayerBuilder : MonoBehaviour
         bool occupied = s.Bench[slot] != TowerBench.Empty;
         switch (Tool)
         {
+            case BuildTool.Upgrade:
+                if (occupied && CanUpgrade(Benched(slot))) { upgradeBench = slot; upgradeNode = null; }
+                return;
+            case BuildTool.Target:
+                if (occupied && TargetingOn) Host.Submit(SimCommand.SetTargetingOnBench(slot, NextMode(Benched(slot).Mode)));
+                return;
+            case BuildTool.MoveGear:
+                if (UsesInventory && occupied && FirstGearSlot(Benched(slot)) >= 0) { Host.Submit(SimCommand.UnequipGearOnBench(slot, FirstGearSlot(Benched(slot)))); return; }
+                break;
             case BuildTool.Tower: // a card: onto the bench, or merged into the tower there
                 Host.Submit(occupied ? SimCommand.FeedCardOnBench(SelectedOffer, slot) : SimCommand.BenchCard(SelectedOffer, slot));
                 return;
@@ -474,6 +552,10 @@ public class PlayerBuilder : MonoBehaviour
             if (Keyboard.current.xKey.wasPressedThisFrame) SelectSell();
             if (Keyboard.current.mKey.wasPressedThisFrame) SelectMoveTower();
             if (Keyboard.current.dKey.wasPressedThisFrame) Reroll();
+            if (Keyboard.current.gKey.wasPressedThisFrame) SelectMoveGear();
+            if (Keyboard.current.uKey.wasPressedThisFrame && UpgradesOn) SelectUpgrade();
+            if (Keyboard.current.tKey.wasPressedThisFrame && TargetingOn) SelectTarget();
+            if (UpgradePending == null && (upgradeNode != null || upgradeBench >= 0)) CancelUpgrade(); // the tower went
 
             // The shop's offers change under a tower in the hand when a wave resolves.
             if (Tool == BuildTool.Tower && !CanPickUp(SelectedOffer)) SelectWall();
@@ -549,6 +631,12 @@ public class PlayerBuilder : MonoBehaviour
             case BuildTool.Core:
                 if (first) Host.Submit(SimCommand.PlaceCore(node.gridX, node.gridY));
                 break;
+            case BuildTool.Upgrade:
+                if (first && CanUpgrade(TowerAt(node))) { upgradeNode = node; upgradeBench = -1; }
+                break;
+            case BuildTool.Target:
+                if (first && TargetingOn && TowerAt(node) != null) Host.Submit(SimCommand.SetTargeting(node.gridX, node.gridY, NextMode(TowerAt(node).Mode)));
+                break;
             case BuildTool.EquipGear:
                 if (first && SelectedOverflow >= 0)
                 {
@@ -596,6 +684,12 @@ public class PlayerBuilder : MonoBehaviour
             case BuildTool.MoveGear:
                 if (!first) break;
                 TowerState here = TowerAt(node);
+                if (UsesInventory)
+                {
+                    // With a gear inventory the tool simply takes gear OFF: one click, one piece, into the inventory.
+                    if (here != null && FirstGearSlot(here) >= 0) Host.Submit(SimCommand.UnequipGear(node.gridX, node.gridY, FirstGearSlot(here)));
+                    break;
+                }
                 if (GearFrom == null)
                 {
                     if (here != null && FirstGearSlot(here) >= 0) GearFrom = node;
@@ -838,6 +932,10 @@ public class PlayerBuilder : MonoBehaviour
             for (int i = 0; i < record.Tiles.Length; i++)
             {
                 Node node = gridManager.grid[record.Tiles[i].X, record.Tiles[i].Y];
+                // As for towers: a wall that was since taken up or chewed away is not drawn.
+                SimNode standing = Host.State.Grid[node.gridX, node.gridY];
+                if (standing.Occupant != Occupant.Wall || standing.PieceId != record.PieceId) continue;
+                RemoveVisual(node);
                 GameObject wall = Instantiate(standardWallPrefab, node.worldPosition + new Vector3(0, cellSize * wallHeight / 2f, 0), Quaternion.identity);
                 wall.transform.localScale = new Vector3(cellSize * 0.94f, cellSize * wallHeight, cellSize * 0.94f);
                 ApplyShapeColor(wall, wallColor);
@@ -854,6 +952,10 @@ public class PlayerBuilder : MonoBehaviour
 
     private void DrawTower(TowerState tower, Node node, float cellSize)
     {
+        // Only what stands there NOW is drawn. Normally a row of the log is drawn the
+        // frame it is written; after a lost wave is taken up again the whole log is
+        // walked at once, and a tower that was later moved, sold or destroyed is not there.
+        if (!tower.IsAlive || tower.OnBench || tower.Tile.X != node.gridX || tower.Tile.Y != node.gridY) return;
         RemoveVisual(node);
         TowerView view = TowerView.Create(tower, node.worldPosition, cellSize, billboards);
         view.Show(tower, Host.Sim.GearLibrary.Length);

@@ -346,7 +346,7 @@ public class DeckBar : MonoBehaviour
         bool walls = playerBuilder.WallsFromStock;
         Set(wallsValue, walls ? state.WallsLeft.ToString() : "");
         wallsValue.color = state.WallsLeft > 0 ? Bright : Dim;
-        Set(wallsNote, walls ? "old walls you may still take up: " + state.RelaysLeft : "");
+        Set(wallsNote, !walls ? "" : config.FreeWallPickup ? "take any wall up again with SELL [X]" : "old walls you may still take up: " + state.RelaysLeft);
         bool wallSold = walls && config.WallPackSize > 0;
         buyWalls.root.SetActive(wallSold);
         if (wallSold)
@@ -357,13 +357,13 @@ public class DeckBar : MonoBehaviour
 
         bool choosing = playerBuilder.ChoosingCore;
         confirmCore.root.SetActive(false); // the banner over the board asks for the core now
-        Set(coreText, choosing ? "" : playerBuilder.MovesAreFree ? "before wave 1\nnothing is limited" : "");
+        Set(coreText, "");
 
         // The bench: one card per slot.
         int count = state.Bench.Length;
         benchArea.gameObject.SetActive(count > 0);
-        Set(benchTitle, playerBuilder.Tool == BuildTool.Tower ? "BENCH   drop the card on a slot to keep it, or on a tower like it to merge"
-                      : playerBuilder.Tool == BuildTool.Deploy ? "BENCH   drop it on a tile; on a tower to change places; on one of " + playerBuilder.MergeCount + " alike to merge"
+        Set(benchTitle, playerBuilder.Tool == BuildTool.Tower ? (config.FeedDuplicates ? "BENCH   drop the card on a slot to keep it, or on a tower like it to merge" : "BENCH   drop the card on a slot to keep it for later")
+                      : playerBuilder.Tool == BuildTool.Deploy ? "BENCH   drop it on a tile, or on a tower to change places"
                       : "BENCH   drag a tower onto the board");
         while (bench.Count < count) bench.Add(AddSlot(DragCard.Kind.Bench, bench.Count, benchArea, new Vector2(bench.Count * (BenchCardWidth + 8f), -32f), new Vector2(BenchCardWidth, height - 42f)));
         for (int i = 0; i < bench.Count; i++)
@@ -479,6 +479,9 @@ public class DeckBar : MonoBehaviour
         if (t.SplashSquared > 0f) text.Append("splash ").Append((Mathf.Sqrt(t.SplashSquared) / Mathf.Max(0.01f, Host.Map.NodeDiameter)).ToString("0.##")).Append(" tiles\n");
         if (t.SlowTicks > 0) text.Append("slows to ").Append((t.SlowFactor * 100f).ToString("0")).Append("% for ").Append((t.SlowTicks / 50f).ToString("0.#")).Append(" s\n");
         text.Append("<color=#94a3b8>gear (").Append(t.GearSlots).Append(t.GearSlots == 1 ? " slot" : " slots").Append("):</color> ").Append(GearLine(t)).Append('\n');
+        if (playerBuilder.UpgradesOn) text.Append("<color=#94a3b8>upgrade:</color> ").Append(t.Upgrade != TowerUpgradeChoices.None ? TowerUpgradeChoices.All[t.Upgrade].Label : "none yet  (" + playerBuilder.UpgradeCost.ToString("0.#") + ", key U)").Append('\n');
+        if (playerBuilder.TargetingOn) text.Append("<color=#94a3b8>shoots:</color> ").Append(PlayerBuilder.ModeName(t.Mode)).Append("  (key T)").Append('\n');
+        if (!Host.Config.FeedDuplicates) return text.ToString();
         if (t.Level < TowerState.MaxLevel)
             text.Append("<color=#94a3b8>next level:</color> ").Append(d.LevelMod(t.Level + 1).Label).Append("\n<color=#94a3b8>merge ").Append(playerBuilder.MergeCount).Append(' ').Append(TowerView.LevelName(t.Level).ToLowerInvariant()).Append(' ').Append(d.Id).Append("s: drag one onto another</color>");
         else text.Append("<color=#94a3b8>top level</color>");

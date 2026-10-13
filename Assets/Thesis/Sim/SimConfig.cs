@@ -130,6 +130,11 @@ namespace Thesis.Sim
         public int GearShopSlots = 0;
         public int GearShopRefreshWaves = 5;
 
+        // A new stock for the gear shop on demand: this price, plus the step for every
+        // reroll of the same stock. Negative = the gear shop cannot be rerolled.
+        public float GearShopRerollCost = -1f;
+        public float GearShopRerollStep = 0f;
+
         // --- combining, the tower cap and moving towers (2026-10-12, the third round;
         // all off by default) ---
         // This many towers of one type and one level merge into ONE tower of the next
@@ -154,6 +159,10 @@ namespace Thesis.Sim
         public int WallStock = 0;
         public int WallStockPerWave = 0;
         public int WallRelayPerWave = 0;
+
+        // Any wall may be taken up in a build phase, as often as wanted: the limit of
+        // WallRelayPerWave does not apply (2026-10-14: everything moves freely between waves).
+        public bool FreeWallPickup = false;
 
         // A card that adds wall tiles to the stock (weight relative to a tower card's 1),
         // and a pack of tiles for budget (size 0 = not for sale).
@@ -186,6 +195,13 @@ namespace Thesis.Sim
         // A tower card can be merged into a tower of its type the player already has,
         // which then gains a level (or takes the card's level, if that is higher).
         public bool FeedDuplicates = false;
+
+        // The one upgrade a tower can be given, with a choice of what it gains
+        // (TowerUpgradeChoices): what it costs. Negative = off.
+        public float ChoiceUpgradeCost = -1f;
+
+        // The player may set which enemy a tower shoots (TowerState.Mode).
+        public bool ChooseTargeting = false;
 
         // How many copies make the next level when the player merges (TowerMerge): 2 =
         // one card or one tower into another, 3 = three of a kind. Counts the one that stays.
