@@ -48,9 +48,10 @@ namespace Thesis.Sim
             if (roster == null) throw new ArgumentNullException(nameof(roster));
 
             double coinWeight = config != null && config.CoinCardWeight > 0f ? config.CoinCardWeight : 0.0;
-            double gearWeight = config != null && config.GearCardWeight > 0f && gear != null && gear.Length > 0 ? config.GearCardWeight : 0.0;
+            double gearWeight = config != null && config.GearCardWeight > 0f && OnSale(gear, config) > 0 ? config.GearCardWeight : 0.0;
             double wallWeight = config != null && config.WallCardWeight > 0f && config.WallStock > 0 ? config.WallCardWeight : 0.0;
-            if (config != null && config.FirstRollTowersOnly && waveIndex == 0) coinWeight = gearWeight = wallWeight = 0.0;
+            double healWeight = config != null && config.HealCardWeight > 0f ? config.HealCardWeight : 0.0;
+            if (config != null && config.FirstRollTowersOnly && waveIndex == 0) coinWeight = gearWeight = wallWeight = healWeight = 0.0;
             double rare = config != null && config.RareTowerChance > 0f ? config.RareTowerChance : 0.0;
             double epic = config != null && config.EpicTowerChance > 0f ? config.EpicTowerChance : 0.0;
 
@@ -72,7 +73,7 @@ namespace Thesis.Sim
                 // the roll could not be filled otherwise.
                 for (int attempt = 0; attempt < 24; attempt++)
                 {
-                    offers[slot] = Draw(rng, roster, total, config, gear, coinWeight, gearWeight, wallWeight, rare, epic);
+                    offers[slot] = Draw(rng, roster, total, config, gear, coinWeight, gearWeight, wallWeight, healWeight, rare, epic);
                     if (!distinct || !Repeats(offers, slot)) break;
                 }
             }
@@ -92,24 +93,28 @@ namespace Thesis.Sim
         }
 
         private static TowerOffer Draw(Pcg32 rng, TowerDef[] roster, double total, SimConfig config, GearDef[] gear,
-                                       double coinWeight, double gearWeight, double wallWeight, double rare, double epic)
+                                       double coinWeight, double gearWeight, double wallWeight, double healWeight, double rare, double epic)
         {
             {
-                if (coinWeight + gearWeight + wallWeight > 0.0)
+                if (coinWeight + gearWeight + wallWeight + healWeight > 0.0)
                 {
-                    double kind = rng.NextDouble() * (1.0 + coinWeight + gearWeight + wallWeight);
+                    double kind = rng.NextDouble() * (1.0 + coinWeight + gearWeight + wallWeight + healWeight);
                     if (kind < coinWeight)
                     {
                         return new TowerOffer { Kind = CardKind.Coin, Amount = config.CoinCardAmount };
                     }
                     if (kind < coinWeight + gearWeight)
                     {
-                        int piece = Math.Min(gear.Length - 1, (int)(rng.NextDouble() * gear.Length));
+                        int piece = DrawGear(rng, gear, config);
                         return new TowerOffer { Kind = CardKind.Gear, GearIndex = piece, Price = gear[piece].Price };
                     }
                     if (kind < coinWeight + gearWeight + wallWeight)
                     {
                         return new TowerOffer { Kind = CardKind.Wall, Amount = config.WallCardAmount };
+                    }
+                    if (kind < coinWeight + gearWeight + wallWeight + healWeight)
+                    {
+                        return new TowerOffer { Kind = CardKind.Heal, Amount = config.HealCardAmount };
                     }
                 }
 
@@ -127,9 +132,9 @@ namespace Thesis.Sim
         // The gear shop's stock number `stock` (0 at game start, then one more each time
         // it is restocked): `count` pieces, each drawn on its own, so a piece can be on
         // sale twice. A pure function of the seed and the stock number.
-        public static TowerOffer[] RollGearShop(ulong rngSeed, int stock, GearDef[] gear, int count, int reroll = 0)
+        public static TowerOffer[] RollGearShop(ulong rngSeed, int stock, GearDef[] gear, int count, int reroll = 0, SimConfig config = null)
         {
-            if (gear == null || gear.Length == 0 || count <= 0) return new TowerOffer[0];
+            if (OnSale(gear, config) == 0 || count <= 0) return new TowerOffer[0];
 
             var h = new Fnv1a64();
             h.Add(rngSeed);
@@ -140,10 +145,34 @@ namespace Thesis.Sim
             var items = new TowerOffer[count];
             for (int slot = 0; slot < count; slot++)
             {
-                int piece = Math.Min(gear.Length - 1, (int)(rng.NextDouble() * gear.Length));
+                int piece = DrawGear(rng, gear, config);
                 items[slot] = new TowerOffer { Kind = CardKind.Gear, GearIndex = piece, Price = gear[piece].Price };
             }
             return items;
+        }
+
+        // How many pieces a shop may offer under this config (GearDef.OnSale).
+        private static int OnSale(GearDef[] gear, SimConfig config)
+        {
+            if (gear == null) return 0;
+            int n = 0;
+            for (int i = 0; i < gear.Length; i++) if (gear[i].OnSale(config)) n++;
+            return n;
+        }
+
+        // One piece among those on sale, each as likely, by its index in the roster. One
+        // random number, as before: with the old five on sale it is the old draw.
+        private static int DrawGear(Pcg32 rng, GearDef[] gear, SimConfig config)
+        {
+            int count = OnSale(gear, config);
+            int k = Math.Min(count - 1, (int)(rng.NextDouble() * count));
+            for (int i = 0; i < gear.Length; i++)
+            {
+                if (!gear[i].OnSale(config)) continue;
+                if (k == 0) return i;
+                k--;
+            }
+            return gear.Length - 1;
         }
 
         // The first tower whose running total of weight passes `point`.

@@ -1785,7 +1785,7 @@ each wave is free. Whether that makes the answer to every wave obvious is to be 
 ## 2026-10-14 — After Emberward: one chosen upgrade instead of merging, free walls, target orders, ten enemy types
 
 **Status:** built at the student's request, who had played Emberward and listed how it works.
-596 tests pass in both runners (6 new). Not committed (the last commit is `132d8ca`).
+596 tests pass in both runners (6 new). Committed as `04871e1`.
 
 - **One upgrade per tower, with a choice** (`ChoiceUpgradeCost` 12, `TowerUpgradeChoices`): Power
   (+50% damage), Rapid (40% faster), Reach (+1.5 range) or Volley (one more enemy). Command
@@ -1813,3 +1813,62 @@ to 4.5 and 12 budget.
   come in wave 2); a person will do better, but the opening may be too hard.
 - Resistances make the mix of damage types matter, which the proposal's `damage_type_mix`
   feature assumes; the director's strategies (WP9) will have to price these types.
+
+---
+
+## 2026-10-14 — Towers on walls, two upgrades for rarity, a heal card, the extractor, and a measured tower balance
+
+**Status:** built from the student's answers to the list of open decisions (same day). 604 tests
+pass in both runners (8 new). Not committed.
+
+The student's answers, as given:
+- **Powder (+0.5 splash) is removed**: "flat stat boost should be in upgrade not gear". The shops
+  no longer offer scope, whetstone or powder (`SimConfig.StatGear` false); what is left is gear that
+  does something else: sky-sight, chill, and the extractor. Sky-sight on a sniper stays allowed ("the
+  player needs to sacrifice the gear slot anyway").
+- **Rarity comes from upgrading**, two upgrades a tower, so the top is epic
+  (`UpgradesPerTower` 2, `ChoiceUpgradeCostStep` 8: 12 then 20). `TowerState.Rarity` is the card's
+  level plus the upgrades; a rare tower has two gear slots, as before. Rare and epic cards are off
+  (both chances 0). The same choice may be taken twice.
+- **Towers stand only on a wall or on a rock of the map** (`TowersOnWalls`). The wall under a
+  tower is kept on the node (`SimNode.Foundation*`) and comes back when the tower leaves alive
+  (sold, moved, benched: `SimGrid.LiftTower`); a tower chewed through takes its wall with it. A wall
+  with a tower on it cannot be taken up. A tower on a rock cannot be reached by anything on foot.
+- **A card that heals the core** (`CardKind.Heal`, `HealCardWeight` 0.15, +3 HP, up to the
+  maximum). It uses the wave's pick; it cannot be taken at full health.
+- **The extractor** replaces the free Ungear tool: a piece of gear that, dropped on a tower, takes
+  all of its gear off into the inventory (or the spare pieces) and is used up (`GearDef.Extracts`,
+  price 4). The Ungear button and its key are hidden while the extractor is in the game.
+- **The tower rebalance**, measured: `Results/2026-10-14_tower-balance/` (`thesis towers
+  --gauntlet`). Before, the ballista led at every stage and cannon, brazier and frost killed next to
+  nothing from wave 15. After, the damage towers sit in one band (37–55 % at wave 15, 13–26 % at
+  wave 30); the ballista lost flyers and range, frost slows an area and pays off with splash towers.
+  **Rule change on the way: only the first bolt of a shot splashes**, because Volley on a splash
+  tower doubled it.
+- **The primary metric also counts tower moves, deploys and upgrades** (the student: "Yes"): the
+  tile a tower was moved to, put on from the bench, or upgraded on. With towers on rocks, a rock
+  counts as buildable when asked (`thesis entropy --towers-on-rocks`). ARCHITECTURE.md §5.9 still
+  describes the old count.
+- Also decided: play goes on forever for now; the tilted scene (ArknightsTest) is the one going
+  forward; the study will use a few fixed, checked maps (not built yet); the gameplay is finished
+  before WP7 starts, which moves the schedule further (recorded as a deviation).
+
+Telemetry schema 8 (`heal` rows). Pinned replays re-recorded; the raid episode builds its towers on
+walls it lays first (`SentryPolicy.LayFoundation`).
+
+**In Unity:** placement, the preview and the hover texts follow the new rule ("Towers stand on a
+wall or a rock"); a tower on a wall is drawn on top of it, with the wall as part of its view, and the
+wall is drawn again when the tower leaves; on a rock it stands on the rock's top. The tower card and
+the bench show the rarity; the card lists both upgrades and the price of the next; the chooser says
+"to rare"/"to epic". The heal card reads "Repair". Checked in play mode, through PlayerBuilder's own
+methods: a tower refused on open ground, placed on a wall and on a rock, moved off the wall (wall
+redrawn), sky-sight equipped and extracted, two upgrades at 12 and 20, a third refused. **Not
+checked by hand:** real mouse drags of the extractor, and the heal card in a real game.
+
+**Open**
+- The balance numbers come from a straight lane with no maze, upgrades or gear; a play test decides.
+  Flak may now be the strongest late.
+- Towers on walls make walls the scarce thing: 12 at the start, 2 a wave, plus cards and packs. If
+  that limits towers more than the cap does, the stock needs raising.
+- The scripted players stay weak (towers on walls in the path get chewed); they are not a measure of
+  difficulty.

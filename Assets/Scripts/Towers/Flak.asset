@@ -15,7 +15,7 @@ MonoBehaviour:
   id: flak
   cost: 14
   damageType: 1
-  damage: 2
+  damage: 2.5
   rangeTiles: 4.5
   fireIntervalTicks: 40
   splashRadiusTiles: 0.75

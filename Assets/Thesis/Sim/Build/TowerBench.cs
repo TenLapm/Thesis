@@ -42,7 +42,7 @@ namespace Thesis.Sim
         public static void TakeOffBoard(SimGrid grid, TowerState tower, int tick, IList<PlacementRecord> log)
         {
             TileCoord tile = tower.Tile;
-            grid.ClearWall(grid.Get(tile));
+            grid.LiftTower(grid.Get(tile));
             tower.OnBench = true;
             tower.MoveTo(NoTile, default(Vec2f));
             log?.Add(new PlacementRecord

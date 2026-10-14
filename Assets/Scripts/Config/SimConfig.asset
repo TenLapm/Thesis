@@ -45,8 +45,8 @@ MonoBehaviour:
     CoinCardWeight: 0.2
     CoinCardAmount: 8
     GearCardWeight: 0.2
-    RareTowerChance: 0.04
-    EpicTowerChance: 0.005
+    RareTowerChance: 0
+    EpicTowerChance: 0
     UpgradeCostFactor: 0
     MoveGearDuringWave: 0
     PlanAhead: 1
@@ -76,6 +76,13 @@ MonoBehaviour:
     GearInventorySlots: 6
     FeedDuplicates: 0
     ChoiceUpgradeCost: 12
+    UpgradesPerTower: 2
+    ChoiceUpgradeCostStep: 8
+    TowersOnWalls: 1
+    HealCardWeight: 0.15
+    HealCardAmount: 3
+    StatGear: 0
+    ExtractorGear: 1
     ChooseTargeting: 1
     MergeCount: 3
     CorePlacement: 1

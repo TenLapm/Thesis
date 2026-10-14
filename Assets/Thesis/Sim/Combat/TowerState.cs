@@ -65,6 +65,15 @@ namespace Thesis.Sim
         // The one upgrade the player chose for it (TowerUpgradeChoices), or None.
         public int Upgrade = TowerUpgradeChoices.None;
 
+        // The second one, with SimConfig.UpgradesPerTower 2. Taken after Upgrade.
+        public int Upgrade2 = TowerUpgradeChoices.None;
+
+        public int UpgradeCount => (TowerUpgradeChoices.IsValid(Upgrade) ? 1 : 0) + (TowerUpgradeChoices.IsValid(Upgrade2) ? 1 : 0);
+
+        // 1 common, 2 rare, 3 epic: the card's level and every upgrade since, at most epic.
+        // Since 2026-10-14 cards are all common and a tower grows rarer by being upgraded.
+        public int Rarity => Math.Min(MaxLevel, Level + UpgradeCount);
+
         // Which enemy in range it shoots. The type's own order until the player changes it.
         public TargetingMode Mode;
 
@@ -120,6 +129,7 @@ namespace Thesis.Sim
             Combined = source.Combined;
             OnBench = source.OnBench;
             Upgrade = source.Upgrade;
+            Upgrade2 = source.Upgrade2;
             Mode = source.Mode;
             DamageDealt = source.DamageDealt;
             Shots = source.Shots;
@@ -135,7 +145,7 @@ namespace Thesis.Sim
         }
 
         // How many gear slots this tower has at its level.
-        public int GearSlots => Level >= 2 ? MaxGearSlots : 1;
+        public int GearSlots => Rarity >= 2 ? MaxGearSlots : 1;
 
         // The first empty slot the tower may use, or -1.
         public int FreeGearSlot()
@@ -172,10 +182,12 @@ namespace Thesis.Sim
                 targets += mod.ExtraTargets;
             }
 
-            // The upgrade the player chose, after the levels and before the gear.
-            if (TowerUpgradeChoices.IsValid(Upgrade))
+            // The upgrades the player chose, after the levels and before the gear.
+            for (int u = 0; u < 2; u++)
             {
-                TowerLevelMod mod = TowerUpgradeChoices.All[Upgrade];
+                int choice = u == 0 ? Upgrade : Upgrade2;
+                if (!TowerUpgradeChoices.IsValid(choice)) continue;
+                TowerLevelMod mod = TowerUpgradeChoices.All[choice];
                 damage = (float)(damage * mod.DamageMul);
                 interval = (float)(interval * mod.IntervalMul);
                 range = (float)(range + mod.RangeAdd);

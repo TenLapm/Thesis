@@ -331,7 +331,7 @@ namespace Thesis.Sim
                             && TowerCombine.HasRoomFor(s.Towers, towerLibrary[offer.TowerIndex], offer.Level, config, s.WaveIndex)
                             && Placement.TryPlaceTower(s.Grid, map, fields, towerLibrary[offer.TowerIndex], offer.Price,
                                                        new TileCoord(command.X, command.Y), ref s.BuildBudget, s.Tick,
-                                                       s.Towers, s.PlacementLog, events, offer.Level))
+                                                       s.Towers, s.PlacementLog, events, offer.Level, config.TowersOnWalls))
                         {
                             offer.Bought = true; // each slot once
                             Picked(s);
@@ -351,6 +351,14 @@ namespace Thesis.Sim
                             card.Bought = true;
                             Picked(s);
                         }
+                        else if (!card.Bought && s.Shop.MayPick && card.Kind == CardKind.Heal && s.CoreHp < config.CoreMaxHp)
+                        {
+                            int before = s.CoreHp;
+                            s.CoreHp = Math.Min(config.CoreMaxHp, s.CoreHp + card.Amount);
+                            s.PlacementLog.Add(new PlacementRecord { Kind = PlacementKind.CoreHealed, Tick = s.Tick, ShapeName = "heal", Refund = s.CoreHp - before });
+                            card.Bought = true;
+                            Picked(s);
+                        }
                         else if (!card.Bought && s.Shop.MayPick && card.Kind == CardKind.Coin)
                         {
                             TowerUpgrades.TakeCoin(card, ref s.BuildBudget, s.Tick, s.PlacementLog);
@@ -363,7 +371,7 @@ namespace Thesis.Sim
                     if (command.A >= 0 && command.A < s.Shop.Offers.Length)
                     {
                         TowerOffer card = s.Shop.Offers[command.A];
-                        if (!card.Bought && s.Shop.MayPick && card.Kind == CardKind.Gear
+                        if (!card.Bought && s.Shop.MayPick && card.Kind == CardKind.Gear && !gearLibrary[card.GearIndex].Extracts
                             && TowerUpgrades.TryBuyGear(s.Grid, new TileCoord(command.X, command.Y), card.GearIndex, card.Price, gearLibrary,
                                                         ref s.BuildBudget, s.Tick, s.Towers, s.PlacementLog, events))
                         {
@@ -376,7 +384,7 @@ namespace Thesis.Sim
                     if (command.A >= 0 && command.A < s.GearShop.Offers.Length)
                     {
                         TowerOffer item = s.GearShop.Offers[command.A];
-                        if (!item.Bought
+                        if (!item.Bought && !gearLibrary[item.GearIndex].Extracts
                             && TowerUpgrades.TryBuyGear(s.Grid, new TileCoord(command.X, command.Y), item.GearIndex, item.Price, gearLibrary,
                                                         ref s.BuildBudget, s.Tick, s.Towers, s.PlacementLog, events))
                         {
@@ -394,7 +402,7 @@ namespace Thesis.Sim
                 case SimCommandKind.MoveTower:
                     if (config.MoveTowers && InBuildPhase(s) && HasMove(s)
                         && Placement.TryMoveTower(s.Grid, map, fields, new TileCoord(command.X, command.Y), new TileCoord(command.B, command.C), s.Tick,
-                                                  s.Towers, s.PlacementLog, events))
+                                                  s.Towers, s.PlacementLog, events, config.TowersOnWalls))
                     {
                         UseMove(s);
                     }
@@ -446,20 +454,22 @@ namespace Thesis.Sim
                 case SimCommandKind.FeedCard: FeedCard(s, command); break;
                 case SimCommandKind.MergeTower: MergeTower(s, command); break;
                 case SimCommandKind.ChooseUpgrade:
-                    if (config.ChoiceUpgradeCost >= 0f && InBuildPhase(s) && TowerUpgradeChoices.IsValid(command.A) && s.BuildBudget >= config.ChoiceUpgradeCost)
+                    if (config.ChoiceUpgradeCost >= 0f && InBuildPhase(s) && TowerUpgradeChoices.IsValid(command.A))
                     {
                         TowerState chosen = GearTarget(s, command);
-                        if (chosen != null && chosen.Upgrade == TowerUpgradeChoices.None)
+                        float price = chosen != null ? UpgradePrice(chosen) : 0f;
+                        if (chosen != null && chosen.UpgradeCount < config.UpgradesPerTower && s.BuildBudget >= price)
                         {
-                            s.BuildBudget -= config.ChoiceUpgradeCost;
-                            chosen.Upgrade = command.A;
-                            chosen.PricePaid += (int)config.ChoiceUpgradeCost;
+                            s.BuildBudget -= price;
+                            if (chosen.Upgrade == TowerUpgradeChoices.None) chosen.Upgrade = command.A;
+                            else chosen.Upgrade2 = command.A;
+                            chosen.PricePaid += (int)price;
                             chosen.Recompute(gearLibrary);
                             TileCoord at = chosen.OnBench ? TowerBench.NoTile : chosen.Tile;
                             s.PlacementLog.Add(new PlacementRecord
                             {
                                 Kind = PlacementKind.TowerUpgraded, Tick = s.Tick, ShapeName = chosen.Def.Id + "+" + TowerUpgradeChoices.Ids[command.A], OriginX = at.X, OriginY = at.Y,
-                                Tiles = chosen.OnBench ? new TileCoord[0] : new[] { at }, TowerId = chosen.Id, Cost = config.ChoiceUpgradeCost,
+                                Tiles = chosen.OnBench ? new TileCoord[0] : new[] { at }, TowerId = chosen.Id, Cost = price,
                             });
                             events.Add(SimEvent.TowerChanged(chosen.Id));
                         }
@@ -478,7 +488,7 @@ namespace Thesis.Sim
                         float cost = GearRerollPrice;
                         s.BuildBudget -= cost;
                         int stock = s.GearShop.WaveIndex, rerolls = s.GearShop.RerollCount + 1;
-                        s.GearShop = new ShopState { WaveIndex = stock, RerollCount = rerolls, Offers = ShopRoller.RollGearShop(RngSeed, stock, gearLibrary, config.GearShopSlots, rerolls) };
+                        s.GearShop = new ShopState { WaveIndex = stock, RerollCount = rerolls, Offers = ShopRoller.RollGearShop(RngSeed, stock, gearLibrary, config.GearShopSlots, rerolls, config) };
                         s.PlacementLog.Add(new PlacementRecord { Kind = PlacementKind.GearShopReroll, Tick = s.Tick, ShapeName = "gear", Cost = cost });
                     }
                     break;
@@ -596,6 +606,12 @@ namespace Thesis.Sim
         // What the next reroll of the gear shop costs. Meaningless while it cannot be rerolled.
         public float GearRerollPrice => (float)(config.GearShopRerollCost + (float)(config.GearShopRerollStep * State.GearShop.RerollCount));
 
+        // What `tower`'s next upgrade costs: the base price and the step for each one it has.
+        public float UpgradePrice(TowerState tower)
+        {
+            return (float)(config.ChoiceUpgradeCost + (float)(config.ChoiceUpgradeCostStep * tower.UpgradeCount));
+        }
+
         // What the next extra move costs. Meaningless while none are for sale.
         public float ExtraMovePrice => (float)(config.ExtraMovePrice + (float)(config.ExtraMovePriceStep * State.MovesBought));
 
@@ -702,7 +718,7 @@ namespace Thesis.Sim
             {
                 int cap = TowerCap;
                 if (cap > 0 && TowerCombine.Standing(s.Towers) >= cap) return;
-                if (!Placement.CanPlace(s.Grid, map, new[] { tile })) return;
+                if (!Placement.CanPlaceTower(s.Grid, map, tile, config.TowersOnWalls)) return;
                 TowerBench.PutOnBoard(s.Grid, tower, tile, s.Tick, s.PlacementLog);
                 s.Bench[benchSlot] = TowerBench.Empty;
             }
@@ -825,7 +841,7 @@ namespace Thesis.Sim
             else
             {
                 emptied.Add(gone.Tile);
-                s.Grid.ClearWall(s.Grid.Get(gone.Tile));
+                s.Grid.LiftTower(s.Grid.Get(gone.Tile));
             }
             gone.IsAlive = false;
             gone.Combined = true;
@@ -878,6 +894,22 @@ namespace Thesis.Sim
             int piece = s.GearInventory[command.A];
             TowerState tower = GearTarget(s, command);
             if (piece == TowerState.NoGear || tower == null) return;
+
+            // The extractor is used up and the tower's gear comes off: into the inventory,
+            // or the spare pieces when that is full.
+            if (gearLibrary[piece].Extracts)
+            {
+                if (tower.Gear[0] == TowerState.NoGear && tower.Gear[1] == TowerState.NoGear) return;
+                s.GearInventory[command.A] = TowerState.NoGear;
+                LogGear(s, PlacementKind.GearEquipped, piece, tower);
+                for (int g = 0; g < TowerState.MaxGearSlots; g++)
+                {
+                    if (tower.Gear[g] != TowerState.NoGear) LogGear(s, PlacementKind.GearUnequipped, tower.Gear[g], tower);
+                }
+                ReturnGear(s, tower);
+                tower.Recompute(gearLibrary);
+                return;
+            }
             int slot = tower.FreeGearSlot();
             if (slot < 0) return;
 
@@ -951,7 +983,7 @@ namespace Thesis.Sim
 
         private ShopState RollGearShop(int stock)
         {
-            return new ShopState { WaveIndex = stock, Offers = ShopRoller.RollGearShop(RngSeed, stock, gearLibrary, config.GearShopSlots) };
+            return new ShopState { WaveIndex = stock, Offers = ShopRoller.RollGearShop(RngSeed, stock, gearLibrary, config.GearShopSlots, 0, config) };
         }
 
         // Asks the planner for the wave after the current one and checks it, changing

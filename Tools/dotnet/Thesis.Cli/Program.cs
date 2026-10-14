@@ -29,6 +29,7 @@ namespace Thesis.Cli
                     case "trace": return TraceCmd.Run(args);
                     case "entropy": return EntropyCmd.Run(args);
                     case "balance": return BalanceCmd.Run(args);
+                    case "towers": return TowersCmd.Run(args);
                     default:
                         Console.Error.WriteLine("Unknown command: " + args[0]);
                         PrintUsage();
@@ -102,6 +103,7 @@ namespace Thesis.Cli
             Console.WriteLine("             <replay.json> [<replay.json>] [--waves W] [--partition P]");
             Console.WriteLine("  pin      re-record the pinned episodes and their telemetry under .NET (after a deliberate rule change)");
             Console.WriteLine("  thesis balance   the balance sanity check: scripted players x seeds x waves, against both planners");
+            Console.WriteLine("  thesis towers    the tower balance check: each tower type alone, on generated maps, against every enemy type");
             Console.WriteLine("             [--seeds 10] [--waves 25] [--policies sentry,mixed,restless,idle] [--out dir] [--map f] [--shapes f] [--towers f] [--config f]");
             Console.WriteLine("             [--out dir] [--map f] [--shapes f]");
             Console.WriteLine("  bench    flow-field rebuild sweep + A* comparison   [--out f] [--iterations n] [--seed s]");

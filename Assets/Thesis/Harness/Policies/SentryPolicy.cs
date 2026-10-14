@@ -131,6 +131,7 @@ namespace Thesis.Harness
                 if (!FindBestTile(sim, def, out tile)) continue;
 
                 int before = s.Towers.Count;
+                LayFoundation(sim, tile, send);
                 send(SimCommand.PlaceTower(slot, tile.X, tile.Y));
                 if (s.Towers.Count == before)
                     throw new InvalidOperationException("[Harness] SentryPolicy chose " + def.Id + " (shop slot " + slot + ") at " + tile
@@ -161,6 +162,24 @@ namespace Thesis.Harness
                 TowerOffer card = s.Shop.Offers[slot];
                 if (!card.Bought && card.Kind == CardKind.Coin && s.Shop.MayPick) send(SimCommand.TakeCoin(slot));
             }
+        }
+
+        // Where a tower of this policy may go. With SimConfig.TowersOnWalls: a wall or a
+        // rock, or open ground the policy can lay a one-tile wall on first (LayFoundation).
+        private bool CanStandOn(Simulation sim, TileCoord tile)
+        {
+            SimState s = sim.State;
+            if (!sim.Config.TowersOnWalls) return Placement.CanPlace(s.Grid, sim.Map, one);
+            if (Placement.CanPlaceTower(s.Grid, sim.Map, tile, true)) return true;
+            return s.WallsLeft > 0 && s.Bag.CurrentShape != null && s.Bag.CurrentShape.LocalTiles.Length == 1 && Placement.CanPlace(s.Grid, sim.Map, one);
+        }
+
+        // With SimConfig.TowersOnWalls, a wall from the stock goes onto open ground before a tower does.
+        public static void LayFoundation(Simulation sim, TileCoord tile, Action<SimCommand> send)
+        {
+            if (!sim.Config.TowersOnWalls) return;
+            SimNode node = sim.State.Grid.Get(tile);
+            if (node.IsWalkable && node.Occupant == Occupant.None) send(SimCommand.PlaceShape(tile.X, tile.Y));
         }
 
         public bool FindBestTile(Simulation sim, TowerDef def, out TileCoord best)
@@ -215,7 +234,7 @@ namespace Thesis.Harness
                         tried[index] = true;
 
                         one[0] = candidate;
-                        if (!Placement.CanPlace(grid, map, one)) continue;
+                        if (!CanStandOn(sim, candidate)) continue;
 
                         int cover = 0;
                         for (int k = 0; k < routeTiles.Count; k++)

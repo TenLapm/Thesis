@@ -14,6 +14,7 @@ namespace Thesis.Sim
         Coin = 1,   // PlaceTower does nothing with it; TakeCoin pays Amount into the budget
         Gear = 2,   // BuyGear puts GearIndex onto a tower for Price
         Wall = 3,   // TakeCoin adds Amount wall tiles to the wall stock (2026-10-13)
+        Heal = 4,   // TakeCoin heals the core by Amount, up to its maximum (2026-10-14)
     }
 
     public sealed class TowerOffer

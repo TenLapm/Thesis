@@ -51,5 +51,8 @@ namespace Thesis.Sim
 
         // The gear shop's stock rolled again for Cost.
         GearShopReroll = 22,
+
+        // A heal card taken: Refund is the hit points the core got back (2026-10-14).
+        CoreHealed = 23,
     }
 }

@@ -207,6 +207,8 @@ public class TowerShopPanel : MonoBehaviour
         moveTowerGroup = moveTowerButton.gameObject.AddComponent<CanvasGroup>();
         moveButton = ToolButton(playerBuilder.deckBar != null ? "UNGEAR [G]" : "GEAR", new Vector2(18f, row2), quarter, () => playerBuilder.SelectMoveGear());
         moveGroup = moveButton.gameObject.AddComponent<CanvasGroup>();
+        // With the extractor in the game, gear comes off by using one: no free tool for it.
+        if (playerBuilder.ExtractorInGame) moveButton.gameObject.SetActive(false);
 
         Label(lower, "ROUTES", 17, Dim, TextAlignmentOptions.TopLeft, new Vector2(18f, -114f), new Vector2(120f, 24f), true);
         legendNote = Label(lower, "", 15, Dim, TextAlignmentOptions.TopRight, new Vector2(-18f, -115f), new Vector2(290f, 24f), false, true);
@@ -489,7 +491,7 @@ public class TowerShopPanel : MonoBehaviour
         // The choice of buffs for the tower being upgraded.
         TowerState pending = playerBuilder.UpgradePending;
         if (upgradePanel.gameObject.activeSelf != (pending != null)) upgradePanel.gameObject.SetActive(pending != null);
-        if (pending != null) Set(upgradeTitle, "UPGRADE " + Title(pending.Def.Id).ToUpperInvariant() + "   " + playerBuilder.UpgradeCost.ToString("0.#") + " budget, once.  Choose:");
+        if (pending != null) Set(upgradeTitle, "UPGRADE " + Title(pending.Def.Id).ToUpperInvariant() + " TO " + TowerView.LevelName(pending.Rarity + 1).ToUpperInvariant() + "   " + playerBuilder.UpgradeCostFor(pending).ToString("0.#") + " budget.  Choose:");
         string note = "";
         switch (playerBuilder.Tool)
         {
@@ -498,7 +500,7 @@ public class TowerShopPanel : MonoBehaviour
             case BuildTool.Core: note = "click the tile your core goes on"; break;
             case BuildTool.Deploy: note = "click a tile, or a tower to change places"; break;
             case BuildTool.EquipGear: note = "drop it on a tower"; break;
-            case BuildTool.Upgrade: note = !playerBuilder.UpgradesOn ? "not in this game" : "click a tower: " + playerBuilder.UpgradeCost.ToString("0.#") + ", once, you choose the buff"; break;
+            case BuildTool.Upgrade: note = !playerBuilder.UpgradesOn ? "not in this game" : "click a tower: " + playerBuilder.UpgradeCost.ToString("0.#") + " (then more), you choose the buff"; break;
             case BuildTool.Target: note = "click a tower to change what it shoots"; break;
             case BuildTool.MoveTower: note = !playerBuilder.MayMoveTower ? "between waves" : playerBuilder.TowerFrom != null ? "now click a free tile" : "click a tower, then a free tile; free"; break;
             case BuildTool.MoveGear: note = !playerBuilder.MayMoveGear ? "between waves" : playerBuilder.UsesInventory ? "click a tower: its gear comes off" : playerBuilder.GearFrom != null ? "now click where it goes" : "gear from tower to tower; free"; break;
@@ -551,6 +553,15 @@ public class TowerShopPanel : MonoBehaviour
                 Set(card.price, "+" + offers[i].Amount);
                 hint = "";
                 break;
+            case CardKind.Heal:
+                Set(card.name, "Repair");
+                Set(card.type, "heals the core");
+                card.type.color = Teal;
+                card.icon.color = Teal;
+                Set(card.tags, Host.State.CoreHp >= Host.Config.CoreMaxHp ? "the core is at full health" : "core " + Host.State.CoreHp + " / " + Host.Config.CoreMaxHp);
+                Set(card.price, "+" + offers[i].Amount + " HP");
+                hint = "";
+                break;
             case CardKind.Gear:
                 GearDef gear = Host.Sim.GearLibrary[offers[i].GearIndex];
                 Color gearColor = TowerView.ColorOfGear(offers[i].GearIndex);
@@ -590,7 +601,7 @@ public class TowerShopPanel : MonoBehaviour
         }
         if (draft && (offers[i].Kind == CardKind.Tower || offers[i].Kind == CardKind.Gear)) Set(card.price, "FREE");
         card.price.color = poor ? Red : Gold;
-        Set(card.state, offers[i].Bought ? (draft ? "PICKED" : offers[i].Kind == CardKind.Coin ? "TAKEN" : "BOUGHT") : passed ? "" : poor ? "not enough budget" : selected && setNote.Length == 0 ? hint : setNote);
+        Set(card.state, offers[i].Bought ? (draft ? "PICKED" : offers[i].Kind == CardKind.Coin || offers[i].Kind == CardKind.Heal ? "TAKEN" : "BOUGHT") : passed ? "" : poor ? "not enough budget" : selected && setNote.Length == 0 ? hint : setNote);
         card.state.color = poor ? Red : setNote.Length > 0 ? setColor : selected ? Teal : Dim;
         card.group.alpha = offers[i].Bought ? 0.55f : passed ? 0.25f : 1f;
         card.outline.color = selected ? Teal : Edge;

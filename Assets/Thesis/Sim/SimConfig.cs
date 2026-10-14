@@ -200,6 +200,27 @@ namespace Thesis.Sim
         // (TowerUpgradeChoices): what it costs. Negative = off.
         public float ChoiceUpgradeCost = -1f;
 
+        // How many of those upgrades one tower can take, and what each further one costs on
+        // top of ChoiceUpgradeCost. Two (2026-10-14): a tower goes common, rare, epic by the
+        // player's choices, and that is now the only way it gets rarer.
+        public int UpgradesPerTower = 1;
+        public float ChoiceUpgradeCostStep = 0f;
+
+        // Towers stand only on a wall or on a rock of the map, never on open ground
+        // (2026-10-14). The wall under a tower comes back when the tower leaves the tile.
+        public bool TowersOnWalls = false;
+
+        // A card that heals the core by HealCardAmount, up to CoreMaxHp (weight relative
+        // to a tower card's 1). It is taken like a coin card and uses the pick.
+        public float HealCardWeight = 0f;
+        public int HealCardAmount = 3;
+
+        // Which gear the shops draw from (GearDef.IsStatBoost, GearDef.Extracts): the plain
+        // stat boosts (scope, whetstone, powder; 2026-10-14: a flat boost belongs to the
+        // upgrade, not to gear), and the extractor that takes a tower's gear off.
+        public bool StatGear = true;
+        public bool ExtractorGear = false;
+
         // The player may set which enemy a tower shoots (TowerState.Mode).
         public bool ChooseTargeting = false;
 
@@ -269,6 +290,8 @@ namespace Thesis.Sim
             if (!(SapperDigCostFactor >= 0f) || SapperDigCostFactor > 1f) throw new InvalidOperationException("SimConfig.SapperDigCostFactor must be in [0, 1], was " + SapperDigCostFactor + ".");
             if (ShopOffers < 0 || ShopOffers > 16) throw new InvalidOperationException("SimConfig.ShopOffers must be between 0 and 16, was " + ShopOffers + ".");
             if (!(RerollCostStep >= 0f) || float.IsInfinity(RerollCostStep)) throw new InvalidOperationException("SimConfig.RerollCostStep must be a number >= 0, was " + RerollCostStep + ".");
+            if (UpgradesPerTower < 1 || UpgradesPerTower > 2) throw new InvalidOperationException("SimConfig.UpgradesPerTower must be 1 or 2, was " + UpgradesPerTower + ".");
+            if (HealCardAmount < 0) throw new InvalidOperationException("SimConfig.HealCardAmount must not be negative.");
             if (MergeCount < 2 || MergeCount > 9) throw new InvalidOperationException("SimConfig.MergeCount must be between 2 and 9, was " + MergeCount + ".");
             if (GearInventorySlots < 0 || GearInventorySlots > 32) throw new InvalidOperationException("SimConfig.GearInventorySlots must be between 0 and 32.");
             if (WallStock < 0 || WallStockPerWave < 0 || WallRelayPerWave < 0 || MovesPerWave < 0 || BenchSlots < 0 || BenchSlots > 16 || CoreEdgeMargin < 0)

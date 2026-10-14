@@ -23,8 +23,9 @@ namespace Thesis.Tests.Sim
             foreach (TowerDef t in towers)
             {
                 types.Add(t.DamageType);
-                if (t.SplashRadiusTiles > 0f) splash = true;
-                else if (t.SlowTicks > 0) slow = true;
+                // Frost slows an area since 2026-10-14: a slowing tower may splash too.
+                if (t.SlowTicks > 0) slow = true;
+                else if (t.SplashRadiusTiles > 0f) splash = true;
                 else single = true;
                 if (t.CanHitFlying) antiAir = true; else groundOnly = true;
             }

@@ -100,7 +100,7 @@ namespace Thesis.Sim
                     keeper.PricePaid += gone.PricePaid;
                     gone.IsAlive = false;
                     gone.Combined = true;
-                    grid.ClearWall(grid.Get(gone.Tile));
+                    grid.LiftTower(grid.Get(gone.Tile));
                     emptied[i - 1] = gone.Tile;
                 }
                 keeper.Recompute(gear);

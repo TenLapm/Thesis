@@ -25,7 +25,13 @@ is what SampleScene plays now: a 32 x 32 map generated from the seed (`MapGenera
 two-tile ring nothing is built on, the core placed by the player (`PlaceCore`), waves entering at
 one to three entry points chosen wave by wave (`RaidPlanner`, a development planner), walls from a
 stock, two moves a wave, a bench (`TowerBench`), and duplicate cards merged into towers by choice
-(the automatic merge is off). The simulation keeps its own copy of the map (`Simulation.Map`;
+(the automatic merge is off). **Since 2026-10-14** (DEVLOG, the last two entries) the game plays
+in the tilted scene `ArknightsTest`: merging is replaced by up to two chosen upgrades, which are
+also what makes a tower rare or epic; towers stand only on a wall or a rock (`TowersOnWalls`);
+moves are unlimited; ten enemy types; a heal card; gear is sky-sight, chill and the extractor;
+lost waves can be retried; and the towers were rebalanced with `thesis towers --gauntlet`
+(`Results/2026-10-14_tower-balance`). The student finishes the gameplay before WP7 starts.
+The simulation keeps its own copy of the map (`Simulation.Map`;
 `InitialMap` is what a replay stores). All of it is
 switched by `SimConfig` and off in the C# defaults. SampleScene is set to
 `DevClassCycle` for play-testing, not to a study condition. **Not built yet:** the

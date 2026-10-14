@@ -84,7 +84,7 @@ public class GhostPreviewer : MonoBehaviour
                     ringRadius = range * cell;
                     bool room = playerBuilder.HasRoomFor(card);
                     HoverText = !room ? "Tower limit reached: sell one, or complete a set of " + host.Config.CombineCount
-                              : !valid ? "Cannot stand here"
+                              : !valid ? (playerBuilder.TowersOnWalls ? "Towers stand on a wall or a rock" : "Cannot stand here")
                               : playerBuilder.WouldCombine(card) ? def.Id + ": completes a set, becomes " + TowerView.LevelName(card.Level + 1)
                               : def.Id + "  range " + range.ToString("0.#") + " tiles";
                     break;
@@ -116,10 +116,10 @@ public class GhostPreviewer : MonoBehaviour
                     tiles.Add(new Vector2Int(hover.gridX, hover.gridY));
                     ringRadius = tower.RangeTiles * cell;
                     valid = playerBuilder.CanUpgrade(tower);
-                    HoverText = tower.Upgrade != TowerUpgradeChoices.None ? "Already upgraded: " + TowerUpgradeChoices.All[tower.Upgrade].Label
+                    HoverText = !playerBuilder.HasUpgradeLeft(tower) ? "Fully upgraded: " + PlayerBuilder.UpgradeNames(tower)
                               : !playerBuilder.IsBuildPhase ? "Upgrades are for the time between waves"
-                              : valid ? "Upgrade " + tower.Def.Id + " for " + playerBuilder.UpgradeCost.ToString("0.#") + ": click, then choose"
-                              : "An upgrade costs " + playerBuilder.UpgradeCost.ToString("0.#");
+                              : valid ? "Upgrade " + tower.Def.Id + " to " + TowerView.LevelName(tower.Rarity + 1).ToLowerInvariant() + " for " + playerBuilder.UpgradeCostFor(tower).ToString("0.#") + ": click, then choose"
+                              : "This upgrade costs " + playerBuilder.UpgradeCostFor(tower).ToString("0.#");
                     break;
 
                 case BuildTool.Target:
@@ -133,6 +133,14 @@ public class GhostPreviewer : MonoBehaviour
                 case BuildTool.EquipGear:
                     tiles.Add(new Vector2Int(hover.gridX, hover.gridY));
                     if (tower == null) { HoverText = "Gear goes on a tower"; break; }
+                    if (playerBuilder.SelectedOverflow < 0 && playerBuilder.SelectedInventory >= 0
+                        && playerBuilder.IsExtractor(host.State.GearInventory[playerBuilder.SelectedInventory]))
+                    {
+                        valid = PlayerBuilder.FirstGearSlot(tower) >= 0;
+                        HoverText = valid ? "Extract: " + playerBuilder.Describe(tower) + " loses its gear (to your inventory)" : "This tower has no gear";
+                        ringRadius = tower.RangeTiles * cell;
+                        break;
+                    }
                     valid = tower.FreeGearSlot() >= 0;
                     HoverText = valid ? "Put it on " + playerBuilder.Describe(tower) : "No free gear slot (a rare tower has two)";
                     ringRadius = tower.RangeTiles * cell;
@@ -155,7 +163,8 @@ public class GhostPreviewer : MonoBehaviour
                     if (tower != null) { valid = true; HoverText = "Change places with " + playerBuilder.Describe(tower); break; }
                     bool space = playerBuilder.TowerCap <= 0 || playerBuilder.TowersStanding < playerBuilder.TowerCap;
                     valid = space && playerBuilder.IsFreeTile(hover);
-                    HoverText = !space ? "Tower limit reached: change places with a tower instead" : valid ? "Put " + playerBuilder.Describe(benched) + " here" : "Cannot stand here";
+                    HoverText = !space ? "Tower limit reached: change places with a tower instead" : valid ? "Put " + playerBuilder.Describe(benched) + " here"
+                              : playerBuilder.TowersOnWalls ? "Towers stand on a wall or a rock" : "Cannot stand here";
                     break;
 
                 case BuildTool.MoveTower:
@@ -176,7 +185,7 @@ public class GhostPreviewer : MonoBehaviour
                         tiles.Add(new Vector2Int(hover.gridX, hover.gridY));
                         ringRadius = carried.RangeTiles * cell;
                         valid = playerBuilder.IsFreeTile(hover);
-                        HoverText = valid ? "Move " + playerBuilder.Describe(carried) + " here" : "Cannot stand here";
+                        HoverText = valid ? "Move " + playerBuilder.Describe(carried) + " here" : playerBuilder.TowersOnWalls ? "Towers stand on a wall or a rock" : "Cannot stand here";
                     }
                     break;
 

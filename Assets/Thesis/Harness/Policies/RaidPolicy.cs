@@ -94,6 +94,7 @@ namespace Thesis.Harness
                     TileCoord tile;
                     if (TowerCombine.HasRoomFor(s.Towers, def, offers[slot].Level, config, s.WaveIndex) && sentry.FindBestTile(sim, def, out tile))
                     {
+                        SentryPolicy.LayFoundation(sim, tile, send);
                         send(SimCommand.PlaceTower(slot, tile.X, tile.Y));
                         continue;
                     }
@@ -103,7 +104,8 @@ namespace Thesis.Harness
 
                 // Walls, then a coin, then gear.
                 for (int slot = 0; slot < offers.Length && s.PlacementLog.Count == log; slot++)
-                    if (!offers[slot].Bought && (offers[slot].Kind == CardKind.Wall || offers[slot].Kind == CardKind.Coin)) send(SimCommand.TakeCoin(slot));
+                    if (!offers[slot].Bought && (offers[slot].Kind == CardKind.Wall || offers[slot].Kind == CardKind.Coin
+                                                 || (offers[slot].Kind == CardKind.Heal && s.CoreHp < config.CoreMaxHp))) send(SimCommand.TakeCoin(slot));
                 for (int slot = 0; slot < offers.Length && s.PlacementLog.Count == log; slot++)
                 {
                     if (offers[slot].Bought || offers[slot].Kind != CardKind.Gear || s.BuildBudget < offers[slot].Price) continue;
@@ -158,7 +160,11 @@ namespace Thesis.Harness
                 if (benchSlot >= 0 && (cap <= 0 || TowerCombine.Standing(s.Towers) < cap))
                 {
                     TileCoord tile;
-                    if (sentry.FindBestTile(sim, s.Towers[s.Bench[benchSlot]].Def, out tile)) send(SimCommand.DeployTower(benchSlot, tile.X, tile.Y));
+                    if (sentry.FindBestTile(sim, s.Towers[s.Bench[benchSlot]].Def, out tile))
+                    {
+                        SentryPolicy.LayFoundation(sim, tile, send);
+                        send(SimCommand.DeployTower(benchSlot, tile.X, tile.Y));
+                    }
                 }
                 else if (benchSlot >= 0 && weakest != null && s.WaveIndex % 2 == 0 && !swapped)
                 {
@@ -169,7 +175,11 @@ namespace Thesis.Harness
                 {
                     moved = true;
                     TileCoord tile;
-                    if (sentry.FindBestTile(sim, weakest.Def, out tile)) send(SimCommand.MoveTower(weakest.Tile.X, weakest.Tile.Y, tile.X, tile.Y));
+                    if (sentry.FindBestTile(sim, weakest.Def, out tile))
+                    {
+                        SentryPolicy.LayFoundation(sim, tile, send);
+                        send(SimCommand.MoveTower(weakest.Tile.X, weakest.Tile.Y, tile.X, tile.Y));
+                    }
                 }
                 if (s.PlacementLog.Count == log) break;
             }
@@ -232,12 +242,12 @@ namespace Thesis.Harness
             }
 
             // The one upgrade, for the oldest tower that has none; which one goes by the tower's number.
-            if (config.ChoiceUpgradeCost >= 0f && s.BuildBudget >= config.ChoiceUpgradeCost + 4f)
+            if (config.ChoiceUpgradeCost >= 0f)
             {
                 for (int t = 0; t < s.Towers.Count; t++)
                 {
                     TowerState tower = s.Towers[t];
-                    if (!tower.IsAlive || tower.OnBench || tower.Upgrade != TowerUpgradeChoices.None) continue;
+                    if (!tower.IsAlive || tower.OnBench || tower.UpgradeCount >= config.UpgradesPerTower || s.BuildBudget < sim.UpgradePrice(tower) + 4f) continue;
                     send(SimCommand.ChooseUpgrade(tower.Tile.X, tower.Tile.Y, tower.Id % TowerUpgradeChoices.All.Length));
                     break;
                 }
@@ -271,11 +281,17 @@ namespace Thesis.Harness
             if (config.GearInventorySlots > 0)
             {
                 TowerState first = FirstWithGear(s);
-                if (first != null && s.WaveIndex % 4 == 0 && s.WaveIndex > 0) send(SimCommand.UnequipGear(first.Tile.X, first.Tile.Y, 0));
+                int extractor = -1;
+                for (int i = 0; i < s.GearInventory.Length; i++) if (s.GearInventory[i] != TowerState.NoGear && sim.GearLibrary[s.GearInventory[i]].Extracts) extractor = i;
+                if (first != null && s.WaveIndex % 4 == 0 && s.WaveIndex > 0)
+                {
+                    if (extractor >= 0) send(SimCommand.EquipGear(extractor, first.Tile.X, first.Tile.Y));
+                    else send(SimCommand.UnequipGear(first.Tile.X, first.Tile.Y, 0));
+                }
                 for (int i = 0; i < s.GearInventory.Length; i++)
                 {
                     TowerState tower = FirstWithFreeGearSlot(s);
-                    if (s.GearInventory[i] == TowerState.NoGear || tower == null) continue;
+                    if (s.GearInventory[i] == TowerState.NoGear || tower == null || sim.GearLibrary[s.GearInventory[i]].Extracts) continue;
                     send(SimCommand.EquipGear(i, tower.Tile.X, tower.Tile.Y));
                 }
             }

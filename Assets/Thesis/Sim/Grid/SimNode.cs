@@ -44,6 +44,14 @@ namespace Thesis.Sim
         // for a wall that was put here without going through the log.
         public int PieceId = -1;
 
+        // The wall a tower stands on (SimConfig.TowersOnWalls): its cost, health and piece,
+        // kept while the tower is there and put back when the tower leaves the tile.
+        // FoundationCost 0 = no wall under it (open ground, a rock, or no tower).
+        public int FoundationCost;
+        public float FoundationHealth;
+        public float FoundationMaxHealth;
+        public int FoundationPiece = -1;
+
         // The GROUND flow field. Integer cost x10 to the goal (so diagonals can cost
         // ~sqrt(2) without floats).
         public int BestCost = Infinity;

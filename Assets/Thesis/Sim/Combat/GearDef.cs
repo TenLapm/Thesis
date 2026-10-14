@@ -19,6 +19,22 @@ namespace Thesis.Sim
         public int SlowTicks;            // above 0: every enemy hit is slowed for this long...
         public float SlowFactor = 1f;    // ...to this share of its speed
         public bool GrantsFlying;        // the tower can hit flyers
+
+        // Not worn: dropped on a tower, it takes that tower's gear off into the inventory
+        // and is used up (2026-10-14, in place of a free "take gear off" tool).
+        public bool Extracts;
+
+        // A plain number on the tower, which since 2026-10-14 is the upgrade's job; the
+        // shops leave these out unless SimConfig.StatGear.
+        public bool IsStatBoost => DamageMul != 1f || IntervalMul != 1f || RangeAdd != 0f || SplashAdd != 0f;
+
+        // Whether a shop may offer it under this config. Without one: everything but the extractor.
+        public bool OnSale(SimConfig config)
+        {
+            if (Extracts) return config != null && config.ExtractorGear;
+            if (IsStatBoost) return config == null || config.StatGear;
+            return true;
+        }
     }
 
     // The game's gear, version 1 (2026-10-12, with the student's "gear and rarity"
@@ -38,6 +54,7 @@ namespace Thesis.Sim
                 new GearDef { Id = "sky-sight", Label = "can hit flyers", GrantsFlying = true },
                 new GearDef { Id = "powder", Label = "+0.5 splash", SplashAdd = 0.5f },
                 new GearDef { Id = "chill", Label = "slows what it hits", SlowTicks = 50, SlowFactor = 0.7f },
+                new GearDef { Id = "extractor", Label = "takes a tower's gear off", Extracts = true, Price = 4 },
             };
         }
     }

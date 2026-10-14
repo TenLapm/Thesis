@@ -17,7 +17,9 @@ namespace Thesis.Cli
     {
         public static int Run(string[] argv)
         {
-            var args = new Args(argv, new[] { "--waves", "--partition" }, new string[0]);
+            var args = new Args(argv, new[] { "--waves", "--partition" }, new[] { "--towers-on-rocks" });
+            // --towers-on-rocks: the session was played with SimConfig.TowersOnWalls, so rock is buildable.
+            bool rocks = args.Flag("--towers-on-rocks");
             string first = args.Positional(0, "the replay file");
             args.NoMorePositionals(2);
             int partition = args.GetInt("--partition", PlacementEntropy.DefaultPartition);
@@ -57,10 +59,10 @@ namespace Thesis.Cli
             Console.WriteLine(path);
             Console.WriteLine("  " + file.Planner + ", player " + file.Policy + ", seed " + file.RngSeed + ": " + PlacementEntropy.CompletedWaves(rows) + " completed wave(s), "
                               + tiles + " tile(s) built in the window");
-            Console.WriteLine("  H (walls and towers)  " + Json.FormatDouble(PlacementEntropy.Compute(rows, map, waves, partition)) + "   <- the primary metric");
-            Console.WriteLine("  H (walls only)        " + Json.FormatDouble(PlacementEntropy.Compute(rows, map, waves, partition, PlacementScope.WallsOnly)));
-            Console.WriteLine("  H (towers only)       " + Json.FormatDouble(PlacementEntropy.Compute(rows, map, waves, partition, PlacementScope.TowersOnly)));
-            Console.WriteLine("  H on 4x4 / 8x8        " + Json.FormatDouble(PlacementEntropy.Compute(rows, map, waves, 4)) + " / " + Json.FormatDouble(PlacementEntropy.Compute(rows, map, waves, 8)));
+            Console.WriteLine("  H (walls and towers)  " + Json.FormatDouble(PlacementEntropy.Compute(rows, map, waves, partition, PlacementScope.WallsAndTowers, rocks)) + "   <- the primary metric");
+            Console.WriteLine("  H (walls only)        " + Json.FormatDouble(PlacementEntropy.Compute(rows, map, waves, partition, PlacementScope.WallsOnly, rocks)));
+            Console.WriteLine("  H (towers only)       " + Json.FormatDouble(PlacementEntropy.Compute(rows, map, waves, partition, PlacementScope.TowersOnly, rocks)));
+            Console.WriteLine("  H on 4x4 / 8x8        " + Json.FormatDouble(PlacementEntropy.Compute(rows, map, waves, 4, PlacementScope.WallsAndTowers, rocks)) + " / " + Json.FormatDouble(PlacementEntropy.Compute(rows, map, waves, 8, PlacementScope.WallsAndTowers, rocks)));
         }
     }
 }

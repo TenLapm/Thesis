@@ -9,7 +9,10 @@ namespace Thesis.Director
     // defines it: how evenly the tiles a player built are spread over the map.
     //
     //   what is counted   every tile of every wall piece and every tower the
-    //                     player built; a tile later sold or breached still counts
+    //                     player built; a tile later sold or breached still counts.
+    //                     Since 2026-10-14 (the student: the game is now mostly about
+    //                     rearranging towers) also the tile a tower was MOVED to, put
+    //                     on from the bench, or upgraded on
     //   over what         the region the tile is in: the map cut into
     //                     `partition` x `partition` regions (6 x 6 by default)
     //   which part        the windows of waves 1..W. Row 0, the build phase before
@@ -32,7 +35,7 @@ namespace Thesis.Director
         // H over the first `waves` waves of one session. Use CompletedWaves, or
         // ComparisonWindow for a pair of sessions, to choose `waves`.
         public static double Compute(IReadOnlyList<WaveRecord> rows, MapData map, int waves,
-                                     int partition = DefaultPartition, PlacementScope scope = PlacementScope.WallsAndTowers)
+                                     int partition = DefaultPartition, PlacementScope scope = PlacementScope.WallsAndTowers, bool towersOnRocks = false)
         {
             if (rows == null) throw new ArgumentNullException(nameof(rows));
             if (map == null) throw new ArgumentNullException(nameof(map));
@@ -49,7 +52,8 @@ namespace Thesis.Director
                 {
                     WaveRecord.PlacementRow placed = row.Placements[p];
                     if (!Counts(placed, scope)) continue;
-                    for (int t = 0; t < placed.Tiles.Length; t++)
+                    // A move lists { from, to }: only where the tower went is a decision.
+                    for (int t = placed.Kind == WaveRecord.PlacementRow.MoveTower ? 1 : 0; t < placed.Tiles.Length; t++)
                     {
                         counts[RegionOf(placed.Tiles[t][0], placed.Tiles[t][1], map, partition)]++;
                         total++;
@@ -57,7 +61,7 @@ namespace Thesis.Director
                 }
             }
 
-            int regions = Regions(map, partition);
+            int regions = Regions(map, partition, towersOnRocks);
             if (total == 0 || regions < 2) return 0.0;
 
             double h = 0.0;
@@ -93,7 +97,10 @@ namespace Thesis.Director
         // region that is all static blocker, or holds nothing but the spawn or the
         // core, can never receive a tile and is left out, so that an even spread
         // over everything reachable still scores 1.
-        public static int Regions(MapData map, int partition = DefaultPartition)
+        //
+        // With towersOnRocks (a game with SimConfig.TowersOnWalls) a rock can hold a tower,
+        // so a rock outside the ring along the edge counts as buildable too.
+        public static int Regions(MapData map, int partition = DefaultPartition, bool towersOnRocks = false)
         {
             if (map == null) throw new ArgumentNullException(nameof(map));
             if (partition < 1) throw new ArgumentOutOfRangeException(nameof(partition), partition, "Must be at least 1.");
@@ -103,7 +110,7 @@ namespace Thesis.Director
             {
                 for (int y = 0; y < map.Height; y++)
                 {
-                    if (!map.IsWalkable(x, y)) continue;
+                    if (!map.IsWalkable(x, y) && (!towersOnRocks || map.InBuildMargin(new TileCoord(x, y)))) continue;
                     if (Placement.IsProtected(map, new TileCoord(x, y))) continue;
                     buildable[RegionOf(x, y, map, partition)] = true;
                 }
@@ -128,7 +135,10 @@ namespace Thesis.Director
             switch (placed.Kind)
             {
                 case WaveRecord.PlacementRow.Wall: return scope != PlacementScope.TowersOnly;
-                case WaveRecord.PlacementRow.Tower: return scope != PlacementScope.WallsOnly;
+                case WaveRecord.PlacementRow.Tower:
+                case WaveRecord.PlacementRow.MoveTower:
+                case WaveRecord.PlacementRow.Deploy:
+                case WaveRecord.PlacementRow.Upgrade: return scope != PlacementScope.WallsOnly;
                 default: return false; // a sale or a reroll builds nothing
             }
         }

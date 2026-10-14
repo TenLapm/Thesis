@@ -202,8 +202,8 @@ public class BenchPanel : MonoBehaviour
                 }
                 slot.icon.color = TowerView.ColorOf(tower.Def.DamageType);
                 Set(slot.name, Title(tower.Def.Id));
-                slot.name.color = tower.Level > 1 ? TowerView.ColorOfLevel(tower.Level) : Bright;
-                string detail = TowerView.LevelName(tower.Level).ToLowerInvariant();
+                slot.name.color = tower.Rarity > 1 ? TowerView.ColorOfLevel(tower.Rarity) : Bright;
+                string detail = TowerView.LevelName(tower.Rarity).ToLowerInvariant();
                 for (int g = 0; g < TowerState.MaxGearSlots; g++)
                     if (tower.Gear[g] != TowerState.NoGear) detail += "  +" + Host.Sim.GearLibrary[tower.Gear[g]].Id;
                 Set(slot.detail, detail);

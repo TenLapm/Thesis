@@ -40,6 +40,18 @@ namespace Thesis.Sim
             return true;
         }
 
+        // Where a TOWER may stand. Without SimConfig.TowersOnWalls that is CanPlace (I9).
+        // With it, only on a wall (one with no tower yet) or on a rock of the map; never on
+        // open ground, the core, an entry point or the ring along the edge.
+        public static bool CanPlaceTower(SimGrid grid, MapData map, TileCoord tile, bool onWalls)
+        {
+            if (!onWalls) return CanPlace(grid, map, new[] { tile });
+            if (!grid.InBounds(tile) || IsProtected(map, tile) || map.InBuildMargin(tile)) return false;
+            SimNode node = grid.Get(tile);
+            if (node.Occupant == Occupant.Wall) return true;
+            return !node.IsWalkable && node.Occupant == Occupant.None;
+        }
+
         public static bool IsProtected(MapData map, TileCoord t)
         {
             if (t == map.Core) return true;
@@ -131,13 +143,13 @@ namespace Thesis.Sim
         // tower, because a later sale refunds a share of what was actually paid.
         public static bool TryPlaceTower(SimGrid grid, MapData map, FlowFieldSet fields, TowerDef def, int price, TileCoord tile,
                                          ref float buildBudget, int tick, IList<TowerState> towers,
-                                         IList<PlacementRecord> log, IList<SimEvent> events, int level = 1)
+                                         IList<PlacementRecord> log, IList<SimEvent> events, int level = 1, bool onWalls = false)
         {
             if (def == null) throw new ArgumentNullException(nameof(def));
             if (towers == null) throw new ArgumentNullException(nameof(towers));
 
             var tiles = new[] { tile };
-            if (!CanPlace(grid, map, tiles)) return false;
+            if (!CanPlaceTower(grid, map, tile, onWalls)) return false;
             if (buildBudget < price) return false;
 
             buildBudget -= price;
@@ -186,7 +198,7 @@ namespace Thesis.Sim
 
             tower.IsAlive = false;
             tower.Sold = true;
-            grid.ClearWall(node);
+            grid.LiftTower(node);
             buildBudget += refund;
             events?.Add(SimEvent.TowerSold(tower.Id, tile.X, tile.Y, refund));
 
@@ -211,21 +223,21 @@ namespace Thesis.Sim
         // the tile changes. `to` must be a tile a tower could be built on (CanPlace,
         // I9). Returns false, changing nothing, otherwise.
         public static bool TryMoveTower(SimGrid grid, MapData map, FlowFieldSet fields, TileCoord from, TileCoord to, int tick,
-                                        IList<TowerState> towers, IList<PlacementRecord> log, IList<SimEvent> events)
+                                        IList<TowerState> towers, IList<PlacementRecord> log, IList<SimEvent> events, bool onWalls = false)
         {
             if (towers == null) throw new ArgumentNullException(nameof(towers));
             if (!grid.InBounds(from)) return false;
 
             SimNode source = grid.Get(from);
             if (source.Occupant != Occupant.Tower) return false;
-            if (!CanPlace(grid, map, new[] { to })) return false;
+            if (!CanPlaceTower(grid, map, to, onWalls)) return false;
 
             TowerState tower = towers[source.TowerId];
             int terrainCost = source.TerrainCost;
             float health = source.WallHealth;
             float fullHealth = source.MaxWallHealth;
 
-            grid.ClearWall(source);
+            grid.LiftTower(source);
             SimNode target = grid.Get(to);
             grid.SetTower(target, terrainCost, fullHealth, tower.Id);
             target.WallHealth = health;

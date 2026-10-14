@@ -15,7 +15,7 @@ MonoBehaviour:
   id: sniper
   cost: 20
   damageType: 0
-  damage: 45
+  damage: 40
   rangeTiles: 8
   fireIntervalTicks: 160
   splashRadiusTiles: 0

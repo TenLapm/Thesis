@@ -76,6 +76,10 @@ namespace Thesis.Sim
                     Occupant = s.Occupant,
                     TowerId = s.TowerId,
                     PieceId = s.PieceId,
+                    FoundationCost = s.FoundationCost,
+                    FoundationHealth = s.FoundationHealth,
+                    FoundationMaxHealth = s.FoundationMaxHealth,
+                    FoundationPiece = s.FoundationPiece,
                     BestCost = s.BestCost,
                     NextIndex = s.NextIndex,
                     SapperCost = s.SapperCost,
@@ -207,11 +211,47 @@ namespace Thesis.Sim
         // A tower stands on its tile exactly as a wall does (same cost model, same
         // digging); the tile only remembers which tower it is, so that chewing
         // through it can destroy that tower.
+        //
+        // On a wall (SimConfig.TowersOnWalls) the wall is kept on the node as its
+        // foundation, and LiftTower puts it back. On a rock the tile stays static
+        // geometry: nothing walks there, so nothing can chew the tower.
         public void SetTower(SimNode node, int terrainCost, float towerHealth, int towerId)
         {
-            SetWall(node, terrainCost, towerHealth);
+            if (node.Occupant == Occupant.Wall)
+            {
+                node.FoundationCost = node.TerrainCost;
+                node.FoundationHealth = node.WallHealth;
+                node.FoundationMaxHealth = node.MaxWallHealth;
+                node.FoundationPiece = node.PieceId;
+            }
+            if (node.IsWalkable) SetWall(node, terrainCost, towerHealth);
+            else
+            {
+                if (terrainCost < 2 || towerHealth <= 0f) throw new ArgumentOutOfRangeException(nameof(terrainCost), "A tower needs a cost of at least 2 and positive health.");
+                node.TerrainCost = terrainCost;
+                node.WallHealth = towerHealth;
+                node.MaxWallHealth = towerHealth;
+                node.PieceId = -1;
+            }
             node.Occupant = Occupant.Tower;
             node.TowerId = towerId;
+        }
+
+        // A tower leaves its tile alive (sold, moved, benched, merged away): the wall it
+        // stood on comes back as it was, otherwise the tile is cleared. A tower that is
+        // chewed through goes with ClearWall, and its wall with it.
+        public void LiftTower(SimNode node)
+        {
+            if (node.FoundationCost <= 0)
+            {
+                ClearWall(node);
+                return;
+            }
+            int cost = node.FoundationCost, piece = node.FoundationPiece;
+            float health = node.FoundationHealth, full = node.FoundationMaxHealth;
+            ClearWall(node);
+            SetWall(node, cost, full, piece);
+            node.WallHealth = health;
         }
 
         // Back to open ground (a breach, a destroyed tower, a sale, or clearing a
@@ -224,6 +264,10 @@ namespace Thesis.Sim
             node.Occupant = Occupant.None;
             node.TowerId = -1;
             node.PieceId = -1;
+            node.FoundationCost = 0;
+            node.FoundationHealth = 0f;
+            node.FoundationMaxHealth = 0f;
+            node.FoundationPiece = -1;
         }
 
         // Mathf.Clamp01 / Mathf.RoundToInt equivalents. RoundToInt is (int)Math.Round,

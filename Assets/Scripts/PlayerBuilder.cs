@@ -130,10 +130,28 @@ public class PlayerBuilder : MonoBehaviour
 
     public float UpgradeCost => Host.Config.ChoiceUpgradeCost;
 
+    // What this tower's next upgrade costs (each one costs more: SimConfig.ChoiceUpgradeCostStep).
+    public float UpgradeCostFor(TowerState tower) { return tower != null ? Host.Sim.UpgradePrice(tower) : UpgradeCost; }
+
+    public bool HasUpgradeLeft(TowerState tower) { return tower != null && tower.UpgradeCount < Host.Config.UpgradesPerTower; }
+
     public bool CanUpgrade(TowerState tower)
     {
-        return UpgradesOn && tower != null && tower.Upgrade == TowerUpgradeChoices.None && IsBuildPhase && Host.State.BuildBudget >= UpgradeCost;
+        return UpgradesOn && HasUpgradeLeft(tower) && IsBuildPhase && Host.State.BuildBudget >= UpgradeCostFor(tower);
     }
+
+    // Both upgrades a tower has, by name, or "".
+    public static string UpgradeNames(TowerState tower)
+    {
+        string text = TowerUpgradeChoices.IsValid(tower.Upgrade) ? TowerUpgradeChoices.All[tower.Upgrade].Label : "";
+        if (TowerUpgradeChoices.IsValid(tower.Upgrade2)) text += "; " + TowerUpgradeChoices.All[tower.Upgrade2].Label;
+        return text;
+    }
+
+    // The extractor (gear that takes a tower's gear off) is in this game: the free Ungear tool is not.
+    public bool ExtractorInGame => UsesInventory && Host.Config.ExtractorGear;
+
+    public bool IsExtractor(int piece) { return piece >= 0 && piece < Host.Sim.GearLibrary.Length && Host.Sim.GearLibrary[piece].Extracts; }
 
     // The tower whose upgrade is being chosen (the panel shows the choices), or null.
     private Node upgradeNode;
@@ -497,8 +515,8 @@ public class PlayerBuilder : MonoBehaviour
         if ((Tool == BuildTool.Tower || Tool == BuildTool.Gear) && SelectedOffer == slot) { SelectWall(); return; }
         if (!CanPickUp(slot)) return;
 
-        // A coin card is taken on the spot; a gear card goes into the hand like a tower.
-        if (offers[slot].Kind == CardKind.Coin)
+        // A coin, wall or heal card is taken on the spot; a gear card goes into the hand like a tower.
+        if (offers[slot].Kind == CardKind.Coin || offers[slot].Kind == CardKind.Wall || offers[slot].Kind == CardKind.Heal)
         {
             Host.Submit(SimCommand.TakeCoin(slot));
             return;
@@ -552,7 +570,7 @@ public class PlayerBuilder : MonoBehaviour
             if (Keyboard.current.xKey.wasPressedThisFrame) SelectSell();
             if (Keyboard.current.mKey.wasPressedThisFrame) SelectMoveTower();
             if (Keyboard.current.dKey.wasPressedThisFrame) Reroll();
-            if (Keyboard.current.gKey.wasPressedThisFrame) SelectMoveGear();
+            if (Keyboard.current.gKey.wasPressedThisFrame && !ExtractorInGame) SelectMoveGear();
             if (Keyboard.current.uKey.wasPressedThisFrame && UpgradesOn) SelectUpgrade();
             if (Keyboard.current.tKey.wasPressedThisFrame && TargetingOn) SelectTarget();
             if (UpgradePending == null && (upgradeNode != null || upgradeBench >= 0)) CancelUpgrade(); // the tower went
@@ -767,14 +785,15 @@ public class PlayerBuilder : MonoBehaviour
         return IsFreeTile(node);
     }
 
-    // A tile a tower could stand on (Placement.CanPlace, I9).
+    // A tile a tower could stand on (Placement.CanPlaceTower, I9): with SimConfig.TowersOnWalls
+    // a wall or a rock, otherwise free ground.
     public bool IsFreeTile(Node node)
     {
         if (node == null) return false;
-        oneTile.Clear();
-        oneTile.Add(new Vector2Int(node.gridX, node.gridY));
-        return AreTilesPlaceable(oneTile);
+        return Placement.CanPlaceTower(Host.State.Grid, Host.Map, new TileCoord(node.gridX, node.gridY), Host.Config.TowersOnWalls);
     }
+
+    public bool TowersOnWalls => Host.Config.TowersOnWalls;
 
     // The living tower on a tile, or null.
     public TowerState TowerAt(Node node)
@@ -797,7 +816,7 @@ public class PlayerBuilder : MonoBehaviour
     // One line about a tower: its name, its level, its gear.
     public string Describe(TowerState tower)
     {
-        string text = tower.Def.Id + (tower.Level == 2 ? " (rare)" : tower.Level >= 3 ? " (epic)" : "");
+        string text = tower.Def.Id + (tower.Rarity == 2 ? " (rare)" : tower.Rarity >= 3 ? " (epic)" : "");
         for (int i = 0; i < TowerState.MaxGearSlots; i++)
             if (tower.Gear[i] != TowerState.NoGear) text += "  +" + Host.Sim.GearLibrary[tower.Gear[i]].Id;
         return text;
@@ -881,21 +900,21 @@ public class PlayerBuilder : MonoBehaviour
             PlacementRecord record = log[placementsDrawn];
             if (record.IsSale)
             {
-                for (int i = 0; i < record.Tiles.Length; i++) RemoveVisual(gridManager.grid[record.Tiles[i].X, record.Tiles[i].Y]);
+                for (int i = 0; i < record.Tiles.Length; i++) ClearTile(gridManager.grid[record.Tiles[i].X, record.Tiles[i].Y], cellSize);
                 continue;
             }
             // A merge empties the tiles of the towers it absorbed; the one that stays
             // is redrawn by its TowerChanged event.
             if (record.IsCombine)
             {
-                for (int i = 0; i < record.Tiles.Length; i++) RemoveVisual(gridManager.grid[record.Tiles[i].X, record.Tiles[i].Y]);
+                for (int i = 0; i < record.Tiles.Length; i++) ClearTile(gridManager.grid[record.Tiles[i].X, record.Tiles[i].Y], cellSize);
                 RefreshTower(record.TowerId);
                 continue;
             }
             // The bench: a tower taken off its tile, put on one, or raised by a merged card.
             if (record.Kind == PlacementKind.TowerRecalled)
             {
-                RemoveVisual(gridManager.grid[record.Tiles[0].X, record.Tiles[0].Y]);
+                ClearTile(gridManager.grid[record.Tiles[0].X, record.Tiles[0].Y], cellSize);
                 continue;
             }
             if (record.Kind == PlacementKind.TowerDeployed)
@@ -916,7 +935,7 @@ public class PlayerBuilder : MonoBehaviour
             // A moved tower: its view goes with it. Tiles are { from, to }.
             if (record.Kind == PlacementKind.TowerMoved)
             {
-                RemoveVisual(gridManager.grid[record.Tiles[0].X, record.Tiles[0].Y]);
+                ClearTile(gridManager.grid[record.Tiles[0].X, record.Tiles[0].Y], cellSize);
                 DrawTower(Host.State.Towers[record.TowerId], gridManager.grid[record.Tiles[1].X, record.Tiles[1].Y], cellSize);
                 continue;
             }
@@ -935,19 +954,44 @@ public class PlayerBuilder : MonoBehaviour
                 // As for towers: a wall that was since taken up or chewed away is not drawn.
                 SimNode standing = Host.State.Grid[node.gridX, node.gridY];
                 if (standing.Occupant != Occupant.Wall || standing.PieceId != record.PieceId) continue;
-                RemoveVisual(node);
-                GameObject wall = Instantiate(standardWallPrefab, node.worldPosition + new Vector3(0, cellSize * wallHeight / 2f, 0), Quaternion.identity);
-                wall.transform.localScale = new Vector3(cellSize * 0.94f, cellSize * wallHeight, cellSize * 0.94f);
-                ApplyShapeColor(wall, wallColor);
-
-                // Pop-in flourish. Added AFTER the final scale is set so the animator captures it.
-                WallSpawnAnimator anim = wall.AddComponent<WallSpawnAnimator>();
-                anim.Play(i * 0.04f);
-
-                node.visualObject = wall;
-                wallTiles.Add(node);
+                DrawWall(node, cellSize, i * 0.04f);
             }
         }
+    }
+
+    private void DrawWall(Node node, float cellSize, float popDelay)
+    {
+        RemoveVisual(node);
+        GameObject wall = Instantiate(standardWallPrefab, node.worldPosition + new Vector3(0, cellSize * wallHeight / 2f, 0), Quaternion.identity);
+        wall.transform.localScale = new Vector3(cellSize * 0.94f, cellSize * wallHeight, cellSize * 0.94f);
+        ApplyShapeColor(wall, wallColor);
+
+        // Pop-in flourish. Added AFTER the final scale is set so the animator captures it.
+        if (popDelay >= 0f) wall.AddComponent<WallSpawnAnimator>().Play(popDelay);
+
+        node.visualObject = wall;
+        wallTiles.Add(node);
+    }
+
+    // A tower left this tile alive: the tile shows what the simulation has there now,
+    // which is the wall the tower stood on, if it stood on one (SimConfig.TowersOnWalls).
+    private void ClearTile(Node node, float cellSize)
+    {
+        RemoveVisual(node);
+        if (Host.State.Grid[node.gridX, node.gridY].Occupant == Occupant.Wall) DrawWall(node, cellSize, -1f);
+    }
+
+    // How high a tower's base stands: on a wall or a rock it stands on top of it.
+    private float Plinth(Node node, float cellSize)
+    {
+        SimNode sim = Host.State.Grid[node.gridX, node.gridY];
+        if (sim.FoundationCost > 0) return cellSize * wallHeight;
+        if (!sim.IsWalkable)
+        {
+            RockLayout rocks = gridManager.GetComponent<RockLayout>();
+            return cellSize * (rocks != null ? rocks.heightShare : 0.45f);
+        }
+        return 0f;
     }
 
     private void DrawTower(TowerState tower, Node node, float cellSize)
@@ -957,7 +1001,16 @@ public class PlayerBuilder : MonoBehaviour
         // walked at once, and a tower that was later moved, sold or destroyed is not there.
         if (!tower.IsAlive || tower.OnBench || tower.Tile.X != node.gridX || tower.Tile.Y != node.gridY) return;
         RemoveVisual(node);
-        TowerView view = TowerView.Create(tower, node.worldPosition, cellSize, billboards);
+        float plinth = Plinth(node, cellSize);
+        TowerView view = TowerView.Create(tower, node.worldPosition + Vector3.up * plinth, cellSize, billboards);
+        if (Host.State.Grid[node.gridX, node.gridY].FoundationCost > 0)
+        {
+            // The wall it stands on, drawn as part of the tower: it goes when the tower goes.
+            GameObject under = Instantiate(standardWallPrefab, view.transform);
+            under.transform.position = node.worldPosition + new Vector3(0, plinth / 2f, 0);
+            under.transform.localScale = new Vector3(cellSize * 0.94f, plinth, cellSize * 0.94f);
+            ApplyShapeColor(under, wallColor);
+        }
         view.Show(tower, Host.Sim.GearLibrary.Length);
         towerViews[tower.Id] = view;
         node.visualObject = view.gameObject;

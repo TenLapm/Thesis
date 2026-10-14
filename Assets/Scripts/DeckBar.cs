@@ -371,7 +371,7 @@ public class DeckBar : MonoBehaviour
             Slot slot = bench[i];
             TowerState tower = playerBuilder.Benched(i);
             bool inHand = playerBuilder.Tool == BuildTool.Deploy && playerBuilder.SelectedBench == i;
-            slot.outline.color = inHand ? Teal : tower != null && tower.Level > 1 ? TowerView.ColorOfLevel(tower.Level) : Edge;
+            slot.outline.color = inHand ? Teal : tower != null && tower.Rarity > 1 ? TowerView.ColorOfLevel(tower.Rarity) : Edge;
             slot.fill.color = inHand ? CardSelected : CardColor;
             slot.icon.enabled = tower != null;
             if (tower == null)
@@ -384,8 +384,8 @@ public class DeckBar : MonoBehaviour
             }
             slot.icon.color = TowerView.ColorOf(tower.Def.DamageType);
             Set(slot.name, Title(tower.Def.Id));
-            Set(slot.line1, TowerView.LevelName(tower.Level));
-            slot.line1.color = TowerView.ColorOfLevel(tower.Level);
+            Set(slot.line1, TowerView.LevelName(tower.Rarity));
+            slot.line1.color = TowerView.ColorOfLevel(tower.Rarity);
             Set(slot.line2, tower.Def.DamageType.ToString().ToLowerInvariant() + "  ·  range " + tower.RangeTiles.ToString("0.#") + "\n" + (tower.CanHitFlying ? "hits flyers" : "ground only"));
             Set(slot.line3, GearLine(tower));
         }
@@ -468,9 +468,9 @@ public class DeckBar : MonoBehaviour
     private string Describe(TowerState t)
     {
         TowerDef d = t.Def;
-        string hex = ColorUtility.ToHtmlStringRGB(TowerView.ColorOfLevel(t.Level));
+        string hex = ColorUtility.ToHtmlStringRGB(TowerView.ColorOfLevel(t.Rarity));
         var text = new System.Text.StringBuilder();
-        text.Append("<size=24><b>").Append(Title(d.Id)).Append("</b></size>   <color=#").Append(hex).Append("><b>").Append(TowerView.LevelName(t.Level)).Append("</b></color>\n");
+        text.Append("<size=24><b>").Append(Title(d.Id)).Append("</b></size>   <color=#").Append(hex).Append("><b>").Append(TowerView.LevelName(t.Rarity)).Append("</b></color>\n");
         float perSecond = t.Damage * t.Targets * 50f / Mathf.Max(1, t.FireIntervalTicks);
         text.Append(d.DamageType.ToString().ToLowerInvariant()).Append("  ·  ").Append(t.Damage.ToString("0.#")).Append(" damage every ")
             .Append((t.FireIntervalTicks / 50f).ToString("0.##")).Append(" s  (").Append(perSecond.ToString("0.#")).Append(" a second)\n");
@@ -479,7 +479,13 @@ public class DeckBar : MonoBehaviour
         if (t.SplashSquared > 0f) text.Append("splash ").Append((Mathf.Sqrt(t.SplashSquared) / Mathf.Max(0.01f, Host.Map.NodeDiameter)).ToString("0.##")).Append(" tiles\n");
         if (t.SlowTicks > 0) text.Append("slows to ").Append((t.SlowFactor * 100f).ToString("0")).Append("% for ").Append((t.SlowTicks / 50f).ToString("0.#")).Append(" s\n");
         text.Append("<color=#94a3b8>gear (").Append(t.GearSlots).Append(t.GearSlots == 1 ? " slot" : " slots").Append("):</color> ").Append(GearLine(t)).Append('\n');
-        if (playerBuilder.UpgradesOn) text.Append("<color=#94a3b8>upgrade:</color> ").Append(t.Upgrade != TowerUpgradeChoices.None ? TowerUpgradeChoices.All[t.Upgrade].Label : "none yet  (" + playerBuilder.UpgradeCost.ToString("0.#") + ", key U)").Append('\n');
+        if (playerBuilder.UpgradesOn)
+        {
+            string names = PlayerBuilder.UpgradeNames(t);
+            text.Append("<color=#94a3b8>upgrades:</color> ").Append(names.Length > 0 ? names : "none yet");
+            if (playerBuilder.HasUpgradeLeft(t)) text.Append("  (next: ").Append(TowerView.LevelName(t.Rarity + 1).ToLowerInvariant()).Append(", ").Append(playerBuilder.UpgradeCostFor(t).ToString("0.#")).Append(", key U)");
+            text.Append('\n');
+        }
         if (playerBuilder.TargetingOn) text.Append("<color=#94a3b8>shoots:</color> ").Append(PlayerBuilder.ModeName(t.Mode)).Append("  (key T)").Append('\n');
         if (!Host.Config.FeedDuplicates) return text.ToString();
         if (t.Level < TowerState.MaxLevel)

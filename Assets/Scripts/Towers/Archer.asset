@@ -15,8 +15,8 @@ MonoBehaviour:
   id: archer
   cost: 10
   damageType: 0
-  damage: 4
-  rangeTiles: 3.5
+  damage: 6
+  rangeTiles: 4
   fireIntervalTicks: 25
   splashRadiusTiles: 0
   slowTicks: 0

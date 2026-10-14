@@ -15,8 +15,8 @@ MonoBehaviour:
   id: cannon
   cost: 18
   damageType: 1
-  damage: 3
-  rangeTiles: 2.5
+  damage: 6
+  rangeTiles: 3
   fireIntervalTicks: 60
   splashRadiusTiles: 0.75
   slowTicks: 0

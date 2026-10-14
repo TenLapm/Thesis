@@ -54,7 +54,10 @@ namespace Thesis.Sim
                     Vec2f centre = target.Position; // a splash is centred where the target stood
                     Hit(tower, target, grid, damage, damageByType, minSlowFactor, ref buildBudget, events);
 
-                    if (tower.SplashSquared > 0f)
+                    // Only the first bolt splashes (2026-10-14). Enemies walk in file, so a
+                    // splash hits several at once, and with one splash per bolt the Volley
+                    // upgrade made a splash tower twice the tower the balance check said it was.
+                    if (bolt == 0 && tower.SplashSquared > 0f)
                     {
                         for (int i = 0; i < live.Count; i++)
                         {

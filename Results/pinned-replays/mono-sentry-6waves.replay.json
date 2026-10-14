@@ -71,6 +71,13 @@
     "GearInventorySlots": 0,
     "FeedDuplicates": false,
     "ChoiceUpgradeCost": -1.0,
+    "UpgradesPerTower": 1,
+    "ChoiceUpgradeCostStep": 0.0,
+    "TowersOnWalls": false,
+    "HealCardWeight": 0.0,
+    "HealCardAmount": 3,
+    "StatGear": true,
+    "ExtractorGear": false,
     "ChooseTargeting": false,
     "MergeCount": 2,
     "CorePlacement": false,
@@ -163,8 +170,8 @@
       "Id": "archer",
       "Cost": 10,
       "DamageType": "Physical",
-      "Damage": 4.0,
-      "RangeTiles": 3.5,
+      "Damage": 6.0,
+      "RangeTiles": 4.0,
       "FireIntervalTicks": 25,
       "Mode": "First",
       "SplashRadiusTiles": 0.0,
@@ -200,14 +207,14 @@
       "Id": "ballista",
       "Cost": 16,
       "DamageType": "Physical",
-      "Damage": 22.0,
-      "RangeTiles": 5.5,
+      "Damage": 32.0,
+      "RangeTiles": 5.0,
       "FireIntervalTicks": 100,
       "Mode": "First",
       "SplashRadiusTiles": 0.0,
       "SlowTicks": 0,
       "SlowFactor": 1.0,
-      "CanHitFlying": true,
+      "CanHitFlying": false,
       "Targets": 1,
       "DigCost": 20,
       "TowerHealth": 8.0,
@@ -237,8 +244,8 @@
       "Id": "cannon",
       "Cost": 18,
       "DamageType": "Fire",
-      "Damage": 3.0,
-      "RangeTiles": 2.5,
+      "Damage": 6.0,
+      "RangeTiles": 3.0,
       "FireIntervalTicks": 60,
       "Mode": "First",
       "SplashRadiusTiles": 0.75,
@@ -274,11 +281,11 @@
       "Id": "brazier",
       "Cost": 12,
       "DamageType": "Fire",
-      "Damage": 1.2,
-      "RangeTiles": 1.5,
+      "Damage": 0.8,
+      "RangeTiles": 2.0,
       "FireIntervalTicks": 5,
       "Mode": "First",
-      "SplashRadiusTiles": 0.0,
+      "SplashRadiusTiles": 0.5,
       "SlowTicks": 0,
       "SlowFactor": 1.0,
       "CanHitFlying": false,
@@ -311,13 +318,13 @@
       "Id": "frost",
       "Cost": 12,
       "DamageType": "Frost",
-      "Damage": 2.0,
+      "Damage": 0.5,
       "RangeTiles": 2.5,
       "FireIntervalTicks": 30,
       "Mode": "First",
-      "SplashRadiusTiles": 0.0,
+      "SplashRadiusTiles": 1.0,
       "SlowTicks": 75,
-      "SlowFactor": 0.5,
+      "SlowFactor": 0.4,
       "CanHitFlying": false,
       "Targets": 1,
       "DigCost": 20,
@@ -348,7 +355,7 @@
       "Id": "sniper",
       "Cost": 20,
       "DamageType": "Physical",
-      "Damage": 45.0,
+      "Damage": 40.0,
       "RangeTiles": 8.0,
       "FireIntervalTicks": 160,
       "Mode": "First",
@@ -385,8 +392,8 @@
       "Id": "shard",
       "Cost": 14,
       "DamageType": "Frost",
-      "Damage": 3.0,
-      "RangeTiles": 3.0,
+      "Damage": 5.0,
+      "RangeTiles": 3.5,
       "FireIntervalTicks": 30,
       "Mode": "First",
       "SplashRadiusTiles": 0.0,
@@ -422,7 +429,7 @@
       "Id": "flak",
       "Cost": 14,
       "DamageType": "Fire",
-      "Damage": 2.0,
+      "Damage": 2.5,
       "RangeTiles": 4.5,
       "FireIntervalTicks": 40,
       "Mode": "First",
@@ -456,8 +463,8 @@
       ]
     }
   ],
-  "SetupHash": "621474ba4d329568",
-  "InitialHash": "69ac12f40cded2bd",
+  "SetupHash": "949d53c307f608a1",
+  "InitialHash": "9b88719b9ddee4ad",
   "Commands": [
     {
       "Tick": 0,
@@ -480,8 +487,8 @@
     {
       "Tick": 0,
       "Cmd": "PlaceTower",
-      "X": 8,
-      "Y": 10,
+      "X": 9,
+      "Y": 12,
       "A": 2,
       "B": 0,
       "C": 0
@@ -489,8 +496,8 @@
     {
       "Tick": 0,
       "Cmd": "PlaceTower",
-      "X": 9,
-      "Y": 12,
+      "X": 10,
+      "Y": 11,
       "A": 3,
       "B": 0,
       "C": 0
@@ -505,34 +512,34 @@
       "C": 0
     },
     {
-      "Tick": 1782,
+      "Tick": 1672,
+      "Cmd": "PlaceTower",
+      "X": 8,
+      "Y": 9,
+      "A": 0,
+      "B": 0,
+      "C": 0
+    },
+    {
+      "Tick": 1672,
+      "Cmd": "PlaceTower",
+      "X": 8,
+      "Y": 10,
+      "A": 1,
+      "B": 0,
+      "C": 0
+    },
+    {
+      "Tick": 1672,
       "Cmd": "PlaceTower",
       "X": 8,
       "Y": 11,
-      "A": 0,
-      "B": 0,
-      "C": 0
-    },
-    {
-      "Tick": 1782,
-      "Cmd": "PlaceTower",
-      "X": 5,
-      "Y": 8,
-      "A": 1,
-      "B": 0,
-      "C": 0
-    },
-    {
-      "Tick": 1782,
-      "Cmd": "PlaceTower",
-      "X": 6,
-      "Y": 7,
       "A": 2,
       "B": 0,
       "C": 0
     },
     {
-      "Tick": 1782,
+      "Tick": 1672,
       "Cmd": "StartWaveNow",
       "X": 0,
       "Y": 0,
@@ -541,34 +548,34 @@
       "C": 0
     },
     {
-      "Tick": 3378,
+      "Tick": 3258,
       "Cmd": "PlaceTower",
-      "X": 12,
-      "Y": 9,
+      "X": 8,
+      "Y": 12,
       "A": 0,
       "B": 0,
       "C": 0
     },
     {
-      "Tick": 3378,
+      "Tick": 3258,
       "Cmd": "PlaceTower",
-      "X": 11,
+      "X": 10,
       "Y": 10,
       "A": 1,
       "B": 0,
       "C": 0
     },
     {
-      "Tick": 3378,
+      "Tick": 3258,
       "Cmd": "PlaceTower",
-      "X": 10,
-      "Y": 8,
+      "X": 11,
+      "Y": 9,
       "A": 2,
       "B": 0,
       "C": 0
     },
     {
-      "Tick": 3378,
+      "Tick": 3258,
       "Cmd": "StartWaveNow",
       "X": 0,
       "Y": 0,
@@ -577,43 +584,43 @@
       "C": 0
     },
     {
-      "Tick": 4893,
+      "Tick": 4733,
       "Cmd": "PlaceTower",
       "X": 11,
-      "Y": 9,
+      "Y": 10,
       "A": 0,
       "B": 0,
       "C": 0
     },
     {
-      "Tick": 4893,
+      "Tick": 4733,
       "Cmd": "PlaceTower",
       "X": 12,
-      "Y": 8,
+      "Y": 9,
       "A": 1,
       "B": 0,
       "C": 0
     },
     {
-      "Tick": 4893,
+      "Tick": 4733,
       "Cmd": "PlaceTower",
-      "X": 6,
-      "Y": 6,
+      "X": 13,
+      "Y": 9,
       "A": 2,
       "B": 0,
       "C": 0
     },
     {
-      "Tick": 4893,
+      "Tick": 4733,
       "Cmd": "PlaceTower",
-      "X": 3,
-      "Y": 3,
+      "X": 9,
+      "Y": 13,
       "A": 3,
       "B": 0,
       "C": 0
     },
     {
-      "Tick": 4893,
+      "Tick": 4733,
       "Cmd": "StartWaveNow",
       "X": 0,
       "Y": 0,
@@ -622,16 +629,16 @@
       "C": 0
     },
     {
-      "Tick": 6451,
+      "Tick": 6242,
       "Cmd": "PlaceTower",
-      "X": 8,
+      "X": 9,
       "Y": 8,
       "A": 0,
       "B": 0,
       "C": 0
     },
     {
-      "Tick": 6451,
+      "Tick": 6242,
       "Cmd": "PlaceTower",
       "X": 9,
       "Y": 10,
@@ -640,7 +647,7 @@
       "C": 0
     },
     {
-      "Tick": 6451,
+      "Tick": 6242,
       "Cmd": "StartWaveNow",
       "X": 0,
       "Y": 0,
@@ -649,34 +656,34 @@
       "C": 0
     },
     {
-      "Tick": 8038,
+      "Tick": 7771,
       "Cmd": "PlaceTower",
-      "X": 4,
-      "Y": 3,
+      "X": 5,
+      "Y": 8,
       "A": 0,
       "B": 0,
       "C": 0
     },
     {
-      "Tick": 8038,
+      "Tick": 7771,
       "Cmd": "PlaceTower",
-      "X": 9,
-      "Y": 8,
+      "X": 12,
+      "Y": 13,
       "A": 1,
       "B": 0,
       "C": 0
     },
     {
-      "Tick": 8038,
+      "Tick": 7771,
       "Cmd": "PlaceTower",
-      "X": 5,
-      "Y": 4,
+      "X": 8,
+      "Y": 13,
       "A": 2,
       "B": 0,
       "C": 0
     },
     {
-      "Tick": 8038,
+      "Tick": 7771,
       "Cmd": "StartWaveNow",
       "X": 0,
       "Y": 0,
@@ -688,36 +695,36 @@
   "WaveHashes": [
     {
       "Wave": 1,
-      "Tick": 1782,
-      "Hash": "0aede304836fa389"
+      "Tick": 1672,
+      "Hash": "c10a6589d3607f89"
     },
     {
       "Wave": 2,
-      "Tick": 3378,
-      "Hash": "ff16be1d074945df"
+      "Tick": 3258,
+      "Hash": "03c718a6020810af"
     },
     {
       "Wave": 3,
-      "Tick": 4893,
-      "Hash": "91f7ab91a52660de"
+      "Tick": 4733,
+      "Hash": "ecf9ce07e1af5f23"
     },
     {
       "Wave": 4,
-      "Tick": 6451,
-      "Hash": "46e3e6b4559adf97"
+      "Tick": 6242,
+      "Hash": "167adee2d711dd51"
     },
     {
       "Wave": 5,
-      "Tick": 8038,
-      "Hash": "a55d812299e64c51"
+      "Tick": 7771,
+      "Hash": "a385b5c3ee212edb"
     },
     {
       "Wave": 6,
-      "Tick": 9661,
-      "Hash": "d55fdc31bb1c076b"
+      "Tick": 9276,
+      "Hash": "ba977fa845ead618"
     }
   ],
-  "FinalTick": 9661,
-  "FinalHash": "d55fdc31bb1c076b",
+  "FinalTick": 9276,
+  "FinalHash": "ba977fa845ead618",
   "TickHashes": null
 }

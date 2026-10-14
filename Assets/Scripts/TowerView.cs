@@ -162,7 +162,7 @@ public class TowerView : MonoBehaviour
         if (billboard)
         {
             // The figure carries the level in its frame; gear is a row of dots at its feet.
-            GameObject figure = Figure(tower.Def, tower.Level, cell);
+            GameObject figure = Figure(tower.Def, tower.Rarity, cell);
             figure.transform.SetParent(marks, false);
             int dots = 0;
             for (int slot = 0; slot < TowerState.MaxGearSlots; slot++)
@@ -175,13 +175,13 @@ public class TowerView : MonoBehaviour
         }
 
         float y = cell * 0.7f;
-        Color level = ColorOfLevel(tower.Level);
+        Color level = ColorOfLevel(tower.Rarity);
         // A rare or epic tower stands on a plate in its level's colour: the one mark
         // that is easy to see from above at any size.
-        if (tower.Level > 1) Part(PrimitiveType.Cube, marks, new Vector3(0f, cell * 0.06f, 0f), new Vector3(cell * 0.98f, cell * 0.1f, cell * 0.98f), level);
-        for (int i = 0; i < tower.Level - 1; i++)
+        if (tower.Rarity > 1) Part(PrimitiveType.Cube, marks, new Vector3(0f, cell * 0.06f, 0f), new Vector3(cell * 0.98f, cell * 0.1f, cell * 0.98f), level);
+        for (int i = 0; i < tower.Rarity - 1; i++)
         {
-            float x = (i - (tower.Level - 2) * 0.5f) * cell * 0.26f;
+            float x = (i - (tower.Rarity - 2) * 0.5f) * cell * 0.26f;
             Part(PrimitiveType.Cube, marks, new Vector3(x, y, -cell * 0.36f), new Vector3(cell * 0.2f, cell * 0.06f, cell * 0.14f), level);
         }
 

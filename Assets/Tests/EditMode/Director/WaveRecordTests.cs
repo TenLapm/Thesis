@@ -15,7 +15,7 @@ namespace Thesis.Tests.Director
         // (Adding a field at the end of the order is the one change that only needs
         // the string extended.)
         private const string BaselineLine =
-            "{\"schema\":7,\"session\":\"hand\",\"condition\":\"escalation\",\"player\":\"test\",\"build\":\"test\",\"map\":\"hand\",\"mapSeed\":0,\"rngSeed\":1,"
+            "{\"schema\":8,\"session\":\"hand\",\"condition\":\"escalation\",\"player\":\"test\",\"build\":\"test\",\"map\":\"hand\",\"mapSeed\":0,\"rngSeed\":1,"
             + "\"wave\":2,\"tickStart\":0,\"tickResolved\":-1,\"tickEnd\":0,"
             + "\"profile\":null,\"bin\":null,\"threatBudget\":null,\"strategies\":null,\"chosen\":null,\"fallback\":null,\"announcement\":null,"
             + "\"plan\":null,\"outcome\":null,"
@@ -233,7 +233,7 @@ namespace Thesis.Tests.Director
         [Test]
         public void ARowOfAnotherSchemaIsRefusedWithItsLineNumber()
         {
-            string text = TestRows.Row(0).ToJsonLine() + "\n" + TestRows.Row(1).ToJsonLine().Replace("\"schema\":7,", "\"schema\":99,") + "\n";
+            string text = TestRows.Row(0).ToJsonLine() + "\n" + TestRows.Row(1).ToJsonLine().Replace("\"schema\":8,", "\"schema\":99,") + "\n";
 
             var e = Assert.Throws<InvalidDataException>(() => TelemetryWriter.Parse(text));
             Assert.That(e.Message, Does.Contain("Line 2").And.Contain("schema 99"));

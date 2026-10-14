@@ -15,8 +15,8 @@ MonoBehaviour:
   id: shard
   cost: 14
   damageType: 2
-  damage: 3
-  rangeTiles: 3
+  damage: 5
+  rangeTiles: 3.5
   fireIntervalTicks: 30
   splashRadiusTiles: 0
   slowTicks: 0

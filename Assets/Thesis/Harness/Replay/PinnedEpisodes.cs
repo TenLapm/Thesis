@@ -202,6 +202,7 @@ namespace Thesis.Harness
                 MovesPerWave = 2, ExtraMovePrice = 10f, ExtraMovePriceStep = 10f, BenchSlots = 4, FeedDuplicates = true, CorePlacement = true,
                 GearInventorySlots = 2, MergeCount = 3, GearShopRerollCost = 3f, GearShopRerollStep = 2f, DistinctCards = true, FirstRollTowersOnly = true, FreeFirstBuild = true,
                 ChoiceUpgradeCost = 6f, ChooseTargeting = true,
+                UpgradesPerTower = 2, ChoiceUpgradeCostStep = 4f, TowersOnWalls = true, HealCardWeight = 0.2f, StatGear = false, ExtractorGear = true,
             };
         }
 

@@ -950,5 +950,213 @@ namespace Thesis.Tests.Sim
             Assert.AreEqual(run.Telemetry.Count, rebuilt.Count);
             for (int i = 0; i < rebuilt.Count; i++) Assert.AreEqual(run.Telemetry[i].ToJsonLine(), rebuilt[i].ToJsonLine(), "row " + i);
         }
+
+        // ------------------------------------------------------------------ towers on walls and rocks (2026-10-14)
+
+        // 9 x 5 with a rock at (4,2), on the straight line. S is (0,2), C is (8,2).
+        private const string Rocky = @"
+            . . . . . . . . .
+            . . . . . . . . .
+            S . . . X . . . C
+            . . . . . . . . .
+            . . . . . . . . .";
+
+        [Test]
+        public void WithTowersOnWallsATowerStandsOnAWallOrARockAndTheWallComesBackWhenItLeaves()
+        {
+            SimConfig config = Config();
+            config.TowersOnWalls = true;
+            config.WallStock = 4;
+            config.FreeWallPickup = true;
+            config.MoveTowers = true;
+            MapData map = TestMaps.Parse(Rocky).Map;
+            var sim = new Simulation(config, map, OneTile(), new[] { TestTowers.Gun(cost: 5) }, 1, new EscalationPlanner(config, map));
+            SimState s = sim.State;
+
+            TestSims.Send(sim, SimCommand.PlaceTower(0, 3, 1));
+            Assert.AreEqual(0, s.Towers.Count, "not on open ground");
+
+            TestSims.Send(sim, SimCommand.PlaceShape(3, 1));
+            float wallHealth = s.Grid[3, 1].WallHealth;
+            TowerState tower = TestTowers.BuySlot(sim, 0, 3, 1);
+            Assert.AreEqual(Occupant.Tower, s.Grid[3, 1].Occupant);
+            Assert.IsFalse(Placement.CanPlaceTower(s.Grid, sim.Map, new TileCoord(3, 1), true), "one tower to a wall");
+
+            TestSims.Send(sim, SimCommand.SellWall(3, 1));
+            Assert.AreEqual(Occupant.Tower, s.Grid[3, 1].Occupant, "a wall with a tower on it stays down");
+
+            TestSims.Send(sim, SimCommand.MoveTower(3, 1, 4, 2));
+            Assert.AreEqual(new TileCoord(4, 2), tower.Tile, "onto the rock");
+            Assert.AreEqual(Occupant.Wall, s.Grid[3, 1].Occupant, "the wall it stood on is back");
+            Assert.AreEqual(wallHealth, s.Grid[3, 1].WallHealth);
+            Assert.AreEqual(Occupant.Tower, s.Grid[4, 2].Occupant);
+            Assert.IsFalse(s.Grid[4, 2].IsWalkable, "a rock stays a rock");
+
+            TestSims.Send(sim, SimCommand.MoveTower(4, 2, 5, 1));
+            Assert.AreEqual(new TileCoord(4, 2), tower.Tile, "not onto open ground");
+            TestSims.Send(sim, SimCommand.MoveTower(4, 2, 3, 1));
+            Assert.AreEqual(new TileCoord(3, 1), tower.Tile, "back onto the wall");
+
+            // Sold, the tower leaves its wall behind; taken up, the wall goes back to the stock.
+            TestSims.Send(sim, SimCommand.SellTower(3, 1));
+            Assert.IsFalse(tower.IsAlive);
+            Assert.AreEqual(Occupant.Wall, s.Grid[3, 1].Occupant);
+            int left = s.WallsLeft;
+            TestSims.Send(sim, SimCommand.SellWall(3, 1));
+            Assert.AreEqual(left + 1, s.WallsLeft);
+            Assert.AreEqual(Occupant.None, s.Grid[3, 1].Occupant);
+        }
+
+        [Test]
+        public void ATowerChewedThroughTakesItsWallWithItAndALiftedOneLeavesItBehind()
+        {
+            var grid = new SimGrid(TestMaps.Parse(Open).Map);
+            SimNode node = grid[3, 1];
+            grid.SetWall(node, 15, 6f, 7);
+            node.WallHealth = 4f;
+            grid.SetTower(node, 20, 8f, 0);
+            Assert.AreEqual(20, node.TerrainCost);
+            Assert.AreEqual(15, node.FoundationCost);
+            Assert.AreEqual(7, node.FoundationPiece);
+
+            SimNode copy = grid.Clone()[3, 1];
+            Assert.AreEqual(4f, copy.FoundationHealth, "a copy of the grid keeps the wall under the tower");
+
+            grid.LiftTower(node);
+            Assert.AreEqual(Occupant.Wall, node.Occupant);
+            Assert.AreEqual(7, node.PieceId);
+            Assert.AreEqual(15, node.TerrainCost);
+            Assert.AreEqual(4f, node.WallHealth);
+            Assert.AreEqual(6f, node.MaxWallHealth);
+            Assert.AreEqual(0, node.FoundationCost);
+
+            grid.SetTower(node, 20, 8f, 0);
+            grid.ClearWall(node); // what a breach does
+            Assert.AreEqual(Occupant.None, node.Occupant);
+            Assert.AreEqual(0, node.FoundationCost);
+        }
+
+        // ------------------------------------------------------------------ two upgrades: common, rare, epic
+
+        [Test]
+        public void WithTwoUpgradesATowerGoesCommonRareEpicAndEachCostsMore()
+        {
+            SimConfig config = Config();
+            config.ChoiceUpgradeCost = 10f;
+            config.ChoiceUpgradeCostStep = 5f;
+            config.UpgradesPerTower = 2;
+            Simulation sim = New(config);
+            SimState s = sim.State;
+            TowerState tower = TestTowers.BuySlot(sim, 0, 3, 1);
+            float budget = s.BuildBudget;
+            Assert.AreEqual(1, tower.Rarity);
+            Assert.AreEqual(1, tower.GearSlots);
+            Assert.AreEqual(10f, sim.UpgradePrice(tower));
+
+            TestSims.Send(sim, SimCommand.ChooseUpgrade(3, 1, 0));
+            Assert.AreEqual(2, tower.Rarity);
+            Assert.AreEqual(2, tower.GearSlots, "a rare tower has two gear slots");
+            Assert.AreEqual(budget - 10f, s.BuildBudget);
+            Assert.AreEqual(15f, sim.UpgradePrice(tower));
+            float damage = tower.Damage;
+
+            TestSims.Send(sim, SimCommand.ChooseUpgrade(3, 1, 0));
+            Assert.AreEqual(3, tower.Rarity);
+            Assert.AreEqual(0, tower.Upgrade2);
+            Assert.AreEqual(budget - 25f, s.BuildBudget);
+            Assert.AreEqual((float)(damage * 1.5f), tower.Damage, "the same choice twice stacks");
+
+            TestSims.Send(sim, SimCommand.ChooseUpgrade(3, 1, 1));
+            Assert.AreEqual(budget - 25f, s.BuildBudget, "epic is the top");
+
+            ulong hash = sim.ComputeHash();
+            tower.Upgrade2 = 1;
+            Assert.AreNotEqual(hash, sim.ComputeHash(), "the second upgrade is part of the state");
+        }
+
+        // ------------------------------------------------------------------ the heal card
+
+        [Test]
+        public void AHealCardGivesTheCoreBackHitPointsUpToItsMaximum()
+        {
+            SimConfig config = Config();
+            config.CoreMaxHp = 10;
+            config.HealCardWeight = 1000f;
+            config.HealCardAmount = 3;
+            Simulation sim = New(config);
+            SimState s = sim.State;
+            Assert.AreEqual(CardKind.Heal, s.Shop.Offers[0].Kind, "rig");
+            Assert.AreEqual(CardKind.Heal, s.Shop.Offers[1].Kind, "rig");
+
+            TestSims.Send(sim, SimCommand.TakeCoin(0));
+            Assert.IsFalse(s.Shop.Offers[0].Bought, "not taken at full health");
+
+            s.CoreHp = 9; // rig: as if a wave had hurt it
+            TestSims.Send(sim, SimCommand.TakeCoin(0));
+            Assert.AreEqual(10, s.CoreHp, "up to the maximum");
+            Assert.IsTrue(s.Shop.Offers[0].Bought);
+            s.CoreHp = 2;
+            TestSims.Send(sim, SimCommand.TakeCoin(1));
+            Assert.AreEqual(5, s.CoreHp);
+            Assert.AreEqual(PlacementKind.CoreHealed, s.PlacementLog[s.PlacementLog.Count - 1].Kind);
+        }
+
+        // ------------------------------------------------------------------ gear: no plain boosts, and the extractor
+
+        private static int GearIndex(GearDef[] gear, string id)
+        {
+            for (int i = 0; i < gear.Length; i++) if (gear[i].Id == id) return i;
+            throw new System.InvalidOperationException("no gear " + id);
+        }
+
+        [Test]
+        public void TheExtractorTakesATowersGearOffAndIsUsedUp()
+        {
+            SimConfig config = Config();
+            config.GearInventorySlots = 3;
+            Simulation sim = New(config);
+            SimState s = sim.State;
+            int chill = GearIndex(sim.GearLibrary, "chill"), extractor = GearIndex(sim.GearLibrary, "extractor");
+            TowerState tower = TestTowers.BuySlot(sim, 0, 3, 1);
+
+            s.GearInventory[0] = chill; // rig
+            TestSims.Send(sim, SimCommand.EquipGear(0, 3, 1));
+            Assert.AreEqual(chill, tower.Gear[0]);
+            Assert.Greater(tower.SlowTicks, 0);
+
+            s.GearInventory[1] = extractor;
+            TestSims.Send(sim, SimCommand.EquipGear(1, 3, 1));
+            Assert.AreEqual(TowerState.NoGear, tower.Gear[0], "the tower's gear is off");
+            Assert.AreEqual(0, tower.SlowTicks);
+            Assert.AreEqual(chill, s.GearInventory[0], "and in the inventory");
+            Assert.AreEqual(TowerState.NoGear, s.GearInventory[1], "the extractor is used up");
+
+            s.GearInventory[2] = extractor;
+            TestSims.Send(sim, SimCommand.EquipGear(2, 3, 1));
+            Assert.AreEqual(extractor, s.GearInventory[2], "a tower with no gear leaves it unused");
+        }
+
+        [Test]
+        public void WithoutStatGearTheShopsOfferOnlyGearThatDoesSomethingElse()
+        {
+            GearDef[] gear = GearRoster.Default();
+            var config = new SimConfig { StatGear = false, ExtractorGear = true, GearCardWeight = 5f };
+            var shop = new HashSet<string>();
+            var cards = new HashSet<string>();
+            for (int stock = 0; stock < 60; stock++)
+            {
+                foreach (TowerOffer item in ShopRoller.RollGearShop(3, stock, gear, 3, 0, config)) shop.Add(gear[item.GearIndex].Id);
+                foreach (TowerOffer card in ShopRoller.Roll(3, stock, 0, TestSims.GameTowers(), 4, config, gear))
+                    if (card.Kind == CardKind.Gear) cards.Add(gear[card.GearIndex].Id);
+            }
+            CollectionAssert.AreEquivalent(new[] { "sky-sight", "chill", "extractor" }, shop);
+            CollectionAssert.AreEquivalent(new[] { "sky-sight", "chill", "extractor" }, cards);
+
+            // Without a config: the old five and never the extractor, drawn as before.
+            var old = new HashSet<string>();
+            for (int stock = 0; stock < 60; stock++)
+                foreach (TowerOffer item in ShopRoller.RollGearShop(3, stock, gear, 3)) old.Add(gear[item.GearIndex].Id);
+            CollectionAssert.AreEquivalent(new[] { "scope", "whetstone", "sky-sight", "powder", "chill" }, old);
+        }
     }
 }

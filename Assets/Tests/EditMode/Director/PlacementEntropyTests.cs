@@ -160,6 +160,35 @@ namespace Thesis.Tests.Director
         }
 
         [Test]
+        public void MovingDeployingAndUpgradingATowerCountWhereItWent()
+        {
+            // 2026-10-14: the game is mostly rearranging towers now. A move counts its
+            // destination only; a deploy and an upgrade count their tile; gear does not.
+            var move = new WaveRecord.PlacementRow { Kind = WaveRecord.PlacementRow.MoveTower, Name = "archer", X = 9, Y = 1, Tiles = TestRows.Tiles(1, 1, 9, 1) };
+            var deploy = new WaveRecord.PlacementRow { Kind = WaveRecord.PlacementRow.Deploy, Name = "archer", X = 5, Y = 5, Tiles = TestRows.Tiles(5, 5) };
+            var upgrade = new WaveRecord.PlacementRow { Kind = WaveRecord.PlacementRow.Upgrade, Name = "archer+power", X = 7, Y = 7, Tiles = TestRows.Tiles(7, 7) };
+            var equip = new WaveRecord.PlacementRow { Kind = WaveRecord.PlacementRow.Equip, Name = "chill", X = 3, Y = 9, Tiles = TestRows.Tiles(3, 9) };
+            List<WaveRecord> rows = TestRows.List(TestRows.Row(1, move, deploy, upgrade, equip));
+
+            Assert.AreEqual(Math.Log(3.0) / Math.Log(36.0), PlacementEntropy.Compute(rows, Open12(), 1), 1e-12);
+            Assert.AreEqual(0.0, PlacementEntropy.Compute(rows, Open12(), 1, PlacementEntropy.DefaultPartition, PlacementScope.WallsOnly));
+        }
+
+        [Test]
+        public void WithTowersOnRocksARockCountsAsSomewhereToBuild()
+        {
+            MapData map = AsciiMap.Parse(@"
+                . . . . . .
+                . S . . X .
+                . . . . X .
+                . . . . X .
+                . . . . C .
+                . . . . . .").Map;
+            Assert.AreEqual(31, PlacementEntropy.Regions(map, 6));
+            Assert.AreEqual(34, PlacementEntropy.Regions(map, 6, towersOnRocks: true));
+        }
+
+        [Test]
         public void ItDoesNotMatterInWhichWaveOfTheWindowATileWasBuilt()
         {
             List<WaveRecord> early = TestRows.List(TestRows.Row(1, TestRows.Tower(1, 1), TestRows.Tower(3, 1), TestRows.Tower(3, 3)), TestRows.Row(2));

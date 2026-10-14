@@ -103,6 +103,10 @@ namespace Thesis.Sim
                 h.Add((int)n.Occupant);
                 h.Add(n.TowerId);
                 h.Add(n.PieceId);
+                h.Add(n.FoundationCost);
+                h.Add(n.FoundationHealth);
+                h.Add(n.FoundationMaxHealth);
+                h.Add(n.FoundationPiece);
                 h.Add(n.BestCost);
                 h.Add(n.NextIndex);
                 h.Add(n.SapperCost);
@@ -151,6 +155,7 @@ namespace Thesis.Sim
             h.Add(t.Combined);
             h.Add(t.OnBench);
             h.Add(t.Upgrade);
+            h.Add(t.Upgrade2);
             h.Add((int)t.Mode);
             h.Add(t.DamageDealt);
             h.Add(t.Shots);

@@ -15,12 +15,12 @@ MonoBehaviour:
   id: frost
   cost: 12
   damageType: 2
-  damage: 2
+  damage: 0.5
   rangeTiles: 2.5
   fireIntervalTicks: 30
-  splashRadiusTiles: 0
+  splashRadiusTiles: 1
   slowTicks: 75
-  slowFactor: 0.5
+  slowFactor: 0.4
   canHitFlying: 0
   digCost: 20
   towerHealth: 8
