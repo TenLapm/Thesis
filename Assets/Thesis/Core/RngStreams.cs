@@ -19,5 +19,8 @@ namespace Thesis.Core
 
         // The map generator (2026-10-13): rocks from the map seed.
         public const ulong Map = 8;
+
+        // Ore deposits on a generated map (2026-10-14), from the map seed.
+        public const ulong Deposits = 9;
     }
 }

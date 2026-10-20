@@ -44,6 +44,9 @@ namespace Thesis.Sim
         public int MovesBought;
         public int PhaseLogStart;
 
+        // The research tier reached (2026-10-14, SimConfig.BuildMenu): 1 at the start, at most 3.
+        public int ResearchLevel = 1;
+
         // The bench: a tower id per slot, TowerBench.Empty for a free one.
         public int[] Bench = new int[0];
 

@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Cannon
   m_EditorClassIdentifier: Assembly-CSharp::TowerDefAsset
   id: cannon
-  cost: 18
+  cost: 12
   damageType: 1
   damage: 6
   rangeTiles: 3
@@ -40,3 +40,4 @@ MonoBehaviour:
     slowTicksMul: 1
     extraTargets: 0
   shopWeight: 1
+  tier: 1

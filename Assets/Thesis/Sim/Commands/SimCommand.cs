@@ -42,6 +42,11 @@ namespace Thesis.Sim
         EquipOverflow,   // put spare piece A on the tower on (X, Y), or, with B > 0, in bench slot B - 1
         SellOverflow,    // sell spare piece A
         FeedCard,     // merge the tower card in slot A into the tower on (X, Y), or, with B > 0, in bench slot B - 1
+        BuildCollector,  // a collector on the ore deposit at (X, Y) (2026-10-14)
+        BuyTower,        // the build menu: tower type A of the roster on (X, Y)
+        Research,        // the next research tier
+        CraftGear,       // gear piece A into the inventory
+        RepairCore,      // hit points back for the core
     }
 
     public readonly struct SimCommand
@@ -152,6 +157,16 @@ namespace Thesis.Sim
         public static SimCommand SellOverflow(int index) { return new SimCommand(SimCommandKind.SellOverflow, 0, 0, index); }
 
         public static SimCommand FeedCard(int offerSlot, int x, int y) { return new SimCommand(SimCommandKind.FeedCard, x, y, offerSlot); }
+
+        public static SimCommand BuildCollector(int x, int y) { return new SimCommand(SimCommandKind.BuildCollector, x, y, 0); }
+
+        public static SimCommand BuyTower(int towerIndex, int x, int y) { return new SimCommand(SimCommandKind.BuyTower, x, y, towerIndex); }
+
+        public static SimCommand Research() { return new SimCommand(SimCommandKind.Research, 0, 0, 0); }
+
+        public static SimCommand CraftGear(int piece) { return new SimCommand(SimCommandKind.CraftGear, 0, 0, piece); }
+
+        public static SimCommand RepairCore() { return new SimCommand(SimCommandKind.RepairCore, 0, 0, 0); }
 
         public static SimCommand FeedCardOnBench(int offerSlot, int benchSlot) { return new SimCommand(SimCommandKind.FeedCard, 0, 0, offerSlot, benchSlot + 1); }
 

@@ -244,6 +244,26 @@ public class TowerView : MonoBehaviour
         }
     }
 
+    // A red ring at the tower's foot while it has no power (SimConfig.PowerRule).
+    private LineRenderer noPower;
+
+    public void SetPowered(bool powered)
+    {
+        if (powered && noPower == null) return;
+        if (noPower == null)
+        {
+            noPower = Line(transform, "NoPower", new Color(1f, 0.25f, 0.2f, 0.95f), cell * 0.08f, true);
+            const int points = 24;
+            noPower.positionCount = points;
+            for (int i = 0; i < points; i++)
+            {
+                float a = i * Mathf.PI * 2f / points;
+                noPower.SetPosition(i, transform.position + new Vector3(Mathf.Cos(a) * cell * 0.48f, cell * 0.12f, Mathf.Sin(a) * cell * 0.48f));
+            }
+        }
+        noPower.enabled = !powered;
+    }
+
     public static LineRenderer Line(Transform parent, string name, Color color, float width, bool loop)
     {
         var go = new GameObject(name);

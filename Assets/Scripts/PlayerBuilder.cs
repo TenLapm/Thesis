@@ -20,6 +20,7 @@ public enum BuildTool
     EquipGear, // a piece picked up from the gear inventory, waiting for a tower
     Upgrade,   // click a tower to give it its one upgrade; a choice of buffs then opens
     Target,    // click a tower to change which enemy it shoots
+    Collector, // click an ore deposit to build a collector on it (2026-10-14)
 }
 
 // Player input for building, and the visuals of what is built.
@@ -67,6 +68,9 @@ public class PlayerBuilder : MonoBehaviour
 
     // The shop offer in the hand while Tool is Tower; -1 otherwise.
     public int SelectedOffer { get; private set; } = -1;
+
+    // The build menu's tower in the hand (SimConfig.BuildMenu), by its roster index; -1 otherwise.
+    public int SelectedMenuTower { get; private set; } = -1;
 
     // The tile under the mouse, or null when the mouse is over the HUD or off the
     // board. Refreshed every frame; the ghost and the tooltip read it.
@@ -193,6 +197,7 @@ public class PlayerBuilder : MonoBehaviour
     {
         Tool = tool;
         SelectedOffer = -1;
+        SelectedMenuTower = -1;
         SelectedShopGear = -1;
         GearFrom = null;
         TowerFrom = null;
@@ -239,6 +244,7 @@ public class PlayerBuilder : MonoBehaviour
     public TowerDef HandTower(out int level)
     {
         level = 1;
+        if (Tool == BuildTool.Tower && SelectedMenuTower >= 0) return Host.Sim.TowerLibrary[SelectedMenuTower];
         if (Tool == BuildTool.Tower && OfferDef(SelectedOffer) != null) { level = Host.State.Shop.Offers[SelectedOffer].Level; return OfferDef(SelectedOffer); }
         TowerState held = Tool == BuildTool.Deploy ? Benched(SelectedBench) : Tool == BuildTool.MoveTower && TowerFrom != null ? TowerAt(TowerFrom) : null;
         if (held == null) return null;
@@ -457,6 +463,45 @@ public class PlayerBuilder : MonoBehaviour
 
     public bool MayMoveTower => Host.Config.MoveTowers && IsBuildPhase;
 
+    // --- the build menu and the ore economy (2026-10-14) ---
+
+    public bool BuildMenu => Host.Config.BuildMenu;
+
+    public bool HasDeposits => Host.Map.Deposits.Length > 0;
+
+    public bool TowerUnlocked(int index) { return Host.Sim.TowerLibrary[index].Tier <= Host.State.ResearchLevel; }
+
+    // A tower of the menu into the hand. It stays there after it is placed, for the next.
+    public void SelectMenuTower(int index)
+    {
+        if (index < 0 || index >= Host.Sim.TowerLibrary.Length || IsBuildingBlocked) return;
+        if (Tool == BuildTool.Tower && SelectedMenuTower == index) { SelectWall(); return; }
+        if (!TowerUnlocked(index)) return;
+        Hold(BuildTool.Tower);
+        SelectedMenuTower = index;
+    }
+
+    public void SelectCollector() { if (HasDeposits) Hold(BuildTool.Collector); }
+
+    public bool CanBuildCollector(Node node)
+    {
+        if (node == null || !IsBuildPhase) return false;
+        var tile = new TileCoord(node.gridX, node.gridY);
+        return Host.Map.DepositAt(tile) >= 0 && Host.State.Grid[node.gridX, node.gridY].Occupant == Occupant.None
+               && tile != Host.State.Core && Host.State.BuildBudget >= Host.Config.CollectorPrice;
+    }
+
+    public void Research() { if (!IsBuildingBlocked) Host.Submit(SimCommand.Research()); }
+
+    public bool CanRepair => Host.Config.RepairPrice >= 0f && IsBuildPhase && Host.State.CoreHp < Host.Config.CoreMaxHp && Host.State.BuildBudget >= Host.Config.RepairPrice;
+
+    public void RepairCore() { if (CanRepair && !IsBuildingBlocked) Host.Submit(SimCommand.RepairCore()); }
+
+    public void CraftGear(int piece) { if (!IsBuildingBlocked) Host.Submit(SimCommand.CraftGear(piece)); }
+
+    // What the core and the standing collectors will pay when the next wave is over.
+    public int ExpectedIncome => Host.Config.StipendPerWave + Host.Sim.CollectorIncome(Host.State);
+
     // --- rerolling the cards ---
 
     public bool RerollsOn => Host.Config.RerollCost >= 0f;
@@ -576,7 +621,8 @@ public class PlayerBuilder : MonoBehaviour
             if (UpgradePending == null && (upgradeNode != null || upgradeBench >= 0)) CancelUpgrade(); // the tower went
 
             // The shop's offers change under a tower in the hand when a wave resolves.
-            if (Tool == BuildTool.Tower && !CanPickUp(SelectedOffer)) SelectWall();
+            if (Keyboard.current.cKey.wasPressedThisFrame) SelectCollector();
+            if (Tool == BuildTool.Tower && SelectedMenuTower < 0 && !CanPickUp(SelectedOffer)) SelectWall();
             if (Tool == BuildTool.Gear && SelectedShopGear < 0 && !CanPickUp(SelectedOffer)) SelectWall();
             if (Tool == BuildTool.Gear && SelectedShopGear >= 0 && (SelectedShopGear >= Host.State.GearShop.Offers.Length || Host.State.GearShop.Offers[SelectedShopGear].Bought)) SelectWall();
             if (Tool == BuildTool.Sell && !MaySell) dragging = false;
@@ -624,6 +670,7 @@ public class PlayerBuilder : MonoBehaviour
 
         DrawNewWalls();
         DrawChewProgress();
+        DrawPower();
         ShowCoreZone();
     }
 
@@ -640,8 +687,16 @@ public class PlayerBuilder : MonoBehaviour
             case BuildTool.Sell:
                 if (first || Host.State.Grid[node.gridX, node.gridY].Occupant == Occupant.Wall) TrySell(node.gridX, node.gridY);
                 break;
+            case BuildTool.Collector:
+                if (first && CanBuildCollector(node)) Host.Submit(SimCommand.BuildCollector(node.gridX, node.gridY));
+                break;
             case BuildTool.Tower:
                 if (!first) break;
+                if (SelectedMenuTower >= 0)
+                {
+                    Host.Submit(SimCommand.BuyTower(SelectedMenuTower, node.gridX, node.gridY));
+                    break;
+                }
                 // On a tower of the card's type the card is merged into it; on open ground it is placed.
                 if (TowerAt(node) != null) Host.Submit(SimCommand.FeedCard(SelectedOffer, node.gridX, node.gridY));
                 else if (TryBuyOffer(SelectedOffer, node.gridX, node.gridY)) SelectWall();
@@ -927,6 +982,12 @@ public class PlayerBuilder : MonoBehaviour
                 RefreshTower(record.TowerId);
                 continue;
             }
+            if (record.Kind == PlacementKind.CollectorBuilt)
+            {
+                Node at = gridManager.grid[record.OriginX, record.OriginY];
+                if (Host.State.Grid[at.gridX, at.gridY].Occupant == Occupant.Collector) DrawCollector(at, cellSize);
+                continue;
+            }
             if (record.Kind == PlacementKind.CorePlaced)
             {
                 Host.ShowCore();
@@ -972,6 +1033,87 @@ public class PlayerBuilder : MonoBehaviour
         node.visualObject = wall;
         wallTiles.Add(node);
     }
+
+    // --- power (SimConfig.PowerRule, 2026-10-20) ---
+
+    private readonly List<LineRenderer> powerRings = new List<LineRenderer>();
+
+    public bool PowerRule => Host.Config.PowerRule;
+
+    // Every tower shows whether it has power; in a build phase, and with a tower in the
+    // hand, faint rings show how far the core and each collector reach.
+    private void DrawPower()
+    {
+        if (!PowerRule || Host == null) return;
+        foreach (KeyValuePair<int, TowerView> pair in towerViews)
+            if (pair.Value != null) pair.Value.SetPowered(Host.State.Towers[pair.Key].Powered);
+
+        bool show = IsBuildPhase || Tool == BuildTool.Tower || Tool == BuildTool.MoveTower || Tool == BuildTool.Deploy;
+        int used = 0;
+        float cell = gridManager.nodeRadius * 2f;
+        if (show)
+        {
+            Ring(ref used, Host.State.Core, Host.Config.CorePowerRadius, cell);
+            foreach (Deposit d in Host.Map.Deposits)
+                if (Host.State.Grid[d.Tile.X, d.Tile.Y].Occupant == Occupant.Collector) Ring(ref used, d.Tile, Host.Config.CollectorPowerRadius, cell);
+        }
+        for (int i = used; i < powerRings.Count; i++) powerRings[i].enabled = false;
+    }
+
+    private void Ring(ref int used, TileCoord centre, float radiusTiles, float cell)
+    {
+        if (used >= powerRings.Count) powerRings.Add(TowerView.Line(transform, "PowerRange", new Color(1f, 0.85f, 0.3f, 0.35f), 0.1f, true));
+        LineRenderer ring = powerRings[used++];
+        const int points = 40;
+        if (ring.positionCount != points) ring.positionCount = points;
+        Vector3 at = gridManager.grid[centre.X, centre.Y].worldPosition + Vector3.up * 0.1f;
+        float r = (radiusTiles + 0.5f) * cell;
+        for (int i = 0; i < points; i++)
+        {
+            float a = i * Mathf.PI * 2f / points;
+            ring.SetPosition(i, at + new Vector3(Mathf.Cos(a) * r, 0f, Mathf.Sin(a) * r));
+        }
+        ring.enabled = true;
+    }
+
+    // What a tower on this tile would get: power, or why not. "" without the rule.
+    public string PowerNote(Node node)
+    {
+        if (!PowerRule || node == null) return "";
+        var tile = new TileCoord(node.gridX, node.gridY);
+        if (Simulation.InPowerReach(Host.State.Core, Host.Config.CorePowerRadius, tile)) return "  \u00b7  powered by the core";
+        foreach (Deposit d in Host.Map.Deposits)
+            if (Host.State.Grid[d.Tile.X, d.Tile.Y].Occupant == Occupant.Collector && Simulation.InPowerReach(d.Tile, Host.Config.CollectorPowerRadius, tile))
+                return "  \u00b7  powered by a collector";
+        return "  \u00b7  NO POWER here: it will not fire";
+    }
+
+    // Towers with power, and towers on the board.
+    public void PowerCount(out int powered, out int standing)
+    {
+        powered = standing = 0;
+        foreach (TowerState t in Host.State.Towers)
+        {
+            if (!t.IsAlive || t.OnBench) continue;
+            standing++;
+            if (t.Powered) powered++;
+        }
+    }
+
+    // A collector: a squat block in the ore's gold, taller than a wall so it reads as a building.
+    private void DrawCollector(Node node, float cellSize)
+    {
+        RemoveVisual(node);
+        float tall = cellSize * Mathf.Max(0.45f, wallHeight * 1.6f);
+        GameObject block = Instantiate(standardWallPrefab, node.worldPosition + new Vector3(0, tall / 2f, 0), Quaternion.identity);
+        block.name = "Collector";
+        block.transform.localScale = new Vector3(cellSize * 0.7f, tall, cellSize * 0.7f);
+        ApplyShapeColor(block, CollectorColor);
+        node.visualObject = block;
+        wallTiles.Add(node);
+    }
+
+    public static readonly Color CollectorColor = new Color(1f, 0.78f, 0.2f);
 
     // A tower left this tile alive: the tile shows what the simulation has there now,
     // which is the wall the tower stood on, if it stood on one (SimConfig.TowersOnWalls).
@@ -1033,6 +1175,9 @@ public class PlayerBuilder : MonoBehaviour
                 break;
             case SimEventKind.TowerDestroyed:
                 RemoveVisual(gridManager.grid[e.IntB, e.IntC]);
+                break;
+            case SimEventKind.CollectorDestroyed:
+                RemoveVisual(gridManager.grid[e.IntA, e.IntB]);
                 break;
             // IntA = tower id, IntB = target agent id. The hit is already resolved;
             // this only shows it. A dead agent keeps its last position in the list.

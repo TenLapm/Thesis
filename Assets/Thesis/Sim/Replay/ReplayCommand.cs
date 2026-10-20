@@ -74,6 +74,11 @@ namespace Thesis.Sim
                 case SimCommandKind.ChooseUpgrade: return B > 0 ? SimCommand.ChooseUpgradeOnBench(B - 1, A) : SimCommand.ChooseUpgrade(X, Y, A);
                 case SimCommandKind.SetTargeting: return B > 0 ? SimCommand.SetTargetingOnBench(B - 1, (TargetingMode)A) : SimCommand.SetTargeting(X, Y, (TargetingMode)A);
                 case SimCommandKind.FeedCard: return B > 0 ? SimCommand.FeedCardOnBench(A, B - 1) : SimCommand.FeedCard(A, X, Y);
+                case SimCommandKind.BuildCollector: return SimCommand.BuildCollector(X, Y);
+                case SimCommandKind.BuyTower: return SimCommand.BuyTower(A, X, Y);
+                case SimCommandKind.Research: return SimCommand.Research();
+                case SimCommandKind.CraftGear: return SimCommand.CraftGear(A);
+                case SimCommandKind.RepairCore: return SimCommand.RepairCore();
                 default: throw new InvalidDataException("[Replay] Command '" + Cmd + "' at tick " + Tick + " cannot be replayed by this version.");
             }
         }

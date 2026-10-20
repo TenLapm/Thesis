@@ -89,7 +89,13 @@ namespace Thesis.Sim
                     node.WallHealth = (float)(node.WallHealth - (float)(agent.DigRate * dt));
                     if (node.WallHealth <= 0f)
                     {
-                        if (node.Occupant == Occupant.Tower)
+                        if (node.Occupant == Occupant.Collector)
+                        {
+                            // A collector chewed through pays nothing this wave.
+                            grid.ClearWall(node);
+                            events?.Add(SimEvent.CollectorDestroyed(node.X, node.Y));
+                        }
+                        else if (node.Occupant == Occupant.Tower)
                         {
                             // Chewing through a tower's tile destroys the tower. It
                             // pays the player nothing by default (spec gap S12).
@@ -115,7 +121,11 @@ namespace Thesis.Sim
                 // target, so no matter how fast the agent is or how large dt is, it
                 // can never overshoot past a tile in a single step - it always stops
                 // at Next and re-samples next tick, so no built tile is ever skipped.
-                SimNode next = grid.NextOf(node, agent.Movement);
+                // A raider follows the raid field while a collector stands and it can reach one.
+                SimNode next = agent.TargetsCollectors && grid.RaidGoals > 0 && node.RaidCost != SimNode.Infinity
+                    ? grid.NextRaid(node) : grid.NextOf(node, agent.Movement);
+                // A lure tower within reach pulls every enemy on foot, raiders too.
+                if (grid.LureGoals > 0 && node.LureCost <= GearDef.LureRadius * FlowField.CardinalCost) next = grid.NextLure(node);
                 if (next != null)
                 {
                     agent.Position = Vec2f.MoveTowards(agent.Position, next.Position, (float)(speed * dt));

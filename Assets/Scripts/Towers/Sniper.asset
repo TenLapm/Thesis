@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Sniper
   m_EditorClassIdentifier: Assembly-CSharp::TowerDefAsset
   id: sniper
-  cost: 20
+  cost: 18
   damageType: 0
   damage: 40
   rangeTiles: 8
@@ -41,3 +41,4 @@ MonoBehaviour:
     slowTicksMul: 1
     extraTargets: 1
   shopWeight: 1
+  tier: 3

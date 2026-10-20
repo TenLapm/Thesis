@@ -27,6 +27,7 @@ namespace Thesis.Sim
 
         public int WallsBreached;
         public int TowersDestroyed;
+        public int CollectorsLost;   // chewed through in this wave (2026-10-14)
 
         // Effective damage dealt to this wave's agents, per DamageType.
         public float[] DamageByType = new float[DamageTypes.Count];

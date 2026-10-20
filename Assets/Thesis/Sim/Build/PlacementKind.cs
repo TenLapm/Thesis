@@ -54,5 +54,11 @@ namespace Thesis.Sim
 
         // A heal card taken: Refund is the hit points the core got back (2026-10-14).
         CoreHealed = 23,
+
+        // 2026-10-14, the ore economy. A collector built on a deposit (Cost) or sold
+        // (Refund); a research tier bought (ShapeName "tier2"/"tier3", Cost).
+        CollectorBuilt = 24,
+        CollectorSold = 25,
+        Researched = 26,
     }
 }

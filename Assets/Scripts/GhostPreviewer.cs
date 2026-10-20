@@ -63,6 +63,20 @@ public class GhostPreviewer : MonoBehaviour
                     break;
 
                 case BuildTool.Tower:
+                    if (playerBuilder.SelectedMenuTower >= 0)
+                    {
+                        // The build menu: any free wall or rock, for the tower's price.
+                        TowerDef menu = host.Sim.TowerLibrary[playerBuilder.SelectedMenuTower];
+                        tiles.Add(new Vector2Int(hover.gridX, hover.gridY));
+                        bool afford = host.State.BuildBudget >= menu.Cost;
+                        bool spot = playerBuilder.IsFreeTile(hover);
+                        valid = afford && spot;
+                        ringRadius = menu.RangeTiles * cell;
+                        HoverText = !spot ? (playerBuilder.TowersOnWalls ? "Towers stand on a wall or a rock" : "Cannot stand here")
+                                  : !afford ? "Not enough ore: " + menu.Cost
+                                  : menu.Id + "  " + menu.Cost + " ore" + playerBuilder.PowerNote(hover);
+                        break;
+                    }
                     TowerDef def = playerBuilder.OfferDef(playerBuilder.SelectedOffer);
                     if (def == null) break;
                     TowerOffer card = host.State.Shop.Offers[playerBuilder.SelectedOffer];
@@ -121,6 +135,20 @@ public class GhostPreviewer : MonoBehaviour
                               : valid ? "Upgrade " + tower.Def.Id + " to " + TowerView.LevelName(tower.Rarity + 1).ToLowerInvariant() + " for " + playerBuilder.UpgradeCostFor(tower).ToString("0.#") + ": click, then choose"
                               : "This upgrade costs " + playerBuilder.UpgradeCostFor(tower).ToString("0.#");
                     break;
+
+                case BuildTool.Collector:
+                {
+                    int deposit = host.Map.DepositAt(new Thesis.Core.TileCoord(hover.gridX, hover.gridY));
+                    if (deposit < 0) { HoverText = "Collectors go on ore deposits"; break; }
+                    tiles.Add(new Vector2Int(hover.gridX, hover.gridY));
+                    valid = playerBuilder.CanBuildCollector(hover);
+                    int yield = host.Map.Deposits[deposit].Yield;
+                    HoverText = host.State.Grid[hover.gridX, hover.gridY].Occupant == Occupant.Collector ? "A collector: +" + yield + " ore after every wave it survives"
+                              : !playerBuilder.IsBuildPhase ? "Collectors are built between waves"
+                              : valid ? "Collector: " + host.Config.CollectorPrice.ToString("0.#") + " ore, then +" + yield + " after every wave it survives"
+                              : "Not enough ore: " + host.Config.CollectorPrice.ToString("0.#");
+                    break;
+                }
 
                 case BuildTool.Target:
                     if (tower == null) break;
@@ -185,7 +213,7 @@ public class GhostPreviewer : MonoBehaviour
                         tiles.Add(new Vector2Int(hover.gridX, hover.gridY));
                         ringRadius = carried.RangeTiles * cell;
                         valid = playerBuilder.IsFreeTile(hover);
-                        HoverText = valid ? "Move " + playerBuilder.Describe(carried) + " here" : playerBuilder.TowersOnWalls ? "Towers stand on a wall or a rock" : "Cannot stand here";
+                        HoverText = valid ? "Move " + playerBuilder.Describe(carried) + " here" + playerBuilder.PowerNote(hover) : playerBuilder.TowersOnWalls ? "Towers stand on a wall or a rock" : "Cannot stand here";
                     }
                     break;
 

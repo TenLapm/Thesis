@@ -55,10 +55,62 @@ namespace Thesis.Harness
 
             // Walls first: they bend the route, and the towers then go where it runs.
             LayWalls(sim, send);
+            Economy(sim, send);
             TakeCards(sim, send);
             MergeSets(sim, send);
             UseMoves(sim, send);
             Spend(sim, send);
+        }
+
+        // ------------------------------------------------------------------ the ore economy (2026-10-14)
+
+        // With the build menu: a collector on the deposit nearest the core while it can
+        // pay for one and still keep a tower's price; research at waves 4 and 8; then
+        // towers from the menu, the unlocked types in turn, onto SentryPolicy's tile.
+        private void Economy(Simulation sim, Action<SimCommand> send)
+        {
+            SimState s = sim.State;
+            SimConfig config = sim.Config;
+            if (!config.BuildMenu) return;
+            MapData map = sim.Map;
+
+            int standing = 0;
+            for (int d = 0; d < map.Deposits.Length; d++) if (s.Grid.Get(map.Deposits[d].Tile).Occupant == Occupant.Collector) standing++;
+            for (int guard = 0; guard < 2 && standing < 2 + s.WaveIndex / 2 && s.BuildBudget >= config.CollectorPrice + 8f; guard++)
+            {
+                int best = -1, bestDistance = int.MaxValue;
+                for (int d = 0; d < map.Deposits.Length; d++)
+                {
+                    TileCoord t = map.Deposits[d].Tile;
+                    if (s.Grid.Get(t).Occupant != Occupant.None) continue;
+                    int distance = Math.Abs(t.X - s.Core.X) + Math.Abs(t.Y - s.Core.Y);
+                    if (distance < bestDistance) { bestDistance = distance; best = d; }
+                }
+                if (best < 0) break;
+                send(SimCommand.BuildCollector(map.Deposits[best].Tile.X, map.Deposits[best].Tile.Y));
+                standing++;
+            }
+
+            if ((s.WaveIndex >= 4 && s.ResearchLevel == 1 || s.WaveIndex >= 8 && s.ResearchLevel == 2) && s.BuildBudget >= sim.ResearchPrice) send(SimCommand.Research());
+
+            for (int guard = 0; guard < 3; guard++)
+            {
+                int unlocked = 0;
+                for (int i = 0; i < sim.TowerLibrary.Length; i++) if (sim.TowerLibrary[i].Tier <= s.ResearchLevel) unlocked++;
+                if (unlocked == 0) break;
+                int pick = (s.WaveIndex + s.Towers.Count) % unlocked, index = -1;
+                for (int i = 0; i < sim.TowerLibrary.Length && index < 0; i++)
+                    if (sim.TowerLibrary[i].Tier <= s.ResearchLevel && pick-- == 0) index = i;
+                TowerDef def = sim.TowerLibrary[index];
+                TileCoord tile;
+                if (s.BuildBudget < def.Cost || !sentry.FindBestTile(sim, def, out tile)) break;
+                SentryPolicy.LayFoundation(sim, tile, send);
+                send(SimCommand.BuyTower(index, tile.X, tile.Y));
+            }
+
+            if (s.CoreHp < config.CoreMaxHp / 2 && s.BuildBudget >= config.RepairPrice + 10f) send(SimCommand.RepairCore());
+            int craft = s.WaveIndex % sim.GearLibrary.Length;
+            if (s.WaveIndex % 3 == 2 && s.BuildBudget >= sim.GearLibrary[craft].Price + 10f) send(SimCommand.CraftGear(craft));
         }
 
         // ------------------------------------------------------------------ the card

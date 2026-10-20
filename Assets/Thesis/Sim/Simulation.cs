@@ -234,8 +234,14 @@ namespace Thesis.Sim
             CountCombatEvents(s, firstCombatEvent);
             RemoveDead(s.Live);
 
-            // One rebuild per tick (both fields), after every agent has acted.
-            if (fieldDirty) fields.Generate(s.Grid, map.Core);
+            // One rebuild per tick (both fields), after every agent has acted. A tower or
+            // a collector chewed through can take power from others: worked out again now,
+            // so the towers that lost it are dark from the next tick.
+            if (fieldDirty)
+            {
+                fields.Generate(s.Grid, map.Core);
+                RecomputePower(s);
+            }
 
             // 4b. The backstop that replaces what the lifetime clock used to
             // guarantee: a wave that has run for MaxWaveSeconds is ended by force.
@@ -245,8 +251,9 @@ namespace Thesis.Sim
             if (s.Phase == SimPhase.Resolving && s.CoreHp > 0 && !AnyLiveAgentOfWave(s, s.WaveIndex))
             {
                 CloseWave(s, coreDestroyed: false);
-                // Stipend at intermission start, as WaveSpawner.IntermissionRoutine did.
-                s.BuildBudget += config.StipendPerWave;
+                // Stipend at intermission start, as WaveSpawner.IntermissionRoutine did, and
+                // the ore of every collector that stood through the wave (2026-10-14).
+                s.BuildBudget += config.StipendPerWave + CollectorIncome(s);
                 if (config.WallStock > 0) s.WallsLeft += config.WallStockPerWave;
                 s.RelaysLeft = config.WallRelayPerWave;
                 s.MovesLeft = config.MovesPerWave;
@@ -452,6 +459,23 @@ namespace Thesis.Sim
                     }
                     break;
                 case SimCommandKind.FeedCard: FeedCard(s, command); break;
+                case SimCommandKind.BuildCollector: BuildCollector(s, new TileCoord(command.X, command.Y)); break;
+                case SimCommandKind.BuyTower: BuyTower(s, command.A, new TileCoord(command.X, command.Y)); break;
+                case SimCommandKind.Research: Research(s); break;
+                case SimCommandKind.CraftGear:
+                    if (config.BuildMenu && command.A >= 0 && command.A < gearLibrary.Length && gearLibrary[command.A].OnSale(config)
+                        && gearLibrary[command.A].Tier <= s.ResearchLevel)
+                        StoreGear(s, command.A, gearLibrary[command.A].Price);
+                    break;
+                case SimCommandKind.RepairCore:
+                    if (config.RepairPrice >= 0f && s.CoreHp < config.CoreMaxHp && s.BuildBudget >= config.RepairPrice && InBuildPhase(s))
+                    {
+                        int before = s.CoreHp;
+                        s.BuildBudget -= config.RepairPrice;
+                        s.CoreHp = Math.Min(config.CoreMaxHp, s.CoreHp + config.HealCardAmount);
+                        s.PlacementLog.Add(new PlacementRecord { Kind = PlacementKind.CoreHealed, Tick = s.Tick, ShapeName = "repair", Cost = config.RepairPrice, Refund = s.CoreHp - before });
+                    }
+                    break;
                 case SimCommandKind.MergeTower: MergeTower(s, command); break;
                 case SimCommandKind.ChooseUpgrade:
                     if (config.ChoiceUpgradeCost >= 0f && InBuildPhase(s) && TowerUpgradeChoices.IsValid(command.A))
@@ -554,6 +578,7 @@ namespace Thesis.Sim
                     }
                     break;
                 case SimCommandKind.SellWall:
+                    if (SellCollector(s, new TileCoord(command.X, command.Y))) break;
                     if (config.WallStock > 0)
                     {
                         TakeUpWall(s, new TileCoord(command.X, command.Y));
@@ -586,6 +611,9 @@ namespace Thesis.Sim
                     throw new InvalidOperationException("[Sim] Unknown command kind " + command.Kind + ".");
             }
 
+            SyncTowerTerrain(s);
+            RecomputePower(s);
+
             // Spare gear takes the first inventory slot that has become free.
             while (s.GearOverflow.Count > 0)
             {
@@ -610,6 +638,186 @@ namespace Thesis.Sim
         public float UpgradePrice(TowerState tower)
         {
             return (float)(config.ChoiceUpgradeCost + (float)(config.ChoiceUpgradeCostStep * tower.UpgradeCount));
+        }
+
+        // --- the ore economy (2026-10-14) ---
+
+        // The ore the standing collectors pay after a wave: each its deposit's yield.
+        public int CollectorIncome(SimState s)
+        {
+            int ore = 0;
+            for (int d = 0; d < map.Deposits.Length; d++)
+            {
+                Deposit deposit = map.Deposits[d];
+                if (s.Grid.Get(deposit.Tile).Occupant != Occupant.Collector) continue;
+                ore += deposit.Yield;
+                if (NearBeacon(s, deposit.Tile)) ore++;
+            }
+            return ore;
+        }
+
+        // A standing tower with beacon gear within GearDef.BeaconRange tiles of `tile`.
+        public static bool NearBeacon(SimState s, TileCoord tile)
+        {
+            int reach = (int)(float)(GearDef.BeaconRange * GearDef.BeaconRange);
+            for (int t = 0; t < s.Towers.Count; t++)
+            {
+                TowerState tower = s.Towers[t];
+                if (!tower.IsAlive || tower.OnBench || !tower.Beacon) continue;
+                int dx = tower.Tile.X - tile.X, dy = tower.Tile.Y - tile.Y;
+                if (dx * dx + dy * dy <= reach) return true;
+            }
+            return false;
+        }
+
+        // A tower's tile follows its gear (lure gear: marked for the lure field, and three
+        // times as tough). Run after every command, so equipping, taking off,
+        // moving and deploying all end with the right tile; the fields are rebuilt only
+        // when a tile changed. A tower on a rock is static geometry and is left alone.
+        private void SyncTowerTerrain(SimState s)
+        {
+            bool changed = false;
+            for (int t = 0; t < s.Towers.Count; t++)
+            {
+                TowerState tower = s.Towers[t];
+                if (!tower.IsAlive || tower.OnBench) continue;
+                SimNode node = s.Grid.Get(tower.Tile);
+                if (!node.IsWalkable || node.Occupant != Occupant.Tower || node.TowerId != tower.Id) continue;
+                float full = Math.Max(0.5f, tower.Def.TowerHealth);
+                if (tower.Lure) full = (float)(full * GearDef.LureHealthFactor);
+                if (node.Lure == tower.Lure && node.MaxWallHealth == full) continue;
+                // Damage taken so far is kept as a share of the whole.
+                float share = node.MaxWallHealth > 0f ? (float)(node.WallHealth / node.MaxWallHealth) : 1f;
+                node.Lure = tower.Lure;
+                node.MaxWallHealth = full;
+                node.WallHealth = (float)(full * share);
+                changed = true;
+            }
+            if (changed) fields.Generate(s.Grid, map.Core);
+        }
+
+        // --- power (SimConfig.PowerRule, 2026-10-20) ---
+
+        // Which towers have power. The sources are the core, then every standing collector
+        // in deposit order, each with so many places for towers within its radius. As many
+        // towers as possible are given power (a matching, found by augmenting paths), and the
+        // order of towers by id and of sources as listed decides between equal answers, so
+        // the result is the same on every runtime. A greedy pass was not enough: a tower in
+        // reach of both the core and a collector could take a core place that a tower in
+        // reach of the core only needed.
+        private readonly List<TileCoord> powerSource = new List<TileCoord>();
+        private readonly List<float> powerRadius = new List<float>();
+        private readonly List<int> powerSlotSource = new List<int>();
+        private int[] slotTower = new int[0];
+        private bool[] slotSeen = new bool[0];
+
+        public void RecomputePower(SimState s)
+        {
+            List<TowerState> towers = s.Towers;
+            if (!config.PowerRule)
+            {
+                for (int t = 0; t < towers.Count; t++) towers[t].Powered = true;
+                return;
+            }
+
+            powerSource.Clear();
+            powerRadius.Clear();
+            powerSlotSource.Clear();
+            AddSource(map.Core, config.CorePowerRadius, config.CorePowerCapacity);
+            for (int d = 0; d < map.Deposits.Length; d++)
+                if (s.Grid.Get(map.Deposits[d].Tile).Occupant == Occupant.Collector)
+                    AddSource(map.Deposits[d].Tile, config.CollectorPowerRadius, config.CollectorPowerCapacity);
+
+            int slots = powerSlotSource.Count;
+            if (slotTower.Length < slots) { slotTower = new int[slots]; slotSeen = new bool[slots]; }
+            for (int k = 0; k < slots; k++) slotTower[k] = -1;
+            for (int t = 0; t < towers.Count; t++)
+            {
+                TowerState tower = towers[t];
+                tower.Powered = false;
+                if (!tower.IsAlive || tower.OnBench) continue;
+                for (int k = 0; k < slots; k++) slotSeen[k] = false;
+                Augment(t, towers, slots);
+            }
+            for (int k = 0; k < slots; k++) if (slotTower[k] >= 0) towers[slotTower[k]].Powered = true;
+        }
+
+        private void AddSource(TileCoord tile, float radius, int capacity)
+        {
+            int index = powerSource.Count;
+            powerSource.Add(tile);
+            powerRadius.Add(radius);
+            for (int c = 0; c < capacity; c++) powerSlotSource.Add(index);
+        }
+
+        // Whether the source can reach the tower: distance between tile centres, in tiles.
+        public static bool InPowerReach(TileCoord source, float radius, TileCoord tower)
+        {
+            int dx = source.X - tower.X, dy = source.Y - tower.Y;
+            return (float)(dx * dx + dy * dy) <= (float)(radius * radius);
+        }
+
+        // Kuhn's augmenting path: a place for tower t, moving earlier towers if they have another.
+        private bool Augment(int t, List<TowerState> towers, int slots)
+        {
+            for (int k = 0; k < slots; k++)
+            {
+                if (slotSeen[k]) continue;
+                int source = powerSlotSource[k];
+                if (!InPowerReach(powerSource[source], powerRadius[source], towers[t].Tile)) continue;
+                slotSeen[k] = true;
+                if (slotTower[k] < 0 || Augment(slotTower[k], towers, slots))
+                {
+                    slotTower[k] = t;
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        // What the next research tier costs, or a negative number when all are bought.
+        public float ResearchPrice => State.ResearchLevel >= 3 ? -1f : State.ResearchLevel == 1 ? config.ResearchTier2Price : config.ResearchTier3Price;
+
+        private void BuildCollector(SimState s, TileCoord tile)
+        {
+            if (!InBuildPhase(s) || map.DepositAt(tile) < 0 || s.BuildBudget < config.CollectorPrice) return;
+            SimNode node = s.Grid.Get(tile);
+            if (!node.IsWalkable || node.Occupant != Occupant.None || tile == map.Core) return;
+            s.BuildBudget -= config.CollectorPrice;
+            s.Grid.SetCollector(node, Math.Max(2, config.CollectorDigCost), Math.Max(0.5f, config.CollectorHealth));
+            fields.Generate(s.Grid, map.Core);
+            s.PlacementLog.Add(new PlacementRecord { Kind = PlacementKind.CollectorBuilt, Tick = s.Tick, ShapeName = "collector", OriginX = tile.X, OriginY = tile.Y, Tiles = new[] { tile }, Cost = config.CollectorPrice });
+        }
+
+        // The sell tool on a collector: it comes down for a share of its price.
+        private bool SellCollector(SimState s, TileCoord tile)
+        {
+            if (!s.Grid.InBounds(tile) || s.Grid.Get(tile).Occupant != Occupant.Collector) return false;
+            if (!MaySell(s)) return true;
+            float refund = (float)(config.CollectorPrice * config.SellRefund);
+            s.Grid.ClearWall(s.Grid.Get(tile));
+            s.BuildBudget += refund;
+            fields.Generate(s.Grid, map.Core);
+            s.PlacementLog.Add(new PlacementRecord { Kind = PlacementKind.CollectorSold, Tick = s.Tick, ShapeName = "collector", OriginX = tile.X, OriginY = tile.Y, Tiles = new[] { tile }, Refund = refund });
+            return true;
+        }
+
+        // The build menu: any tower of the roster whose tier is researched, for its price.
+        private void BuyTower(SimState s, int index, TileCoord tile)
+        {
+            if (!config.BuildMenu || index < 0 || index >= towerLibrary.Length) return;
+            TowerDef def = towerLibrary[index];
+            if (def.Tier > s.ResearchLevel || !TowerCombine.HasRoomFor(s.Towers, def, 1, config, s.WaveIndex)) return;
+            Placement.TryPlaceTower(s.Grid, map, fields, def, def.Cost, tile, ref s.BuildBudget, s.Tick, s.Towers, s.PlacementLog, events, 1, config.TowersOnWalls);
+        }
+
+        private void Research(SimState s)
+        {
+            float price = ResearchPrice;
+            if (!config.BuildMenu || price < 0f || s.BuildBudget < price) return;
+            s.BuildBudget -= price;
+            s.ResearchLevel++;
+            s.PlacementLog.Add(new PlacementRecord { Kind = PlacementKind.Researched, Tick = s.Tick, ShapeName = "tier" + s.ResearchLevel, Cost = price });
         }
 
         // What the next extra move costs. Meaningless while none are for sale.
@@ -666,7 +874,7 @@ namespace Thesis.Sim
         {
             if (!config.CorePlacement || s.WaveIndex != 0 || s.Phase != SimPhase.Prep || !s.Grid.InBounds(tile) || tile == s.Core) return;
             SimNode node = s.Grid.Get(tile);
-            if (!node.IsWalkable || node.Occupant != Occupant.None) return;
+            if (!node.IsWalkable || node.Occupant != Occupant.None || map.DepositAt(tile) >= 0) return;
             if (map.EdgeDistance(tile.X, tile.Y) < Math.Max(map.BuildMargin, config.CoreEdgeMargin)) return;
             for (int i = 0; i < map.Spawns.Length; i++) if (map.Spawns[i] == tile) return;
 
@@ -1064,6 +1272,7 @@ namespace Thesis.Sim
                 {
                     WaveIndex = s.WaveIndex,
                     Archetype = group.Archetype,
+                    TargetsCollectors = group.TargetsCollectors,
                 };
                 s.Agents.Add(agent);
                 s.Live.Add(agent);
@@ -1096,6 +1305,10 @@ namespace Thesis.Sim
                         break;
                     case SimEventKind.WallBreached: o.WallsBreached++; break;
                     case SimEventKind.TowerDestroyed: o.TowersDestroyed++; break;
+                    case SimEventKind.CollectorDestroyed:
+                        o.CollectorsLost++;
+                        s.BuildBudget += (float)(config.CollectorPrice * config.CollectorLossRefund);
+                        break;
                 }
             }
         }

@@ -139,6 +139,7 @@ namespace Thesis.Director
                 case WaveRecord.PlacementRow.MoveTower:
                 case WaveRecord.PlacementRow.Deploy:
                 case WaveRecord.PlacementRow.Upgrade: return scope != PlacementScope.WallsOnly;
+                case WaveRecord.PlacementRow.Collector: return scope == PlacementScope.WallsAndTowers;
                 default: return false; // a sale or a reroll builds nothing
             }
         }

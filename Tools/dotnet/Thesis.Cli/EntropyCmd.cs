@@ -41,12 +41,12 @@ namespace Thesis.Cli
 
             Console.WriteLine("window: the first " + waves + " wave(s)" + (rowsB == null ? "" : ", the shorter of the two sessions")
                               + "; partition " + partition + "x" + partition + ", " + PlacementEntropy.Regions(a.MapData, partition) + " regions with a buildable tile");
-            Report(first, a, rowsA, waves, partition);
-            if (rowsB != null) Report(args.Positional(1, "the second replay file"), b, rowsB, waves, partition);
+            Report(first, a, rowsA, waves, partition, rocks);
+            if (rowsB != null) Report(args.Positional(1, "the second replay file"), b, rowsB, waves, partition, rocks);
             return 0;
         }
 
-        private static void Report(string path, ReplayFile file, List<WaveRecord> rows, int waves, int partition)
+        private static void Report(string path, ReplayFile file, List<WaveRecord> rows, int waves, int partition, bool rocks)
         {
             int tiles = 0;
             foreach (WaveRecord row in rows)

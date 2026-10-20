@@ -486,6 +486,8 @@ public class DeckBar : MonoBehaviour
             if (playerBuilder.HasUpgradeLeft(t)) text.Append("  (next: ").Append(TowerView.LevelName(t.Rarity + 1).ToLowerInvariant()).Append(", ").Append(playerBuilder.UpgradeCostFor(t).ToString("0.#")).Append(", key U)");
             text.Append('\n');
         }
+        if (playerBuilder.PowerRule && !t.OnBench)
+            text.Append("<color=#94a3b8>power:</color> ").Append(t.Powered ? "on" : "<color=#f87171>OFF: out of reach of the core or a collector, or they are full</color>").Append('\n');
         if (playerBuilder.TargetingOn) text.Append("<color=#94a3b8>shoots:</color> ").Append(PlayerBuilder.ModeName(t.Mode)).Append("  (key T)").Append('\n');
         if (!Host.Config.FeedDuplicates) return text.ToString();
         if (t.Level < TowerState.MaxLevel)

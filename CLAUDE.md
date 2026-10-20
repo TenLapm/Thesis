@@ -30,7 +30,9 @@ in the tilted scene `ArknightsTest`: merging is replaced by up to two chosen upg
 also what makes a tower rare or epic; towers stand only on a wall or a rock (`TowersOnWalls`);
 moves are unlimited; ten enemy types; a heal card; gear is sky-sight, chill and the extractor;
 lost waves can be retried; and the towers were rebalanced with `thesis towers --gauntlet`
-(`Results/2026-10-14_tower-balance`). The student finishes the gameplay before WP7 starts.
+(`Results/2026-10-14_tower-balance`). The student finishes the gameplay before WP7 starts. **Since 2026-10-20** the economy is ore (DEVLOG, last entry): deposits on a 48 x 48 map, collectors that
+pay after each wave they survive, raiders that go for them, towers and gear built from a menu with
+research tiers (`BuildMenu`; no cards, cap or bench), and squads of fewer, stronger enemies.
 The simulation keeps its own copy of the map (`Simulation.Map`;
 `InitialMap` is what a replay stores). All of it is
 switched by `SimConfig` and off in the C# defaults. SampleScene is set to

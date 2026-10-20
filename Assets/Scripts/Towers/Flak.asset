@@ -41,3 +41,4 @@ MonoBehaviour:
     slowTicksMul: 1
     extraTargets: 0
   shopWeight: 1
+  tier: 2

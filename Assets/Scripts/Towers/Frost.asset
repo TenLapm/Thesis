@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Frost
   m_EditorClassIdentifier: Assembly-CSharp::TowerDefAsset
   id: frost
-  cost: 12
+  cost: 10
   damageType: 2
   damage: 0.5
   rangeTiles: 2.5
@@ -40,3 +40,4 @@ MonoBehaviour:
     slowTicksMul: 1
     extraTargets: 0
   shopWeight: 1
+  tier: 1

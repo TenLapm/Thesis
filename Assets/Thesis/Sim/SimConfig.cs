@@ -221,6 +221,44 @@ namespace Thesis.Sim
         public bool StatGear = true;
         public bool ExtractorGear = false;
 
+        // Beacon, anti-armor and lure (2026-10-20) in the shops and the crafting list.
+        public bool AbilityGear = false;
+
+        // --- the ore economy and the build menu (2026-10-14) ---
+        // BuildMenu: towers are built from a menu for their price (TowerDef.Cost) instead
+        // of drawn as cards, and gear is crafted into the inventory (GearDef.Price), both
+        // up to the research tier reached. Research costs ResearchTier2Price, then
+        // ResearchTier3Price. RepairPrice buys HealCardAmount hit points for the core.
+        public bool BuildMenu = false;
+        public float ResearchTier2Price = 30f;
+        public float ResearchTier3Price = 60f;
+        public float RepairPrice = 10f;
+
+        // A collector on an ore deposit (MapData.Deposits): what it costs, and what it
+        // is as terrain. It pays its deposit's yield after every wave it stands through.
+        public float CollectorPrice = 6f;
+        public int CollectorDigCost = 20;
+        public float CollectorHealth = 8f;
+
+        // The share of a collector's price paid back the moment enemies destroy it
+        // (2026-10-20: losing one hurt too much). 0 = nothing.
+        public float CollectorLossRefund = 0f;
+
+        // Power (2026-10-20, after StarCraft's pylons): a tower fires only while powered.
+        // The core powers up to CorePowerCapacity towers within CorePowerRadius tiles,
+        // every standing collector up to CollectorPowerCapacity within CollectorPowerRadius.
+        // Off: every tower is powered, as before.
+        public bool PowerRule = false;
+        public float CorePowerRadius = 4f;
+        public int CorePowerCapacity = 4;
+        public float CollectorPowerRadius = 3f;
+        public int CollectorPowerCapacity = 2;
+
+        // Enemies a wave: AgentsPerWaveIncrement more every AgentsIncrementEveryWaves
+        // waves; hit points grow by HpGrowthPerWave (a share) on top of HpIncrementPerWave.
+        public int AgentsIncrementEveryWaves = 1;
+        public float HpGrowthPerWave = 0f;
+
         // The player may set which enemy a tower shoots (TowerState.Mode).
         public bool ChooseTargeting = false;
 
@@ -290,6 +328,7 @@ namespace Thesis.Sim
             if (!(SapperDigCostFactor >= 0f) || SapperDigCostFactor > 1f) throw new InvalidOperationException("SimConfig.SapperDigCostFactor must be in [0, 1], was " + SapperDigCostFactor + ".");
             if (ShopOffers < 0 || ShopOffers > 16) throw new InvalidOperationException("SimConfig.ShopOffers must be between 0 and 16, was " + ShopOffers + ".");
             if (!(RerollCostStep >= 0f) || float.IsInfinity(RerollCostStep)) throw new InvalidOperationException("SimConfig.RerollCostStep must be a number >= 0, was " + RerollCostStep + ".");
+            if (AgentsIncrementEveryWaves < 1 || !(HpGrowthPerWave >= 0f) || HpGrowthPerWave > 1f) throw new InvalidOperationException("SimConfig.AgentsIncrementEveryWaves must be at least 1 and HpGrowthPerWave in [0, 1].");
             if (UpgradesPerTower < 1 || UpgradesPerTower > 2) throw new InvalidOperationException("SimConfig.UpgradesPerTower must be 1 or 2, was " + UpgradesPerTower + ".");
             if (HealCardAmount < 0) throw new InvalidOperationException("SimConfig.HealCardAmount must not be negative.");
             if (MergeCount < 2 || MergeCount > 9) throw new InvalidOperationException("SimConfig.MergeCount must be between 2 and 9, was " + MergeCount + ".");

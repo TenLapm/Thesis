@@ -9,5 +9,6 @@ namespace Thesis.Sim
         None = 0,
         Wall = 1,
         Tower = 2,
+        Collector = 3,   // on an ore deposit (2026-10-14)
     }
 }

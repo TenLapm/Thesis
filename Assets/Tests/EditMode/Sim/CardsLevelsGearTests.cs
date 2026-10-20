@@ -130,7 +130,7 @@ namespace Thesis.Tests.Sim
             Assert.Greater(kinds[(int)CardKind.Tower], kinds[(int)CardKind.Coin], "towers are the most common card");
             Assert.Greater(kinds[(int)CardKind.Coin], 100);
             Assert.Greater(kinds[(int)CardKind.Gear], 100);
-            Assert.AreEqual(gear.Length - 1, pieces.Count, "every piece of gear turns up, but the extractor (off without SimConfig.ExtractorGear)");
+            Assert.AreEqual(5, pieces.Count, "the first five turn up; the extractor and the ability gear are off without their SimConfig switches");
             Assert.Greater(levels[1], levels[2]);
             Assert.Greater(levels[2], levels[3]);
             Assert.Greater(levels[3], 0, "an epic card exists");
@@ -309,7 +309,7 @@ namespace Thesis.Tests.Sim
             GearDef[] gear = GearRoster.Default();
             var names = new List<string>();
             foreach (GearDef g in gear) names.Add(g.Id);
-            CollectionAssert.AreEqual(new[] { "scope", "whetstone", "sky-sight", "powder", "chill", "extractor" }, names, "order is part of a replay");
+            CollectionAssert.AreEqual(new[] { "scope", "whetstone", "sky-sight", "powder", "chill", "extractor", "beacon", "anti-armor", "lure" }, names, "order is part of a replay");
 
             TowerDef def = TestTowers.Gun(damage: 10f, range: 3f, interval: 20);
             System.Func<int, TowerState> with = piece =>

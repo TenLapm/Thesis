@@ -43,6 +43,9 @@ public class SimHost : MonoBehaviour
     [Header("Map")]
     [Tooltip("Make the map from the seed (MapGenerator) instead of reading the scene. The GridManager must be as big as the generated map.")]
     public bool generateMap = false;
+
+    [Tooltip("Ore deposits on a generated map (2026-10-14); 0 = none.")]
+    public int mapDeposits = 0;
     [Tooltip("The ring along the edge on which nothing is built, in tiles.")]
     public int mapMargin = 2;
     public int mapRidges = 10;
@@ -251,7 +254,7 @@ public class SimHost : MonoBehaviour
             int width = Mathf.RoundToInt(gridManager.gridWorldSize.x / diameter);
             int height = Mathf.RoundToInt(gridManager.gridWorldSize.y / diameter);
             Vector3 origin = gridManager.transform.position;
-            map = MapGenerator.Generate(Seed, width, height, gridManager.nodeRadius, mapMargin, mapRidges, origin.x == 0f ? 0f : origin.x, origin.z == 0f ? 0f : origin.z);
+            map = MapGenerator.Generate(Seed, width, height, gridManager.nodeRadius, mapMargin, mapRidges, origin.x == 0f ? 0f : origin.x, origin.z == 0f ? 0f : origin.z, mapDeposits);
             // Entries are drawn wave by wave (PathPreviewer); the scene's one spawn marker is not one of them.
             Renderer marker = waveSpawner.spawnPoint.GetComponent<Renderer>();
             if (marker != null) marker.enabled = false;

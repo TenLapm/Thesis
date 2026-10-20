@@ -187,7 +187,50 @@ namespace Thesis.Harness
                 MaxWaves = 10,
                 TickHashes = true,
             },
+            // The ore economy (2026-10-14): a 48 x 48 map with ore deposits, collectors,
+            // the build menu with research tiers, gear crafted, the core repaired, squads
+            // that grow by a share a wave, and raiders. The only recording of BuildCollector,
+            // BuyTower, Research, CraftGear, RepairCore and the raid field on both runtimes.
+            new Spec
+            {
+                Name = "economy-10waves",
+                Config = EconomyConfig,
+                Map = () => MapGenerator.Generate(11, 48, 48, deposits: 25),
+                Policy = () => new RaidPolicy(),
+                Planner = RaidPlanner.Id,
+                Seed = 11,
+                MaxWaves = 10,
+                TickHashes = true,
+            },
         };
+
+        // The ore economy with a core that survives ten waves.
+        public static SimConfig EconomyConfig()
+        {
+            SimConfig c = RaidConfig();
+            c.BuildMenu = true;
+            c.ShopOffers = 0;
+            c.GearShopSlots = 0;
+            c.BenchSlots = 0;
+            c.TowerCap = 0;
+            c.FeedDuplicates = false;
+            c.MovesPerWave = 0;
+            c.StartBudget = 40f;
+            c.StipendPerWave = 2;
+            c.ResearchTier2Price = 20f;
+            c.ResearchTier3Price = 40f;
+            c.RepairPrice = 6f;
+            c.AgentsPerWave = 12;
+            c.AgentsPerWaveIncrement = 1;
+            c.AgentsIncrementEveryWaves = 2;
+            c.BaseHp = 20f;
+            c.HpIncrementPerWave = 0f;
+            c.HpGrowthPerWave = 0.08f;
+            c.AbilityGear = true;
+            c.CollectorLossRefund = 0.5f;
+            c.PowerRule = true;
+            return c;
+        }
 
         // The rules of the fourth round with a core that survives ten waves.
         public static SimConfig RaidConfig()

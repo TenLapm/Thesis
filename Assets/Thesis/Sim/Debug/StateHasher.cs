@@ -33,6 +33,7 @@ namespace Thesis.Sim
             h.Add(s.MovesLeft);
             h.Add(s.MovesBought);
             h.Add(s.PhaseLogStart);
+            h.Add(s.ResearchLevel);
             h.Add(s.GearOverflow.Count);
             for (int i = 0; i < s.GearOverflow.Count; i++) h.Add(s.GearOverflow[i]);
             h.Add(s.GearInventory.Length);
@@ -107,6 +108,7 @@ namespace Thesis.Sim
                 h.Add(n.FoundationHealth);
                 h.Add(n.FoundationMaxHealth);
                 h.Add(n.FoundationPiece);
+                h.Add(n.Lure);
                 h.Add(n.BestCost);
                 h.Add(n.NextIndex);
                 h.Add(n.SapperCost);
@@ -127,6 +129,7 @@ namespace Thesis.Sim
             for (int i = 0; i < a.Resist.Length; i++) h.Add(a.Resist[i]);
             h.Add(a.SlowTicks);
             h.Add(a.SlowFactor);
+            h.Add(a.TargetsCollectors);
             h.Add(a.KillReward);
             h.Add(a.WallBreakReward);
             h.Add(a.IsAlive);
@@ -154,6 +157,7 @@ namespace Thesis.Sim
             h.Add(t.Sold);
             h.Add(t.Combined);
             h.Add(t.OnBench);
+            h.Add(t.Powered);
             h.Add(t.Upgrade);
             h.Add(t.Upgrade2);
             h.Add((int)t.Mode);

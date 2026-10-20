@@ -34,7 +34,7 @@ namespace Thesis.Sim
             for (int t = 0; t < towers.Count; t++)
             {
                 TowerState tower = towers[t];
-                if (!tower.IsAlive || tower.OnBench) continue;
+                if (!tower.IsAlive || tower.OnBench || !tower.Powered) continue;
 
                 if (tower.Cooldown > 0) tower.Cooldown--;
                 if (tower.Cooldown > 0) continue;
@@ -83,6 +83,8 @@ namespace Thesis.Sim
             TowerDef def = tower.Def;
             int type = (int)def.DamageType;
             float resist = agent.Resist[type];
+            // Anti-armor gear: a resistance (or an immunity) counts as none.
+            if (tower.IgnoresResist && resist < 1f) resist = 1f;
 
             // Resist 0 is immunity: no damage and no slow either.
             if (!(resist > 0f)) return;

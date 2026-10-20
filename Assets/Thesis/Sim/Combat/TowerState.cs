@@ -49,6 +49,9 @@ namespace Thesis.Sim
         public float SlowFactor = 1f;
         public bool CanHitFlying;
         public int Targets = 1;         // enemies one shot is fired at
+        public bool IgnoresResist;      // gear: anti-armor
+        public bool Lure;               // gear: walkers path to it
+        public bool Beacon;             // gear: nearby collectors pay more
 
         // Ticks until it may fire again. 0 = ready.
         public int Cooldown;
@@ -79,6 +82,10 @@ namespace Thesis.Sim
 
         // Owned but not on the board (TowerBench): it stands on no tile and does not shoot.
         public bool OnBench;
+
+        // Has power and fires (SimConfig.PowerRule; Simulation.RecomputePower). Always true
+        // without the rule.
+        public bool Powered = true;
 
         // Lifetime totals. DamageDealt is EFFECTIVE damage: hit points actually
         // removed, never the overkill on a dying enemy.
@@ -123,11 +130,15 @@ namespace Thesis.Sim
             SlowFactor = source.SlowFactor;
             CanHitFlying = source.CanHitFlying;
             Targets = source.Targets;
+            IgnoresResist = source.IgnoresResist;
+            Lure = source.Lure;
+            Beacon = source.Beacon;
             Cooldown = source.Cooldown;
             IsAlive = source.IsAlive;
             Sold = source.Sold;
             Combined = source.Combined;
             OnBench = source.OnBench;
+            Powered = source.Powered;
             Upgrade = source.Upgrade;
             Upgrade2 = source.Upgrade2;
             Mode = source.Mode;
@@ -169,6 +180,7 @@ namespace Thesis.Sim
             int slowTicks = Def.SlowTicks;
             float slowFactor = Def.SlowFactor;
             bool flying = Def.CanHitFlying;
+            bool ignoresResist = false, lure = false, beacon = false;
             int targets = Def.Targets;
 
             for (int level = 2; level <= Level; level++)
@@ -208,6 +220,9 @@ namespace Thesis.Sim
                 if (g.SlowTicks > slowTicks) slowTicks = g.SlowTicks;
                 if (g.SlowTicks > 0 && g.SlowFactor < slowFactor) slowFactor = g.SlowFactor;
                 if (g.GrantsFlying) flying = true;
+                if (g.IgnoresResist) ignoresResist = true;
+                if (g.Lure) lure = true;
+                if (g.Beacon) beacon = true;
             }
 
             Damage = damage;
@@ -220,6 +235,9 @@ namespace Thesis.Sim
             SlowTicks = slowTicks;
             SlowFactor = slowFactor;
             CanHitFlying = flying;
+            IgnoresResist = ignoresResist;
+            Lure = lure;
+            Beacon = beacon;
             Targets = Math.Max(1, targets);
         }
 

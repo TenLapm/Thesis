@@ -27,11 +27,13 @@ namespace Thesis.Sim
         public const string Id = "raid";
 
         private readonly EscalationPlanner escalation;
+        private readonly bool deposits; // the map has ore deposits: raiders come too
         private readonly List<SimNode> route = new List<SimNode>();
 
         public RaidPlanner(SimConfig config, MapData map)
         {
             escalation = new EscalationPlanner(config, map);
+            deposits = map.Deposits != null && map.Deposits.Length > 0;
         }
 
         public string Name => Id;
@@ -86,6 +88,14 @@ namespace Thesis.Sim
                 case 9: groups = new[] { EnemyArchetypes.Frostborn().Apply(basic, 0.6f), EnemyArchetypes.Runner().Apply(basic, 0.4f) }; break;
                 case 10: groups = new[] { EnemyArchetypes.Armored().Apply(basic, 0.5f), EnemyArchetypes.Flyer().Apply(basic, 0.5f) }; break;
                 default: groups = new[] { EnemyArchetypes.Brute().Apply(basic, 0.5f), EnemyArchetypes.Swarm().Apply(basic, 0.5f), EnemyArchetypes.Bats().Apply(basic, 0.5f) }; break;
+            }
+            // On a map with ore deposits every third wave brings raiders too.
+            if (deposits && wave % 3 == 0)
+            {
+                var withRaiders = new AgentGroup[groups.Length + 1];
+                Array.Copy(groups, withRaiders, groups.Length);
+                withRaiders[groups.Length] = EnemyArchetypes.Raider().Apply(basic, 0.5f);
+                groups = withRaiders;
             }
             return new WavePlan { WaveIndex = wave, StrategyId = Id, Groups = groups };
         }

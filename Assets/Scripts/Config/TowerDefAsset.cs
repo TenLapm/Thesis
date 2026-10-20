@@ -58,6 +58,9 @@ public class TowerDefAsset : ScriptableObject
     [Tooltip("Relative chance of being offered.")]
     public float shopWeight = 1f;
 
+    [Tooltip("The research tier that unlocks it in the build menu (SimConfig.BuildMenu): 1, 2 or 3.")]
+    public int tier = 1;
+
     public TowerDef ToDef()
     {
         var mods = new TowerLevelMod[levels != null ? levels.Length : 0];
@@ -84,6 +87,7 @@ public class TowerDefAsset : ScriptableObject
             DigCost = digCost,
             TowerHealth = towerHealth,
             ShopWeight = shopWeight,
+            Tier = tier,
         };
     }
 }

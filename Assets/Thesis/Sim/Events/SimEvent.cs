@@ -29,6 +29,7 @@ namespace Thesis.Sim
         WallSold,
         TowerChanged,
         CoreMoved,
+        CollectorDestroyed,  // IntA, IntB = the tile (2026-10-14)
     }
 
     public readonly struct SimEvent
@@ -53,6 +54,8 @@ namespace Thesis.Sim
 
         // IntA = tile X, IntB = tile Y.
         public static SimEvent WallBreached(int x, int y) { return new SimEvent(SimEventKind.WallBreached, x, y, 0, 0f); }
+
+        public static SimEvent CollectorDestroyed(int x, int y) { return new SimEvent(SimEventKind.CollectorDestroyed, x, y, 0, 0f); }
 
         // IntA = agent id.
         public static SimEvent AgentSpawned(int agentId) { return new SimEvent(SimEventKind.AgentSpawned, agentId, 0, 0, 0f); }

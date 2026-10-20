@@ -56,6 +56,86 @@ namespace Thesis.Sim
         //
         // One multiplication, rounded once, so every runtime gets the same integer
         // (ARCHITECTURE.md §9 rule 3).
+        // The raid field: one flood from every standing collector at once, priced as the
+        // ground field is. Sets grid.RaidGoals to the number of collectors; with none the
+        // field is left alone and nothing reads it.
+        public void GenerateRaid(SimGrid grid)
+        {
+            int goals = 0;
+            for (int i = 0; i < grid.NodeCount; i++) if (grid.ByIndex(i).Occupant == Occupant.Collector) goals++;
+            grid.RaidGoals = goals;
+            if (goals == 0) return;
+
+            open.Clear();
+            for (int i = 0; i < grid.NodeCount; i++)
+            {
+                SimNode node = grid.ByIndex(i);
+                node.RaidCost = SimNode.Infinity;
+                node.RaidNextIndex = -1;
+            }
+            for (int i = 0; i < grid.NodeCount; i++)
+            {
+                SimNode node = grid.ByIndex(i);
+                if (node.Occupant != Occupant.Collector) continue;
+                node.RaidCost = 0;
+                open.Enqueue(node);
+            }
+            while (open.Count > 0)
+            {
+                SimNode current = open.Dequeue();
+                int count = grid.GetNeighbors(current, neighbors);
+                for (int k = 0; k < count; k++)
+                {
+                    SimNode neighbor = neighbors[k];
+                    if (!neighbor.IsWalkable) continue;
+                    bool diagonal = neighbor.X != current.X && neighbor.Y != current.Y;
+                    int newCost = current.RaidCost + (diagonal ? DiagonalCost : CardinalCost) * neighbor.TerrainCost;
+                    if (newCost < neighbor.RaidCost)
+                    {
+                        neighbor.RaidCost = newCost;
+                        neighbor.RaidNextIndex = current.Index;
+                        open.Enqueue(neighbor);
+                    }
+                }
+            }
+        }
+
+        // The lure field: the same flood, from every tile with SimNode.Lure.
+        public void GenerateLure(SimGrid grid)
+        {
+            int goals = 0;
+            for (int i = 0; i < grid.NodeCount; i++) if (grid.ByIndex(i).Lure) goals++;
+            grid.LureGoals = goals;
+            if (goals == 0) return;
+
+            open.Clear();
+            for (int i = 0; i < grid.NodeCount; i++)
+            {
+                SimNode node = grid.ByIndex(i);
+                node.LureCost = node.Lure ? 0 : SimNode.Infinity;
+                node.LureNextIndex = -1;
+                if (node.Lure) open.Enqueue(node);
+            }
+            while (open.Count > 0)
+            {
+                SimNode current = open.Dequeue();
+                int count = grid.GetNeighbors(current, neighbors);
+                for (int k = 0; k < count; k++)
+                {
+                    SimNode neighbor = neighbors[k];
+                    if (!neighbor.IsWalkable) continue;
+                    bool diagonal = neighbor.X != current.X && neighbor.Y != current.Y;
+                    int newCost = current.LureCost + (diagonal ? DiagonalCost : CardinalCost) * neighbor.TerrainCost;
+                    if (newCost < neighbor.LureCost)
+                    {
+                        neighbor.LureCost = newCost;
+                        neighbor.LureNextIndex = current.Index;
+                        open.Enqueue(neighbor);
+                    }
+                }
+            }
+        }
+
         public static int SapperTerrainCost(SimNode node, float digCostFactor)
         {
             if (!node.HasWall) return node.TerrainCost;

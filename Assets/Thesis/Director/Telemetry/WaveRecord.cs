@@ -27,7 +27,7 @@ namespace Thesis.Director
     // something else without raising CurrentSchema.
     public sealed class WaveRecord
     {
-        public const int CurrentSchema = 8; // 8: heal rows; an upgrade row may be a tower's second (2026-10-14); // 7: gearReroll rows (2026-10-14); // 6: gearSold rows; combine rows now also come from a merge by choice (2026-10-14); // 5: gearStore, equip and unequip rows (2026-10-14); // 4: walls, buyMove, bench, deploy, recall, feed and core rows (2026-10-13); // 2: cards (tower, coin, gear), tower levels and gear in the build log; 3: the placement kinds "combine" and "moveTower" (both 2026-10-12)
+        public const int CurrentSchema = 9; // 9: collector, sellCollector and research rows, collectorsLost (2026-10-14); // // 8: heal rows; an upgrade row may be a tower's second (2026-10-14); // 7: gearReroll rows (2026-10-14); // 6: gearSold rows; combine rows now also come from a merge by choice (2026-10-14); // 5: gearStore, equip and unequip rows (2026-10-14); // 4: walls, buyMove, bench, deploy, recall, feed and core rows (2026-10-13); // 2: cards (tower, coin, gear), tower levels and gear in the build log; 3: the placement kinds "combine" and "moveTower" (both 2026-10-12)
 
         [JsonProperty("schema", Order = 1)] public int Schema = CurrentSchema;
 
@@ -116,6 +116,7 @@ namespace Thesis.Director
             [JsonProperty("spawnedByClass", Order = 15)] public NamedValues SpawnedByClass;
             [JsonProperty("killedByClass", Order = 16)] public NamedValues KilledByClass;
             [JsonProperty("leakedByClass", Order = 17)] public NamedValues LeakedByClass;
+            [JsonProperty("collectorsLost", Order = 18)] public int CollectorsLost;
         }
 
         // One row of the simulation's build log (PlacementRecord), in order.
@@ -145,6 +146,9 @@ namespace Thesis.Director
             public const string GearSold = "gearSold";
             public const string GearReroll = "gearReroll";
             public const string Heal = "heal";
+            public const string Collector = "collector";
+            public const string SellCollector = "sellCollector";
+            public const string Research = "research";
 
             [JsonProperty("tick", Order = 1)] public int Tick;
             [JsonProperty("kind", Order = 2)] public string Kind;

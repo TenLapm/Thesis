@@ -13,6 +13,14 @@ namespace Thesis.Sim
     //   '.' walkable, 'X' static blocker (the scene's unwalkableMask).
     // The same orientation is used by AsciiMap, so a map file and a test fixture
     // look the same.
+    // An ore deposit (2026-10-14): a tile a collector can be built on, and the ore a
+    // collector there pays at the end of every wave it stands through.
+    public sealed class Deposit
+    {
+        public TileCoord Tile;
+        public int Yield;
+    }
+
     public sealed class MapData
     {
         public const int CurrentSchema = 1;
@@ -43,6 +51,9 @@ namespace Thesis.Sim
 
         public TileCoord Core;
         public TileCoord[] Spawns = new TileCoord[0];
+
+        // Ore deposits (2026-10-14). Empty on every map made before them.
+        public Deposit[] Deposits = new Deposit[0];
         public WorldPoint CoreWorld;
         public WorldPoint[] SpawnWorlds = new WorldPoint[0];
 
@@ -55,6 +66,23 @@ namespace Thesis.Sim
         }
 
         public bool InBuildMargin(TileCoord t) { return BuildMargin > 0 && EdgeDistance(t.X, t.Y) < BuildMargin; }
+
+        // The deposit on tile t, by its index in Deposits, or -1. A lookup made on first
+        // use; a map's deposits never change.
+        private int[] depositAt;
+
+        public int DepositAt(TileCoord t)
+        {
+            if (Deposits == null || Deposits.Length == 0 || t.X < 0 || t.Y < 0 || t.X >= Width || t.Y >= Height) return -1;
+            if (depositAt == null)
+            {
+                var index = new int[Width * Height];
+                for (int i = 0; i < index.Length; i++) index[i] = -1;
+                for (int d = 0; d < Deposits.Length; d++) index[Deposits[d].Tile.X * Height + Deposits[d].Tile.Y] = d;
+                depositAt = index;
+            }
+            return depositAt[t.X * Height + t.Y];
+        }
 
         // The simulation keeps a copy of its own, because the one thing about a map that
         // can change during a run, the core's tile (SimConfig.CorePlacement), changes
@@ -99,6 +127,12 @@ namespace Thesis.Sim
             }
 
             CheckTile(Core, "Core");
+            if (Deposits == null) Deposits = new Deposit[0];
+            for (int i = 0; i < Deposits.Length; i++)
+            {
+                CheckTile(Deposits[i].Tile, "Deposits[" + i + "]");
+                if (Deposits[i].Yield < 0) throw new InvalidDataException("Map '" + Name + "': Deposits[" + i + "] has a negative yield.");
+            }
             if (Spawns == null) throw new InvalidDataException("Map '" + Name + "': Spawns is null.");
             for (int i = 0; i < Spawns.Length; i++) CheckTile(Spawns[i], "Spawns[" + i + "]");
             if (SpawnWorlds == null || SpawnWorlds.Length != Spawns.Length)

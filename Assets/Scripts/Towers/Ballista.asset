@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Ballista
   m_EditorClassIdentifier: Assembly-CSharp::TowerDefAsset
   id: ballista
-  cost: 16
+  cost: 14
   damageType: 0
   damage: 32
   rangeTiles: 5
@@ -40,3 +40,4 @@ MonoBehaviour:
     slowTicksMul: 1
     extraTargets: 1
   shopWeight: 1
+  tier: 2

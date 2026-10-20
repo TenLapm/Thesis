@@ -63,6 +63,9 @@ namespace Thesis.Sim
         // Relative chance of being offered in the shop (WP-C3).
         public float ShopWeight = 1f;
 
+        // The research tier that unlocks it in the build menu (SimConfig.BuildMenu): 1, 2 or 3.
+        public int Tier = 1;
+
         // What level 2 (rare) and level 3 (epic) add, in that order. A tower type that
         // gives none still has three levels: each is then half as much damage again.
         public TowerLevelMod[] Levels;

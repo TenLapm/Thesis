@@ -1872,3 +1872,100 @@ checked by hand:** real mouse drags of the extractor, and the heal card in a rea
   that limits towers more than the cap does, the stock needs raising.
 - The scripted players stay weak (towers on walls in the path get chewed); they are not a measure of
   difficulty.
+
+---
+
+## 2026-10-20 — The ore economy: deposits and collectors, a build menu with research, raiders, squads
+
+**Status:** built at the student's request after a design discussion the same day. 615 tests pass
+in both runners (8 new, in `EconomyTests`, plus a new pinned episode). Not committed.
+
+**Why.** Stacking every tower at the core beat anything the director sent. The student's answer:
+make the player earn from places spread over the map (as in StarCraft), so that holding ground away
+from the core pays, and the director can threaten it. With it: towers and gear crafted from a menu
+instead of drawn at random, and fewer, stronger enemies instead of a swarm.
+
+The student's decisions, as given:
+- **One resource, ore**, in place of budget everywhere. "Many deposits so the player can scale
+  later on when the wave get harder."
+- **A destroyed collector pays nothing for that wave.**
+- **Towers and gear are crafted, just paying ore; research tiers** unlock them. The tower cap and
+  the bench are removed (so are the cards, rerolls and the gear shop).
+- **Fewer, stronger enemies, with the swarm kept as one type.**
+
+What was built:
+- **Deposits** (`MapData.Deposits`, `MapGenerator` `deposits`): 25 on a 48 x 48 map, at least three
+  tiles apart, from a stream of their own (`RngStreams.Deposits`), 2 ore near the middle to 4 at the
+  ring. Nothing else is built on a deposit, and the core cannot go on one.
+- **Collectors** (`Occupant.Collector`, command `BuildCollector`, 6 ore): diggable like a wall; each
+  standing collector pays its yield when a wave ends (with the core's 2, `StipendPerWave`). The sell
+  tool takes one down for half its price. Telemetry: `collector` and `sellCollector` rows, and the
+  outcome's `collectorsLost`. The primary metric counts where collectors are built.
+- **Raiders** (`EnemyArchetypes.Raider`, `AgentState.TargetsCollectors`): follow a third flow field,
+  the raid field (`SimNode.RaidCost`), built with the other two from every standing collector at once;
+  with none standing they walk to the core. `RaidPlanner` adds raiders every third wave on a map with
+  deposits.
+- **The build menu** (`BuildMenu`, commands `BuyTower`, `Research`, `CraftGear`, `RepairCore`):
+  `TowerDef.Tier` and `GearDef.Tier`. Tier 1: archer, cannon, frost, brazier, chill, extractor; tier 2
+  (30 ore): ballista, shard, flak, sky-sight; tier 3 (60 ore): sniper. Repair: +3 core HP for 10 ore.
+  Tower prices: 10 for tier 1 (cannon 12), 14 for tier 2, 18 for the sniper.
+- **Squads** (`AgentsIncrementEveryWaves`, `HpGrowthPerWave`): 12 enemies of 24 HP in wave 1, one
+  more every two waves, hit points +8 % a wave (wave 30: 26 enemies of about 225 HP, against the old
+  177 of 124). The swarm type is unchanged and now stands out.
+- Replay schema 13, telemetry schema 9. New pinned episode `economy-10waves`.
+- Fixed on the way: `thesis entropy` did not compile since `625218b` (one edit had not applied).
+
+**In Unity (ArknightsTest):** the board is 48 x 48 with 22 ridges; deposits are gold discs with their
+yield; collectors gold blocks; raiders green. The right panel in build-menu mode is a list of the
+eight towers (locked ones dimmed with their tier), a research button, a list of gear to craft and a
+repair button; the income line counts the collectors; the free tool slot became COLLECT [C]. A menu
+tower stays in the hand after it is placed. Checked in play mode: two collectors and an archer built
+for 12 + 10 ore, the locked ballista refused, wave 1 paid +6, wave 3's raiders destroyed one collector
+and the wave paid +4 (the core and the collector left).
+
+**Measured.** A wave's fight lasts about 40 s on the 48 x 48 map (the pinned episode), as on 32 x 32:
+the walks are longer and the waves smaller.
+
+**Open**
+- **The study (I11, spec gap S14):** raiders let the director change the player's income, which the
+  static baseline cannot. Before the pilot this needs a rule (raiders counted in the threat budget, or
+  the same raiders in both conditions) and the supervisor's agreement.
+- Every price and the wave curve are first guesses. One archer let 7 of wave 1's 12 through; with the
+  40 ore at the start a player has three towers, which may be about right. The tower balance of
+  2026-10-14 was measured per tower, not per ore; with prices it should be measured again.
+- Raiders have no route line on the board, and the panel's legend does not list them.
+- SampleScene (top-down) shares the config: it now plays the build menu on a 32 x 32 map without
+  deposits. It is kept only for reference.
+
+**Later the same day: three pieces of gear, a refund, and the border** (the student, after a list of
+gear ideas). 619 tests pass in both runners (4 new).
+- **Beacon** (tier 1, 10 ore): a collector within 3 tiles of the tower pays one more ore a wave, once
+  per collector however many beacons (`Simulation.NearBeacon`).
+- **Anti-armor** (tier 2, 8 ore): the tower's hits ignore resistances and immunities; it fires 25 %
+  slower (`TowerState.IgnoresResist`).
+- **Lure** (tier 2, 8 ore): every enemy on foot within 4 tiles of the tower, by the way it would
+  walk, goes for it and chews it; the tower is three times as tough. A fourth flow field, the lure
+  field (`SimNode.Lure`, `LureCost`), built from every lure tower; raiders follow it too, so a lure
+  can guard collectors. As first described ("cheaper to path through") it would not have pulled
+  anyone: a tower's tile can never be cheaper than open ground. A lure on a rock does nothing,
+  because nothing walks next to a rock's top. `SimConfig.AbilityGear` switches all three on.
+- **A destroyed collector pays half its price back at once** (`CollectorLossRefund` 0.5).
+- **Deposits are at least one tile inside the build border**, and the bright frame in ArknightsTest
+  (the scene's `GridBorder`, drawn for the old 64-unit board) is moved onto the build border by
+  `RockLayout`. The deposits the student saw "outside the buildable zone" were inside it, outside
+  the stale frame.
+
+**And power** (the student: stacking was "kinda better but not solved": a lost collector only slowed
+the income, while the towers at the core kept firing; "your idea sounds good, except for upkeep").
+621 tests pass in both runners (2 new).
+- `PowerRule`: a tower fires only while powered. The core powers up to 4 towers within 4 tiles, every
+  standing collector up to 2 within 3. As many towers as possible get power (a matching by augmenting
+  paths, `Simulation.RecomputePower`), worked out again after every command and in the tick a tower or
+  a collector is chewed through, so a raid darkens the towers a collector powered at once.
+  `TowerState.Powered` is part of the state.
+- In Unity: a red ring at the foot of a tower without power; faint gold rings show the reach of the
+  core and of each collector in a build phase; the hover text says whether a tile has power; the panel
+  counts powered towers; the tower card says why one is dark.
+- Upkeep (ore per tower per wave) was considered and rejected by the student as an annoying hindrance.
+- Open: the numbers (4 at the core, 2 per collector, the radii) are first guesses; the scripted player
+  does not know about power, so many of its towers are dark.

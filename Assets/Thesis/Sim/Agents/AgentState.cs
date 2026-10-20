@@ -52,6 +52,10 @@ namespace Thesis.Sim
         // The enemy type's name, for views and telemetry. A label: the numbers above are what the simulation uses.
         public string Archetype = "basic";
 
+        // A raider (2026-10-14): heads for the nearest collector instead of the core,
+        // while any stands.
+        public bool TargetsCollectors;
+
         // The nearest this agent has come to the core so far, in flow-field units
         // (tiles x 10), measured the way it travels: see RouteCost. SimNode.Infinity
         // until it takes its first live step. Feeds WaveOutcome.PressureShare.

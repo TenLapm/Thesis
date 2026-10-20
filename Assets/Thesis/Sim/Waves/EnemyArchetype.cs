@@ -19,6 +19,7 @@ namespace Thesis.Sim
         public float SpeedFactor = 1f;
         public float DigRateFactor = 1f;
         public float SpawnIntervalFactor = 1f;
+        public bool TargetsCollectors;
 
         // One damage multiplier per DamageType; null means 1 for every type.
         public float[] Resist;
@@ -30,6 +31,7 @@ namespace Thesis.Sim
             AgentGroup g = basic.Copy();
             g.Archetype = Id;
             g.Movement = Movement;
+            g.TargetsCollectors = TargetsCollectors;
             float count = (float)((float)(basic.Count * share) * CountFactor);
             g.Count = Math.Max(1, (int)count);
             g.Hp = (float)(basic.Hp * HpFactor);
@@ -106,7 +108,11 @@ namespace Thesis.Sim
         // Many small flyers close together.
         public static EnemyArchetype Bats() { return new EnemyArchetype { Id = BatsId, Movement = MovementClass.Flying, CountFactor = 1f, HpFactor = 0.15f, SpeedFactor = 1.2f, SpawnIntervalFactor = 0.5f, DigRateFactor = 0f }; }
 
-        public static EnemyArchetype[] Everything() { return new[] { Basic(), Swarm(), Sapper(), Flyer(), Brute(), Runner(), Armored(), Ember(), Frostborn(), Bats() }; }
+        public static EnemyArchetype[] Everything() { return new[] { Basic(), Swarm(), Sapper(), Flyer(), Brute(), Runner(), Armored(), Ember(), Frostborn(), Bats(), Raider() }; }
+
+        // 2026-10-14: goes for the player's collectors, not the core, while any stand.
+        public const string RaiderId = "raider";
+        public static EnemyArchetype Raider() { return new EnemyArchetype { Id = RaiderId, CountFactor = 0.5f, HpFactor = 1f, SpeedFactor = 1.2f, DigRateFactor = 1.5f, TargetsCollectors = true }; }
 
         // One multiplier per DamageType, in the enum's order: physical, fire, frost.
         private static float[] Resists(float physical, float fire, float frost)

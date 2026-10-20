@@ -12,6 +12,9 @@ namespace Thesis.Sim
         public string Label;      // one short line for the player
         public int Price = 8;
 
+        // The research tier that lets it be crafted (SimConfig.BuildMenu).
+        public int Tier = 1;
+
         public float DamageMul = 1f;
         public float IntervalMul = 1f;   // below 1 = fires faster
         public float RangeAdd;           // tiles
@@ -24,14 +27,33 @@ namespace Thesis.Sim
         // and is used up (2026-10-14, in place of a free "take gear off" tool).
         public bool Extracts;
 
+        // 2026-10-20. Beacon: a collector within BeaconRange tiles of the tower pays one
+        // more ore after a wave both stood through (once per collector, however many
+        // beacons). IgnoresResist: the tower's hits ignore an enemy's resistances (a
+        // multiplier below 1 counts as 1). Lure: any enemy on foot within LureRadius tiles
+        // of the tower (by the way it would walk) goes for it and chews it, and the tower is
+        // three times as tough (the lure field, SimNode.LureCost).
+        public bool Beacon;
+        public bool IgnoresResist;
+        public bool Lure;
+
+        public const float BeaconRange = 3f;
+        public const int LureRadius = 4;
+        public const float LureHealthFactor = 3f;
+
+        // Gear that does something besides numbers: never a plain stat boost, even when
+        // it changes a number on the way (anti-armor fires slower).
+        public bool HasAbility => Extracts || Beacon || IgnoresResist || Lure || GrantsFlying || SlowTicks > 0;
+
         // A plain number on the tower, which since 2026-10-14 is the upgrade's job; the
         // shops leave these out unless SimConfig.StatGear.
-        public bool IsStatBoost => DamageMul != 1f || IntervalMul != 1f || RangeAdd != 0f || SplashAdd != 0f;
+        public bool IsStatBoost => !HasAbility && (DamageMul != 1f || IntervalMul != 1f || RangeAdd != 0f || SplashAdd != 0f);
 
         // Whether a shop may offer it under this config. Without one: everything but the extractor.
         public bool OnSale(SimConfig config)
         {
             if (Extracts) return config != null && config.ExtractorGear;
+            if (Beacon || IgnoresResist || Lure) return config != null && config.AbilityGear;
             if (IsStatBoost) return config == null || config.StatGear;
             return true;
         }
@@ -51,10 +73,13 @@ namespace Thesis.Sim
             {
                 new GearDef { Id = "scope", Label = "+1 range", RangeAdd = 1f },
                 new GearDef { Id = "whetstone", Label = "+35% damage", DamageMul = 1.35f },
-                new GearDef { Id = "sky-sight", Label = "can hit flyers", GrantsFlying = true },
+                new GearDef { Id = "sky-sight", Label = "can hit flyers", GrantsFlying = true, Tier = 2 },
                 new GearDef { Id = "powder", Label = "+0.5 splash", SplashAdd = 0.5f },
                 new GearDef { Id = "chill", Label = "slows what it hits", SlowTicks = 50, SlowFactor = 0.7f },
                 new GearDef { Id = "extractor", Label = "takes a tower's gear off", Extracts = true, Price = 4 },
+                new GearDef { Id = "beacon", Label = "+1 ore from collectors within 3 tiles", Beacon = true, Price = 10 },
+                new GearDef { Id = "anti-armor", Label = "ignores resistance; 20% slower", IgnoresResist = true, IntervalMul = 1.25f, Price = 8, Tier = 2 },
+                new GearDef { Id = "lure", Label = "enemies within 4 go for it; 3x tough", Lure = true, Price = 8, Tier = 2 },
             };
         }
     }

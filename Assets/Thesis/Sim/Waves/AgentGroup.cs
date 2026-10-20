@@ -16,6 +16,9 @@ namespace Thesis.Sim
         // a straight line through the air (WP-C2). Ground unless a planner says otherwise.
         public MovementClass Movement = MovementClass.Ground;
 
+        // Raiders: for the nearest collector first (AgentState.TargetsCollectors).
+        public bool TargetsCollectors;
+
         public float MoveSpeed;         // world units / second; must be > 0
         public float Hp;                // hit points; must be > 0
         public float DigRate;           // structure health chewed per second; unused by Flying

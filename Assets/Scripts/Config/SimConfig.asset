@@ -14,27 +14,27 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::SimConfigAsset
   config:
     TickSeconds: 0.02
-    StartBudget: 10
+    StartBudget: 40
     CoreMaxHp: 10
-    StipendPerWave: 5
+    StipendPerWave: 2
     PrepSeconds: 45
     IntermissionSeconds: 10
     DigRate: 1
     KillReward: 0
     WallBreakReward: 0
     TowerBreachReward: 0
-    AgentsPerWave: 32
-    AgentsPerWaveIncrement: 5
+    AgentsPerWave: 12
+    AgentsPerWaveIncrement: 1
     SpawnDelay: 0.4
     SpawnDelayDecrement: 0.01
     MinSpawnDelay: 0.2
     BaseMoveSpeed: 1.25
     MoveSpeedIncrementPerWave: 0.0375
     MaxMoveSpeed: 2.25
-    BaseHp: 8
-    HpIncrementPerWave: 4
-    ShopOffers: 4
-    RerollCost: 2
+    BaseHp: 24
+    HpIncrementPerWave: 0
+    ShopOffers: 0
+    RerollCost: -1
     RerollCostStep: 1
     SellRefund: 0.5
     WallSellRefund: 0.5
@@ -52,12 +52,12 @@ MonoBehaviour:
     PlanAhead: 1
     PicksPerRoll: 1
     PicksAtStart: 2
-    GearShopSlots: 3
+    GearShopSlots: 0
     GearShopRefreshWaves: 5
-    GearShopRerollCost: 3
+    GearShopRerollCost: -1
     GearShopRerollStep: 2
     CombineCount: 0
-    TowerCap: 4
+    TowerCap: 0
     TowerCapEveryWaves: 3
     MoveTowers: 1
     WallStock: 12
@@ -72,17 +72,33 @@ MonoBehaviour:
     FreeFirstBuild: 1
     ExtraMovePrice: 10
     ExtraMovePriceStep: 10
-    BenchSlots: 4
+    BenchSlots: 0
     GearInventorySlots: 6
     FeedDuplicates: 0
     ChoiceUpgradeCost: 12
     UpgradesPerTower: 2
     ChoiceUpgradeCostStep: 8
     TowersOnWalls: 1
-    HealCardWeight: 0.15
+    HealCardWeight: 0
     HealCardAmount: 3
     StatGear: 0
     ExtractorGear: 1
+    AbilityGear: 1
+    BuildMenu: 1
+    ResearchTier2Price: 30
+    ResearchTier3Price: 60
+    RepairPrice: 10
+    CollectorPrice: 6
+    CollectorDigCost: 20
+    CollectorHealth: 8
+    CollectorLossRefund: 0.5
+    PowerRule: 1
+    CorePowerRadius: 4
+    CorePowerCapacity: 4
+    CollectorPowerRadius: 3
+    CollectorPowerCapacity: 2
+    AgentsIncrementEveryWaves: 2
+    HpGrowthPerWave: 0.08
     ChooseTargeting: 1
     MergeCount: 3
     CorePlacement: 1

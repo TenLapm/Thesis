@@ -99,7 +99,13 @@ public class RockLayout : MonoBehaviour
         // The ring nothing is built on: a faint line along its inner edge.
         if (generated != null && generated.BuildMargin > 0)
         {
-            LineRenderer ring = TowerView.Line(transform, "BuildBorder", new Color(1f, 1f, 1f, 0.28f), 0.12f, true);
+            // The scene's own frame (GridBorder) was drawn for a board of one size; it is
+            // moved onto the build border instead, so the bright line is where building ends.
+            GameObject frame = GameObject.Find("GridBorder");
+            LineRenderer ring = frame != null ? frame.GetComponent<LineRenderer>() : null;
+            if (ring == null) ring = TowerView.Line(transform, "BuildBorder", new Color(1f, 1f, 1f, 0.28f), 0.12f, true);
+            ring.useWorldSpace = true;
+            ring.loop = true;
             float halfX = gridManager.gridWorldSize.x / 2f - generated.BuildMargin * cell;
             float halfZ = gridManager.gridWorldSize.y / 2f - generated.BuildMargin * cell;
             Vector3 c = gridManager.transform.position + Vector3.up * 0.08f;
@@ -125,6 +131,43 @@ public class RockLayout : MonoBehaviour
                 rock.transform.localScale = new Vector3(cell, tall, cell);
                 rock.GetComponent<MeshRenderer>().SetPropertyBlock(block);
             }
+        }
+
+        if (generated != null) DrawDeposits(generated, cell);
+    }
+
+    // The ore deposits (2026-10-14): a flat gold disc, wider the richer it is, with its
+    // yield written beside it. View only; the simulation has them in the map.
+    private void DrawDeposits(Thesis.Sim.MapData map, float cell)
+    {
+        var parent = new GameObject("Deposits").transform;
+        parent.SetParent(transform, false);
+        var gold = new MaterialPropertyBlock();
+        gold.SetColor("_BaseColor", PlayerBuilder.CollectorColor);
+        gold.SetColor("_EmissionColor", PlayerBuilder.CollectorColor * 1.2f);
+        foreach (Thesis.Sim.Deposit d in map.Deposits)
+        {
+            Vector3 at = gridManager.grid[d.Tile.X, d.Tile.Y].worldPosition;
+            GameObject disc = GameObject.CreatePrimitive(PrimitiveType.Cylinder);
+            disc.name = "Deposit " + d.Tile.X + "," + d.Tile.Y;
+            Destroy(disc.GetComponent<Collider>());
+            TowerView.UseSolidMaterial(disc);
+            disc.transform.SetParent(parent, false);
+            float size = cell * (0.75f + 0.1f * d.Yield);
+            disc.transform.position = at + new Vector3(0f, 0.04f, 0f);
+            disc.transform.localScale = new Vector3(size, 0.06f, size);
+            disc.GetComponent<MeshRenderer>().SetPropertyBlock(gold);
+
+            var label = new GameObject("Yield").AddComponent<TMPro.TextMeshPro>();
+            label.transform.SetParent(disc.transform.parent, false);
+            label.text = "+" + d.Yield;
+            label.fontSize = 9f;
+            label.fontStyle = TMPro.FontStyles.Bold;
+            label.alignment = TMPro.TextAlignmentOptions.Center;
+            label.color = new Color(0.12f, 0.08f, 0.02f);
+            label.rectTransform.sizeDelta = new Vector2(cell * 1.4f, cell * 0.8f);
+            label.transform.position = at + new Vector3(0f, 0.16f, 0f);
+            label.transform.rotation = Quaternion.Euler(90f, 0f, 0f);
         }
     }
 }

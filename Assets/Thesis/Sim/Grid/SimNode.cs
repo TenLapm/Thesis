@@ -67,6 +67,19 @@ namespace Thesis.Sim
         public int SapperCost = Infinity;
         public int SapperNextIndex = -1;
 
+        // The RAID field (2026-10-14): the same costs as the ground field, toward the
+        // nearest standing collector instead of the core. Raiders follow it while any
+        // collector stands (SimGrid.RaidGoals > 0).
+        public int RaidCost = Infinity;
+        public int RaidNextIndex = -1;
+
+        // A tower with lure gear stands here (2026-10-20), and the LURE field toward the
+        // nearest such tower: an enemy on foot within GearDef.LureRadius tiles of one
+        // follows it there (SimGrid.LureGoals > 0).
+        public bool Lure;
+        public int LureCost = Infinity;
+        public int LureNextIndex = -1;
+
         public SimNode(int x, int y, int index, bool isWalkable, Vec2f position)
         {
             X = x;

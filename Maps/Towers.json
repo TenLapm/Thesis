@@ -18,6 +18,7 @@
       "DigCost": 20,
       "TowerHealth": 8.0,
       "ShopWeight": 1.0,
+      "Tier": 1,
       "Levels": [
         {
           "Label": "faster shots",
@@ -41,7 +42,7 @@
     },
     {
       "Id": "ballista",
-      "Cost": 16,
+      "Cost": 14,
       "DamageType": "Physical",
       "Damage": 32.0,
       "RangeTiles": 5.0,
@@ -55,6 +56,7 @@
       "DigCost": 20,
       "TowerHealth": 8.0,
       "ShopWeight": 1.0,
+      "Tier": 2,
       "Levels": [
         {
           "Label": "two bolts",
@@ -78,7 +80,7 @@
     },
     {
       "Id": "cannon",
-      "Cost": 18,
+      "Cost": 12,
       "DamageType": "Fire",
       "Damage": 6.0,
       "RangeTiles": 3.0,
@@ -92,6 +94,7 @@
       "DigCost": 20,
       "TowerHealth": 8.0,
       "ShopWeight": 1.0,
+      "Tier": 1,
       "Levels": [
         {
           "Label": "bigger blast",
@@ -115,7 +118,7 @@
     },
     {
       "Id": "brazier",
-      "Cost": 12,
+      "Cost": 10,
       "DamageType": "Fire",
       "Damage": 0.8,
       "RangeTiles": 2.0,
@@ -129,6 +132,7 @@
       "DigCost": 20,
       "TowerHealth": 8.0,
       "ShopWeight": 1.0,
+      "Tier": 1,
       "Levels": [
         {
           "Label": "wider ring",
@@ -152,7 +156,7 @@
     },
     {
       "Id": "frost",
-      "Cost": 12,
+      "Cost": 10,
       "DamageType": "Frost",
       "Damage": 0.5,
       "RangeTiles": 2.5,
@@ -166,6 +170,7 @@
       "DigCost": 20,
       "TowerHealth": 8.0,
       "ShopWeight": 1.0,
+      "Tier": 1,
       "Levels": [
         {
           "Label": "longer slow",
@@ -189,7 +194,7 @@
     },
     {
       "Id": "sniper",
-      "Cost": 20,
+      "Cost": 18,
       "DamageType": "Physical",
       "Damage": 40.0,
       "RangeTiles": 8.0,
@@ -203,6 +208,7 @@
       "DigCost": 20,
       "TowerHealth": 8.0,
       "ShopWeight": 1.0,
+      "Tier": 3,
       "Levels": [
         {
           "Label": "+60% damage",
@@ -240,6 +246,7 @@
       "DigCost": 20,
       "TowerHealth": 8.0,
       "ShopWeight": 1.0,
+      "Tier": 2,
       "Levels": [
         {
           "Label": "four shards",
@@ -277,6 +284,7 @@
       "DigCost": 20,
       "TowerHealth": 8.0,
       "ShopWeight": 1.0,
+      "Tier": 2,
       "Levels": [
         {
           "Label": "faster shots",

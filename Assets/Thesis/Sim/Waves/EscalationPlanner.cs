@@ -40,10 +40,18 @@ namespace Thesis.Sim
             if (waveNumber < 1) throw new ArgumentOutOfRangeException(nameof(waveNumber), waveNumber, "Waves are 1-based.");
 
             int waveIndex = waveNumber - 1;
-            int count = config.AgentsPerWave + waveIndex * config.AgentsPerWaveIncrement;
+            int count = config.AgentsPerWave + (waveIndex / Math.Max(1, config.AgentsIncrementEveryWaves)) * config.AgentsPerWaveIncrement;
             float delay = Math.Max(config.MinSpawnDelay, (float)(config.SpawnDelay - (float)(waveIndex * config.SpawnDelayDecrement)));
             float speed = Math.Min(config.MaxMoveSpeed, (float)(config.BaseMoveSpeed + (float)(waveIndex * config.MoveSpeedIncrementPerWave)));
             float hp = (float)(config.BaseHp + (float)(waveIndex * config.HpIncrementPerWave));
+            // And by a share a wave (2026-10-14: fewer, stronger enemies whose strength grows
+            // as the player's economy does). A loop of single float products, not a power:
+            // every step rounds the same way on every runtime (ARCHITECTURE.md 9, rule 3).
+            if (config.HpGrowthPerWave > 0f)
+            {
+                float factor = (float)(1f + config.HpGrowthPerWave);
+                for (int i = 0; i < waveIndex; i++) hp = (float)(hp * factor);
+            }
 
             var plan = new WavePlan
             {

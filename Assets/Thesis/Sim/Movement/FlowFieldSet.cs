@@ -35,6 +35,8 @@ namespace Thesis.Sim
         {
             field.Generate(grid, goal);
             field.GenerateSapper(grid, goal, sapperDigCostFactor);
+            field.GenerateRaid(grid);
+            field.GenerateLure(grid);
         }
     }
 }

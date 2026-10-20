@@ -282,6 +282,7 @@ namespace Thesis.Director
                 SpawnedByClass = ByClass(o.SpawnedByClass),
                 KilledByClass = ByClass(o.KilledByClass),
                 LeakedByClass = ByClass(o.LeakedByClass),
+                CollectorsLost = o.CollectorsLost,
             };
         }
 
@@ -341,6 +342,9 @@ namespace Thesis.Director
                 case PlacementKind.GearSold: return WaveRecord.PlacementRow.GearSold;
                 case PlacementKind.GearShopReroll: return WaveRecord.PlacementRow.GearReroll;
                 case PlacementKind.CoreHealed: return WaveRecord.PlacementRow.Heal;
+                case PlacementKind.CollectorBuilt: return WaveRecord.PlacementRow.Collector;
+                case PlacementKind.CollectorSold: return WaveRecord.PlacementRow.SellCollector;
+                case PlacementKind.Researched: return WaveRecord.PlacementRow.Research;
                 default: throw new InvalidOperationException("[Telemetry] Unknown build-log kind " + kind + ".");
             }
         }

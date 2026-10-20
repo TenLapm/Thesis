@@ -63,6 +63,8 @@ namespace Thesis.Sim
             worldSizeX = source.worldSizeX;
             worldSizeY = source.worldSizeY;
             FieldVersion = source.FieldVersion;
+            RaidGoals = source.RaidGoals;
+            LureGoals = source.LureGoals;
             nodes = new SimNode[source.nodes.Length];
 
             for (int i = 0; i < nodes.Length; i++)
@@ -84,6 +86,11 @@ namespace Thesis.Sim
                     NextIndex = s.NextIndex,
                     SapperCost = s.SapperCost,
                     SapperNextIndex = s.SapperNextIndex,
+                    RaidCost = s.RaidCost,
+                    RaidNextIndex = s.RaidNextIndex,
+                    Lure = s.Lure,
+                    LureCost = s.LureCost,
+                    LureNextIndex = s.LureNextIndex,
                 };
             }
         }
@@ -119,6 +126,24 @@ namespace Thesis.Sim
         public bool InBounds(TileCoord t) { return InBounds(t.X, t.Y); }
 
         public SimGrid Clone() { return new SimGrid(this); }
+
+        // How many collectors the raid field leads to; 0 = raiders walk to the core.
+        public int RaidGoals;
+
+        // The next tile toward the nearest collector, or null.
+        public SimNode NextRaid(SimNode node) { return node.RaidNextIndex < 0 ? null : nodes[node.RaidNextIndex]; }
+
+        // How many lure towers the lure field leads to, and the next tile toward the nearest.
+        public int LureGoals;
+
+        public SimNode NextLure(SimNode node) { return node.LureNextIndex < 0 ? null : nodes[node.LureNextIndex]; }
+
+        // A collector stands on its deposit as a wall does: diggable, with health.
+        public void SetCollector(SimNode node, int terrainCost, float health)
+        {
+            SetWall(node, terrainCost, health);
+            node.Occupant = Occupant.Collector;
+        }
 
         // Line-for-line port of GridManager.NodeFromWorldPoint. Two quirks are kept
         // on purpose (ARCHITECTURE.md §4.3):
@@ -264,6 +289,7 @@ namespace Thesis.Sim
             node.Occupant = Occupant.None;
             node.TowerId = -1;
             node.PieceId = -1;
+            node.Lure = false;
             node.FoundationCost = 0;
             node.FoundationHealth = 0f;
             node.FoundationMaxHealth = 0f;

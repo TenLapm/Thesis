@@ -750,7 +750,7 @@ namespace Thesis.Tests.Sim
                 Assert.Greater(g.Hp, 0f);
                 Assert.Greater(g.MoveSpeed, 0f);
             }
-            Assert.AreEqual(10, names.Count);
+            Assert.AreEqual(11, names.Count);
 
             Assert.AreEqual(0.35f, EnemyArchetypes.Armored().Apply(basic, 1f).Resist[(int)DamageType.Physical]);
             Assert.AreEqual(1f, EnemyArchetypes.Armored().Apply(basic, 1f).Resist[(int)DamageType.Fire]);
@@ -763,7 +763,7 @@ namespace Thesis.Tests.Sim
         [Test]
         public void TheRaidPlannersCycleSendsEveryTypeAndEveryPlanIsValid()
         {
-            MapData map = MapGenerator.Generate(4);
+            MapData map = MapGenerator.Generate(4, deposits: 20); // with ore deposits: raiders come too
             var config = new SimConfig();
             var planner = new RaidPlanner(config, map);
             var seen = new HashSet<string>();

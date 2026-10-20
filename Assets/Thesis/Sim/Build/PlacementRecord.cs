@@ -43,7 +43,7 @@ namespace Thesis.Sim
 
         public bool IsPlacement => Kind == PlacementKind.Wall || Kind == PlacementKind.Tower;
 
-        public bool IsSale => Kind == PlacementKind.WallSold || Kind == PlacementKind.TowerSold;
+        public bool IsSale => Kind == PlacementKind.WallSold || Kind == PlacementKind.TowerSold || Kind == PlacementKind.CollectorSold;
 
         // The row took things off its Tiles without a sale: the towers a merge absorbed.
         public bool IsCombine => Kind == PlacementKind.TowerCombined;

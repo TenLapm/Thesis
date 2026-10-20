@@ -53,6 +53,13 @@ public class TowerShopPanel : MonoBehaviour
     }
 
     private readonly List<Card> cards = new List<Card>();
+    // The build menu (SimConfig.BuildMenu, 2026-10-14): one row per tower of the roster,
+    // and the gear that can be crafted, by its index in the gear roster.
+    private readonly List<Card> menuRows = new List<Card>();
+    private readonly List<int> craftable = new List<int>();
+    private TextMeshProUGUI budgetCaption;
+    private Image collectButton;
+    private const float MenuRowHeight = 36f;
     private readonly List<LegendRow> legend = new List<LegendRow>();
     private RectTransform panel;
     private RectTransform cardArea;
@@ -129,7 +136,7 @@ public class TowerShopPanel : MonoBehaviour
 
         title = Label(panel, "TOWER SHOP", 26, Bright, TextAlignmentOptions.TopLeft, new Vector2(18f, -14f), new Vector2(260f, 34f), true);
         subtitle = Label(panel, "new offers after every wave", 17, Dim, TextAlignmentOptions.TopLeft, new Vector2(18f, -46f), new Vector2(300f, 24f), false);
-        Label(panel, "Budget", 17, Dim, TextAlignmentOptions.TopRight, new Vector2(-18f, -12f), new Vector2(140f, 24f), false, true);
+        budgetCaption = Label(panel, "Budget", 17, Dim, TextAlignmentOptions.TopRight, new Vector2(-18f, -12f), new Vector2(140f, 24f), false, true);
         budget = Label(panel, "", 30, Gold, TextAlignmentOptions.TopRight, new Vector2(-18f, -30f), new Vector2(160f, 36f), true, true);
         income = Label(panel, "", 14, Dim, TextAlignmentOptions.TopRight, new Vector2(-18f, -62f), new Vector2(170f, 18f), false, true);
 
@@ -160,7 +167,8 @@ public class TowerShopPanel : MonoBehaviour
         rerollNote = Label(rr, "", 15, Dim, TextAlignmentOptions.TopRight, new Vector2(-14f, -7f), new Vector2(250f, 22f), false, true);
         Button rrButton = rr.gameObject.AddComponent<Button>();
         rrButton.transition = Selectable.Transition.None;
-        rrButton.onClick.AddListener(() => playerBuilder.Reroll());
+        // With the build menu this button buys the next research tier instead.
+        rrButton.onClick.AddListener(() => { if (playerBuilder.BuildMenu) playerBuilder.Research(); else playerBuilder.Reroll(); });
 
         gearArea = Rect("GearShop", panel);
         Top(gearArea, 80f, 0f);
@@ -185,7 +193,8 @@ public class TowerShopPanel : MonoBehaviour
         gearRerollLabel = Label(gr, "", 14, Gold, TextAlignmentOptions.Center, Vector2.zero, new Vector2(124f, 26f), true);
         Button grButton = gr.gameObject.AddComponent<Button>();
         grButton.transition = Selectable.Transition.None;
-        grButton.onClick.AddListener(() => playerBuilder.RerollGear());
+        // With the build menu this button repairs the core instead.
+        grButton.onClick.AddListener(() => { if (playerBuilder.BuildMenu) playerBuilder.RepairCore(); else playerBuilder.RerollGear(); });
 
         lower = Rect("Lower", panel);
         Top(lower, 80f, LowerHeight);
@@ -209,6 +218,8 @@ public class TowerShopPanel : MonoBehaviour
         moveGroup = moveButton.gameObject.AddComponent<CanvasGroup>();
         // With the extractor in the game, gear comes off by using one: no free tool for it.
         if (playerBuilder.ExtractorInGame) moveButton.gameObject.SetActive(false);
+        // Collectors on ore deposits, in the place the free gear tool had.
+        collectButton = ToolButton("COLLECT [C]", new Vector2(18f, row2), quarter, () => playerBuilder.SelectCollector());
 
         Label(lower, "ROUTES", 17, Dim, TextAlignmentOptions.TopLeft, new Vector2(18f, -114f), new Vector2(120f, 24f), true);
         legendNote = Label(lower, "", 15, Dim, TextAlignmentOptions.TopRight, new Vector2(-18f, -115f), new Vector2(290f, 24f), false, true);
@@ -330,7 +341,49 @@ public class TowerShopPanel : MonoBehaviour
         row.price = Label(root, "", 19, Gold, TextAlignmentOptions.TopRight, new Vector2(-12f, -2f), new Vector2(80f, 24f), true, true);
         Button button = row.root.AddComponent<Button>();
         button.transition = Selectable.Transition.None;
-        button.onClick.AddListener(() => playerBuilder.SelectShopGear(slot));
+        button.onClick.AddListener(() =>
+        {
+            if (playerBuilder.BuildMenu) { if (slot < craftable.Count) playerBuilder.CraftGear(craftable[slot]); }
+            else playerBuilder.SelectShopGear(slot);
+        });
+        return row;
+    }
+
+    // One line of the build menu: a dot in the tower's colour, its name, what it is, its price.
+    private Card AddMenuRow(int index)
+    {
+        var row = new Card();
+        RectTransform root = Rect("Menu " + (index + 1), cardArea);
+        root.anchorMin = new Vector2(0f, 1f);
+        root.anchorMax = new Vector2(1f, 1f);
+        root.pivot = new Vector2(0.5f, 1f);
+        root.sizeDelta = new Vector2(-28f, MenuRowHeight - 4f);
+        root.anchoredPosition = new Vector2(0f, -index * MenuRowHeight);
+        row.root = root.gameObject;
+        row.group = row.root.AddComponent<CanvasGroup>();
+        row.outline = row.root.AddComponent<Image>();
+        row.outline.color = Edge;
+        RectTransform inner = Rect("Fill", root);
+        inner.anchorMin = Vector2.zero;
+        inner.anchorMax = Vector2.one;
+        inner.offsetMin = new Vector2(2f, 2f);
+        inner.offsetMax = new Vector2(-2f, -2f);
+        row.background = inner.gameObject.AddComponent<Image>();
+        row.background.color = CardColor;
+        row.background.raycastTarget = false;
+        RectTransform icon = Rect("Icon", root);
+        icon.anchorMin = icon.anchorMax = new Vector2(0f, 0.5f);
+        icon.pivot = new Vector2(0.5f, 0.5f);
+        icon.anchoredPosition = new Vector2(22f, 0f);
+        icon.sizeDelta = new Vector2(20f, 20f);
+        row.icon = icon.gameObject.AddComponent<Image>();
+        row.icon.raycastTarget = false;
+        row.name = Label(root, "", 19, Bright, TextAlignmentOptions.TopLeft, new Vector2(42f, -5f), new Vector2(110f, 26f), true);
+        row.tags = Label(root, "", 14, Dim, TextAlignmentOptions.TopLeft, new Vector2(150f, -8f), new Vector2(210f, 22f), false);
+        row.price = Label(root, "", 20, Gold, TextAlignmentOptions.TopRight, new Vector2(-12f, -4f), new Vector2(70f, 26f), true, true);
+        Button button = row.root.AddComponent<Button>();
+        button.transition = Selectable.Transition.None;
+        button.onClick.AddListener(() => playerBuilder.SelectMenuTower(index));
         return row;
     }
 
@@ -392,19 +445,85 @@ public class TowerShopPanel : MonoBehaviour
         SimState state = Host.State;
         TowerOffer[] offers = state.Shop.Offers;
         Set(budget, state.BuildBudget.ToString("0.#"));
-        Set(income, "+" + Host.Config.StipendPerWave + " after the wave");
+        Set(income, "+" + (playerBuilder.BuildMenu ? playerBuilder.ExpectedIncome : Host.Config.StipendPerWave) + " after the wave");
         bool choosingCore = playerBuilder.ChoosingCore;
         if (coreBanner.gameObject.activeSelf != choosingCore) coreBanner.gameObject.SetActive(choosingCore);
         bool mayReopen = playerBuilder.MayReopenCore;
         if (moveCore.gameObject.activeSelf != mayReopen) moveCore.gameObject.SetActive(mayReopen);
 
-        // A draft (SimConfig.PicksPerRoll): the cards are free and only so many are taken.
         bool draft = state.Shop.PicksLeft >= 0;
+        int setSize = Host.Config.CombineCount;
+        float cardsHeight, gearHeight;
+        Set(budgetCaption, playerBuilder.BuildMenu ? "Ore" : "Budget");
+        if (playerBuilder.BuildMenu) UpdateBuildMenu(state, out cardsHeight, out gearHeight);
+        else UpdateCards(state, offers, draft, setSize, out cardsHeight, out gearHeight);
+        bool collect = playerBuilder.HasDeposits;
+        if (collectButton.gameObject.activeSelf != collect) collectButton.gameObject.SetActive(collect);
+        collectButton.color = playerBuilder.Tool == BuildTool.Collector ? Teal : Edge;
+
+        Top(lower, 80f + cardsHeight + 4f + gearHeight + 4f, LowerHeight);
+
+        bool maySell = playerBuilder.MaySell;
+        wallButton.color = playerBuilder.Tool == BuildTool.Wall ? Teal : Edge;
+        sellButton.color = playerBuilder.Tool == BuildTool.Sell ? Teal : Edge;
+        sellGroup.alpha = maySell ? 1f : 0.4f;
+        int wallPrice = playerBuilder.WallPrice;
+        moveTowerButton.color = playerBuilder.Tool == BuildTool.MoveTower ? Teal : Edge;
+        moveTowerGroup.alpha = playerBuilder.MayMoveTower ? 1f : 0.4f;
+        moveButton.color = playerBuilder.Tool == BuildTool.MoveGear ? Teal : Edge;
+        moveGroup.alpha = playerBuilder.MayMoveGear ? 1f : 0.4f;
+        upgradeButton.color = playerBuilder.Tool == BuildTool.Upgrade ? Teal : Edge;
+        upgradeGroup.alpha = playerBuilder.UpgradesOn && playerBuilder.IsBuildPhase ? 1f : 0.4f;
+        targetButton.color = playerBuilder.Tool == BuildTool.Target ? Teal : Edge;
+        targetGroup.alpha = playerBuilder.TargetingOn ? 1f : 0.4f;
+
+        // The choice of buffs for the tower being upgraded.
+        TowerState pending = playerBuilder.UpgradePending;
+        if (upgradePanel.gameObject.activeSelf != (pending != null)) upgradePanel.gameObject.SetActive(pending != null);
+        if (pending != null) Set(upgradeTitle, "UPGRADE " + Title(pending.Def.Id).ToUpperInvariant() + " TO " + TowerView.LevelName(pending.Rarity + 1).ToUpperInvariant() + "   " + playerBuilder.UpgradeCostFor(pending).ToString("0.#") + " budget.  Choose:");
+        string note = "";
+        switch (playerBuilder.Tool)
+        {
+            case BuildTool.Wall: note = playerBuilder.WallsFromStock ? "click or drag  \u00b7  " + state.WallsLeft + " tiles left" : "click or drag" + (wallPrice >= 0 ? "  \u00b7  " + wallPrice + " a tile" : ""); break;
+            case BuildTool.Sell: note = !maySell ? "between waves" : playerBuilder.WallsFromStock ? "take up a wall, or sell a tower" : "click it: half its price back"; break;
+            case BuildTool.Core: note = "click the tile your core goes on"; break;
+            case BuildTool.Deploy: note = "click a tile, or a tower to change places"; break;
+            case BuildTool.EquipGear: note = "drop it on a tower"; break;
+            case BuildTool.Upgrade: note = !playerBuilder.UpgradesOn ? "not in this game" : "click a tower: " + playerBuilder.UpgradeCost.ToString("0.#") + " (then more), you choose the buff"; break;
+            case BuildTool.Target: note = "click a tower to change what it shoots"; break;
+            case BuildTool.MoveTower: note = !playerBuilder.MayMoveTower ? "between waves" : playerBuilder.TowerFrom != null ? "now click a free tile" : "click a tower, then a free tile; free"; break;
+            case BuildTool.MoveGear: note = !playerBuilder.MayMoveGear ? "between waves" : playerBuilder.UsesInventory ? "click a tower: its gear comes off" : playerBuilder.GearFrom != null ? "now click where it goes" : "gear from tower to tower; free"; break;
+            case BuildTool.Tower: note = playerBuilder.SelectedMenuTower >= 0 ? "click a wall or a rock; right-click to stop" : "a tile, the bench, or a tower like it"; break;
+            case BuildTool.Collector: note = "click an ore deposit: " + Host.Config.CollectorPrice.ToString("0.#") + " ore"; break;
+            case BuildTool.Gear: note = "click the tower it goes on"; break;
+        }
+        Set(toolNote, note);
+
+        bool inWave = !playerBuilder.IsBuildPhase;
+        Set(legendNote, inWave ? "the wave now on the board" : state.NextPlan != null ? "the wave that comes next" : "every kind you have met");
+        float y = -140f;
+        for (int i = 0; i < legend.Count; i++)
+        {
+            bool shown = pathPreviewer != null && pathPreviewer.Shows(legend[i].movement);
+            legend[i].root.SetActive(shown);
+            if (!shown) continue;
+            ((RectTransform)legend[i].root.transform).anchoredPosition = new Vector2(0f, y);
+            y -= 26f;
+        }
+
+        UpdateOverlay(state, offers, draft, setSize);
+        UpdateTooltip();
+    }
+
+    // The shop's cards, the reroll and the gear shop (every game before the build menu).
+    private void UpdateCards(SimState state, TowerOffer[] offers, bool draft, int setSize, out float cardsHeight, out float gearHeight)
+    {
+        for (int i = 0; i < menuRows.Count; i++) menuRows[i].root.SetActive(false);
+        // A draft (SimConfig.PicksPerRoll): the cards are free and only so many are taken.
         Set(title, draft ? (state.Shop.PicksLeft == 1 ? "PICK ONE CARD" : state.Shop.PicksLeft > 1 ? "PICK " + state.Shop.PicksLeft + " CARDS" : "CARDS") : "TOWER SHOP");
         int cap = playerBuilder.TowerCap;
         string towersText = cap > 0 ? "towers " + playerBuilder.TowersStanding + " / " + cap + "  \u00b7  " : "";
         Set(subtitle, towersText + (draft ? (state.Shop.MayPick ? "cards are free" : "picked; new cards next wave") : "new offers after every wave"));
-        int setSize = Host.Config.CombineCount;
 
         while (cards.Count < offers.Length) cards.Add(AddCard(cards.Count));
         for (int i = 0; i < cards.Count; i++)
@@ -417,7 +536,7 @@ public class TowerShopPanel : MonoBehaviour
         }
 
         // The tools and the key sit under however many cards there are.
-        float cardsHeight = offers.Length * (CardHeight + CardGap);
+        cardsHeight = offers.Length * (CardHeight + CardGap);
 
         // The gear shop, under the cards: what is on sale, for budget.
         TowerOffer[] stock = state.GearShop.Offers;
@@ -437,7 +556,7 @@ public class TowerShopPanel : MonoBehaviour
         }
         cardsHeight += rerollHeight;
 
-        float gearHeight = stock.Length > 0 ? 30f + stock.Length * GearRowHeight : 0f;
+        gearHeight = stock.Length > 0 ? 30f + stock.Length * GearRowHeight : 0f;
         gearArea.gameObject.SetActive(stock.Length > 0);
         Top(gearArea, 80f + cardsHeight + 4f, gearHeight);
         while (gearRows.Count < stock.Length) gearRows.Add(AddGearRow(gearRows.Count));
@@ -472,57 +591,90 @@ public class TowerShopPanel : MonoBehaviour
             }
         }
 
-        Top(lower, 80f + cardsHeight + 4f + gearHeight + 4f, LowerHeight);
+    }
 
-        bool maySell = playerBuilder.MaySell;
-        wallButton.color = playerBuilder.Tool == BuildTool.Wall ? Teal : Edge;
-        sellButton.color = playerBuilder.Tool == BuildTool.Sell ? Teal : Edge;
-        sellGroup.alpha = maySell ? 1f : 0.4f;
-        int wallPrice = playerBuilder.WallPrice;
-        moveTowerButton.color = playerBuilder.Tool == BuildTool.MoveTower ? Teal : Edge;
-        moveTowerGroup.alpha = playerBuilder.MayMoveTower ? 1f : 0.4f;
-        moveButton.color = playerBuilder.Tool == BuildTool.MoveGear ? Teal : Edge;
-        moveGroup.alpha = playerBuilder.MayMoveGear ? 1f : 0.4f;
-        upgradeButton.color = playerBuilder.Tool == BuildTool.Upgrade ? Teal : Edge;
-        upgradeGroup.alpha = playerBuilder.UpgradesOn && playerBuilder.IsBuildPhase ? 1f : 0.4f;
-        targetButton.color = playerBuilder.Tool == BuildTool.Target ? Teal : Edge;
-        targetGroup.alpha = playerBuilder.TargetingOn ? 1f : 0.4f;
-
-        // The choice of buffs for the tower being upgraded.
-        TowerState pending = playerBuilder.UpgradePending;
-        if (upgradePanel.gameObject.activeSelf != (pending != null)) upgradePanel.gameObject.SetActive(pending != null);
-        if (pending != null) Set(upgradeTitle, "UPGRADE " + Title(pending.Def.Id).ToUpperInvariant() + " TO " + TowerView.LevelName(pending.Rarity + 1).ToUpperInvariant() + "   " + playerBuilder.UpgradeCostFor(pending).ToString("0.#") + " budget.  Choose:");
-        string note = "";
-        switch (playerBuilder.Tool)
+    // The build menu (SimConfig.BuildMenu): every tower, locked until its tier is researched;
+    // the research button where the reroll was; crafting and the core's repair where the gear shop was.
+    private void UpdateBuildMenu(SimState state, out float cardsHeight, out float gearHeight)
+    {
+        Set(title, "BUILD");
+        string power = "";
+        if (playerBuilder.PowerRule)
         {
-            case BuildTool.Wall: note = playerBuilder.WallsFromStock ? "click or drag  \u00b7  " + state.WallsLeft + " tiles left" : "click or drag" + (wallPrice >= 0 ? "  \u00b7  " + wallPrice + " a tile" : ""); break;
-            case BuildTool.Sell: note = !maySell ? "between waves" : playerBuilder.WallsFromStock ? "take up a wall, or sell a tower" : "click it: half its price back"; break;
-            case BuildTool.Core: note = "click the tile your core goes on"; break;
-            case BuildTool.Deploy: note = "click a tile, or a tower to change places"; break;
-            case BuildTool.EquipGear: note = "drop it on a tower"; break;
-            case BuildTool.Upgrade: note = !playerBuilder.UpgradesOn ? "not in this game" : "click a tower: " + playerBuilder.UpgradeCost.ToString("0.#") + " (then more), you choose the buff"; break;
-            case BuildTool.Target: note = "click a tower to change what it shoots"; break;
-            case BuildTool.MoveTower: note = !playerBuilder.MayMoveTower ? "between waves" : playerBuilder.TowerFrom != null ? "now click a free tile" : "click a tower, then a free tile; free"; break;
-            case BuildTool.MoveGear: note = !playerBuilder.MayMoveGear ? "between waves" : playerBuilder.UsesInventory ? "click a tower: its gear comes off" : playerBuilder.GearFrom != null ? "now click where it goes" : "gear from tower to tower; free"; break;
-            case BuildTool.Tower: note = "a tile, the bench, or a tower like it"; break;
-            case BuildTool.Gear: note = "click the tower it goes on"; break;
+            playerBuilder.PowerCount(out int powered, out int standing);
+            power = "  \u00b7  power " + powered + " / " + standing + " towers";
         }
-        Set(toolNote, note);
-
-        bool inWave = !playerBuilder.IsBuildPhase;
-        Set(legendNote, inWave ? "the wave now on the board" : state.NextPlan != null ? "the wave that comes next" : "every kind you have met");
-        float y = -140f;
-        for (int i = 0; i < legend.Count; i++)
+        Set(subtitle, "research tier " + state.ResearchLevel + " of 3" + power);
+        for (int i = 0; i < cards.Count; i++) cards[i].root.SetActive(false);
+        TowerDef[] roster = Host.Sim.TowerLibrary;
+        while (menuRows.Count < roster.Length) menuRows.Add(AddMenuRow(menuRows.Count));
+        for (int i = 0; i < menuRows.Count; i++)
         {
-            bool shown = pathPreviewer != null && pathPreviewer.Shows(legend[i].movement);
-            legend[i].root.SetActive(shown);
-            if (!shown) continue;
-            ((RectTransform)legend[i].root.transform).anchoredPosition = new Vector2(0f, y);
-            y -= 26f;
+            Card row = menuRows[i];
+            row.root.SetActive(i < roster.Length);
+            if (i >= roster.Length) continue;
+            TowerDef def = roster[i];
+            bool unlocked = playerBuilder.TowerUnlocked(i);
+            bool inHand = playerBuilder.Tool == BuildTool.Tower && playerBuilder.SelectedMenuTower == i;
+            Set(row.name, Title(def.Id));
+            Set(row.tags, unlocked ? Tags(def) : "research tier " + def.Tier);
+            Set(row.price, def.Cost.ToString());
+            row.price.color = !unlocked ? Dim : state.BuildBudget < def.Cost ? Red : Gold;
+            row.icon.color = TowerView.ColorOf(def.DamageType);
+            row.group.alpha = unlocked ? 1f : 0.4f;
+            row.outline.color = inHand ? Teal : Edge;
+            row.background.color = inHand ? CardSelected : CardColor;
         }
+        cardsHeight = roster.Length * MenuRowHeight;
 
-        UpdateOverlay(state, offers, draft, setSize);
-        UpdateTooltip();
+        rerollArea.gameObject.SetActive(true);
+        Top(rerollArea, 80f + cardsHeight, RerollHeight);
+        float price = Host.Sim.ResearchPrice;
+        bool can = price >= 0f && state.BuildBudget >= price;
+        Set(rerollLabel, price < 0f ? "ALL RESEARCHED" : "TIER " + (state.ResearchLevel + 1) + "   " + price.ToString("0.#"));
+        rerollLabel.color = can ? Gold : Dim;
+        Set(rerollNote, price < 0f ? "" : "research: " + Unlocks(state.ResearchLevel + 1));
+        rerollGroup.alpha = can ? 1f : 0.45f;
+        cardsHeight += RerollHeight;
+
+        craftable.Clear();
+        GearDef[] gear = Host.Sim.GearLibrary;
+        for (int g = 0; g < gear.Length; g++) if (gear[g].OnSale(Host.Config)) craftable.Add(g);
+        bool inventory = Host.Config.GearInventorySlots > 0 && craftable.Count > 0;
+        gearHeight = inventory ? 30f + craftable.Count * GearRowHeight : 0f;
+        gearArea.gameObject.SetActive(inventory);
+        Top(gearArea, 80f + cardsHeight + 4f, gearHeight);
+        while (gearRows.Count < craftable.Count) gearRows.Add(AddGearRow(gearRows.Count));
+        bool full = System.Array.IndexOf(state.GearInventory, TowerState.NoGear) < 0;
+        for (int i = 0; i < gearRows.Count; i++)
+        {
+            Card row = gearRows[i];
+            row.root.SetActive(i < craftable.Count);
+            if (i >= craftable.Count) continue;
+            GearDef piece = gear[craftable[i]];
+            bool unlocked = piece.Tier <= state.ResearchLevel;
+            Set(row.name, Title(piece.Id));
+            Set(row.tags, !unlocked ? "research tier " + piece.Tier : full ? "inventory full" : piece.Label);
+            Set(row.price, piece.Price.ToString());
+            row.price.color = !unlocked ? Dim : state.BuildBudget < piece.Price ? Red : Gold;
+            row.icon.color = TowerView.ColorOfGear(craftable[i]);
+            row.group.alpha = unlocked && !full ? 1f : 0.4f;
+            row.outline.color = Edge;
+            row.background.color = CardColor;
+        }
+        Set(gearTitle, "CRAFT GEAR   click: into the inventory");
+        if (!gearRerollGroup.gameObject.activeSelf) gearRerollGroup.gameObject.SetActive(true);
+        Set(gearRerollLabel, "REPAIR +" + Host.Config.HealCardAmount + "   " + Host.Config.RepairPrice.ToString("0.#"));
+        gearRerollGroup.alpha = playerBuilder.CanRepair ? 1f : 0.4f;
+    }
+
+    // What a research tier unlocks, by name.
+    private string Unlocks(int tier)
+    {
+        var names = new List<string>();
+        foreach (TowerDef t in Host.Sim.TowerLibrary) if (t.Tier == tier) names.Add(t.Id);
+        foreach (GearDef g in Host.Sim.GearLibrary) if (g.Tier == tier && g.OnSale(Host.Config)) names.Add(g.Id);
+        return string.Join(", ", names);
     }
 
     // Everything one card says about the offer in slot i.

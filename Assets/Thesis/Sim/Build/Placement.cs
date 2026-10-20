@@ -36,6 +36,7 @@ namespace Thesis.Sim
                 if (node.HasWall) return false;      // existing wall
                 if (IsProtected(map, t)) return false; // spawn / core
                 if (map.InBuildMargin(t)) return false; // the ring enemies enter through
+                if (map.DepositAt(t) >= 0) return false; // an ore deposit is for a collector
             }
             return true;
         }
