@@ -2195,6 +2195,9 @@ MonoBehaviour:
   OnGameOver:
     m_PersistentCalls:
       m_Calls: []
+  OnRevived:
+    m_PersistentCalls:
+      m_Calls: []
 --- !u!1 &429773778
 GameObject:
   m_ObjectHideFlags: 0
@@ -4625,6 +4628,7 @@ MonoBehaviour:
   walkerColor: {r: 1, g: 0.24, b: 0.94, a: 1}
   sapperColor: {r: 0.98, g: 0.57, b: 0.24, a: 1}
   flyerColor: {r: 0.38, g: 0.65, b: 0.98, a: 1}
+  raiderColor: {r: 0.25, g: 0.9, b: 0.35, a: 1}
   sapperOffset: 0.45
   waveWidthFactor: 0.3
   waveAlpha: 0.3
@@ -4840,7 +4844,8 @@ MonoBehaviour:
   seed: 1
   randomSeed: 1
   generateMap: 1
-  mapDeposits: 25
+  mapDeposits: 28
+  depositsPerCluster: 4
   mapMargin: 2
   mapRidges: 22
   maxTicksPerFrame: 20
@@ -4855,6 +4860,7 @@ MonoBehaviour:
   - {fileID: 11400000, guid: fb90f4ecf9bf9cd488556b8dddefade2, type: 2}
   - {fileID: 11400000, guid: 09db33c1d9751d744acce5bf66fed76c, type: 2}
   - {fileID: 11400000, guid: 4baae109a0bb24344bc7aa581ed460a6, type: 2}
+  - {fileID: 11400000, guid: a3e830535397476c8c35d43d9df8ab2f, type: 2}
   gridManager: {fileID: 0}
   flowManager: {fileID: 0}
   waveSpawner: {fileID: 0}

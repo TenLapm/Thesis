@@ -234,6 +234,13 @@ namespace Thesis.Sim
         public float ResearchTier3Price = 60f;
         public float RepairPrice = 10f;
 
+        // What crafting a piece of gear costs, as a share of its price (2026-10-23: halved).
+        public float GearCraftPriceFactor = 1f;
+
+        // How many actions of a build phase can be undone (commands Undo and Redo,
+        // 2026-10-24). 0 = no undo.
+        public int UndoSteps = 0;
+
         // A collector on an ore deposit (MapData.Deposits): what it costs, and what it
         // is as terrain. It pays its deposit's yield after every wave it stands through.
         public float CollectorPrice = 6f;

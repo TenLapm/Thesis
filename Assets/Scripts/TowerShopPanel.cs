@@ -50,6 +50,7 @@ public class TowerShopPanel : MonoBehaviour
     {
         public GameObject root;
         public MovementClass movement;
+        public bool raid;
     }
 
     private readonly List<Card> cards = new List<Card>();
@@ -57,7 +58,13 @@ public class TowerShopPanel : MonoBehaviour
     // and the gear that can be crafted, by its index in the gear roster.
     private readonly List<Card> menuRows = new List<Card>();
     private readonly List<int> craftable = new List<int>();
-    private TextMeshProUGUI budgetCaption;
+    private TextMeshProUGUI budgetCaption, toolsLabel;
+    private readonly List<GameObject> upgradeButtons = new List<GameObject>();
+    private readonly List<TextMeshProUGUI> upgradeLabels = new List<TextMeshProUGUI>();
+
+    // With the build menu and the bottom bar, building is the bar's (DeckBar): this panel
+    // keeps the ore, the power and the routes, and shrinks to them.
+    private bool Compact => playerBuilder.BuildMenu && playerBuilder.deckBar != null;
     private Image collectButton;
     private const float MenuRowHeight = 36f;
     private readonly List<LegendRow> legend = new List<LegendRow>();
@@ -199,7 +206,7 @@ public class TowerShopPanel : MonoBehaviour
         lower = Rect("Lower", panel);
         Top(lower, 80f, LowerHeight);
 
-        Label(lower, "TOOLS", 17, Dim, TextAlignmentOptions.TopLeft, new Vector2(18f, -6f), new Vector2(200f, 24f), true);
+        toolsLabel = Label(lower, "TOOLS", 17, Dim, TextAlignmentOptions.TopLeft, new Vector2(18f, -6f), new Vector2(200f, 24f), true);
         // What the tool in the hand does, in one line beside the heading.
         toolNote = Label(lower, "", 15, Dim, TextAlignmentOptions.TopRight, new Vector2(-18f, -7f), new Vector2(320f, 24f), false, true);
         // Six tools in two rows of three.
@@ -229,6 +236,8 @@ public class TowerShopPanel : MonoBehaviour
         LegendLine(MovementClass.Ground, walker, "Walkers", "round your walls");
         LegendLine(MovementClass.Sapper, sapper, "Sappers", "through thin walls");
         LegendLine(MovementClass.Flying, flyer, "Flyers", "straight, over everything");
+        LegendLine(MovementClass.Ground, pathPreviewer != null ? pathPreviewer.raiderColor : Color.green, "Raiders", "to your collectors");
+        legend[legend.Count - 1].raid = true;
 
         tooltip = Rect("BuildTooltip", transform);
         tooltip.anchorMin = tooltip.anchorMax = new Vector2(0.5f, 0.5f);
@@ -455,13 +464,24 @@ public class TowerShopPanel : MonoBehaviour
         int setSize = Host.Config.CombineCount;
         float cardsHeight, gearHeight;
         Set(budgetCaption, playerBuilder.BuildMenu ? "Ore" : "Budget");
-        if (playerBuilder.BuildMenu) UpdateBuildMenu(state, out cardsHeight, out gearHeight);
+        if (Compact) UpdateStatus(state, out cardsHeight, out gearHeight);
+        else if (playerBuilder.BuildMenu) UpdateBuildMenu(state, out cardsHeight, out gearHeight);
         else UpdateCards(state, offers, draft, setSize, out cardsHeight, out gearHeight);
-        bool collect = playerBuilder.HasDeposits;
+        bool collect = playerBuilder.HasDeposits && !Compact;
         if (collectButton.gameObject.activeSelf != collect) collectButton.gameObject.SetActive(collect);
         collectButton.color = playerBuilder.Tool == BuildTool.Collector ? Teal : Edge;
 
-        Top(lower, 80f + cardsHeight + 4f + gearHeight + 4f, LowerHeight);
+        // Compact: the tools are in the bar, so the routes move up to where they were.
+        float lowerTop = Compact ? 80f - 108f : 80f + cardsHeight + 4f + gearHeight + 4f;
+        Top(lower, lowerTop, LowerHeight);
+        bool tools = !Compact;
+        if (toolsLabel.gameObject.activeSelf != tools)
+        {
+            toolsLabel.gameObject.SetActive(tools);
+            toolNote.gameObject.SetActive(tools);
+            foreach (Image b in new[] { wallButton, sellButton, moveTowerButton, upgradeButton, targetButton }) b.gameObject.SetActive(tools);
+            if (!tools) { moveButton.gameObject.SetActive(false); collectButton.gameObject.SetActive(false); }
+        }
 
         bool maySell = playerBuilder.MaySell;
         wallButton.color = playerBuilder.Tool == BuildTool.Wall ? Teal : Edge;
@@ -480,6 +500,16 @@ public class TowerShopPanel : MonoBehaviour
         // The choice of buffs for the tower being upgraded.
         TowerState pending = playerBuilder.UpgradePending;
         if (upgradePanel.gameObject.activeSelf != (pending != null)) upgradePanel.gameObject.SetActive(pending != null);
+        if (pending != null)
+        {
+            TowerLevelMod[] choices = TowerUpgradeChoices.For(pending.Def);
+            for (int i = 0; i < upgradeButtons.Count; i++)
+            {
+                bool shown = i < choices.Length;
+                if (upgradeButtons[i].activeSelf != shown) upgradeButtons[i].SetActive(shown);
+                if (shown) Set(upgradeLabels[i], choices[i].Label);
+            }
+        }
         if (pending != null) Set(upgradeTitle, "UPGRADE " + Title(pending.Def.Id).ToUpperInvariant() + " TO " + TowerView.LevelName(pending.Rarity + 1).ToUpperInvariant() + "   " + playerBuilder.UpgradeCostFor(pending).ToString("0.#") + " budget.  Choose:");
         string note = "";
         switch (playerBuilder.Tool)
@@ -504,12 +534,17 @@ public class TowerShopPanel : MonoBehaviour
         float y = -140f;
         for (int i = 0; i < legend.Count; i++)
         {
-            bool shown = pathPreviewer != null && pathPreviewer.Shows(legend[i].movement);
+            bool shown = pathPreviewer != null && (legend[i].raid ? pathPreviewer.ShowsRaiders : pathPreviewer.Shows(legend[i].movement));
             legend[i].root.SetActive(shown);
             if (!shown) continue;
             ((RectTransform)legend[i].root.transform).anchoredPosition = new Vector2(0f, y);
             y -= 26f;
         }
+
+        // Compact: the panel ends under the last route line.
+        float bottom = bottomInset;
+        if (Compact && canvasRect != null) bottom = Mathf.Max(bottomInset, canvasRect.rect.height - topInset - (lowerTop - y + 14f));
+        if (!Mathf.Approximately(panel.offsetMin.y, bottom)) panel.offsetMin = new Vector2(panel.offsetMin.x, bottom);
 
         UpdateOverlay(state, offers, draft, setSize);
         UpdateTooltip();
@@ -593,6 +628,24 @@ public class TowerShopPanel : MonoBehaviour
 
     }
 
+    // The compact panel: the state of the base, nothing to build.
+    private void UpdateStatus(SimState state, out float cardsHeight, out float gearHeight)
+    {
+        Set(title, "BASE");
+        string power = "";
+        if (playerBuilder.PowerRule)
+        {
+            playerBuilder.PowerCount(out int powered, out int standing);
+            power = "  \u00b7  power " + powered + " / " + standing + " towers";
+        }
+        Set(subtitle, "research tier " + state.ResearchLevel + " of 3" + power);
+        for (int i = 0; i < cards.Count; i++) if (cards[i].root.activeSelf) cards[i].root.SetActive(false);
+        for (int i = 0; i < menuRows.Count; i++) if (menuRows[i].root.activeSelf) menuRows[i].root.SetActive(false);
+        if (rerollArea.gameObject.activeSelf) rerollArea.gameObject.SetActive(false);
+        if (gearArea.gameObject.activeSelf) gearArea.gameObject.SetActive(false);
+        cardsHeight = gearHeight = 0f;
+    }
+
     // The build menu (SimConfig.BuildMenu): every tower, locked until its tier is researched;
     // the research button where the reroll was; crafting and the core's repair where the gear shop was.
     private void UpdateBuildMenu(SimState state, out float cardsHeight, out float gearHeight)
@@ -620,7 +673,7 @@ public class TowerShopPanel : MonoBehaviour
             Set(row.tags, unlocked ? Tags(def) : "research tier " + def.Tier);
             Set(row.price, def.Cost.ToString());
             row.price.color = !unlocked ? Dim : state.BuildBudget < def.Cost ? Red : Gold;
-            row.icon.color = TowerView.ColorOf(def.DamageType);
+            row.icon.color = TowerView.ColorOfTower(def);
             row.group.alpha = unlocked ? 1f : 0.4f;
             row.outline.color = inHand ? Teal : Edge;
             row.background.color = inHand ? CardSelected : CardColor;
@@ -655,8 +708,8 @@ public class TowerShopPanel : MonoBehaviour
             bool unlocked = piece.Tier <= state.ResearchLevel;
             Set(row.name, Title(piece.Id));
             Set(row.tags, !unlocked ? "research tier " + piece.Tier : full ? "inventory full" : piece.Label);
-            Set(row.price, piece.Price.ToString());
-            row.price.color = !unlocked ? Dim : state.BuildBudget < piece.Price ? Red : Gold;
+            Set(row.price, Host.Sim.CraftPrice(craftable[i]).ToString());
+            row.price.color = !unlocked ? Dim : state.BuildBudget < Host.Sim.CraftPrice(craftable[i]) ? Red : Gold;
             row.icon.color = TowerView.ColorOfGear(craftable[i]);
             row.group.alpha = unlocked && !full ? 1f : 0.4f;
             row.outline.color = Edge;
@@ -727,7 +780,7 @@ public class TowerShopPanel : MonoBehaviour
                 break;
             default:
                 TowerDef def = Host.Sim.TowerLibrary[offers[i].TowerIndex];
-                Color typeColor = TowerView.ColorOf(def.DamageType);
+                Color typeColor = TowerView.ColorOfTower(def);
                 int level = offers[i].Level;
                 Set(card.name, Title(def.Id));
                 Set(card.type, level > 1 ? TowerView.LevelName(level) + ": " + LevelLabels(def, level) : def.DamageType.ToString().ToLowerInvariant());
@@ -819,11 +872,14 @@ public class TowerShopPanel : MonoBehaviour
         upgradePanel.sizeDelta = new Vector2(640f, 110f + TowerUpgradeChoices.All.Length * 58f);
         upgradePanel.gameObject.AddComponent<Image>().color = new Color(0.04f, 0.06f, 0.1f, 0.97f);
         upgradeTitle = Label(upgradePanel, "", 22, Gold, TextAlignmentOptions.Top, new Vector2(20f, -14f), new Vector2(600f, 30f), true);
+        // Four places; each tower type fills them with its own choices (2026-10-24).
         for (int i = 0; i < TowerUpgradeChoices.All.Length; i++)
         {
             int choice = i;
             float fromCentre = (upgradePanel.sizeDelta.y / 2f) - 82f - i * 58f;
-            OverlayButton(upgradePanel, TowerUpgradeChoices.All[i].Label, new Vector2(0f, fromCentre), 560f, () => playerBuilder.ChooseUpgrade(choice), out _, out _);
+            Image button = OverlayButton(upgradePanel, TowerUpgradeChoices.All[i].Label, new Vector2(0f, fromCentre), 560f, () => playerBuilder.ChooseUpgrade(choice), out TextMeshProUGUI label, out _);
+            upgradeButtons.Add(button.gameObject);
+            upgradeLabels.Add(label);
         }
         OverlayButton(upgradePanel, "NOT NOW", new Vector2(0f, -(upgradePanel.sizeDelta.y / 2f) + 34f), 200f, () => playerBuilder.CancelUpgrade(), out _, out _).color = Edge;
         upgradePanel.gameObject.SetActive(false);

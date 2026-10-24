@@ -33,6 +33,8 @@ public class PathPreviewer : MonoBehaviour
     public Color walkerColor = new Color(1f, 0.24f, 0.94f);
     public Color sapperColor = new Color(0.98f, 0.57f, 0.24f);
     public Color flyerColor = new Color(0.38f, 0.65f, 0.98f);
+    // Raiders (2026-10-20): the way to the nearest collector they go for first.
+    public Color raiderColor = new Color(0.25f, 0.9f, 0.35f);
     [Tooltip("The sappers' line is drawn this far to one side, so it stays visible where it shares a stretch with the walkers' line.")]
     public float sapperOffset = 0.45f;
     [Tooltip("While a wave is on the board the lines are this much thinner and fainter, so they do not cover the enemies walking along them.")]
@@ -45,6 +47,7 @@ public class PathPreviewer : MonoBehaviour
     {
         public int Spawn;
         public MovementClass Movement;
+        public bool Raid;
     }
 
     private readonly List<Lane> lanes = new List<Lane>();
@@ -64,6 +67,11 @@ public class PathPreviewer : MonoBehaviour
 
     // The kinds whose lines are on the board right now (for the key in the HUD).
     public bool Shows(MovementClass movement) { return shownMask >= 0 && (shownMask & (1 << (int)movement)) != 0; }
+
+    // Whether a raiders' line is on the board right now.
+    public bool ShowsRaiders => shownMask >= 0 && (shownMask & RaidBit) != 0;
+
+    private const int RaidBit = 1 << 8;
 
     // How many places the announced (or running) wave comes in at.
     public int EntryCount { get; private set; }
@@ -92,7 +100,7 @@ public class PathPreviewer : MonoBehaviour
         var h = new Fnv1a64();
         h.Add(inWave);
         h.Add(lanes.Count);
-        for (int i = 0; i < lanes.Count; i++) { h.Add(lanes[i].Spawn); h.Add((int)lanes[i].Movement); }
+        for (int i = 0; i < lanes.Count; i++) { h.Add(lanes[i].Spawn); h.Add((int)lanes[i].Movement); h.Add(lanes[i].Raid); }
         if (host != null) { h.Add(host.State.Core.X); h.Add(host.State.Core.Y); }
         if (flowManager.FieldVersion == drawnVersion && h.Value == drawnLanes) return;
         drawnVersion = flowManager.FieldVersion;
@@ -117,9 +125,10 @@ public class PathPreviewer : MonoBehaviour
             foreach (AgentGroup group in plan.Groups)
             {
                 if (inWave) met |= 1 << (int)group.Movement;
+                bool raid = group.TargetsCollectors;
                 bool known = false;
-                for (int i = 0; i < lanes.Count; i++) if (lanes[i].Spawn == group.SpawnIndex && lanes[i].Movement == group.Movement) known = true;
-                if (!known) lanes.Add(new Lane { Spawn = group.SpawnIndex, Movement = group.Movement });
+                for (int i = 0; i < lanes.Count; i++) if (lanes[i].Spawn == group.SpawnIndex && lanes[i].Movement == group.Movement && lanes[i].Raid == raid) known = true;
+                if (!known) lanes.Add(new Lane { Spawn = group.SpawnIndex, Movement = group.Movement, Raid = raid });
             }
             return;
         }
@@ -161,7 +170,20 @@ public class PathPreviewer : MonoBehaviour
 
             points.Clear();
             Color color;
-            if (lane.Movement == MovementClass.Flying)
+            if (lane.Raid && grid.RaidGoals > 0 && start.IsWalkable && start.RaidCost != SimNode.Infinity)
+            {
+                // Raiders: along the raid field to the collector they reach first.
+                color = raiderColor;
+                Vector3 lift = new Vector3(-sapperOffset, 0.08f, sapperOffset);
+                SimNode at = start;
+                for (int guard = 0; at != null && guard < grid.NodeCount; guard++)
+                {
+                    points.Add(SceneMapBuilder.ToWorld(at.Position, y) + lift);
+                    if (at.RaidCost == 0) break;
+                    at = grid.NextRaid(at);
+                }
+            }
+            else if (lane.Movement == MovementClass.Flying)
             {
                 color = flyerColor;
                 points.Add(new Vector3(from.x, y + 0.1f, from.z));
@@ -185,7 +207,7 @@ public class PathPreviewer : MonoBehaviour
             line.startColor = line.endColor = color;
             line.positionCount = points.Count;
             line.SetPositions(points.ToArray());
-            shownMask |= 1 << (int)lane.Movement;
+            shownMask |= lane.Raid && grid.RaidGoals > 0 ? RaidBit : 1 << (int)lane.Movement;
         }
 
         // A marker on every entry tile of the wave.

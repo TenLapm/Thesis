@@ -40,6 +40,17 @@ namespace Thesis.Sim
 
         public void OnWaveResolved(WaveOutcome outcome) { }
 
+        public const int FirstRaidWave = 6;
+        public const int RaidEvery = 3;
+
+        // The share of a wave the raiders are sized as: 0.4 at the first raid, 0.04 more at
+        // each one after, at most 0.8.
+        public static float RaidShare(int wave)
+        {
+            int raid = (wave - FirstRaidWave) / RaidEvery;
+            return Math.Min(0.8f, (float)(0.4f + (float)(0.04f * raid)));
+        }
+
         public static int EntriesFor(int wave) { return wave < 4 ? 1 : wave < 8 ? 2 : 3; }
 
         public WavePlan PlanWave(WaveContext context)
@@ -85,16 +96,18 @@ namespace Thesis.Sim
                 case 6: groups = new[] { EnemyArchetypes.Brute().Apply(basic, 1f), EnemyArchetypes.Basic().Apply(basic, 0.5f) }; break;
                 case 7: groups = new[] { EnemyArchetypes.Ember().Apply(basic, 0.6f), EnemyArchetypes.Sapper().Apply(basic, 0.4f) }; break;
                 case 8: groups = new[] { EnemyArchetypes.Bats().Apply(basic, 1f) }; break;
-                case 9: groups = new[] { EnemyArchetypes.Frostborn().Apply(basic, 0.6f), EnemyArchetypes.Runner().Apply(basic, 0.4f) }; break;
+                case 9: groups = new[] { EnemyArchetypes.Swarm().Apply(basic, 0.5f), EnemyArchetypes.Runner().Apply(basic, 0.5f) }; break; // was frostborn (2026-10-24)
                 case 10: groups = new[] { EnemyArchetypes.Armored().Apply(basic, 0.5f), EnemyArchetypes.Flyer().Apply(basic, 0.5f) }; break;
                 default: groups = new[] { EnemyArchetypes.Brute().Apply(basic, 0.5f), EnemyArchetypes.Swarm().Apply(basic, 0.5f), EnemyArchetypes.Bats().Apply(basic, 0.5f) }; break;
             }
-            // On a map with ore deposits every third wave brings raiders too.
-            if (deposits && wave % 3 == 0)
+            // On a map with ore deposits raiders come too: from wave FirstRaidWave, every
+            // RaidEvery waves, a little more of the wave each time (2026-10-24: the first
+            // outposts need time to stand before anything comes for them).
+            if (deposits && wave >= FirstRaidWave && (wave - FirstRaidWave) % RaidEvery == 0)
             {
                 var withRaiders = new AgentGroup[groups.Length + 1];
                 Array.Copy(groups, withRaiders, groups.Length);
-                withRaiders[groups.Length] = EnemyArchetypes.Raider().Apply(basic, 0.5f);
+                withRaiders[groups.Length] = EnemyArchetypes.Raider().Apply(basic, RaidShare(wave));
                 groups = withRaiders;
             }
             return new WavePlan { WaveIndex = wave, StrategyId = Id, Groups = groups };

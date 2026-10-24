@@ -13,14 +13,30 @@ namespace Thesis.Sim
 
         public static readonly TowerLevelMod[] All =
         {
-            new TowerLevelMod { Label = "Power: +50% damage", DamageMul = 1.5f },
-            new TowerLevelMod { Label = "Rapid: fires 40% faster", IntervalMul = 0.7f },
-            new TowerLevelMod { Label = "Reach: +1.5 range", RangeAdd = 1.5f },
-            new TowerLevelMod { Label = "Volley: hits one more enemy", ExtraTargets = 1 },
+            new TowerLevelMod { Id = "power", Label = "Power: +50% damage", DamageMul = 1.5f },
+            new TowerLevelMod { Id = "rapid", Label = "Rapid: fires 40% faster", IntervalMul = 0.7f },
+            new TowerLevelMod { Id = "reach", Label = "Reach: +1.5 range", RangeAdd = 1.5f },
+            new TowerLevelMod { Id = "volley", Label = "Volley: hits one more enemy", ExtraTargets = 1 },
         };
 
         public static readonly string[] Ids = { "power", "rapid", "reach", "volley" };
 
-        public static bool IsValid(int choice) { return choice >= 0 && choice < All.Length; }
+        // Whether a tower has a choice in this place (counting a tower's upgrades).
+        public static bool IsValid(int choice) { return choice >= 0; }
+
+        // The choices of this tower type: its own (TowerDef.Upgrades), or the four above.
+        public static TowerLevelMod[] For(TowerDef def) { return def != null && def.Upgrades != null && def.Upgrades.Length > 0 ? def.Upgrades : All; }
+
+        public static bool IsValidFor(TowerDef def, int choice) { return choice >= 0 && choice < For(def).Length; }
+
+        // The name of a choice in the build log.
+        public static string IdOf(TowerDef def, int choice)
+        {
+            TowerLevelMod mod = For(def)[choice];
+            if (!string.IsNullOrEmpty(mod.Id)) return mod.Id;
+            string label = mod.Label ?? "upgrade";
+            int colon = label.IndexOf(':');
+            return (colon > 0 ? label.Substring(0, colon) : label).Trim().ToLowerInvariant().Replace(' ', '-');
+        }
     }
 }

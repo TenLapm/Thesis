@@ -67,6 +67,7 @@ public class CanvasDashboard : MonoBehaviour
         {
             playerCore.OnHealthChanged.AddListener(UpdateHealthDisplay);
             playerCore.OnGameOver.AddListener(HandleGameOver);
+            playerCore.OnRevived.AddListener(() => { if (gameOverPanel != null) gameOverPanel.SetActive(false); });
             if (healthText != null)
             {
                 healthText.text = $"HP: {playerCore.maxHealth} / {playerCore.maxHealth}";

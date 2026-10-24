@@ -48,6 +48,26 @@ public class TowerView : MonoBehaviour
         }
     }
 
+    // One colour per tower type (2026-10-24: the damage type's colour made three towers
+    // look alike). Picked far apart in hue and brightness; the ore's gold is left to the
+    // collectors.
+    public static Color ColorOfTower(TowerDef def)
+    {
+        switch (def.Id)
+        {
+            case "archer": return new Color(0.96f, 0.96f, 0.96f);   // white
+            case "ballista": return new Color(0.62f, 0.42f, 0.24f); // brown
+            case "cannon": return new Color(1f, 0.22f, 0.18f);      // red
+            case "brazier": return new Color(1f, 0.55f, 0.05f);     // orange
+            case "frost": return new Color(0.35f, 0.75f, 1f);       // sky blue
+            case "sniper": return new Color(0.62f, 0.3f, 1f);       // violet
+            case "shard": return new Color(0.1f, 0.9f, 0.8f);       // teal
+            case "flak": return new Color(1f, 0.35f, 0.7f);         // pink
+            case "pylon": return new Color(0.55f, 1f, 0.25f);       // lime
+            default: return ColorOf(def.DamageType);
+        }
+    }
+
     public static Color ColorOfGear(int index) { return GearColors[Mathf.Abs(index) % GearColors.Length]; }
 
     public static string LevelName(int level) { return level >= 3 ? "EPIC" : level == 2 ? "RARE" : "COMMON"; }
@@ -76,7 +96,7 @@ public class TowerView : MonoBehaviour
     {
         var root = new GameObject("Figure");
         root.AddComponent<Billboard>();
-        Color color = ColorOf(def.DamageType);
+        Color color = ColorOfTower(def);
         Color frame = ColorOfLevel(level);
         color.a = frame.a = alpha;
         Color dark = new Color(0.05f, 0.07f, 0.11f, alpha);
@@ -117,7 +137,7 @@ public class TowerView : MonoBehaviour
 
     public static TowerView Create(TowerState tower, Vector3 tileCentre, float cell, bool billboard = false)
     {
-        Color color = ColorOf(tower.Def.DamageType);
+        Color color = ColorOfTower(tower.Def);
         var root = new GameObject("Tower " + tower.Id + " " + tower.Def.Id);
         root.transform.position = tileCentre;
         var view = root.AddComponent<TowerView>();

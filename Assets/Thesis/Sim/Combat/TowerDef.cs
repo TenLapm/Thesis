@@ -22,6 +22,16 @@ namespace Thesis.Sim
         public float SplashAdd;          // tiles
         public float SlowTicksMul = 1f;
         public int ExtraTargets;         // more enemies shot at per shot
+
+        // 2026-10-24: what an upgrade can do besides numbers. Id names the choice in the
+        // build log ("archer+volley"); the rest change what the tower is.
+        public string Id;
+        public bool GrantsFlying;        // hits flyers from now on
+        public bool IgnoresResist;       // a resistance (or an immunity) counts as none
+        public int SlowTicksAdd;         // every enemy hit is slowed this many ticks more...
+        public float SlowFactorTo = 1f;  // ...to this share of its speed, if lower than before
+        public float PowerRadiusAdd;     // a power tower reaches this many tiles further
+        public int PowerCapacityAdd;     // and powers this many towers more
     }
 
     public sealed class TowerDef
@@ -66,6 +76,15 @@ namespace Thesis.Sim
         // The research tier that unlocks it in the build menu (SimConfig.BuildMenu): 1, 2 or 3.
         public int Tier = 1;
 
+        // The upgrades this tower may be given (2026-10-24: each tower its own, so an upgrade
+        // is a choice about what the tower becomes). Empty: the four of TowerUpgradeChoices.
+        public TowerLevelMod[] Upgrades;
+
+        // A power tower (2026-10-24, SimConfig.PowerRule): it powers up to PowerCapacity
+        // towers within PowerRadius tiles, as the core and a collector do. It has power itself.
+        public float PowerRadius;
+        public int PowerCapacity;
+
         // What level 2 (rare) and level 3 (epic) add, in that order. A tower type that
         // gives none still has three levels: each is then half as much damage again.
         public TowerLevelMod[] Levels;
@@ -93,6 +112,7 @@ namespace Thesis.Sim
             if (!(SlowFactor > 0f) || SlowFactor > 1f) throw new InvalidOperationException(who + "SlowFactor " + SlowFactor + " must be in (0, 1]; 1 means no slow.");
             if (DigCost < 2) throw new InvalidOperationException(who + "DigCost " + DigCost + " must be at least 2 (a tower tile must cost more than open ground).");
             if (!(TowerHealth > 0f)) throw new InvalidOperationException(who + "TowerHealth " + TowerHealth + " must be positive.");
+            if (PowerCapacity < 0 || !(PowerRadius >= 0f)) throw new InvalidOperationException(who + "PowerCapacity and PowerRadius must not be negative.");
             if (!(ShopWeight >= 0f)) throw new InvalidOperationException(who + "ShopWeight " + ShopWeight + " must be >= 0.");
         }
 

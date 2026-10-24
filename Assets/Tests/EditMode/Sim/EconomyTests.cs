@@ -1,6 +1,8 @@
 using System.Collections.Generic;
 using NUnit.Framework;
 using Thesis.Core;
+using Thesis.Director;
+using Thesis.Harness;
 using Thesis.Sim;
 
 namespace Thesis.Tests.Sim
@@ -96,6 +98,43 @@ namespace Thesis.Tests.Sim
                 if (ring < 8) Assert.Less(d.Yield, 4, "near the middle a deposit is poor");
                 if (ring > 18) Assert.Greater(d.Yield, 2, "out at the ring it is rich");
             }
+        }
+
+        [Test]
+        public void ClusteredDepositsLieInGroupsWithATileBetweenTwoVeins()
+        {
+            MapData map = MapGenerator.Generate(5, 48, 48, deposits: 24, depositsPerCluster: 4);
+            Assert.AreEqual(map.ToJson(), MapGenerator.Generate(5, 48, 48, deposits: 24, depositsPerCluster: 4).ToJson());
+            Assert.Greater(map.Deposits.Length, 16);
+            foreach (Deposit d in map.Deposits)
+            {
+                Assert.IsTrue(map.IsWalkable(d.Tile.X, d.Tile.Y));
+                Assert.IsFalse(map.InBuildMargin(d.Tile));
+                int neighbours = 0;
+                foreach (Deposit e in map.Deposits)
+                {
+                    if (e == d) continue;
+                    int apart = System.Math.Max(System.Math.Abs(e.Tile.X - d.Tile.X), System.Math.Abs(e.Tile.Y - d.Tile.Y));
+                    Assert.GreaterOrEqual(apart, 2, "a free tile between two veins");
+                    if (apart <= 4) neighbours++;
+                }
+                Assert.Greater(neighbours, 0, "every vein has another of its cluster close by");
+            }
+        }
+
+        [Test]
+        public void RaidsBeginAtWaveSixAndGrowSlowly()
+        {
+            var planner = new RaidPlanner(new SimConfig(), MapGenerator.Generate(4, deposits: 20));
+            for (int wave = 1; wave <= 24; wave++)
+            {
+                bool raid = false;
+                foreach (AgentGroup g in planner.Compose(wave).Groups) if (g.TargetsCollectors) raid = true;
+                Assert.AreEqual(wave >= 6 && (wave - 6) % 3 == 0, raid, "wave " + wave);
+            }
+            Assert.AreEqual(0.4f, RaidPlanner.RaidShare(6));
+            Assert.Greater(RaidPlanner.RaidShare(30), RaidPlanner.RaidShare(9));
+            Assert.LessOrEqual(RaidPlanner.RaidShare(300), 0.8f);
         }
 
         // ------------------------------------------------------------------ collectors
@@ -422,6 +461,224 @@ namespace Thesis.Tests.Sim
             Assert.IsTrue(plain.State.Towers[0].Powered);
             PlayOneWave(plain);
             Assert.AreEqual(1, plain.State.LastOutcome.Killed);
+        }
+
+        [Test]
+        public void TheCraftPriceIsTheGearsPriceTimesTheFactor()
+        {
+            SimConfig config = Config();
+            config.GearInventorySlots = 2;
+            config.GearCraftPriceFactor = 0.5f;
+            Simulation sim = New(config, MapWithDeposits());
+            int chill = Index(sim.GearLibrary, "chill");
+            Assert.AreEqual(sim.GearLibrary[chill].Price / 2, sim.CraftPrice(chill));
+            TestSims.Send(sim, SimCommand.CraftGear(chill));
+            Assert.AreEqual(100f - sim.GearLibrary[chill].Price / 2, sim.State.BuildBudget);
+        }
+
+        // ------------------------------------------------------------------ undo and redo (2026-10-24)
+
+        [Test]
+        public void UndoTakesBackTheLastActionsOfABuildPhaseAndRedoDoesThemAgain()
+        {
+            SimConfig config = Config();
+            config.UndoSteps = 10;
+            Simulation sim = New(config, MapWithDeposits());
+            SimState start = sim.State;
+            ulong empty = sim.ComputeHash();
+
+            TestSims.Send(sim, SimCommand.BuildCollector(4, 0));
+            TestSims.Send(sim, SimCommand.BuyTower(0, 3, 1));
+            ulong both = sim.ComputeHash();
+            TestSims.Send(sim, SimCommand.BuildCollector(2, 2)); // not a deposit: changes nothing
+            Assert.AreEqual(2, sim.UndoCount, "an action that changed nothing is not kept");
+
+            TestSims.Send(sim, SimCommand.Undo());
+            Assert.AreEqual(0, sim.State.Towers.Count);
+            Assert.AreEqual(Occupant.Collector, sim.State.Grid[4, 0].Occupant);
+            Assert.AreEqual(94f, sim.State.BuildBudget, "the tower's price is back");
+            TestSims.Send(sim, SimCommand.Undo());
+            Assert.AreEqual(empty, sim.ComputeHash(), "back to where the phase began");
+            Assert.AreNotSame(start, sim.State);
+            TestSims.Send(sim, SimCommand.Undo());
+            Assert.AreEqual(empty, sim.ComputeHash(), "nothing more to take back");
+
+            TestSims.Send(sim, SimCommand.Redo());
+            TestSims.Send(sim, SimCommand.Redo());
+            Assert.AreEqual(both, sim.ComputeHash(), "both done again");
+
+            // A new action after an undo drops what could have been redone.
+            TestSims.Send(sim, SimCommand.Undo());
+            TestSims.Send(sim, SimCommand.BuildCollector(4, 4));
+            Assert.AreEqual(0, sim.RedoCount);
+
+            // A wave starts: nothing before it can be taken back.
+            PlayOneWave(sim);
+            Assert.AreEqual(0, sim.UndoCount);
+            int towers = sim.State.Towers.Count;
+            TestSims.Send(sim, SimCommand.Undo());
+            Assert.AreEqual(towers, sim.State.Towers.Count);
+
+            // The same commands give the same game: undo is part of the record.
+            Simulation again = New(config, MapWithDeposits());
+            foreach (SimCommand c in new[] { SimCommand.BuildCollector(4, 0), SimCommand.BuyTower(0, 3, 1), SimCommand.Undo(), SimCommand.Undo(), SimCommand.Redo() })
+                TestSims.Send(again, c);
+            Simulation once = New(config, MapWithDeposits());
+            TestSims.Send(once, SimCommand.BuildCollector(4, 0));
+            Assert.AreEqual(once.ComputeHash(), again.ComputeHash());
+
+            // And the same when they arrive in one tick, as on a replay: an Undo and a Redo in
+            // the middle of a batch must not drop the commands after them.
+            Simulation batched = New(config, MapWithDeposits());
+            foreach (SimCommand c in new[] { SimCommand.BuildCollector(4, 0), SimCommand.Undo(), SimCommand.Redo(), SimCommand.BuyTower(0, 3, 1) }) batched.Enqueue(c);
+            batched.FlushInput();
+            Simulation oneByOne = New(config, MapWithDeposits());
+            foreach (SimCommand c in new[] { SimCommand.BuildCollector(4, 0), SimCommand.Undo(), SimCommand.Redo(), SimCommand.BuyTower(0, 3, 1) }) TestSims.Send(oneByOne, c);
+            Assert.AreEqual(1, batched.State.Towers.Count, "the tower after the Redo was bought");
+            Assert.AreEqual(oneByOne.ComputeHash(), batched.ComputeHash());
+        }
+
+        // ------------------------------------------------------------------ playing a wave again (2026-10-24)
+
+        [Test]
+        public void AWonWaveIsPlayedAgainFromItsBuildPhaseAndTheRetryCanBeTakenBack()
+        {
+            SimConfig config = Config();
+            config.UndoSteps = 5;
+            Simulation sim = New(config, MapWithDeposits());
+            SimState s = sim.State;
+            Assert.IsFalse(sim.CanRetry, "no wave played yet");
+
+            TestSims.Send(sim, SimCommand.BuildCollector(4, 4));
+            PlayOneWave(sim);
+            TestSims.Send(sim, SimCommand.BuyTower(0, 3, 1));
+            Assert.IsTrue(sim.CanRetry);
+            Assert.AreEqual(1, sim.RetryWaveNumber);
+
+            TestSims.Send(sim, SimCommand.RetryWave());
+            s = sim.State;
+            Assert.AreEqual(0, s.WaveIndex, "back before wave 1");
+            Assert.AreEqual(0, s.Towers.Count);
+            Assert.AreEqual(Occupant.None, s.Grid[4, 4].Occupant, "as the build phase began");
+            Assert.AreEqual(100f, s.BuildBudget);
+            Assert.AreEqual(1, s.Retries);
+
+            TestSims.Send(sim, SimCommand.Undo());
+            Assert.AreEqual(1, sim.State.WaveIndex, "the retry taken back");
+            Assert.AreEqual(1, sim.State.Towers.Count);
+        }
+
+        [Test]
+        public void ALostWaveIsPlayedAgainAndTheRecordingStillReplaysAndMakesTheSameTelemetry()
+        {
+            SimConfig config = Config();
+            config.CoreMaxHp = 1;
+            config.AgentsPerWave = 3;
+            config.UndoSteps = 5;
+            Simulation sim = New(config, MapWithDeposits());
+            var recorder = new ReplayRecorder(sim, true) { Session = "t", Build = "t", Policy = "t" };
+            var telemetry = new TelemetryRecorder(sim, "t", "t", "t");
+            var rows = new List<WaveRecord>();
+            System.Action<SimCommand> send = c => { recorder.OnCommand(c); sim.Enqueue(c); sim.FlushInput(); };
+            System.Action tick = () => { sim.Tick(); recorder.AfterTick(); rows.AddRange(telemetry.AfterTick()); };
+
+            send(SimCommand.BuildCollector(4, 4));
+            send(SimCommand.StartWaveNow());
+            for (int i = 0; i < 20000 && !sim.State.IsGameOver; i++) tick();
+            Assert.IsTrue(sim.State.IsGameOver, "rig: no towers, the core falls");
+            send(SimCommand.BuyTower(0, 3, 1));
+            Assert.AreEqual(0, sim.State.Towers.Count, "a lost game takes nothing but a retry");
+
+            send(SimCommand.RetryWave());
+            Assert.IsFalse(sim.State.IsGameOver);
+            Assert.AreEqual(0, sim.State.WaveIndex);
+            Assert.AreEqual(Occupant.None, sim.State.Grid[4, 4].Occupant);
+            send(SimCommand.BuyTower(0, 7, 1));
+            send(SimCommand.StartWaveNow());
+            for (int i = 0; i < 60; i++) tick();
+            rows.AddRange(telemetry.Finish());
+
+            ReplayFile file = recorder.Snapshot();
+            ReplayReport report = ReplayRunner.Verify(file, true);
+            Assert.IsTrue(report.Ok, report.Describe());
+            List<WaveRecord> again = ReplayRunner.Telemetry(file);
+            Assert.AreEqual(rows.Count, again.Count);
+            for (int i = 0; i < rows.Count; i++) Assert.AreEqual(rows[i].ToJsonLine(), again[i].ToJsonLine(), "row " + i);
+        }
+
+        // ------------------------------------------------------------------ the pylon, raiders first, each tower its upgrades (2026-10-24)
+
+        [Test]
+        public void APylonPowersTowersNearItAndNeverFires()
+        {
+            SimConfig config = PowerConfig();
+            config.CorePowerCapacity = 0; // rig: only the pylon gives power
+            TowerDef gun = TestTowers.Gun(damage: 50f, range: 3f, cost: 1);
+            var pylon = new TowerDef { Id = "pylon", Cost = 1, Damage = 0f, RangeTiles = 0f, FireIntervalTicks = 50, PowerCapacity = 2, PowerRadius = 3f };
+            MapData map = MapWithDeposits();
+            var planner = new OneGroup();
+            Simulation sim = New(config, map, planner, new[] { gun, pylon });
+            planner.Group = Group(config, map, EnemyArchetypes.Basic());
+            SimState s = sim.State;
+
+            TestSims.Send(sim, SimCommand.BuyTower(0, 3, 1));
+            TestSims.Send(sim, SimCommand.BuyTower(0, 3, 3));
+            TestSims.Send(sim, SimCommand.BuyTower(0, 7, 1)); // out of the pylon's reach
+            Assert.AreEqual(0, Powered(s), "rig: nothing powers them yet");
+
+            TestSims.Send(sim, SimCommand.BuyTower(1, 4, 2));
+            Assert.IsTrue(s.Towers[3].Powered, "a pylon has power of its own");
+            Assert.IsTrue(s.Towers[0].Powered && s.Towers[1].Powered);
+            Assert.IsFalse(s.Towers[2].Powered, "out of reach");
+
+            PlayOneWave(sim);
+            Assert.AreEqual(0, s.Towers[3].Shots, "a pylon never fires");
+            Assert.AreEqual(1, s.LastOutcome.Killed, "the towers it powered did");
+        }
+
+        [Test]
+        public void RaidersFirstShootsARaiderBeforeAnyoneCloserToTheCore()
+        {
+            AsciiFixture f = AsciiMap.Parse(Open);
+            var grid = new SimGrid(f.Map);
+            new FlowField().Generate(grid, f.Map.Core);
+            TowerState tower = TestTowers.StateOn(f, 0, TestTowers.Gun(range: 6f), 4, 2);
+            var walker = TestTowers.Agent(0, grid[6, 2].Position);   // nearer the core
+            var raider = TestTowers.Agent(1, grid[2, 2].Position);
+            raider.TargetsCollectors = true;
+            var live = new List<AgentState> { walker, raider };
+            SimNode core = grid.Get(f.Map.Core);
+
+            Assert.AreEqual(0, Targeting.Pick(TargetingMode.First, tower, grid, core, live));
+            Assert.AreEqual(1, Targeting.Pick(TargetingMode.Raiders, tower, grid, core, live));
+            Assert.AreEqual(0, Targeting.Pick(TargetingMode.Raiders, tower, grid, core, new List<AgentState> { walker }), "no raider: as First");
+        }
+
+        [Test]
+        public void EachTowerHasItsOwnUpgradesAndTheyChangeWhatItDoes()
+        {
+            SimConfig config = Config();
+            config.ChoiceUpgradeCost = 1f;
+            config.UpgradesPerTower = 2;
+            TowerDef gun = TestTowers.Gun(cost: 1);
+            gun.Upgrades = new[]
+            {
+                new TowerLevelMod { Id = "sky", Label = "Sky: hits flyers", GrantsFlying = true },
+                new TowerLevelMod { Id = "pierce", Label = "Pierce: ignores armour, slows", IgnoresResist = true, SlowTicksAdd = 20, SlowFactorTo = 0.5f },
+            };
+            Simulation sim = New(config, MapWithDeposits(), towers: new[] { gun });
+            TestSims.Send(sim, SimCommand.BuyTower(0, 3, 1));
+            TowerState t = sim.State.Towers[0];
+
+            TestSims.Send(sim, SimCommand.ChooseUpgrade(3, 1, 2));
+            Assert.AreEqual(0, t.UpgradeCount, "this tower has two choices, not four");
+            TestSims.Send(sim, SimCommand.ChooseUpgrade(3, 1, 0));
+            Assert.IsTrue(t.CanHitFlying);
+            Assert.AreEqual("gun+sky", sim.State.PlacementLog[sim.State.PlacementLog.Count - 1].ShapeName);
+            TestSims.Send(sim, SimCommand.ChooseUpgrade(3, 1, 1));
+            Assert.IsTrue(t.IgnoresResist);
+            Assert.AreEqual(20, t.SlowTicks);
+            Assert.AreEqual(0.5f, t.SlowFactor);
         }
 
         private static int Index(GearDef[] gear, string id)

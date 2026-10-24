@@ -14,6 +14,8 @@ public class PlayerCore : MonoBehaviour
     // Broadcasting health updates allows any UI Canvas or VFX manager to listen passively
     public UnityEvent<int> OnHealthChanged;
     public UnityEvent OnGameOver;
+    // A lost game played on from an earlier build phase (RetryWave): undo what game over did.
+    public UnityEvent OnRevived = new UnityEvent();
 
     private int lastReportedHp = int.MinValue;
     private bool gameOverRaised;
@@ -56,6 +58,15 @@ public class PlayerCore : MonoBehaviour
 
     private void OnSimEvent(SimEvent e)
     {
+        if (e.Kind == SimEventKind.StateRestored)
+        {
+            ReportHealth();
+            if (!gameOverRaised || Host.State.IsGameOver) return;
+            gameOverRaised = false;
+            Time.timeScale = 1f;
+            OnRevived?.Invoke();
+            return;
+        }
         if (e.Kind != SimEventKind.GameOver || gameOverRaised) return;
         gameOverRaised = true;
         ReportHealth(); // the fatal hit, before the game-over screen

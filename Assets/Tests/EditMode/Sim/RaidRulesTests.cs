@@ -750,7 +750,7 @@ namespace Thesis.Tests.Sim
                 Assert.Greater(g.Hp, 0f);
                 Assert.Greater(g.MoveSpeed, 0f);
             }
-            Assert.AreEqual(11, names.Count);
+            Assert.AreEqual(10, names.Count); // frostborn out of the waves since 2026-10-24
 
             Assert.AreEqual(0.35f, EnemyArchetypes.Armored().Apply(basic, 1f).Resist[(int)DamageType.Physical]);
             Assert.AreEqual(1f, EnemyArchetypes.Armored().Apply(basic, 1f).Resist[(int)DamageType.Fire]);

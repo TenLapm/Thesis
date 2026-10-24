@@ -47,6 +47,9 @@ namespace Thesis.Sim
         // The research tier reached (2026-10-14, SimConfig.BuildMenu): 1 at the start, at most 3.
         public int ResearchLevel = 1;
 
+        // How many times a wave was played again (RetryWave). Telemetry opens a new window on a change.
+        public int Retries;
+
         // The bench: a tower id per slot, TowerBench.Empty for a free one.
         public int[] Bench = new int[0];
 

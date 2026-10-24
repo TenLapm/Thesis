@@ -41,3 +41,48 @@ MonoBehaviour:
     extraTargets: 1
   shopWeight: 1
   tier: 2
+  upgrades:
+  - label: 'Piercing: ignores armour'
+    damageMul: 1
+    intervalMul: 1
+    rangeAdd: 0
+    splashAdd: 0
+    slowTicksMul: 1
+    extraTargets: 0
+    id: piercing
+    grantsFlying: 0
+    ignoresResist: 1
+    slowTicksAdd: 0
+    slowFactorTo: 1
+    powerRadiusAdd: 0
+    powerCapacityAdd: 0
+  - label: 'Twin bolts: shoots 2 enemies'
+    damageMul: 1
+    intervalMul: 1
+    rangeAdd: 0
+    splashAdd: 0
+    slowTicksMul: 1
+    extraTargets: 1
+    id: twin
+    grantsFlying: 0
+    ignoresResist: 0
+    slowTicksAdd: 0
+    slowFactorTo: 1
+    powerRadiusAdd: 0
+    powerCapacityAdd: 0
+  - label: 'Skyward: hits flyers, -20% damage'
+    damageMul: 0.8
+    intervalMul: 1
+    rangeAdd: 0
+    splashAdd: 0
+    slowTicksMul: 1
+    extraTargets: 0
+    id: skyward
+    grantsFlying: 1
+    ignoresResist: 0
+    slowTicksAdd: 0
+    slowFactorTo: 1
+    powerRadiusAdd: 0
+    powerCapacityAdd: 0
+  powerCapacity: 0
+  powerRadius: 0

@@ -47,6 +47,9 @@ namespace Thesis.Sim
         Research,        // the next research tier
         CraftGear,       // gear piece A into the inventory
         RepairCore,      // hit points back for the core
+        Undo,            // the last action of this build phase taken back (2026-10-24)
+        Redo,            // the last action taken back done again
+        RetryWave,       // back to the start of the build phase before the last wave, won or lost (2026-10-24)
     }
 
     public readonly struct SimCommand
@@ -167,6 +170,12 @@ namespace Thesis.Sim
         public static SimCommand CraftGear(int piece) { return new SimCommand(SimCommandKind.CraftGear, 0, 0, piece); }
 
         public static SimCommand RepairCore() { return new SimCommand(SimCommandKind.RepairCore, 0, 0, 0); }
+
+        public static SimCommand Undo() { return new SimCommand(SimCommandKind.Undo, 0, 0, 0); }
+
+        public static SimCommand Redo() { return new SimCommand(SimCommandKind.Redo, 0, 0, 0); }
+
+        public static SimCommand RetryWave() { return new SimCommand(SimCommandKind.RetryWave, 0, 0, 0); }
 
         public static SimCommand FeedCardOnBench(int offerSlot, int benchSlot) { return new SimCommand(SimCommandKind.FeedCard, 0, 0, offerSlot, benchSlot + 1); }
 

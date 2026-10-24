@@ -41,3 +41,48 @@ MonoBehaviour:
     extraTargets: 1
   shopWeight: 1
   tier: 1
+  upgrades:
+  - label: 'Volley: shoots 2 enemies'
+    damageMul: 1
+    intervalMul: 1
+    rangeAdd: 0
+    splashAdd: 0
+    slowTicksMul: 1
+    extraTargets: 1
+    id: volley
+    grantsFlying: 0
+    ignoresResist: 0
+    slowTicksAdd: 0
+    slowFactorTo: 1
+    powerRadiusAdd: 0
+    powerCapacityAdd: 0
+  - label: 'Longbow: +1.5 range'
+    damageMul: 1
+    intervalMul: 1
+    rangeAdd: 1.5
+    splashAdd: 0
+    slowTicksMul: 1
+    extraTargets: 0
+    id: longbow
+    grantsFlying: 0
+    ignoresResist: 0
+    slowTicksAdd: 0
+    slowFactorTo: 1
+    powerRadiusAdd: 0
+    powerCapacityAdd: 0
+  - label: 'Barbed: slows what it hits'
+    damageMul: 1
+    intervalMul: 1
+    rangeAdd: 0
+    splashAdd: 0
+    slowTicksMul: 1
+    extraTargets: 0
+    id: barbed
+    grantsFlying: 0
+    ignoresResist: 0
+    slowTicksAdd: 40
+    slowFactorTo: 0.7
+    powerRadiusAdd: 0
+    powerCapacityAdd: 0
+  powerCapacity: 0
+  powerRadius: 0

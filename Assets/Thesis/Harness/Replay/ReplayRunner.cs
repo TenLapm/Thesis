@@ -24,6 +24,15 @@ namespace Thesis.Harness
         // includeCommandsAtTick false it is the state before that tick's commands,
         // which is the point the per-tick hashes describe; with true, the commands
         // recorded at that tick are applied too (this is how FinalHash was taken).
+        // A lost game goes on only if the recording plays a wave again there (RetryWave, the
+        // one command a lost game takes): the commands just fed are applied at once.
+        private static bool GoOnAfterGameOver(Simulation sim)
+        {
+            if (!sim.State.IsGameOver) return true;
+            sim.FlushInput();
+            return !sim.State.IsGameOver;
+        }
+
         public static Simulation RunToTick(ReplayFile file, int tick, bool includeCommandsAtTick)
         {
             if (tick < 0 || tick > file.FinalTick)
@@ -31,9 +40,10 @@ namespace Thesis.Harness
 
             Simulation sim = NewSimulation(file);
             int cursor = 0;
-            while (sim.State.Tick < tick && !sim.State.IsGameOver)
+            while (sim.State.Tick < tick)
             {
                 Feed(file, sim, ref cursor);
+                if (!GoOnAfterGameOver(sim)) break;
                 sim.Tick();
             }
 
@@ -54,9 +64,10 @@ namespace Thesis.Harness
             var outcomes = new List<WaveOutcome>();
             Simulation sim = NewSimulation(file);
             int cursor = 0;
-            while (sim.State.Tick < file.FinalTick && !sim.State.IsGameOver)
+            while (sim.State.Tick < file.FinalTick)
             {
                 Feed(file, sim, ref cursor);
+                if (!GoOnAfterGameOver(sim)) break;
                 sim.Tick();
 
                 IReadOnlyList<SimEvent> events = sim.LastTickEvents;
@@ -81,9 +92,10 @@ namespace Thesis.Harness
             var rows = new List<WaveRecord>();
 
             int cursor = 0;
-            while (sim.State.Tick < file.FinalTick && !sim.State.IsGameOver)
+            while (sim.State.Tick < file.FinalTick)
             {
                 Feed(file, sim, ref cursor);
+                if (!GoOnAfterGameOver(sim)) break;
                 sim.Tick();
                 rows.AddRange(recorder.AfterTick());
             }
@@ -124,7 +136,9 @@ namespace Thesis.Harness
 
             while (s.Tick < file.FinalTick)
             {
+                s = sim.State; // an Undo, a Redo or a RetryWave puts another state in place
                 Feed(file, sim, ref cursor);
+                if (s.IsGameOver && GoOnAfterGameOver(sim)) s = sim.State;
                 if (s.IsGameOver)
                 {
                     report.FirstDivergentWave = s.WaveIndex;
@@ -134,6 +148,7 @@ namespace Thesis.Harness
 
                 int ran = s.Tick;
                 sim.Tick();
+                s = sim.State;
                 report.TicksRun++;
 
                 bool hashed = false;

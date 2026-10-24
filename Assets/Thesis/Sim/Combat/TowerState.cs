@@ -52,6 +52,8 @@ namespace Thesis.Sim
         public bool IgnoresResist;      // gear: anti-armor
         public bool Lure;               // gear: walkers path to it
         public bool Beacon;             // gear: nearby collectors pay more
+        public float PowerRadius;       // a power tower: its reach, in tiles
+        public int PowerCapacity;       // and how many towers it powers
 
         // Ticks until it may fire again. 0 = ready.
         public int Cooldown;
@@ -133,6 +135,8 @@ namespace Thesis.Sim
             IgnoresResist = source.IgnoresResist;
             Lure = source.Lure;
             Beacon = source.Beacon;
+            PowerRadius = source.PowerRadius;
+            PowerCapacity = source.PowerCapacity;
             Cooldown = source.Cooldown;
             IsAlive = source.IsAlive;
             Sold = source.Sold;
@@ -182,30 +186,34 @@ namespace Thesis.Sim
             bool flying = Def.CanHitFlying;
             bool ignoresResist = false, lure = false, beacon = false;
             int targets = Def.Targets;
+            float powerRadius = Def.PowerRadius;
+            int powerCapacity = Def.PowerCapacity;
 
-            for (int level = 2; level <= Level; level++)
+            // A level or an upgrade: the numbers, then what it adds besides them.
+            void Apply(TowerLevelMod mod)
             {
-                TowerLevelMod mod = Def.LevelMod(level);
                 damage = (float)(damage * mod.DamageMul);
                 interval = (float)(interval * mod.IntervalMul);
                 range = (float)(range + mod.RangeAdd);
                 splash = (float)(splash + mod.SplashAdd);
                 slowTicks = (int)(float)(slowTicks * mod.SlowTicksMul);
                 targets += mod.ExtraTargets;
+                if (mod.GrantsFlying) flying = true;
+                if (mod.IgnoresResist) ignoresResist = true;
+                slowTicks += mod.SlowTicksAdd;
+                if (mod.SlowFactorTo < slowFactor) slowFactor = mod.SlowFactorTo;
+                powerRadius = (float)(powerRadius + mod.PowerRadiusAdd);
+                powerCapacity += mod.PowerCapacityAdd;
             }
 
-            // The upgrades the player chose, after the levels and before the gear.
+            for (int level = 2; level <= Level; level++) Apply(Def.LevelMod(level));
+
+            // The upgrades the player chose (this tower type's own), after the levels and before the gear.
+            TowerLevelMod[] choices = TowerUpgradeChoices.For(Def);
             for (int u = 0; u < 2; u++)
             {
                 int choice = u == 0 ? Upgrade : Upgrade2;
-                if (!TowerUpgradeChoices.IsValid(choice)) continue;
-                TowerLevelMod mod = TowerUpgradeChoices.All[choice];
-                damage = (float)(damage * mod.DamageMul);
-                interval = (float)(interval * mod.IntervalMul);
-                range = (float)(range + mod.RangeAdd);
-                splash = (float)(splash + mod.SplashAdd);
-                slowTicks = (int)(float)(slowTicks * mod.SlowTicksMul);
-                targets += mod.ExtraTargets;
+                if (choice >= 0 && choice < choices.Length) Apply(choices[choice]);
             }
 
             for (int slot = 0; slot < MaxGearSlots; slot++)
@@ -238,6 +246,8 @@ namespace Thesis.Sim
             IgnoresResist = ignoresResist;
             Lure = lure;
             Beacon = beacon;
+            PowerRadius = powerRadius;
+            PowerCapacity = powerCapacity;
             Targets = Math.Max(1, targets);
         }
 

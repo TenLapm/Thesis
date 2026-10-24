@@ -109,7 +109,7 @@ namespace Thesis.Harness
                 Name = "restless-5waves",
                 Config = () => new SimConfig(),
                 Policy = () => SequencePolicy.Restless(),
-                Seed = 7,
+                Seed = 4, // 7 until the pylon joined the roster (2026-10-24): it no longer sold a tower
                 MaxWaves = 5,
                 TickHashes = true,
             },
@@ -195,7 +195,7 @@ namespace Thesis.Harness
             {
                 Name = "economy-10waves",
                 Config = EconomyConfig,
-                Map = () => MapGenerator.Generate(11, 48, 48, deposits: 25),
+                Map = () => MapGenerator.Generate(11, 48, 48, deposits: 25, depositsPerCluster: 4),
                 Policy = () => new RaidPolicy(),
                 Planner = RaidPlanner.Id,
                 Seed = 11,
@@ -229,6 +229,7 @@ namespace Thesis.Harness
             c.AbilityGear = true;
             c.CollectorLossRefund = 0.5f;
             c.PowerRule = true;
+            c.UndoSteps = 10;
             return c;
         }
 

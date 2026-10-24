@@ -108,7 +108,7 @@ namespace Thesis.Sim
         // Many small flyers close together.
         public static EnemyArchetype Bats() { return new EnemyArchetype { Id = BatsId, Movement = MovementClass.Flying, CountFactor = 1f, HpFactor = 0.15f, SpeedFactor = 1.2f, SpawnIntervalFactor = 0.5f, DigRateFactor = 0f }; }
 
-        public static EnemyArchetype[] Everything() { return new[] { Basic(), Swarm(), Sapper(), Flyer(), Brute(), Runner(), Armored(), Ember(), Frostborn(), Bats(), Raider() }; }
+        public static EnemyArchetype[] Everything() { return new[] { Basic(), Swarm(), Sapper(), Flyer(), Brute(), Runner(), Armored(), Ember(), Bats(), Raider() }; } // frostborn out since 2026-10-24: too strong
 
         // 2026-10-14: goes for the player's collectors, not the core, while any stand.
         public const string RaiderId = "raider";

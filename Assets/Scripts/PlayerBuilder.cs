@@ -64,7 +64,7 @@ public class PlayerBuilder : MonoBehaviour
 
     // --- the hand ---
 
-    public BuildTool Tool { get; private set; } = BuildTool.Wall;
+    public BuildTool Tool { get; private set; } = BuildTool.None;
 
     // The shop offer in the hand while Tool is Tower; -1 otherwise.
     public int SelectedOffer { get; private set; } = -1;
@@ -120,6 +120,46 @@ public class PlayerBuilder : MonoBehaviour
 
     public void PutDown() { Hold(BuildTool.None); }
 
+    // --- undo and redo (SimConfig.UndoSteps, 2026-10-24) ---
+
+    public bool UndoOn => Host.Config.UndoSteps > 0;
+    public bool CanUndo => UndoOn && Host.Sim.UndoCount > 0 && IsBuildPhase && !IsBuildingBlocked;
+    public bool CanRedo => UndoOn && Host.Sim.RedoCount > 0 && IsBuildPhase && !IsBuildingBlocked;
+    public void Undo() { if (!CanUndo) return; PutDown(); Host.Submit(SimCommand.Undo()); }
+    public void Redo() { if (!CanRedo) return; PutDown(); Host.Submit(SimCommand.Redo()); }
+
+    // --- the selection (2026-10-24, after RimWorld): with an empty hand a click selects
+    // the tower, collector or core under the mouse; the bar shows what it is and what can
+    // be done with it. A right click or Esc lets go of it.
+
+    public Node Selected { get; private set; }
+
+    public TowerState SelectedTower => TowerAt(Selected);
+
+    public bool SelectedIsCollector => Selected != null && Host.State.Grid[Selected.gridX, Selected.gridY].Occupant == Occupant.Collector;
+
+    public bool SelectedIsCore => Selected != null && Selected.gridX == Host.State.Core.X && Selected.gridY == Host.State.Core.Y;
+
+    private Node SelectableAt(Node node)
+    {
+        if (node == null) return null;
+        if (TowerAt(node) != null) return node;
+        if (Host.State.Grid[node.gridX, node.gridY].Occupant == Occupant.Collector) return node;
+        if (node.gridX == Host.State.Core.X && node.gridY == Host.State.Core.Y) return node;
+        return null;
+    }
+
+    public void Deselect() { Selected = null; }
+
+    // The commands of the selected thing (the inspect pane's buttons).
+    public void UpgradeSelected() { if (CanUpgrade(SelectedTower)) { upgradeNode = Selected; upgradeBench = -1; } }
+
+    public void TargetSelected() { TowerState t = SelectedTower; if (t != null && TargetingOn) Host.Submit(SimCommand.SetTargeting(Selected.gridX, Selected.gridY, NextMode(t.Mode))); }
+
+    public void MoveSelected() { if (SelectedTower == null || !MayMoveTower) return; Node from = Selected; Hold(BuildTool.MoveTower); TowerFrom = from; }
+
+    public void SellSelected() { if (Selected == null || !MaySell) return; TrySell(Selected.gridX, Selected.gridY); if (SelectableAt(Selected) == null) Selected = null; }
+
     public void SelectMoveTower() { Hold(BuildTool.MoveTower); }
 
     public void SelectMoveGear() { Hold(BuildTool.MoveGear); }
@@ -147,8 +187,9 @@ public class PlayerBuilder : MonoBehaviour
     // Both upgrades a tower has, by name, or "".
     public static string UpgradeNames(TowerState tower)
     {
-        string text = TowerUpgradeChoices.IsValid(tower.Upgrade) ? TowerUpgradeChoices.All[tower.Upgrade].Label : "";
-        if (TowerUpgradeChoices.IsValid(tower.Upgrade2)) text += "; " + TowerUpgradeChoices.All[tower.Upgrade2].Label;
+        TowerLevelMod[] choices = TowerUpgradeChoices.For(tower.Def);
+        string text = TowerUpgradeChoices.IsValidFor(tower.Def, tower.Upgrade) ? choices[tower.Upgrade].Label : "";
+        if (TowerUpgradeChoices.IsValidFor(tower.Def, tower.Upgrade2)) text += "; " + choices[tower.Upgrade2].Label;
         return text;
     }
 
@@ -187,14 +228,16 @@ public class PlayerBuilder : MonoBehaviour
             case TargetingMode.Strongest: return "the strongest";
             case TargetingMode.Weakest: return "the weakest";
             case TargetingMode.Nearest: return "the nearest to it";
+            case TargetingMode.Raiders: return "raiders first";
             default: return "the one closest to the core";
         }
     }
 
-    public static TargetingMode NextMode(TargetingMode mode) { return (TargetingMode)(((int)mode + 1) % 4); }
+    public static TargetingMode NextMode(TargetingMode mode) { return (TargetingMode)(((int)mode + 1) % 5); }
 
     private void Hold(BuildTool tool)
     {
+        if (tool != BuildTool.None && tool != BuildTool.MoveTower) Selected = null;
         Tool = tool;
         SelectedOffer = -1;
         SelectedMenuTower = -1;
@@ -228,7 +271,7 @@ public class PlayerBuilder : MonoBehaviour
             GearFrom = null;
             return;
         }
-        if (Tool == BuildTool.EquipGear && SelectedInventory == slot) { SelectWall(); return; }
+        if (Tool == BuildTool.EquipGear && SelectedInventory == slot) { PutDown(); return; }
         if (inventory[slot] == TowerState.NoGear) return;
         Hold(BuildTool.EquipGear);
         SelectedInventory = slot;
@@ -264,7 +307,7 @@ public class PlayerBuilder : MonoBehaviour
     public void ConfirmCore()
     {
         CoreConfirmed = true;
-        SelectWall();
+        PutDown();
     }
 
     // The simulation's rule for a core tile (Simulation.PlaceCore), for the preview.
@@ -288,7 +331,7 @@ public class PlayerBuilder : MonoBehaviour
     public void RerollGear()
     {
         if (!CanRerollGear) return;
-        if (Tool == BuildTool.Gear && SelectedShopGear >= 0) SelectWall();
+        if (Tool == BuildTool.Gear && SelectedShopGear >= 0) PutDown();
         Host.Submit(SimCommand.RerollGearShop());
     }
 
@@ -401,7 +444,7 @@ public class PlayerBuilder : MonoBehaviour
     public void SellOverflow(int index)
     {
         if (index < 0 || index >= Host.State.GearOverflow.Count || IsBuildingBlocked) return;
-        if (Tool == BuildTool.EquipGear && SelectedOverflow >= 0) SelectWall();
+        if (Tool == BuildTool.EquipGear && SelectedOverflow >= 0) PutDown();
         Host.Submit(SimCommand.SellOverflow(index));
     }
 
@@ -439,16 +482,16 @@ public class PlayerBuilder : MonoBehaviour
                 }
                 break;
             case BuildTool.EquipGear:
-                if (occupied && SelectedOverflow >= 0) { Host.Submit(SimCommand.EquipOverflowOnBench(SelectedOverflow, slot)); SelectWall(); }
+                if (occupied && SelectedOverflow >= 0) { Host.Submit(SimCommand.EquipOverflowOnBench(SelectedOverflow, slot)); PutDown(); }
                 else if (occupied) Host.Submit(SimCommand.EquipGearOnBench(SelectedInventory, slot));
                 return;
             case BuildTool.Deploy:
-                if (SelectedBench == slot) { SelectWall(); return; }
+                if (SelectedBench == slot) { PutDown(); return; }
                 if (SelectedBench >= 0)
                 {
                     bool merge = occupied && CanMerge(Benched(SelectedBench), Benched(slot));
                     Host.Submit(merge ? SimCommand.MergeTower(0, 0, SelectedBench, 0, 0, slot) : SimCommand.SwapBench(SelectedBench, slot));
-                    SelectWall();
+                    PutDown();
                     return;
                 }
                 break;
@@ -475,7 +518,7 @@ public class PlayerBuilder : MonoBehaviour
     public void SelectMenuTower(int index)
     {
         if (index < 0 || index >= Host.Sim.TowerLibrary.Length || IsBuildingBlocked) return;
-        if (Tool == BuildTool.Tower && SelectedMenuTower == index) { SelectWall(); return; }
+        if (Tool == BuildTool.Tower && SelectedMenuTower == index) { PutDown(); return; }
         if (!TowerUnlocked(index)) return;
         Hold(BuildTool.Tower);
         SelectedMenuTower = index;
@@ -513,7 +556,7 @@ public class PlayerBuilder : MonoBehaviour
     public void Reroll()
     {
         if (!CanReroll) return;
-        if (Tool == BuildTool.Tower || (Tool == BuildTool.Gear && SelectedShopGear < 0)) SelectWall();
+        if (Tool == BuildTool.Tower || (Tool == BuildTool.Gear && SelectedShopGear < 0)) PutDown();
         Host.Submit(SimCommand.RerollShop());
     }
 
@@ -539,7 +582,7 @@ public class PlayerBuilder : MonoBehaviour
     {
         TowerOffer[] stock = Host.State.GearShop.Offers;
         if (slot < 0 || slot >= stock.Length) return;
-        if (Tool == BuildTool.Gear && SelectedShopGear == slot) { SelectWall(); return; }
+        if (Tool == BuildTool.Gear && SelectedShopGear == slot) { PutDown(); return; }
         if (stock[slot].Bought || Host.State.BuildBudget < stock[slot].Price) return;
         if (UsesInventory) { Host.Submit(SimCommand.StoreShopGear(slot)); return; } // bought into the inventory
         Tool = BuildTool.Gear;
@@ -557,7 +600,7 @@ public class PlayerBuilder : MonoBehaviour
     {
         TowerOffer[] offers = Host.State.Shop.Offers;
         if (slot < 0 || slot >= offers.Length) return;
-        if ((Tool == BuildTool.Tower || Tool == BuildTool.Gear) && SelectedOffer == slot) { SelectWall(); return; }
+        if ((Tool == BuildTool.Tower || Tool == BuildTool.Gear) && SelectedOffer == slot) { PutDown(); return; }
         if (!CanPickUp(slot)) return;
 
         // A coin, wall or heal card is taken on the spot; a gear card goes into the hand like a tower.
@@ -587,6 +630,7 @@ public class PlayerBuilder : MonoBehaviour
         if (playerCore != null)
         {
             playerCore.OnGameOver.AddListener(() => isGameOver = true);
+            playerCore.OnRevived.AddListener(() => isGameOver = false);
         }
     }
 
@@ -608,7 +652,14 @@ public class PlayerBuilder : MonoBehaviour
             bool overHud = EventSystem.current != null && EventSystem.current.IsPointerOverGameObject();
             if (!overHud) HoverNode = NodeUnderMouse();
 
-            if (Keyboard.current.escapeKey.wasPressedThisFrame || Mouse.current.rightButton.wasPressedThisFrame) PutDown();
+            if (Keyboard.current.escapeKey.wasPressedThisFrame || Mouse.current.rightButton.wasPressedThisFrame)
+            {
+                // The hand first; with an empty hand, the selection.
+                if (Tool != BuildTool.None) PutDown(); else Selected = null;
+            }
+            bool ctrl = Keyboard.current.ctrlKey.isPressed;
+            if (ctrl && Keyboard.current.zKey.wasPressedThisFrame) Undo();
+            if (ctrl && Keyboard.current.yKey.wasPressedThisFrame) Redo();
 
             // The tools and the reroll have a key each (the student, 2026-10-13).
             if (Keyboard.current.wKey.wasPressedThisFrame) SelectWall();
@@ -622,14 +673,14 @@ public class PlayerBuilder : MonoBehaviour
 
             // The shop's offers change under a tower in the hand when a wave resolves.
             if (Keyboard.current.cKey.wasPressedThisFrame) SelectCollector();
-            if (Tool == BuildTool.Tower && SelectedMenuTower < 0 && !CanPickUp(SelectedOffer)) SelectWall();
-            if (Tool == BuildTool.Gear && SelectedShopGear < 0 && !CanPickUp(SelectedOffer)) SelectWall();
-            if (Tool == BuildTool.Gear && SelectedShopGear >= 0 && (SelectedShopGear >= Host.State.GearShop.Offers.Length || Host.State.GearShop.Offers[SelectedShopGear].Bought)) SelectWall();
+            if (Tool == BuildTool.Tower && SelectedMenuTower < 0 && !CanPickUp(SelectedOffer)) PutDown();
+            if (Tool == BuildTool.Gear && SelectedShopGear < 0 && !CanPickUp(SelectedOffer)) PutDown();
+            if (Tool == BuildTool.Gear && SelectedShopGear >= 0 && (SelectedShopGear >= Host.State.GearShop.Offers.Length || Host.State.GearShop.Offers[SelectedShopGear].Bought)) PutDown();
             if (Tool == BuildTool.Sell && !MaySell) dragging = false;
-            if (Tool == BuildTool.Deploy && Benched(SelectedBench) == null) SelectWall();
-            if (Tool == BuildTool.EquipGear && SelectedOverflow >= 0 && SelectedOverflow >= Host.State.GearOverflow.Count) SelectWall();
-            if (Tool == BuildTool.EquipGear && SelectedOverflow < 0 && (SelectedInventory < 0 || Host.State.GearInventory[SelectedInventory] == TowerState.NoGear)) SelectWall();
-            if (Tool == BuildTool.Core && !ChoosingCore) SelectWall();
+            if (Tool == BuildTool.Deploy && Benched(SelectedBench) == null) PutDown();
+            if (Tool == BuildTool.EquipGear && SelectedOverflow >= 0 && SelectedOverflow >= Host.State.GearOverflow.Count) PutDown();
+            if (Tool == BuildTool.EquipGear && SelectedOverflow < 0 && (SelectedInventory < 0 || Host.State.GearInventory[SelectedInventory] == TowerState.NoGear)) PutDown();
+            if (Tool == BuildTool.Core && !ChoosingCore) PutDown();
 
             // No building while paused - pause is a plan-and-look state, not a
             // build-while-frozen one. A press over the HUD belongs to the HUD:
@@ -639,23 +690,32 @@ public class PlayerBuilder : MonoBehaviour
                 dragging = !overHud && !IsBuildingBlocked;
                 lastDragNode = null;
 
-                // With the bottom bar, a press on a tower picks it up: it is dragged to
-                // another tile, or to the bench.
-                bool free = Tool == BuildTool.Wall || Tool == BuildTool.None || Tool == BuildTool.MoveTower;
-                if (dragging && deckBar != null && free && MayMoveTower && TowerAt(HoverNode) != null)
+                // With an empty hand a press selects what is under the mouse (or lets go of
+                // the selection on empty ground). Dragging a tower off its tile moves it.
+                if (Tool == BuildTool.None && !overHud)
                 {
-                    Hold(BuildTool.MoveTower);
-                    TowerFrom = HoverNode;
-                    towerDrag = true;
+                    Selected = SelectableAt(HoverNode);
+                    pressNode = HoverNode;
                     dragging = false;
                 }
             }
+            // The press on a tower became a drag: the tower is in the hand until let go.
+            if (pressNode != null && Tool == BuildTool.None && Mouse.current.leftButton.isPressed && HoverNode != null && HoverNode != pressNode
+                && deckBar != null && MayMoveTower && TowerAt(pressNode) != null && !IsBuildingBlocked)
+            {
+                Node from = pressNode;
+                Hold(BuildTool.MoveTower);
+                TowerFrom = from;
+                towerDrag = true;
+                pressNode = null;
+            }
+            if (!Mouse.current.leftButton.isPressed) pressNode = null;
             if (towerDrag && !Mouse.current.leftButton.isPressed)
             {
                 towerDrag = false;
                 int benchSlot = deckBar != null ? deckBar.BenchSlotUnderPointer() : -1;
-                if (benchSlot >= 0) { ClickBench(benchSlot); SelectWall(); }
-                else if (HoverNode != null && HoverNode != TowerFrom) { UseTool(HoverNode, true); SelectWall(); }
+                if (benchSlot >= 0) { ClickBench(benchSlot); PutDown(); }
+                else if (HoverNode != null && HoverNode != TowerFrom) { UseTool(HoverNode, true); PutDown(); Selected = SelectableAt(HoverNode); }
                 // Let go on its own tile: it stays in the hand, as after a click.
             }
             if (!Mouse.current.leftButton.isPressed || IsBuildingBlocked) dragging = false;
@@ -673,6 +733,9 @@ public class PlayerBuilder : MonoBehaviour
         DrawPower();
         ShowCoreZone();
     }
+
+    // Where a press with an empty hand began (a tower pressed there may be dragged away).
+    private Node pressNode;
 
     // The tool acts on one tile. `first` is the tile the press began on; the rest of
     // a drag only draws walls and sells walls, so a slip of the mouse cannot buy a
@@ -699,7 +762,7 @@ public class PlayerBuilder : MonoBehaviour
                 }
                 // On a tower of the card's type the card is merged into it; on open ground it is placed.
                 if (TowerAt(node) != null) Host.Submit(SimCommand.FeedCard(SelectedOffer, node.gridX, node.gridY));
-                else if (TryBuyOffer(SelectedOffer, node.gridX, node.gridY)) SelectWall();
+                else if (TryBuyOffer(SelectedOffer, node.gridX, node.gridY)) PutDown();
                 break;
             case BuildTool.Core:
                 if (first) Host.Submit(SimCommand.PlaceCore(node.gridX, node.gridY));
@@ -715,7 +778,7 @@ public class PlayerBuilder : MonoBehaviour
                 {
                     int spareBefore = Host.State.GearOverflow.Count;
                     Host.Submit(SimCommand.EquipOverflow(SelectedOverflow, node.gridX, node.gridY));
-                    if (Host.State.GearOverflow.Count != spareBefore) SelectWall();
+                    if (Host.State.GearOverflow.Count != spareBefore) PutDown();
                 }
                 else if (first && SelectedInventory >= 0) Host.Submit(SimCommand.EquipGear(SelectedInventory, node.gridX, node.gridY));
                 break; // Update() puts the hand down once the piece is on the tower
@@ -725,7 +788,7 @@ public class PlayerBuilder : MonoBehaviour
                 if (CanMerge(Benched(SelectedBench), TowerAt(node))) Host.Submit(SimCommand.MergeTower(0, 0, SelectedBench, node.gridX, node.gridY, -1));
                 else
                 Host.Submit(SimCommand.DeployTower(SelectedBench, node.gridX, node.gridY));
-                if (Host.State.PlacementLog.Count > logBefore) SelectWall();
+                if (Host.State.PlacementLog.Count > logBefore) PutDown();
                 break;
             case BuildTool.Gear:
                 if (!first) break;
@@ -778,20 +841,64 @@ public class PlayerBuilder : MonoBehaviour
         }
     }
 
-    private Node NodeUnderMouse()
+    private Node NodeUnderMouse() { return NodeAtScreen(Mouse.current.position.ReadValue()); }
+
+    // The tile drawn at this point of the screen.
+    public Node NodeAtScreen(Vector2 screenPoint)
     {
         Camera cam = Camera.main;
         if (cam == null) return null;
 
-        Vector2 mousePosition = Mouse.current.position.ReadValue();
-        Ray ray = cam.ScreenPointToRay(mousePosition);
+        Ray ray = cam.ScreenPointToRay(screenPoint);
         if (!Physics.Raycast(ray, out RaycastHit hit, Mathf.Infinity, clickLayer)) return null;
 
         // NodeFromWorldPoint clamps, so a ray that lands on the ground outside the
         // board would otherwise read as its nearest edge tile.
         Vector3 local = hit.point - gridManager.transform.position;
         if (Mathf.Abs(local.x) > gridManager.gridWorldSize.x / 2f || Mathf.Abs(local.z) > gridManager.gridWorldSize.y / 2f) return null;
+
+        // From a tilted camera the top of a tower, a wall or a rock is drawn in front of
+        // the ground the ray meets; aiming at the top hit the tile behind it (the student,
+        // 2026-10-24: "I need to aim below what I want to click"). The ray is walked from
+        // above the tallest thing down to the ground, and the first tile whose drawn top
+        // it passes under is the one under the mouse.
+        float cell = gridManager.nodeRadius * 2f;
+        float ground = gridManager.transform.position.y;
+        float top = ground + cell * 1.6f;
+        if (ray.direction.y < -0.01f && ray.origin.y > top)
+        {
+            float tTop = (top - ray.origin.y) / ray.direction.y;
+            float tGround = hit.distance;
+            float step = cell * 0.2f / Mathf.Max(0.05f, ray.direction.magnitude);
+            for (float t = tTop; t < tGround; t += step)
+            {
+                Vector3 p = ray.origin + ray.direction * t;
+                Vector3 lp = p - gridManager.transform.position;
+                if (Mathf.Abs(lp.x) > gridManager.gridWorldSize.x / 2f || Mathf.Abs(lp.z) > gridManager.gridWorldSize.y / 2f) continue;
+                Node node = gridManager.NodeFromWorldPoint(p);
+                if (node != null && p.y <= ground + DrawnHeight(node, cell)) return node;
+            }
+        }
         return gridManager.NodeFromWorldPoint(hit.point);
+    }
+
+    // How high what stands on a tile is drawn, above the ground.
+    private float DrawnHeight(Node node, float cell)
+    {
+        SimNode sim = Host.State.Grid[node.gridX, node.gridY];
+        switch (sim.Occupant)
+        {
+            case Occupant.Tower: return Plinth(node, cell) + cell * 0.8f;
+            case Occupant.Collector: return cell * Mathf.Max(0.45f, wallHeight * 1.6f);
+            case Occupant.Wall: return cell * wallHeight;
+        }
+        if (!sim.IsWalkable)
+        {
+            RockLayout rocks = gridManager.GetComponent<RockLayout>();
+            return cell * (rocks != null ? rocks.heightShare : 0.45f);
+        }
+        if (node.gridX == Host.State.Core.X && node.gridY == Host.State.Core.Y) return cell * 0.6f;
+        return 0f;
     }
 
     // --- what the hand may do on a tile (the ghost and the click ask the same questions) ---
@@ -1036,44 +1143,69 @@ public class PlayerBuilder : MonoBehaviour
 
     // --- power (SimConfig.PowerRule, 2026-10-20) ---
 
-    private readonly List<LineRenderer> powerRings = new List<LineRenderer>();
-
     public bool PowerRule => Host.Config.PowerRule;
 
     // Every tower shows whether it has power; in a build phase, and with a tower in the
     // hand, faint rings show how far the core and each collector reach.
+    // The tiles the selected core or collector powers, each outlined, and a frame round
+    // whatever is selected. Shown only while something is selected (the student, 2026-10-24:
+    // the rings were not where the rule is, and were always on).
+    private readonly List<LineRenderer> squares = new List<LineRenderer>();
+    private LineRenderer selectionFrame;
+
     private void DrawPower()
     {
-        if (!PowerRule || Host == null) return;
-        foreach (KeyValuePair<int, TowerView> pair in towerViews)
-            if (pair.Value != null) pair.Value.SetPowered(Host.State.Towers[pair.Key].Powered);
+        if (Host == null) return;
+        if (PowerRule)
+            foreach (KeyValuePair<int, TowerView> pair in towerViews)
+                if (pair.Value != null) pair.Value.SetPowered(Host.State.Towers[pair.Key].Powered);
 
-        bool show = IsBuildPhase || Tool == BuildTool.Tower || Tool == BuildTool.MoveTower || Tool == BuildTool.Deploy;
-        int used = 0;
         float cell = gridManager.nodeRadius * 2f;
-        if (show)
+        int used = 0;
+        TowerState pylon = SelectedTower != null && SelectedTower.PowerCapacity > 0 ? SelectedTower : null;
+        if (PowerRule && Selected != null && (SelectedIsCore || SelectedIsCollector || pylon != null))
         {
-            Ring(ref used, Host.State.Core, Host.Config.CorePowerRadius, cell);
-            foreach (Deposit d in Host.Map.Deposits)
-                if (Host.State.Grid[d.Tile.X, d.Tile.Y].Occupant == Occupant.Collector) Ring(ref used, d.Tile, Host.Config.CollectorPowerRadius, cell);
+            float radius = pylon != null ? pylon.PowerRadius : SelectedIsCore ? Host.Config.CorePowerRadius : Host.Config.CollectorPowerRadius;
+            var centre = new TileCoord(Selected.gridX, Selected.gridY);
+            int reach = Mathf.CeilToInt(radius);
+            for (int dx = -reach; dx <= reach; dx++)
+                for (int dy = -reach; dy <= reach; dy++)
+                {
+                    var tile = new TileCoord(centre.X + dx, centre.Y + dy);
+                    if (tile.X < 0 || tile.Y < 0 || tile.X >= gridManager.gridSizeX || tile.Y >= gridManager.gridSizeY) continue;
+                    if (!Simulation.InPowerReach(centre, radius, tile)) continue;
+                    Square(squares, ref used, gridManager.grid[tile.X, tile.Y].worldPosition, cell * 0.92f, new Color(1f, 0.82f, 0.25f, 0.55f), 0.06f);
+                }
         }
-        for (int i = used; i < powerRings.Count; i++) powerRings[i].enabled = false;
+        for (int k = used; k < squares.Count; k++) squares[k].enabled = false;
+
+        if (selectionFrame == null) selectionFrame = TowerView.Line(transform, "Selection", new Color(0.18f, 0.83f, 0.75f, 1f), 0.12f, true);
+        if (Selected != null)
+        {
+            SetSquare(selectionFrame, Selected.worldPosition, cell * 1.08f, 0.2f);
+            selectionFrame.enabled = true;
+        }
+        else selectionFrame.enabled = false;
     }
 
-    private void Ring(ref int used, TileCoord centre, float radiusTiles, float cell)
+    private void Square(List<LineRenderer> pool, ref int used, Vector3 centre, float size, Color color, float width)
     {
-        if (used >= powerRings.Count) powerRings.Add(TowerView.Line(transform, "PowerRange", new Color(1f, 0.85f, 0.3f, 0.35f), 0.1f, true));
-        LineRenderer ring = powerRings[used++];
-        const int points = 40;
-        if (ring.positionCount != points) ring.positionCount = points;
-        Vector3 at = gridManager.grid[centre.X, centre.Y].worldPosition + Vector3.up * 0.1f;
-        float r = (radiusTiles + 0.5f) * cell;
-        for (int i = 0; i < points; i++)
-        {
-            float a = i * Mathf.PI * 2f / points;
-            ring.SetPosition(i, at + new Vector3(Mathf.Cos(a) * r, 0f, Mathf.Sin(a) * r));
-        }
-        ring.enabled = true;
+        if (used >= pool.Count) pool.Add(TowerView.Line(transform, "PowerTile", color, width, true));
+        LineRenderer line = pool[used++];
+        line.startColor = line.endColor = color;
+        SetSquare(line, centre, size, 0.1f);
+        line.enabled = true;
+    }
+
+    private static void SetSquare(LineRenderer line, Vector3 centre, float size, float lift)
+    {
+        float h = size / 2f;
+        Vector3 up = Vector3.up * lift;
+        if (line.positionCount != 4) line.positionCount = 4;
+        line.SetPosition(0, centre + up + new Vector3(-h, 0f, -h));
+        line.SetPosition(1, centre + up + new Vector3(h, 0f, -h));
+        line.SetPosition(2, centre + up + new Vector3(h, 0f, h));
+        line.SetPosition(3, centre + up + new Vector3(-h, 0f, h));
     }
 
     // What a tower on this tile would get: power, or why not. "" without the rule.
@@ -1085,6 +1217,9 @@ public class PlayerBuilder : MonoBehaviour
         foreach (Deposit d in Host.Map.Deposits)
             if (Host.State.Grid[d.Tile.X, d.Tile.Y].Occupant == Occupant.Collector && Simulation.InPowerReach(d.Tile, Host.Config.CollectorPowerRadius, tile))
                 return "  \u00b7  powered by a collector";
+        foreach (TowerState t in Host.State.Towers)
+            if (t.IsAlive && !t.OnBench && t.PowerCapacity > 0 && Simulation.InPowerReach(t.Tile, t.PowerRadius, tile))
+                return "  \u00b7  powered by a pylon";
         return "  \u00b7  NO POWER here: it will not fire";
     }
 
@@ -1176,6 +1311,9 @@ public class PlayerBuilder : MonoBehaviour
             case SimEventKind.TowerDestroyed:
                 RemoveVisual(gridManager.grid[e.IntB, e.IntC]);
                 break;
+            case SimEventKind.StateRestored:
+                RedrawBoard();
+                break;
             case SimEventKind.CollectorDestroyed:
                 RemoveVisual(gridManager.grid[e.IntA, e.IntB]);
                 break;
@@ -1194,6 +1332,18 @@ public class PlayerBuilder : MonoBehaviour
                 }
                 break;
         }
+    }
+
+    private void RedrawBoard()
+    {
+        foreach (Node node in new List<Node>(wallTiles)) RemoveVisual(node);
+        foreach (TowerView view in new List<TowerView>(towerViews.Values)) if (view != null) Destroy(view.gameObject);
+        towerViews.Clear();
+        placementsDrawn = 0;
+        Selected = SelectableAt(Selected);
+        CancelUpgrade();
+        Host.ShowCore();
+        DrawNewWalls();
     }
 
     private void RemoveVisual(Node node)

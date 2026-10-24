@@ -155,6 +155,11 @@ public class WaveSpawner : MonoBehaviour
                 active[e.IntA] = view;
                 activeList.Add(view);
                 break;
+            case SimEventKind.StateRestored:
+                foreach (FlowAgent gone in activeList) { gone.Release(); free.Push(gone); }
+                activeList.Clear();
+                active.Clear();
+                break;
             case SimEventKind.AgentKilled:
             case SimEventKind.AgentLeaked:
             case SimEventKind.AgentRemoved:

@@ -37,6 +37,7 @@ namespace Thesis.Harness
 
             while (!s.IsGameOver && result.WavesResolved < o.MaxWaves)
             {
+                s = sim.State; // an Undo, a Redo or a RetryWave puts another state in place
                 if (s.Tick >= o.MaxTicks)
                 {
                     result.HitTickLimit = true;
@@ -55,6 +56,7 @@ namespace Thesis.Harness
                     else if (!builtThisPhase)
                     {
                         o.Policy.OnIntermission(sim, send, policyRng);
+                        s = sim.State;
                         builtThisPhase = true;
                         // The player moved the core: the wave is planned again, and the
                         // player gets to answer that plan.
@@ -79,6 +81,7 @@ namespace Thesis.Harness
                 }
 
                 sim.Tick();
+                s = sim.State;
                 recorder.AfterTick();
                 result.Telemetry.AddRange(telemetry.AfterTick());
 
@@ -91,6 +94,7 @@ namespace Thesis.Harness
                 }
             }
 
+            s = sim.State;
             result.Telemetry.AddRange(telemetry.Finish());
             result.Replay = recorder.Snapshot();
             result.GameOver = s.IsGameOver;

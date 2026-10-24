@@ -32,7 +32,7 @@ namespace Thesis.Sim
         private static readonly int[] Dy = { 0, 1, 1, 1, 0, -1, -1, -1 };
 
         public static MapData Generate(ulong seed, int width = 32, int height = 32, float nodeRadius = 1f, int margin = 2, int ridges = 10,
-                                       float originX = 0f, float originZ = 0f, int deposits = 0)
+                                       float originX = 0f, float originZ = 0f, int deposits = 0, int depositsPerCluster = 1)
         {
             if (width < 12 || height < 12) throw new ArgumentOutOfRangeException(nameof(width), "A generated map is at least 12 x 12.");
             if (margin < 1) throw new ArgumentOutOfRangeException(nameof(margin), "A generated map needs a ring of at least one tile.");
@@ -111,7 +111,8 @@ namespace Thesis.Sim
                 for (int y = 2; y < height - 2; y += 2) { Entry(map, grid, pass, ref count, 0, y); Entry(map, grid, pass, ref count, width - 1, y); }
             }
 
-            if (deposits > 0) PlaceDeposits(map, rock, seed, deposits, clear);
+            if (deposits > 0 && depositsPerCluster > 1) PlaceClusters(map, rock, seed, deposits, depositsPerCluster, clear);
+            else if (deposits > 0) PlaceDeposits(map, rock, seed, deposits, clear);
             map.Validate();
             return map;
         }
@@ -137,6 +138,52 @@ namespace Thesis.Sim
                 if (crowded) continue;
                 int yield = 2 + Math.Min(2, 2 * ring / half);
                 placed.Add(new Deposit { Tile = new TileCoord(x, y), Yield = yield });
+            }
+            map.Deposits = placed.ToArray();
+        }
+
+        // Deposits in clusters (2026-10-24, after StarCraft's mineral fields): `per` veins
+        // round each of a few centres, with a free tile between two veins for a wall or a
+        // tower, so one defended outpost holds several collectors. Centres are at least
+        // nine tiles apart and away from the middle; a cluster is as rich as its centre is
+        // far from the middle (2 to 4 ore a vein).
+        private static void PlaceClusters(MapData map, bool[,] rock, ulong seed, int wanted, int per, int clear)
+        {
+            var rng = new Pcg32(seed, RngStreams.Deposits);
+            int width = map.Width, height = map.Height;
+            int cx = width / 2, cy = height / 2;
+            int half = Math.Max(1, Math.Min(cx, cy) - clear);
+            int clusters = (wanted + per - 1) / per;
+            var centres = new System.Collections.Generic.List<TileCoord>();
+            for (int attempt = 0; attempt < clusters * 80 && centres.Count < clusters; attempt++)
+            {
+                int x = rng.NextInt(clear + 3, width - clear - 3);
+                int y = rng.NextInt(clear + 3, height - clear - 3);
+                if (rock[x, y] || Math.Max(Math.Abs(x - cx), Math.Abs(y - cy)) < 6) continue;
+                bool crowded = false;
+                for (int i = 0; i < centres.Count && !crowded; i++)
+                    crowded = Math.Max(Math.Abs(centres[i].X - x), Math.Abs(centres[i].Y - y)) < 9;
+                if (!crowded) centres.Add(new TileCoord(x, y));
+            }
+
+            var placed = new System.Collections.Generic.List<Deposit>();
+            foreach (TileCoord c in centres)
+            {
+                int ring = Math.Max(Math.Abs(c.X - cx), Math.Abs(c.Y - cy));
+                int yield = 2 + Math.Min(2, 2 * ring / half);
+                int here = 0;
+                for (int attempt = 0; attempt < 60 && here < per && placed.Count < wanted; attempt++)
+                {
+                    int x = c.X + rng.NextInt(-2, 3);
+                    int y = c.Y + rng.NextInt(-2, 3);
+                    if (x <= clear || y <= clear || x >= width - clear - 1 || y >= height - clear - 1 || rock[x, y]) continue;
+                    bool crowded = false;
+                    for (int i = 0; i < placed.Count && !crowded; i++)
+                        crowded = Math.Max(Math.Abs(placed[i].Tile.X - x), Math.Abs(placed[i].Tile.Y - y)) < 2;
+                    if (crowded) continue;
+                    placed.Add(new Deposit { Tile = new TileCoord(x, y), Yield = yield });
+                    here++;
+                }
             }
             map.Deposits = placed.ToArray();
         }

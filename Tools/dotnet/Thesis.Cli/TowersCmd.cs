@@ -166,8 +166,9 @@ namespace Thesis.Cli
             int[] waves = { 5, 15, 30, 45, 60 };
             int detailWave = 30;
             string upgrade = args.Get("--upgrade", null);
-            int choice = upgrade == null ? TowerUpgradeChoices.None : Array.IndexOf(TowerUpgradeChoices.Ids, upgrade);
-            if (upgrade != null && choice < 0) throw new ArgumentException("No upgrade '" + upgrade + "'.");
+            // --upgrade <n>: every tower takes its own n-th choice; <id>: the choice of that name, where a tower has one.
+            int choice = TowerUpgradeChoices.None;
+            if (upgrade != null && !int.TryParse(upgrade, out choice)) choice = -2;
             EnemyArchetype[] types = EnemyArchetypes.Everything();
 
             var sets = new List<KeyValuePair<string, TowerDef[]>>();
@@ -207,7 +208,7 @@ namespace Thesis.Cli
                     foreach (EnemyArchetype e in types)
                     {
                         int n = copies > 0 ? copies : Math.Max(1, TowerCombine.CapAt(baseConfig, w - 1));
-                        double share = KilledShare(baseConfig, roster, shapes, set.Value, n, choice, e, w);
+                        double share = KilledShare(baseConfig, roster, shapes, set.Value, n, choice, upgrade, e, w);
                         sum += share;
                         if (w == detailWave) row.Append(' ').Append(F(100 * share, "0")).Append(" |");
                     }
@@ -230,7 +231,7 @@ namespace Thesis.Cli
             return 0;
         }
 
-        private static double KilledShare(SimConfig baseConfig, TowerDef[] roster, ShapeDef[] shapes, TowerDef[] set, int copies, int choice, EnemyArchetype type, int wave)
+        private static double KilledShare(SimConfig baseConfig, TowerDef[] roster, ShapeDef[] shapes, TowerDef[] set, int copies, int choice, string upgradeId, EnemyArchetype type, int wave)
         {
             SimConfig config = baseConfig.Clone();
             config.CoreMaxHp = 1000000;
@@ -253,7 +254,9 @@ namespace Thesis.Cli
                 var tile = new TileCoord(core - 2 - i / 2, i % 2 == 0 ? 3 : 1);
                 TowerDef def = set[i % set.Length];
                 SimNode node = s.Grid.Get(tile);
-                var tower = new TowerState(s.Towers.Count, def, tile, node.Position, map.NodeDiameter, 0) { Upgrade = choice };
+                int own = choice;
+                if (choice == -2) { own = TowerUpgradeChoices.None; TowerLevelMod[] list = TowerUpgradeChoices.For(def); for (int u = 0; u < list.Length; u++) if (TowerUpgradeChoices.IdOf(def, u) == upgradeId) own = u; }
+                var tower = new TowerState(s.Towers.Count, def, tile, node.Position, map.NodeDiameter, 0) { Upgrade = TowerUpgradeChoices.IsValidFor(def, own) ? own : TowerUpgradeChoices.None };
                 tower.Recompute(sim.GearLibrary);
                 s.Towers.Add(tower);
                 s.Grid.SetTower(node, Math.Max(2, def.DigCost), Math.Max(0.5f, def.TowerHealth), tower.Id);

@@ -42,3 +42,48 @@ MonoBehaviour:
     extraTargets: 0
   shopWeight: 1
   tier: 2
+  upgrades:
+  - label: 'Splinter: +2 shards'
+    damageMul: 1
+    intervalMul: 1
+    rangeAdd: 0
+    splashAdd: 0
+    slowTicksMul: 1
+    extraTargets: 2
+    id: splinter
+    grantsFlying: 0
+    ignoresResist: 0
+    slowTicksAdd: 0
+    slowFactorTo: 1
+    powerRadiusAdd: 0
+    powerCapacityAdd: 0
+  - label: 'Sharper: +50% damage'
+    damageMul: 1.5
+    intervalMul: 1
+    rangeAdd: 0
+    splashAdd: 0
+    slowTicksMul: 1
+    extraTargets: 0
+    id: sharper
+    grantsFlying: 0
+    ignoresResist: 0
+    slowTicksAdd: 0
+    slowFactorTo: 1
+    powerRadiusAdd: 0
+    powerCapacityAdd: 0
+  - label: 'Frostbite: slows what it hits'
+    damageMul: 1
+    intervalMul: 1
+    rangeAdd: 0
+    splashAdd: 0
+    slowTicksMul: 1
+    extraTargets: 0
+    id: frostbite
+    grantsFlying: 0
+    ignoresResist: 0
+    slowTicksAdd: 30
+    slowFactorTo: 0.6
+    powerRadiusAdd: 0
+    powerCapacityAdd: 0
+  powerCapacity: 0
+  powerRadius: 0

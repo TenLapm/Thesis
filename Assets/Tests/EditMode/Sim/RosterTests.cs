@@ -113,7 +113,7 @@ namespace Thesis.Tests.Sim
                 Map = TestSims.GameMap(),
                 Shapes = TestSims.GameShapes(),
                 Towers = TestSims.GameTowers(),
-                Seed = 7, // the pinned restless episode: it lives through five waves and sells
+                Seed = 4, // a seed whose restless player lives through five waves and sells (7 until the pylon joined the roster, 2026-10-24)
                 Policy = Registry.CreatePolicy("restless"),
                 MaxWaves = 5,
             });

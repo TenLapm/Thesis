@@ -41,3 +41,48 @@ MonoBehaviour:
     extraTargets: 0
   shopWeight: 1
   tier: 1
+  upgrades:
+  - label: 'Wide ring: +0.75 range'
+    damageMul: 1
+    intervalMul: 1
+    rangeAdd: 0.75
+    splashAdd: 0
+    slowTicksMul: 1
+    extraTargets: 0
+    id: wide
+    grantsFlying: 0
+    ignoresResist: 0
+    slowTicksAdd: 0
+    slowFactorTo: 1
+    powerRadiusAdd: 0
+    powerCapacityAdd: 0
+  - label: 'Inferno: +50% damage'
+    damageMul: 1.5
+    intervalMul: 1
+    rangeAdd: 0
+    splashAdd: 0
+    slowTicksMul: 1
+    extraTargets: 0
+    id: inferno
+    grantsFlying: 0
+    ignoresResist: 0
+    slowTicksAdd: 0
+    slowFactorTo: 1
+    powerRadiusAdd: 0
+    powerCapacityAdd: 0
+  - label: 'Smoke: slows what it burns'
+    damageMul: 1
+    intervalMul: 1
+    rangeAdd: 0
+    splashAdd: 0
+    slowTicksMul: 1
+    extraTargets: 0
+    id: smoke
+    grantsFlying: 0
+    ignoresResist: 0
+    slowTicksAdd: 25
+    slowFactorTo: 0.6
+    powerRadiusAdd: 0
+    powerCapacityAdd: 0
+  powerCapacity: 0
+  powerRadius: 0

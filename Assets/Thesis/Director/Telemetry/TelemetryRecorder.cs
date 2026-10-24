@@ -43,6 +43,7 @@ namespace Thesis.Director
         private int logCursor;               // build-log rows before this are already in a finished row
         private int ticksSeen;
         private bool finished;
+        private int retriesSeen;             // SimState.Retries when last looked
 
         public TelemetryRecorder(Simulation sim, string session, string build, string player)
         {
@@ -68,6 +69,24 @@ namespace Thesis.Director
         {
             completed.Clear();
             SimState s = sim.State;
+            // A wave played again (RetryWave): what was open closes where it stands, and the
+            // build phase that was put back opens as a window of its own (no wave, no outcome
+            // until its wave resolves). A lost game's window had closed already.
+            if (s.Retries != retriesSeen && s.Tick != ticksSeen)
+            {
+                retriesSeen = s.Retries;
+                if (!finished) Close(s.Tick - 1);
+                finished = false;
+                logCursor = s.PlacementLog.Count;
+                wave = s.WaveIndex;
+                tickStart = s.Tick - 1;
+                tickResolved = -1;
+                plan = null;
+                outcome = null;
+                offered = OfferedNames(s.Shop);
+                stateHash = null;
+                fallback = null;
+            }
             if (finished || s.Tick == ticksSeen) return completed; // a finished session, or Tick() after game over
             if (s.Tick != ticksSeen + 1)
                 throw new InvalidOperationException("[Telemetry] AfterTick must follow every Tick(): saw tick " + ticksSeen + ", simulation is at " + s.Tick + ".");

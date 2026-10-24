@@ -52,7 +52,33 @@ public class TowerDefAsset : ScriptableObject
         public float splashAdd;
         public float slowTicksMul = 1f;
         public int extraTargets;
+        [Tooltip("For an upgrade: its name in the build log (lower case).")]
+        public string id;
+        public bool grantsFlying;
+        public bool ignoresResist;
+        public int slowTicksAdd;
+        [Range(0.05f, 1f)] public float slowFactorTo = 1f;
+        public float powerRadiusAdd;
+        public int powerCapacityAdd;
+
+        public TowerLevelMod ToMod()
+        {
+            return new TowerLevelMod
+            {
+                Label = label, DamageMul = damageMul, IntervalMul = intervalMul, RangeAdd = rangeAdd, SplashAdd = splashAdd, SlowTicksMul = slowTicksMul,
+                ExtraTargets = extraTargets, Id = id, GrantsFlying = grantsFlying, IgnoresResist = ignoresResist, SlowTicksAdd = slowTicksAdd,
+                SlowFactorTo = slowFactorTo, PowerRadiusAdd = powerRadiusAdd, PowerCapacityAdd = powerCapacityAdd,
+            };
+        }
     }
+
+    [Header("Upgrades the player chooses from (2026-10-24: each tower its own)")]
+    public Level[] upgrades = new Level[0];
+
+    [Header("Power tower (SimConfig.PowerRule)")]
+    [Tooltip("Above 0: it powers this many towers within powerRadius tiles, and has power itself.")]
+    public int powerCapacity;
+    public float powerRadius;
 
     [Header("Shop")]
     [Tooltip("Relative chance of being offered.")]
@@ -64,15 +90,16 @@ public class TowerDefAsset : ScriptableObject
     public TowerDef ToDef()
     {
         var mods = new TowerLevelMod[levels != null ? levels.Length : 0];
-        for (int i = 0; i < mods.Length; i++)
-        {
-            Level l = levels[i];
-            mods[i] = new TowerLevelMod { Label = l.label, DamageMul = l.damageMul, IntervalMul = l.intervalMul, RangeAdd = l.rangeAdd, SplashAdd = l.splashAdd, SlowTicksMul = l.slowTicksMul, ExtraTargets = l.extraTargets };
-        }
+        for (int i = 0; i < mods.Length; i++) mods[i] = levels[i].ToMod();
+        var ups = new TowerLevelMod[upgrades != null ? upgrades.Length : 0];
+        for (int i = 0; i < ups.Length; i++) ups[i] = upgrades[i].ToMod();
 
         return new TowerDef
         {
             Levels = mods.Length > 0 ? mods : null,
+            Upgrades = ups.Length > 0 ? ups : null,
+            PowerCapacity = powerCapacity,
+            PowerRadius = powerRadius,
             Id = string.IsNullOrEmpty(id) ? name.ToLowerInvariant() : id,
             Cost = cost,
             DamageType = damageType,

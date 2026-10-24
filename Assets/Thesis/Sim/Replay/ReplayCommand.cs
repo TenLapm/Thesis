@@ -79,6 +79,9 @@ namespace Thesis.Sim
                 case SimCommandKind.Research: return SimCommand.Research();
                 case SimCommandKind.CraftGear: return SimCommand.CraftGear(A);
                 case SimCommandKind.RepairCore: return SimCommand.RepairCore();
+                case SimCommandKind.Undo: return SimCommand.Undo();
+                case SimCommandKind.Redo: return SimCommand.Redo();
+                case SimCommandKind.RetryWave: return SimCommand.RetryWave();
                 default: throw new InvalidDataException("[Replay] Command '" + Cmd + "' at tick " + Tick + " cannot be replayed by this version.");
             }
         }

@@ -15,5 +15,6 @@ namespace Thesis.Sim
         Strongest = 1,  // the most hit points left
         Weakest = 2,    // the fewest hit points left
         Nearest = 3,    // closest to the tower itself
+        Raiders = 4,    // raiders first (2026-10-24), the one closest to the core; others as First
     }
 }

@@ -46,6 +46,9 @@ public class SimHost : MonoBehaviour
 
     [Tooltip("Ore deposits on a generated map (2026-10-14); 0 = none.")]
     public int mapDeposits = 0;
+
+    [Tooltip("Deposits grouped this many to a cluster (2026-10-24); 1 = scattered one by one.")]
+    public int depositsPerCluster = 1;
     [Tooltip("The ring along the edge on which nothing is built, in tiles.")]
     public int mapMargin = 2;
     public int mapRidges = 10;
@@ -108,19 +111,21 @@ public class SimHost : MonoBehaviour
     private int phaseStartTick;
     private bool wasInWave;
 
-    public bool CanRetryWave => sim != null && sim.State.IsGameOver && recorder != null;
+    // Playing a wave again (2026-10-24): the simulation keeps the state each build phase
+    // began with and the command RetryWave puts the one before the last wave back, after a
+    // loss or a win. It is recorded like any command, so the session goes on in the same
+    // files and its replay stays exact; there is no scene to load and no run to play again
+    // (which is what made the old way slow).
+    public bool CanRetryWave => sim != null && sim.CanRetry;
 
     // The wave that would be played again.
-    public int RetryWaveNumber => sim != null ? Mathf.Max(1, sim.State.WaveIndex) : 1;
+    public int RetryWaveNumber => sim != null ? Mathf.Max(1, sim.RetryWaveNumber) : 1;
 
     public void RetryWave()
     {
         if (!CanRetryWave) return;
-        var kept = new List<ReplayCommand>();
-        foreach (ReplayCommand c in recorder.Snapshot().Commands) if (c.Tick < phaseStartTick) kept.Add(c);
-        pendingRetry = new Retry { Seed = Seed, Commands = kept, UntilTick = phaseStartTick, Wave = RetryWaveNumber, From = recorder.Session };
-        Time.timeScale = 1f; // the game-over screen froze it
-        SceneManager.LoadScene(SceneManager.GetActiveScene().name);
+        Submit(SimCommand.RetryWave());
+        accumulator = 0f;
     }
 
     // Plays the run again up to the build phase the player returns to. No frame is
@@ -254,7 +259,7 @@ public class SimHost : MonoBehaviour
             int width = Mathf.RoundToInt(gridManager.gridWorldSize.x / diameter);
             int height = Mathf.RoundToInt(gridManager.gridWorldSize.y / diameter);
             Vector3 origin = gridManager.transform.position;
-            map = MapGenerator.Generate(Seed, width, height, gridManager.nodeRadius, mapMargin, mapRidges, origin.x == 0f ? 0f : origin.x, origin.z == 0f ? 0f : origin.z, mapDeposits);
+            map = MapGenerator.Generate(Seed, width, height, gridManager.nodeRadius, mapMargin, mapRidges, origin.x == 0f ? 0f : origin.x, origin.z == 0f ? 0f : origin.z, mapDeposits, depositsPerCluster);
             // Entries are drawn wave by wave (PathPreviewer); the scene's one spawn marker is not one of them.
             Renderer marker = waveSpawner.spawnPoint.GetComponent<Renderer>();
             if (marker != null) marker.enabled = false;

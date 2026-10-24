@@ -61,6 +61,33 @@ public class DeckBar : MonoBehaviour
     private RectTransform canvasRect;
     private int hoverBench = -1;
 
+    // The build section (SimConfig.BuildMenu, 2026-10-23), after RimWorld's architect
+    // menu: a column of categories, and beside it what the chosen one holds.
+    private class Item
+    {
+        public GameObject root;
+        public Image outline, fill, icon;
+        public TextMeshProUGUI name, price, note;
+        public CanvasGroup group;
+        public System.Action onClick;
+        public string tip;
+    }
+
+    private RectTransform buildArea, tipBox;
+    private TextMeshProUGUI tipText, movesLabel, wallsLabel;
+    private Action undoButton, redoButton, retryButton;
+    // The inspect pane's commands (2026-10-24): for a tower, upgrade, target, move, sell;
+    // for a collector, sell.
+    private readonly List<Action> gizmos = new List<Action>();
+    private TextMeshProUGUI buildTitle;
+    private readonly List<Action> categoryButtons = new List<Action>();
+    private readonly List<Item> items = new List<Item>();
+    private int category;
+    private static readonly string[] Categories = { "TOWERS  [1]", "ECONOMY  [2]", "GEAR  [3]", "ORDERS  [4]" };
+    private const float ItemWidth = 140f;
+    private const float ItemHeight = 70f;
+    private const int ItemsPerRow = 4;
+
     private const float BenchCardWidth = 178f;
     private const float GearSlotWidth = 134f;
     private const float GearSlotHeight = 72f;
@@ -98,15 +125,19 @@ public class DeckBar : MonoBehaviour
         bar.SetAsFirstSibling();
 
         // What the turn allows.
-        Label(bar, "MOVES", 16, Dim, TextAlignmentOptions.TopLeft, new Vector2(16f, -10f), new Vector2(90f, 22f), true);
+        movesLabel = Label(bar, "MOVES", 16, Dim, TextAlignmentOptions.TopLeft, new Vector2(16f, -10f), new Vector2(90f, 22f), true);
         movesValue = Label(bar, "", 30, Bright, TextAlignmentOptions.TopLeft, new Vector2(16f, -28f), new Vector2(60f, 36f), true);
         buyMove = Button(bar, "", new Vector2(84f, -30f), 150f, () => playerBuilder.BuyMove());
-        Label(bar, "WALL TILES", 16, Dim, TextAlignmentOptions.TopLeft, new Vector2(16f, -78f), new Vector2(120f, 22f), true);
+        wallsLabel = Label(bar, "WALL TILES", 16, Dim, TextAlignmentOptions.TopLeft, new Vector2(16f, -78f), new Vector2(120f, 22f), true);
         wallsValue = Label(bar, "", 30, Bright, TextAlignmentOptions.TopLeft, new Vector2(16f, -96f), new Vector2(60f, 36f), true);
         buyWalls = Button(bar, "", new Vector2(84f, -98f), 150f, () => playerBuilder.BuyWalls());
         wallsNote = Label(bar, "", 13, Dim, TextAlignmentOptions.TopLeft, new Vector2(16f, -140f), new Vector2(230f, 20f), false);
         coreText = Label(bar, "", 13, Gold, TextAlignmentOptions.TopLeft, new Vector2(16f, -160f), new Vector2(110f, 34f), false);
         confirmCore = Button(bar, "CORE STAYS", new Vector2(120f, -160f), 114f, () => playerBuilder.ConfirmCore());
+        undoButton = Button(bar, "UNDO   ctrl+Z", new Vector2(16f, -14f), 218f, () => playerBuilder.Undo());
+        redoButton = Button(bar, "REDO   ctrl+Y", new Vector2(16f, -54f), 218f, () => playerBuilder.Redo());
+        // The last wave again, from its build phase, also when it was won (2026-10-24). Ctrl+Z takes it back.
+        retryButton = Button(bar, "", new Vector2(16f, -94f), 218f, () => Host.RetryWave());
 
         benchArea = Rect("Bench", bar);
         benchArea.anchorMin = benchArea.anchorMax = new Vector2(0f, 1f);
@@ -121,19 +152,53 @@ public class DeckBar : MonoBehaviour
         gearArea.sizeDelta = new Vector2(3f * (GearSlotWidth + 6f), height);
         gearTitle = Label(gearArea, "GEAR", 16, Dim, TextAlignmentOptions.TopLeft, new Vector2(0f, -8f), new Vector2(400f, 22f), true);
 
+        buildArea = Rect("Build", bar);
+        buildArea.anchorMin = buildArea.anchorMax = new Vector2(0f, 1f);
+        buildArea.pivot = new Vector2(0f, 1f);
+        buildArea.anchoredPosition = new Vector2(256f, 0f);
+        buildArea.sizeDelta = new Vector2(132f + ItemsPerRow * (ItemWidth + 6f), height);
+        buildTitle = Label(buildArea, "", 16, Dim, TextAlignmentOptions.TopLeft, new Vector2(0f, -8f), new Vector2(720f, 22f), true);
+        for (int c = 0; c < Categories.Length; c++)
+        {
+            int which = c;
+            categoryButtons.Add(Button(buildArea, Categories[c], new Vector2(0f, -32f - c * 38f), 122f, () => category = which));
+        }
+        for (int i = 0; i < 2 * ItemsPerRow; i++) items.Add(AddItem(i));
+        buildArea.gameObject.SetActive(false);
+
         // The card that explains the tower under the mouse.
         info = Rect("TowerInfo", transform);
-        info.anchorMin = info.anchorMax = new Vector2(0f, 1f);
-        info.pivot = new Vector2(0f, 1f);
-        info.anchoredPosition = new Vector2(14f, -96f);
-        info.sizeDelta = new Vector2(330f, 250f);
+        info.anchorMin = info.anchorMax = new Vector2(0f, 0f);
+        info.pivot = new Vector2(0f, 0f);
+        info.anchoredPosition = new Vector2(14f, 18f + height);
+        info.sizeDelta = new Vector2(330f, 296f);
         Image infoBack = info.gameObject.AddComponent<Image>();
         infoBack.color = new Color(0.04f, 0.06f, 0.1f, 0.94f);
         infoBack.raycastTarget = false;
-        infoText = Label(info, "", 17, Bright, TextAlignmentOptions.TopLeft, new Vector2(14f, -12f), new Vector2(302f, 230f), false);
+        infoText = Label(info, "", 17, Bright, TextAlignmentOptions.TopLeft, new Vector2(14f, -12f), new Vector2(302f, 196f), false); // ends above the commands
         infoText.textWrappingMode = TextWrappingModes.Normal;
         infoText.richText = true;
+        string[] gizmoNames = { "UPGRADE [U]", "TARGET [T]", "MOVE [M]", "SELL [X]" };
+        for (int g = 0; g < gizmoNames.Length; g++)
+        {
+            int which = g;
+            Action gizmo = Button(info, gizmoNames[g], new Vector2(8f + (g % 2) * 158f, -214f - (g / 2) * 38f), 152f, () => UseGizmo(which));
+            gizmos.Add(gizmo);
+        }
         info.gameObject.SetActive(false);
+
+        // The tooltip of a build button, over the bar.
+        tipBox = Rect("BuildTip", transform);
+        tipBox.anchorMin = tipBox.anchorMax = new Vector2(0f, 0f);
+        tipBox.pivot = new Vector2(0f, 0f);
+        tipBox.sizeDelta = new Vector2(320f, 150f);
+        Image tipBack = tipBox.gameObject.AddComponent<Image>();
+        tipBack.color = new Color(0.03f, 0.05f, 0.09f, 0.96f);
+        tipBack.raycastTarget = false;
+        tipText = Label(tipBox, "", 15, Bright, TextAlignmentOptions.TopLeft, new Vector2(12f, -10f), new Vector2(296f, 132f), false);
+        tipText.textWrappingMode = TextWrappingModes.Normal;
+        tipText.richText = true;
+        tipBox.gameObject.SetActive(false);
 
         // Spare gear: pieces that came back and found the inventory full. Shown only then.
         spareArea = Rect("SpareGear", transform);
@@ -153,6 +218,43 @@ public class DeckBar : MonoBehaviour
         dragImage = dragIcon.gameObject.AddComponent<Image>();
         dragImage.raycastTarget = false;
         dragIcon.gameObject.SetActive(false);
+    }
+
+    private Item AddItem(int index)
+    {
+        var item = new Item();
+        RectTransform root = Rect("Item " + (index + 1), buildArea);
+        root.anchorMin = root.anchorMax = new Vector2(0f, 1f);
+        root.pivot = new Vector2(0f, 1f);
+        root.anchoredPosition = new Vector2(132f + (index % ItemsPerRow) * (ItemWidth + 6f), -32f - (index / ItemsPerRow) * (ItemHeight + 6f));
+        root.sizeDelta = new Vector2(ItemWidth, ItemHeight);
+        item.root = root.gameObject;
+        item.outline = root.gameObject.AddComponent<Image>();
+        item.outline.color = Edge;
+        item.group = root.gameObject.AddComponent<CanvasGroup>();
+        RectTransform inner = Rect("Fill", root);
+        inner.anchorMin = Vector2.zero;
+        inner.anchorMax = Vector2.one;
+        inner.offsetMin = new Vector2(2f, 2f);
+        inner.offsetMax = new Vector2(-2f, -2f);
+        item.fill = inner.gameObject.AddComponent<Image>();
+        item.fill.color = CardColor;
+        item.fill.raycastTarget = false;
+        RectTransform icon = Rect("Icon", root);
+        icon.anchorMin = icon.anchorMax = new Vector2(0f, 1f);
+        icon.pivot = new Vector2(0f, 1f);
+        icon.anchoredPosition = new Vector2(9f, -10f);
+        icon.sizeDelta = new Vector2(14f, 14f);
+        item.icon = icon.gameObject.AddComponent<Image>();
+        item.icon.raycastTarget = false;
+        item.name = Label(root, "", 16, Bright, TextAlignmentOptions.TopLeft, new Vector2(28f, -6f), new Vector2(ItemWidth - 72f, 22f), true);
+        item.price = Label(root, "", 16, Gold, TextAlignmentOptions.TopRight, new Vector2(ItemWidth - 52f, -6f), new Vector2(44f, 22f), true);
+        item.note = Label(root, "", 12, Dim, TextAlignmentOptions.TopLeft, new Vector2(9f, -30f), new Vector2(ItemWidth - 16f, 36f), false);
+        item.note.textWrappingMode = TextWrappingModes.Normal;
+        Button button = root.gameObject.AddComponent<Button>();
+        button.transition = Selectable.Transition.None;
+        button.onClick.AddListener(() => { if (item.onClick != null) item.onClick(); });
+        return item;
     }
 
     // The Start, speed and pause buttons sat in the middle of the bottom edge, where the
@@ -288,7 +390,7 @@ public class DeckBar : MonoBehaviour
         else if (target != null && target.kind == DragCard.Kind.Gear) playerBuilder.ClickInventory(target.slot);
         else if (target == null && tile != null && !PointerOverHud()) playerBuilder.UseToolAt(tile);
 
-        if (playerBuilder.Tool == BuildTool.Deploy || playerBuilder.Tool == BuildTool.EquipGear || playerBuilder.Tool == BuildTool.Tower) playerBuilder.SelectWall();
+        if (playerBuilder.Tool == BuildTool.Deploy || playerBuilder.Tool == BuildTool.EquipGear || playerBuilder.Tool == BuildTool.Tower) playerBuilder.PutDown();
     }
 
     // The bench slot under the mouse, or -1 (PlayerBuilder asks when a tower dragged off
@@ -330,8 +432,17 @@ public class DeckBar : MonoBehaviour
         SimState state = Host.State;
         SimConfig config = Host.Config;
 
-        // Moves and walls.
+        // Moves and walls: only what this game has. Undo and redo take their place.
         bool moves = playerBuilder.MovesLimited;
+        movesLabel.gameObject.SetActive(moves);
+        movesValue.gameObject.SetActive(moves);
+        bool undo = playerBuilder.UndoOn && !moves;
+        undoButton.root.SetActive(undo);
+        redoButton.root.SetActive(undo);
+        if (undo) { Enable(undoButton, playerBuilder.CanUndo); Enable(redoButton, playerBuilder.CanRedo); }
+        bool again = Host.CanRetryWave && playerBuilder.IsBuildPhase && !moves;
+        retryButton.root.SetActive(again);
+        if (again) Set(retryButton.label, "PLAY WAVE " + Host.RetryWaveNumber + " AGAIN");
         bool freeMoves = !moves || playerBuilder.MovesAreFree;
         Set(movesValue, freeMoves ? "free" : state.MovesLeft.ToString());
         movesValue.color = freeMoves || state.MovesLeft > 0 ? Bright : Dim;
@@ -344,9 +455,11 @@ public class DeckBar : MonoBehaviour
         }
 
         bool walls = playerBuilder.WallsFromStock;
+        wallsLabel.gameObject.SetActive(walls);
+        wallsValue.gameObject.SetActive(walls);
         Set(wallsValue, walls ? state.WallsLeft.ToString() : "");
         wallsValue.color = state.WallsLeft > 0 ? Bright : Dim;
-        Set(wallsNote, !walls ? "" : config.FreeWallPickup ? "take any wall up again with SELL [X]" : "old walls you may still take up: " + state.RelaysLeft);
+        Set(wallsNote, !walls ? (playerBuilder.BuildMenu ? "walls " + playerBuilder.WallPrice + " ore a tile; selling one gives it back" : "") : config.FreeWallPickup ? "take any wall up again with SELL [X]" : "old walls you may still take up: " + state.RelaysLeft);
         bool wallSold = walls && config.WallPackSize > 0;
         buyWalls.root.SetActive(wallSold);
         if (wallSold)
@@ -382,7 +495,7 @@ public class DeckBar : MonoBehaviour
                 Set(slot.line3, "");
                 continue;
             }
-            slot.icon.color = TowerView.ColorOf(tower.Def.DamageType);
+            slot.icon.color = TowerView.ColorOfTower(tower.Def);
             Set(slot.name, Title(tower.Def.Id));
             Set(slot.line1, TowerView.LevelName(tower.Rarity));
             slot.line1.color = TowerView.ColorOfLevel(tower.Rarity);
@@ -419,9 +532,174 @@ public class DeckBar : MonoBehaviour
             Set(slot.line1, def.Label);
         }
 
+        bool menu = playerBuilder.BuildMenu;
+        if (buildArea.gameObject.activeSelf != menu) buildArea.gameObject.SetActive(menu);
+        if (menu) UpdateBuild(state, config);
+
         UpdateSpare(state);
         UpdateInfo();
         UpdateDragIcon();
+    }
+
+    // ------------------------------------------------------------------ the build section
+
+    private void UpdateBuild(SimState state, SimConfig config)
+    {
+        if (Keyboard.current != null)
+        {
+            if (Keyboard.current.digit1Key.wasPressedThisFrame) category = 0;
+            if (Keyboard.current.digit2Key.wasPressedThisFrame) category = 1;
+            if (Keyboard.current.digit3Key.wasPressedThisFrame) category = 2;
+            if (Keyboard.current.digit4Key.wasPressedThisFrame) category = 3;
+        }
+        for (int c = 0; c < categoryButtons.Count; c++)
+        {
+            categoryButtons[c].outline.color = c == category ? Teal : Edge;
+            categoryButtons[c].label.color = c == category ? Bright : Dim;
+        }
+
+        float ore = state.BuildBudget;
+        int n = 0;
+        string hint = "";
+        switch (category)
+        {
+            case 0:
+                hint = "click one, then a wall or a rock  \u00b7  right-click to stop";
+                TowerDef[] roster = Host.Sim.TowerLibrary;
+                for (int i = 0; i < roster.Length && n < items.Count; i++)
+                {
+                    int index = i;
+                    TowerDef def = roster[i];
+                    if (def.PowerCapacity > 0) continue; // power towers are under ECONOMY
+                    bool unlocked = playerBuilder.TowerUnlocked(i);
+                    Fill(items[n++], Title(def.Id), def.Cost.ToString(), unlocked ? Tags(def) : "research tier " + def.Tier,
+                         TowerView.ColorOfTower(def), unlocked, unlocked && ore >= def.Cost,
+                         playerBuilder.Tool == BuildTool.Tower && playerBuilder.SelectedMenuTower == i, () => playerBuilder.SelectMenuTower(index));
+                    items[n - 1].tip = TowerTip(def, unlocked);
+                }
+                break;
+            case 1:
+                hint = "collectors pay ore after every wave they survive";
+                if (playerBuilder.HasDeposits)
+                    Fill(items[n++], "Collector", config.CollectorPrice.ToString("0.#"), "on an ore deposit: +2 to +4 a wave  [C]",
+                         PlayerBuilder.CollectorColor, true, ore >= config.CollectorPrice, playerBuilder.Tool == BuildTool.Collector, () => playerBuilder.SelectCollector());
+                // Power towers (the pylon): what they are for is the economy's outposts.
+                TowerDef[] all = Host.Sim.TowerLibrary;
+                for (int i = 0; i < all.Length && n < items.Count; i++)
+                {
+                    if (all[i].PowerCapacity <= 0) continue;
+                    int index = i;
+                    TowerDef def = all[i];
+                    bool open = playerBuilder.TowerUnlocked(i);
+                    Fill(items[n++], Title(def.Id), def.Cost.ToString(), open ? Tags(def) : "research tier " + def.Tier, TowerView.ColorOfTower(def), open, open && ore >= def.Cost,
+                         playerBuilder.Tool == BuildTool.Tower && playerBuilder.SelectedMenuTower == i, () => playerBuilder.SelectMenuTower(index));
+                    items[n - 1].tip = TowerTip(def, open);
+                }
+                float research = Host.Sim.ResearchPrice;
+                Fill(items[n++], research < 0f ? "Researched" : "Research " + (state.ResearchLevel + 1), research < 0f ? "" : research.ToString("0.#"),
+                     research < 0f ? "every tier is open" : "unlocks " + Unlocks(state.ResearchLevel + 1),
+                     Teal, research >= 0f, research >= 0f && ore >= research, false, () => playerBuilder.Research());
+                Fill(items[n++], "Repair core", config.RepairPrice.ToString("0.#"), "+" + config.HealCardAmount + " HP  (" + state.CoreHp + " / " + config.CoreMaxHp + ")",
+                     Teal, true, playerBuilder.CanRepair, false, () => playerBuilder.RepairCore());
+                break;
+            case 2:
+                hint = "crafted into the inventory on the right; drag a piece onto a tower";
+                GearDef[] gear = Host.Sim.GearLibrary;
+                bool room = System.Array.IndexOf(state.GearInventory, TowerState.NoGear) >= 0;
+                for (int g = 0; g < gear.Length && n < items.Count; g++)
+                {
+                    if (!gear[g].OnSale(config)) continue;
+                    int piece = g;
+                    bool unlocked = gear[g].Tier <= state.ResearchLevel;
+                    Fill(items[n++], Title(gear[g].Id), Host.Sim.CraftPrice(g).ToString(), !unlocked ? "research tier " + gear[g].Tier : !room ? "inventory full" : gear[g].Label,
+                         TowerView.ColorOfGear(g), unlocked, unlocked && room && ore >= Host.Sim.CraftPrice(g), false, () => playerBuilder.CraftGear(piece));
+                    items[n - 1].tip = "<b>" + Title(gear[g].Id) + "</b>   " + Host.Sim.CraftPrice(g) + " ore\n" + gear[g].Label
+                                       + (unlocked ? "\n<color=#94a3b8>click: into the inventory, then drag it onto a tower</color>" : "\n<color=#f87171>needs research tier " + gear[g].Tier + "</color>");
+                }
+                break;
+            default:
+                hint = "what the hand does on the board";
+                Fill(items[n++], "Wall  [W]", playerBuilder.WallPrice > 0 ? playerBuilder.WallPrice.ToString() : "", "click or drag; towers stand on walls", playerBuilder.wallColor, true, true, playerBuilder.Tool == BuildTool.Wall, () => playerBuilder.SelectWall());
+                Fill(items[n++], "Sell  [X]", "", "half back; takes walls up", Teal, true, playerBuilder.MaySell, playerBuilder.Tool == BuildTool.Sell, () => playerBuilder.SelectSell());
+                Fill(items[n++], "Move  [M]", "", "a tower to another wall or rock", Teal, true, playerBuilder.MayMoveTower, playerBuilder.Tool == BuildTool.MoveTower, () => playerBuilder.SelectMoveTower());
+                if (playerBuilder.UpgradesOn)
+                    Fill(items[n++], "Upgrade  [U]", "", "choose a buff; rare, then epic", Teal, true, playerBuilder.IsBuildPhase, playerBuilder.Tool == BuildTool.Upgrade, () => playerBuilder.SelectUpgrade());
+                if (playerBuilder.TargetingOn)
+                    Fill(items[n++], "Target  [T]", "", "which enemy a tower shoots", Teal, true, true, playerBuilder.Tool == BuildTool.Target, () => playerBuilder.SelectTarget());
+                break;
+        }
+        for (int i = n; i < items.Count; i++) if (items[i].root.activeSelf) items[i].root.SetActive(false);
+
+        // The button under the mouse explains itself, over the bar.
+        Item hovered = null;
+        if (Mouse.current != null)
+        {
+            Vector2 mouse = Mouse.current.position.ReadValue();
+            for (int i = 0; i < n; i++)
+                if (RectTransformUtility.RectangleContainsScreenPoint((RectTransform)items[i].root.transform, mouse, null)) hovered = items[i];
+            if (hovered != null && !string.IsNullOrEmpty(hovered.tip)
+                && RectTransformUtility.ScreenPointToLocalPointInRectangle(canvasRect, mouse, null, out Vector2 local))
+            {
+                Set(tipText, hovered.tip);
+                Vector2 corner = local + canvasRect.rect.size / 2f;
+                tipBox.anchoredPosition = new Vector2(Mathf.Min(corner.x - 40f, canvasRect.rect.width - 340f), 18f + height);
+            }
+        }
+        bool tipShown = hovered != null && !string.IsNullOrEmpty(hovered.tip);
+        if (tipBox.gameObject.activeSelf != tipShown) tipBox.gameObject.SetActive(tipShown);
+        Set(buildTitle, "BUILD   " + Categories[category].Split(' ')[0] + "   " + hint);
+    }
+
+    // One button of the build section: what it is, its price, a line about it.
+    private void Fill(Item item, string name, string price, string note, Color icon, bool open, bool affordable, bool selected, System.Action onClick)
+    {
+        if (!item.root.activeSelf) item.root.SetActive(true);
+        Set(item.name, name);
+        Set(item.price, price);
+        Set(item.note, note);
+        item.icon.color = icon;
+        item.price.color = !open ? Dim : affordable ? Gold : new Color(0.97f, 0.44f, 0.44f, 1f);
+        item.group.alpha = open ? 1f : 0.45f;
+        item.outline.color = selected ? Teal : Edge;
+        item.fill.color = selected ? CardSelected : CardColor;
+        item.onClick = onClick;
+        item.tip = null;
+    }
+
+    private static string TowerTip(TowerDef d, bool unlocked)
+    {
+        float perSecond = d.Damage * d.Targets * 50f / Mathf.Max(1, d.FireIntervalTicks);
+        var t = new System.Text.StringBuilder();
+        t.Append("<b>").Append(Title(d.Id)).Append("</b>   ").Append(d.Cost).Append(" ore\n");
+        if (d.PowerCapacity > 0)
+        {
+            t.Append("powers up to ").Append(d.PowerCapacity).Append(" towers within ").Append(d.PowerRadius.ToString("0.#")).Append(" tiles\nno attack of its own");
+            t.Append(unlocked ? "\n<color=#94a3b8>click, then a wall or a rock</color>" : "\n<color=#f87171>needs research tier " + d.Tier + "</color>");
+            return t.ToString();
+        }
+        t.Append(d.DamageType.ToString().ToLowerInvariant()).Append(": ").Append(d.Damage.ToString("0.#")).Append(" every ").Append((d.FireIntervalTicks / 50f).ToString("0.##"))
+         .Append(" s (").Append(perSecond.ToString("0.#")).Append("/s)\nrange ").Append(d.RangeTiles.ToString("0.#"));
+        if (d.SplashRadiusTiles > 0f) t.Append("  \u00b7  splash ").Append(d.SplashRadiusTiles.ToString("0.##"));
+        if (d.SlowTicks > 0) t.Append("  \u00b7  slows to ").Append((d.SlowFactor * 100f).ToString("0")).Append("%");
+        t.Append(d.CanHitFlying ? "\nhits flyers" : "\nground only");
+        t.Append(unlocked ? "\n<color=#94a3b8>click, then a wall or a rock</color>" : "\n<color=#f87171>needs research tier " + d.Tier + "</color>");
+        return t.ToString();
+    }
+
+    private static string Tags(TowerDef def)
+    {
+        if (def.PowerCapacity > 0) return "powers " + def.PowerCapacity + " towers  \u00b7  reach " + def.PowerRadius.ToString("0.#");
+        return def.DamageType.ToString().ToLowerInvariant() + "  \u00b7  range " + def.RangeTiles.ToString("0.#")
+               + (def.SplashRadiusTiles > 0f ? "  \u00b7  splash" : "") + (def.CanHitFlying ? "  \u00b7  hits flyers" : "");
+    }
+
+    // What a research tier opens, by name.
+    private string Unlocks(int tier)
+    {
+        var names = new List<string>();
+        foreach (TowerDef t in Host.Sim.TowerLibrary) if (t.Tier == tier) names.Add(t.Id);
+        foreach (GearDef g in Host.Sim.GearLibrary) if (g.Tier == tier && g.OnSale(Host.Config)) names.Add(g.Id);
+        return string.Join(", ", names);
     }
 
     private void UpdateSpare(SimState state)
@@ -456,13 +734,74 @@ public class DeckBar : MonoBehaviour
         }
     }
 
-    // The full card of the tower under the mouse: on the board, or on the bench.
+    // The inspect pane: what is selected, with its commands; with nothing selected, the
+    // tower under the mouse (or on the bench), to read.
     private void UpdateInfo()
     {
-        TowerState tower = hoverBench >= 0 ? playerBuilder.Benched(hoverBench) : playerBuilder.TowerAt(playerBuilder.HoverNode);
-        bool show = tower != null && !Dragging;
+        TowerState tower = playerBuilder.SelectedTower;
+        bool selected = playerBuilder.Selected != null;
+        if (!selected) tower = hoverBench >= 0 ? playerBuilder.Benched(hoverBench) : playerBuilder.TowerAt(playerBuilder.HoverNode);
+        bool show = (tower != null || selected) && !Dragging;
         if (info.gameObject.activeSelf != show) info.gameObject.SetActive(show);
-        if (show) Set(infoText, Describe(tower));
+        if (!show) return;
+        if (tower != null) Set(infoText, Describe(tower));
+        else if (playerBuilder.SelectedIsCollector) Set(infoText, DescribeCollector());
+        else if (playerBuilder.SelectedIsCore) Set(infoText, DescribeCore());
+
+        // The commands, for what is selected only.
+        bool towerSel = selected && playerBuilder.SelectedTower != null;
+        bool collectorSel = selected && playerBuilder.SelectedIsCollector;
+        bool[] shown = { towerSel && playerBuilder.UpgradesOn, towerSel && playerBuilder.TargetingOn, towerSel, towerSel || collectorSel };
+        bool[] usable = { towerSel && playerBuilder.CanUpgrade(playerBuilder.SelectedTower), true, playerBuilder.MayMoveTower, playerBuilder.MaySell };
+        for (int g = 0; g < gizmos.Count; g++)
+        {
+            if (gizmos[g].root.activeSelf != shown[g]) gizmos[g].root.SetActive(shown[g]);
+            if (shown[g]) Enable(gizmos[g], usable[g]);
+        }
+        if (towerSel && playerBuilder.UpgradesOn)
+            Set(gizmos[0].label, playerBuilder.HasUpgradeLeft(playerBuilder.SelectedTower) ? "UPGRADE  " + playerBuilder.UpgradeCostFor(playerBuilder.SelectedTower).ToString("0.#") : "FULLY UPGRADED");
+        if (towerSel || collectorSel)
+        {
+            float back = towerSel ? playerBuilder.SelectedTower.PricePaid * Host.Config.SellRefund : Host.Config.CollectorPrice * Host.Config.SellRefund;
+            Set(gizmos[3].label, "SELL  +" + back.ToString("0.#"));
+        }
+    }
+
+    private void UseGizmo(int which)
+    {
+        switch (which)
+        {
+            case 0: playerBuilder.UpgradeSelected(); break;
+            case 1: playerBuilder.TargetSelected(); break;
+            case 2: playerBuilder.MoveSelected(); break;
+            default: playerBuilder.SellSelected(); break;
+        }
+    }
+
+    private string DescribeCollector()
+    {
+        Node n = playerBuilder.Selected;
+        int d = Host.Map.DepositAt(new Thesis.Core.TileCoord(n.gridX, n.gridY));
+        int yield = d >= 0 ? Host.Map.Deposits[d].Yield : 0;
+        bool beacon = Simulation.NearBeacon(Host.State, new Thesis.Core.TileCoord(n.gridX, n.gridY));
+        var text = new System.Text.StringBuilder();
+        text.Append("<size=24><b>Collector</b></size>\n");
+        text.Append("+").Append(yield + (beacon ? 1 : 0)).Append(" ore after every wave it survives").Append(beacon ? " (a beacon adds 1)" : "").Append('\n');
+        if (playerBuilder.PowerRule)
+            text.Append("powers up to ").Append(Host.Config.CollectorPowerCapacity).Append(" towers on the gold tiles\n");
+        text.Append("<color=#94a3b8>raiders come for it; destroyed, it pays half its price back</color>");
+        return text.ToString();
+    }
+
+    private string DescribeCore()
+    {
+        var text = new System.Text.StringBuilder();
+        text.Append("<size=24><b>Core</b></size>\n");
+        text.Append("health ").Append(Host.State.CoreHp).Append(" / ").Append(Host.Config.CoreMaxHp).Append('\n');
+        text.Append("+").Append(Host.Config.StipendPerWave).Append(" ore after every wave\n");
+        if (playerBuilder.PowerRule)
+            text.Append("powers up to ").Append(Host.Config.CorePowerCapacity).Append(" towers on the gold tiles\n");
+        return text.ToString();
     }
 
     private string Describe(TowerState t)
@@ -471,6 +810,16 @@ public class DeckBar : MonoBehaviour
         string hex = ColorUtility.ToHtmlStringRGB(TowerView.ColorOfLevel(t.Rarity));
         var text = new System.Text.StringBuilder();
         text.Append("<size=24><b>").Append(Title(d.Id)).Append("</b></size>   <color=#").Append(hex).Append("><b>").Append(TowerView.LevelName(t.Rarity)).Append("</b></color>\n");
+        if (t.PowerCapacity > 0)
+        {
+            text.Append("powers up to ").Append(t.PowerCapacity).Append(" towers within ").Append(t.PowerRadius.ToString("0.#")).Append(" tiles (the gold tiles)\nno attack of its own\n");
+            if (playerBuilder.UpgradesOn)
+            {
+                string upgradeNames = PlayerBuilder.UpgradeNames(t);
+                text.Append("<color=#94a3b8>upgrades:</color> ").Append(upgradeNames.Length > 0 ? upgradeNames : "none yet").Append('\n');
+            }
+            return text.ToString();
+        }
         float perSecond = t.Damage * t.Targets * 50f / Mathf.Max(1, t.FireIntervalTicks);
         text.Append(d.DamageType.ToString().ToLowerInvariant()).Append("  ·  ").Append(t.Damage.ToString("0.#")).Append(" damage every ")
             .Append((t.FireIntervalTicks / 50f).ToString("0.##")).Append(" s  (").Append(perSecond.ToString("0.#")).Append(" a second)\n");
@@ -515,10 +864,10 @@ public class DeckBar : MonoBehaviour
         if (!show) return;
 
         Color color = Bright;
-        if (playerBuilder.Tool == BuildTool.Deploy && playerBuilder.Benched(playerBuilder.SelectedBench) != null) color = TowerView.ColorOf(playerBuilder.Benched(playerBuilder.SelectedBench).Def.DamageType);
+        if (playerBuilder.Tool == BuildTool.Deploy && playerBuilder.Benched(playerBuilder.SelectedBench) != null) color = TowerView.ColorOfTower(playerBuilder.Benched(playerBuilder.SelectedBench).Def);
         else if (playerBuilder.Tool == BuildTool.EquipGear && playerBuilder.SelectedOverflow >= 0 && playerBuilder.SelectedOverflow < Host.State.GearOverflow.Count) color = TowerView.ColorOfGear(Host.State.GearOverflow[playerBuilder.SelectedOverflow]);
         else if (playerBuilder.Tool == BuildTool.EquipGear && playerBuilder.SelectedInventory >= 0) color = TowerView.ColorOfGear(Host.State.GearInventory[playerBuilder.SelectedInventory]);
-        else if (playerBuilder.Tool == BuildTool.Tower && playerBuilder.OfferDef(playerBuilder.SelectedOffer) != null) color = TowerView.ColorOf(playerBuilder.OfferDef(playerBuilder.SelectedOffer).DamageType);
+        else if (playerBuilder.Tool == BuildTool.Tower && playerBuilder.OfferDef(playerBuilder.SelectedOffer) != null) color = TowerView.ColorOfTower(playerBuilder.OfferDef(playerBuilder.SelectedOffer));
         color.a = 0.85f;
         dragImage.color = color;
         if (RectTransformUtility.ScreenPointToLocalPointInRectangle(canvasRect, Mouse.current.position.ReadValue(), null, out Vector2 local)) dragIcon.anchoredPosition = local;

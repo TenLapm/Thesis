@@ -41,3 +41,48 @@ MonoBehaviour:
     extraTargets: 0
   shopWeight: 1
   tier: 1
+  upgrades:
+  - label: 'Deep freeze: slows to 25%'
+    damageMul: 1
+    intervalMul: 1
+    rangeAdd: 0
+    splashAdd: 0
+    slowTicksMul: 1
+    extraTargets: 0
+    id: deep
+    grantsFlying: 0
+    ignoresResist: 0
+    slowTicksAdd: 0
+    slowFactorTo: 0.25
+    powerRadiusAdd: 0
+    powerCapacityAdd: 0
+  - label: 'Long chill: slows 60% longer'
+    damageMul: 1
+    intervalMul: 1
+    rangeAdd: 0
+    splashAdd: 0
+    slowTicksMul: 1.6
+    extraTargets: 0
+    id: long
+    grantsFlying: 0
+    ignoresResist: 0
+    slowTicksAdd: 0
+    slowFactorTo: 1
+    powerRadiusAdd: 0
+    powerCapacityAdd: 0
+  - label: 'Ice spikes: x4 damage'
+    damageMul: 4
+    intervalMul: 1
+    rangeAdd: 0
+    splashAdd: 0
+    slowTicksMul: 1
+    extraTargets: 0
+    id: spikes
+    grantsFlying: 0
+    ignoresResist: 0
+    slowTicksAdd: 0
+    slowFactorTo: 1
+    powerRadiusAdd: 0
+    powerCapacityAdd: 0
+  powerCapacity: 0
+  powerRadius: 0

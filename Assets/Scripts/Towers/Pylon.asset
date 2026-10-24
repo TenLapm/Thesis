@@ -1,0 +1,60 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 2077a77c33a39f7479c7594e1a5f9602, type: 3}
+  m_Name: Pylon
+  m_EditorClassIdentifier: Assembly-CSharp::TowerDefAsset
+  id: pylon
+  cost: 30
+  damageType: 0
+  damage: 0
+  rangeTiles: 0
+  fireIntervalTicks: 50
+  splashRadiusTiles: 0
+  slowTicks: 0
+  slowFactor: 1
+  canHitFlying: 0
+  digCost: 20
+  towerHealth: 12
+  levels: []
+  shopWeight: 1
+  tier: 1
+  upgrades:
+  - label: 'Wide grid: reaches 1.5 tiles further'
+    damageMul: 1
+    intervalMul: 1
+    rangeAdd: 0
+    splashAdd: 0
+    slowTicksMul: 1
+    extraTargets: 0
+    id: grid
+    grantsFlying: 0
+    ignoresResist: 0
+    slowTicksAdd: 0
+    slowFactorTo: 1
+    powerRadiusAdd: 1.5
+    powerCapacityAdd: 0
+  - label: 'Capacitor: powers 2 more towers'
+    damageMul: 1
+    intervalMul: 1
+    rangeAdd: 0
+    splashAdd: 0
+    slowTicksMul: 1
+    extraTargets: 0
+    id: capacitor
+    grantsFlying: 0
+    ignoresResist: 0
+    slowTicksAdd: 0
+    slowFactorTo: 1
+    powerRadiusAdd: 0
+    powerCapacityAdd: 2
+  powerCapacity: 3
+  powerRadius: 3

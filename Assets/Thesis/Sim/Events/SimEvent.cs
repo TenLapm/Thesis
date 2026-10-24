@@ -30,6 +30,7 @@ namespace Thesis.Sim
         TowerChanged,
         CoreMoved,
         CollectorDestroyed,  // IntA, IntB = the tile (2026-10-14)
+        StateRestored,       // an Undo or a Redo put back a whole earlier state (2026-10-24)
     }
 
     public readonly struct SimEvent
@@ -56,6 +57,8 @@ namespace Thesis.Sim
         public static SimEvent WallBreached(int x, int y) { return new SimEvent(SimEventKind.WallBreached, x, y, 0, 0f); }
 
         public static SimEvent CollectorDestroyed(int x, int y) { return new SimEvent(SimEventKind.CollectorDestroyed, x, y, 0, 0f); }
+
+        public static SimEvent StateRestored() { return new SimEvent(SimEventKind.StateRestored, 0, 0, 0, 0f); }
 
         // IntA = agent id.
         public static SimEvent AgentSpawned(int agentId) { return new SimEvent(SimEventKind.AgentSpawned, agentId, 0, 0, 0f); }

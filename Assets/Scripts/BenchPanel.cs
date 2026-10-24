@@ -200,7 +200,7 @@ public class BenchPanel : MonoBehaviour
                     Set(slot.detail, "empty");
                     continue;
                 }
-                slot.icon.color = TowerView.ColorOf(tower.Def.DamageType);
+                slot.icon.color = TowerView.ColorOfTower(tower.Def);
                 Set(slot.name, Title(tower.Def.Id));
                 slot.name.color = tower.Rarity > 1 ? TowerView.ColorOfLevel(tower.Rarity) : Bright;
                 string detail = TowerView.LevelName(tower.Rarity).ToLowerInvariant();

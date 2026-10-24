@@ -34,6 +34,7 @@ namespace Thesis.Sim
             h.Add(s.MovesBought);
             h.Add(s.PhaseLogStart);
             h.Add(s.ResearchLevel);
+            h.Add(s.Retries);
             h.Add(s.GearOverflow.Count);
             for (int i = 0; i < s.GearOverflow.Count; i++) h.Add(s.GearOverflow[i]);
             h.Add(s.GearInventory.Length);

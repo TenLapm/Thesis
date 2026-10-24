@@ -56,7 +56,8 @@ namespace Thesis.Sim
         public void OnCommand(SimCommand command)
         {
             // The simulation drops input once the game is over; so does the record.
-            if (sim.State.IsGameOver) return;
+            // RetryWave is the one command a lost game takes: it puts an earlier state back.
+            if (sim.State.IsGameOver && command.Kind != SimCommandKind.RetryWave) return;
             commands.Add(ReplayCommand.From(sim.State.Tick, command));
         }
 

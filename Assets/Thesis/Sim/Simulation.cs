@@ -88,6 +88,7 @@ namespace Thesis.Sim
             s.GearShop = RollGearShop(0);
 
             State = s;
+            phaseStart = s.Clone();
         }
 
         private Simulation(Simulation source, IWavePlanner planner)
@@ -108,7 +109,8 @@ namespace Thesis.Sim
 
         // Read-only outside Thesis.Sim by convention; planners are policed by the
         // mutation guard, views simply never write.
-        public SimState State { get; }
+        // Replaced as a whole only by Undo and Redo; nothing outside should keep it across a tick.
+        public SimState State { get; private set; }
 
         public SimConfig Config => config;
 
@@ -180,7 +182,7 @@ namespace Thesis.Sim
             SimState s = State;
             if (s.Phase == SimPhase.GameOver)
             {
-                s.Pending.Clear();
+                ApplyRetryOnly(s);
                 return;
             }
             ApplyPending(s);
@@ -191,15 +193,16 @@ namespace Thesis.Sim
             events.Clear();
             SimState s = State;
 
-            // 0. A finished game never advances.
+            // 0. A finished game never advances. It takes one command: RetryWave.
             if (s.Phase == SimPhase.GameOver)
             {
-                s.Pending.Clear();
+                ApplyRetryOnly(s);
                 return;
             }
 
-            // 1. Player input.
+            // 1. Player input. An Undo or a Redo may have put another state in place.
             ApplyPending(s);
+            s = State;
 
             // 2. Phase machine. The countdown is only written when no wave starts:
             // BeginWave asks the planner first and may throw, and a tick that throws
@@ -261,6 +264,8 @@ namespace Thesis.Sim
                 s.PhaseLogStart = s.PlacementLog.Count;
                 s.Phase = SimPhase.Intermission;
                 s.PhaseTicksRemaining = config.Ticks(config.IntermissionSeconds);
+                phaseStart = s.Clone();
+                phaseStart.Pending.Clear();
 
                 // New offers for the build phase that starts now. They stay through
                 // the next wave, until that one resolves.
@@ -286,11 +291,123 @@ namespace Thesis.Sim
 
         private void ApplyPending(SimState s)
         {
-            for (int i = 0; i < s.Pending.Count; i++) Apply(s, s.Pending[i]);
+            // Each command goes to the state as it is now: an Undo replaces it on the way.
+            // The commands are taken out first: a state put back by Undo or Redo may be the
+            // one whose list this was, and putting it back empties its list.
+            batch.Clear();
+            batch.AddRange(s.Pending);
             s.Pending.Clear();
+            for (int i = 0; i < batch.Count; i++) Apply(State, batch[i]);
+            State.Pending.Clear();
+        }
+
+        private readonly List<SimCommand> batch = new List<SimCommand>();
+
+        private void ApplyRetryOnly(SimState s)
+        {
+            batch.Clear();
+            batch.AddRange(s.Pending);
+            s.Pending.Clear();
+            // While the game is lost only a retry counts; once it has put a build phase
+            // back, the commands after it apply as usual (a replay hands them over together).
+            for (int i = 0; i < batch.Count; i++)
+            {
+                if (State.Phase == SimPhase.GameOver) { if (batch[i].Kind == SimCommandKind.RetryWave) Retry(State); }
+                else Apply(State, batch[i]);
+            }
+            State.Pending.Clear();
+        }
+
+        // --- playing a wave again (2026-10-24) ---
+
+        // The state as each build phase began: the current one, and the one before the
+        // last wave, which RetryWave puts back. Like the undo stacks they follow from
+        // the commands and are not hashed.
+        private SimState phaseStart;
+        private SimState retryStart;
+
+        public bool CanRetry => retryStart != null && (InBuildPhase(State) || State.Phase == SimPhase.GameOver);
+
+        // The wave a retry plays again.
+        public int RetryWaveNumber => retryStart != null ? retryStart.WaveIndex + 1 : 0;
+
+        private void Retry(SimState s)
+        {
+            if (!CanRetry) return;
+            SimState back = retryStart.Clone();
+            back.Tick = s.Tick; // the clock does not go back
+            back.Retries = s.Retries + 1;
+            back.Pending.Clear();
+            undoStack.Clear();
+            redoStack.Clear();
+            // From a build phase the retry itself can be taken back.
+            if (InBuildPhase(s) && config.UndoSteps > 0) undoStack.Add(s);
+            State = back;
+            phaseStart = retryStart;
+            if (map.Core != back.Core)
+            {
+                SimNode node = back.Grid.Get(back.Core);
+                map.Core = back.Core;
+                map.CoreWorld = new WorldPoint(node.Position.X, map.CoreWorld != null ? map.CoreWorld.Y : 0f, node.Position.Y);
+            }
+            events.Add(SimEvent.StateRestored());
+        }
+
+        // --- undo and redo (SimConfig.UndoSteps, 2026-10-24) ---
+
+        // Whole copies of the state before each action of this build phase that changed
+        // anything, and the ones taken back. Not part of the hashed state: they follow
+        // from the commands, so a replay rebuilds them exactly. Emptied when a wave starts:
+        // only the current build phase can be taken back.
+        private readonly List<SimState> undoStack = new List<SimState>();
+        private readonly List<SimState> redoStack = new List<SimState>();
+
+        public int UndoCount => undoStack.Count;
+
+        public int RedoCount => redoStack.Count;
+
+        private void Restore(SimState s, List<SimState> from, List<SimState> to)
+        {
+            if (from.Count == 0 || !InBuildPhase(s)) return;
+            SimState back = from[from.Count - 1];
+            from.RemoveAt(from.Count - 1);
+            to.Add(s);
+            // The clock does not go back with the board.
+            back.Tick = s.Tick;
+            back.PhaseTicksRemaining = s.PhaseTicksRemaining;
+            back.Pending.Clear();
+            State = back;
+            if (map.Core != back.Core)
+            {
+                SimNode node = back.Grid.Get(back.Core);
+                map.Core = back.Core;
+                map.CoreWorld = new WorldPoint(node.Position.X, map.CoreWorld != null ? map.CoreWorld.Y : 0f, node.Position.Y);
+            }
+            events.Add(SimEvent.StateRestored());
         }
 
         private void Apply(SimState s, SimCommand command)
+        {
+            if (command.Kind == SimCommandKind.Undo) { Restore(s, undoStack, redoStack); return; }
+            if (command.Kind == SimCommandKind.RetryWave) { Retry(s); return; }
+            if (command.Kind == SimCommandKind.Redo) { Restore(s, redoStack, undoStack); return; }
+            if (config.UndoSteps <= 0 || !InBuildPhase(s) || command.Kind == SimCommandKind.StartWaveNow)
+            {
+                ApplyCommand(s, command);
+                return;
+            }
+            // Kept only if the action changed something: an undo never takes back nothing.
+            ulong before = StateHasher.Compute(s);
+            SimState copy = s.Clone();
+            copy.Pending.Clear();
+            ApplyCommand(s, command);
+            if (StateHasher.Compute(s) == before) return;
+            undoStack.Add(copy);
+            if (undoStack.Count > config.UndoSteps) undoStack.RemoveAt(0);
+            redoStack.Clear();
+        }
+
+        private void ApplyCommand(SimState s, SimCommand command)
         {
             switch (command.Kind)
             {
@@ -465,7 +582,7 @@ namespace Thesis.Sim
                 case SimCommandKind.CraftGear:
                     if (config.BuildMenu && command.A >= 0 && command.A < gearLibrary.Length && gearLibrary[command.A].OnSale(config)
                         && gearLibrary[command.A].Tier <= s.ResearchLevel)
-                        StoreGear(s, command.A, gearLibrary[command.A].Price);
+                        StoreGear(s, command.A, CraftPrice(command.A));
                     break;
                 case SimCommandKind.RepairCore:
                     if (config.RepairPrice >= 0f && s.CoreHp < config.CoreMaxHp && s.BuildBudget >= config.RepairPrice && InBuildPhase(s))
@@ -478,11 +595,11 @@ namespace Thesis.Sim
                     break;
                 case SimCommandKind.MergeTower: MergeTower(s, command); break;
                 case SimCommandKind.ChooseUpgrade:
-                    if (config.ChoiceUpgradeCost >= 0f && InBuildPhase(s) && TowerUpgradeChoices.IsValid(command.A))
+                    if (config.ChoiceUpgradeCost >= 0f && InBuildPhase(s) && command.A >= 0)
                     {
                         TowerState chosen = GearTarget(s, command);
                         float price = chosen != null ? UpgradePrice(chosen) : 0f;
-                        if (chosen != null && chosen.UpgradeCount < config.UpgradesPerTower && s.BuildBudget >= price)
+                        if (chosen != null && TowerUpgradeChoices.IsValidFor(chosen.Def, command.A) && chosen.UpgradeCount < config.UpgradesPerTower && s.BuildBudget >= price)
                         {
                             s.BuildBudget -= price;
                             if (chosen.Upgrade == TowerUpgradeChoices.None) chosen.Upgrade = command.A;
@@ -492,7 +609,7 @@ namespace Thesis.Sim
                             TileCoord at = chosen.OnBench ? TowerBench.NoTile : chosen.Tile;
                             s.PlacementLog.Add(new PlacementRecord
                             {
-                                Kind = PlacementKind.TowerUpgraded, Tick = s.Tick, ShapeName = chosen.Def.Id + "+" + TowerUpgradeChoices.Ids[command.A], OriginX = at.X, OriginY = at.Y,
+                                Kind = PlacementKind.TowerUpgraded, Tick = s.Tick, ShapeName = chosen.Def.Id + "+" + TowerUpgradeChoices.IdOf(chosen.Def, command.A), OriginX = at.X, OriginY = at.Y,
                                 Tiles = chosen.OnBench ? new TileCoord[0] : new[] { at }, TowerId = chosen.Id, Cost = price,
                             });
                             events.Add(SimEvent.TowerChanged(chosen.Id));
@@ -500,7 +617,7 @@ namespace Thesis.Sim
                     }
                     break;
                 case SimCommandKind.SetTargeting:
-                    if (config.ChooseTargeting && command.A >= 0 && command.A <= (int)TargetingMode.Nearest)
+                    if (config.ChooseTargeting && command.A >= 0 && command.A <= (int)TargetingMode.Raiders)
                     {
                         TowerState aimed = GearTarget(s, command);
                         if (aimed != null) aimed.Mode = (TargetingMode)command.A;
@@ -727,6 +844,9 @@ namespace Thesis.Sim
             for (int d = 0; d < map.Deposits.Length; d++)
                 if (s.Grid.Get(map.Deposits[d].Tile).Occupant == Occupant.Collector)
                     AddSource(map.Deposits[d].Tile, config.CollectorPowerRadius, config.CollectorPowerCapacity);
+            for (int t = 0; t < towers.Count; t++)
+                if (towers[t].IsAlive && !towers[t].OnBench && towers[t].PowerCapacity > 0)
+                    AddSource(towers[t].Tile, towers[t].PowerRadius, towers[t].PowerCapacity);
 
             int slots = powerSlotSource.Count;
             if (slotTower.Length < slots) { slotTower = new int[slots]; slotSeen = new bool[slots]; }
@@ -736,6 +856,7 @@ namespace Thesis.Sim
                 TowerState tower = towers[t];
                 tower.Powered = false;
                 if (!tower.IsAlive || tower.OnBench) continue;
+                if (tower.PowerCapacity > 0) { tower.Powered = true; continue; } // a power tower powers itself
                 for (int k = 0; k < slots; k++) slotSeen[k] = false;
                 Augment(t, towers, slots);
             }
@@ -774,6 +895,9 @@ namespace Thesis.Sim
             }
             return false;
         }
+
+        // What crafting this piece costs (SimConfig.GearCraftPriceFactor).
+        public int CraftPrice(int piece) { return Math.Max(0, (int)(float)(gearLibrary[piece].Price * config.GearCraftPriceFactor)); }
 
         // What the next research tier costs, or a negative number when all are bought.
         public float ResearchPrice => State.ResearchLevel >= 3 ? -1f : State.ResearchLevel == 1 ? config.ResearchTier2Price : config.ResearchTier3Price;
@@ -1218,6 +1342,9 @@ namespace Thesis.Sim
             // The wave being planned is context.WaveIndex.
             int wave = s.WaveIndex + 1;
             WavePlan plan = s.NextPlan ?? PlanNextWave(s);
+            undoStack.Clear();
+            redoStack.Clear();
+            retryStart = phaseStart;
 
             s.NextPlan = null;
             s.WaveIndex = wave;

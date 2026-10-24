@@ -19,6 +19,58 @@
       "TowerHealth": 8.0,
       "ShopWeight": 1.0,
       "Tier": 1,
+      "Upgrades": [
+        {
+          "Label": "Volley: shoots 2 enemies",
+          "DamageMul": 1.0,
+          "IntervalMul": 1.0,
+          "RangeAdd": 0.0,
+          "SplashAdd": 0.0,
+          "SlowTicksMul": 1.0,
+          "ExtraTargets": 1,
+          "Id": "volley",
+          "GrantsFlying": false,
+          "IgnoresResist": false,
+          "SlowTicksAdd": 0,
+          "SlowFactorTo": 1.0,
+          "PowerRadiusAdd": 0.0,
+          "PowerCapacityAdd": 0
+        },
+        {
+          "Label": "Longbow: +1.5 range",
+          "DamageMul": 1.0,
+          "IntervalMul": 1.0,
+          "RangeAdd": 1.5,
+          "SplashAdd": 0.0,
+          "SlowTicksMul": 1.0,
+          "ExtraTargets": 0,
+          "Id": "longbow",
+          "GrantsFlying": false,
+          "IgnoresResist": false,
+          "SlowTicksAdd": 0,
+          "SlowFactorTo": 1.0,
+          "PowerRadiusAdd": 0.0,
+          "PowerCapacityAdd": 0
+        },
+        {
+          "Label": "Barbed: slows what it hits",
+          "DamageMul": 1.0,
+          "IntervalMul": 1.0,
+          "RangeAdd": 0.0,
+          "SplashAdd": 0.0,
+          "SlowTicksMul": 1.0,
+          "ExtraTargets": 0,
+          "Id": "barbed",
+          "GrantsFlying": false,
+          "IgnoresResist": false,
+          "SlowTicksAdd": 40,
+          "SlowFactorTo": 0.7,
+          "PowerRadiusAdd": 0.0,
+          "PowerCapacityAdd": 0
+        }
+      ],
+      "PowerRadius": 0.0,
+      "PowerCapacity": 0,
       "Levels": [
         {
           "Label": "faster shots",
@@ -27,7 +79,14 @@
           "RangeAdd": 0.0,
           "SplashAdd": 0.0,
           "SlowTicksMul": 1.0,
-          "ExtraTargets": 0
+          "ExtraTargets": 0,
+          "Id": null,
+          "GrantsFlying": false,
+          "IgnoresResist": false,
+          "SlowTicksAdd": 0,
+          "SlowFactorTo": 1.0,
+          "PowerRadiusAdd": 0.0,
+          "PowerCapacityAdd": 0
         },
         {
           "Label": "hits two enemies",
@@ -36,7 +95,14 @@
           "RangeAdd": 0.0,
           "SplashAdd": 0.0,
           "SlowTicksMul": 1.0,
-          "ExtraTargets": 1
+          "ExtraTargets": 1,
+          "Id": null,
+          "GrantsFlying": false,
+          "IgnoresResist": false,
+          "SlowTicksAdd": 0,
+          "SlowFactorTo": 1.0,
+          "PowerRadiusAdd": 0.0,
+          "PowerCapacityAdd": 0
         }
       ]
     },
@@ -57,6 +123,58 @@
       "TowerHealth": 8.0,
       "ShopWeight": 1.0,
       "Tier": 2,
+      "Upgrades": [
+        {
+          "Label": "Piercing: ignores armour",
+          "DamageMul": 1.0,
+          "IntervalMul": 1.0,
+          "RangeAdd": 0.0,
+          "SplashAdd": 0.0,
+          "SlowTicksMul": 1.0,
+          "ExtraTargets": 0,
+          "Id": "piercing",
+          "GrantsFlying": false,
+          "IgnoresResist": true,
+          "SlowTicksAdd": 0,
+          "SlowFactorTo": 1.0,
+          "PowerRadiusAdd": 0.0,
+          "PowerCapacityAdd": 0
+        },
+        {
+          "Label": "Twin bolts: shoots 2 enemies",
+          "DamageMul": 1.0,
+          "IntervalMul": 1.0,
+          "RangeAdd": 0.0,
+          "SplashAdd": 0.0,
+          "SlowTicksMul": 1.0,
+          "ExtraTargets": 1,
+          "Id": "twin",
+          "GrantsFlying": false,
+          "IgnoresResist": false,
+          "SlowTicksAdd": 0,
+          "SlowFactorTo": 1.0,
+          "PowerRadiusAdd": 0.0,
+          "PowerCapacityAdd": 0
+        },
+        {
+          "Label": "Skyward: hits flyers, -20% damage",
+          "DamageMul": 0.8,
+          "IntervalMul": 1.0,
+          "RangeAdd": 0.0,
+          "SplashAdd": 0.0,
+          "SlowTicksMul": 1.0,
+          "ExtraTargets": 0,
+          "Id": "skyward",
+          "GrantsFlying": true,
+          "IgnoresResist": false,
+          "SlowTicksAdd": 0,
+          "SlowFactorTo": 1.0,
+          "PowerRadiusAdd": 0.0,
+          "PowerCapacityAdd": 0
+        }
+      ],
+      "PowerRadius": 0.0,
+      "PowerCapacity": 0,
       "Levels": [
         {
           "Label": "two bolts",
@@ -65,7 +183,14 @@
           "RangeAdd": 0.0,
           "SplashAdd": 0.0,
           "SlowTicksMul": 1.0,
-          "ExtraTargets": 1
+          "ExtraTargets": 1,
+          "Id": null,
+          "GrantsFlying": false,
+          "IgnoresResist": false,
+          "SlowTicksAdd": 0,
+          "SlowFactorTo": 1.0,
+          "PowerRadiusAdd": 0.0,
+          "PowerCapacityAdd": 0
         },
         {
           "Label": "three bolts, +1 range",
@@ -74,7 +199,14 @@
           "RangeAdd": 1.0,
           "SplashAdd": 0.0,
           "SlowTicksMul": 1.0,
-          "ExtraTargets": 1
+          "ExtraTargets": 1,
+          "Id": null,
+          "GrantsFlying": false,
+          "IgnoresResist": false,
+          "SlowTicksAdd": 0,
+          "SlowFactorTo": 1.0,
+          "PowerRadiusAdd": 0.0,
+          "PowerCapacityAdd": 0
         }
       ]
     },
@@ -95,6 +227,58 @@
       "TowerHealth": 8.0,
       "ShopWeight": 1.0,
       "Tier": 1,
+      "Upgrades": [
+        {
+          "Label": "Big blast: +0.5 splash",
+          "DamageMul": 1.0,
+          "IntervalMul": 1.0,
+          "RangeAdd": 0.0,
+          "SplashAdd": 0.5,
+          "SlowTicksMul": 1.0,
+          "ExtraTargets": 0,
+          "Id": "blast",
+          "GrantsFlying": false,
+          "IgnoresResist": false,
+          "SlowTicksAdd": 0,
+          "SlowFactorTo": 1.0,
+          "PowerRadiusAdd": 0.0,
+          "PowerCapacityAdd": 0
+        },
+        {
+          "Label": "Heavy shell: +60% damage, 25% slower",
+          "DamageMul": 1.6,
+          "IntervalMul": 1.25,
+          "RangeAdd": 0.0,
+          "SplashAdd": 0.0,
+          "SlowTicksMul": 1.0,
+          "ExtraTargets": 0,
+          "Id": "shell",
+          "GrantsFlying": false,
+          "IgnoresResist": false,
+          "SlowTicksAdd": 0,
+          "SlowFactorTo": 1.0,
+          "PowerRadiusAdd": 0.0,
+          "PowerCapacityAdd": 0
+        },
+        {
+          "Label": "Napalm: slows what it hits",
+          "DamageMul": 1.0,
+          "IntervalMul": 1.0,
+          "RangeAdd": 0.0,
+          "SplashAdd": 0.0,
+          "SlowTicksMul": 1.0,
+          "ExtraTargets": 0,
+          "Id": "napalm",
+          "GrantsFlying": false,
+          "IgnoresResist": false,
+          "SlowTicksAdd": 50,
+          "SlowFactorTo": 0.6,
+          "PowerRadiusAdd": 0.0,
+          "PowerCapacityAdd": 0
+        }
+      ],
+      "PowerRadius": 0.0,
+      "PowerCapacity": 0,
       "Levels": [
         {
           "Label": "bigger blast",
@@ -103,7 +287,14 @@
           "RangeAdd": 0.0,
           "SplashAdd": 0.5,
           "SlowTicksMul": 1.0,
-          "ExtraTargets": 0
+          "ExtraTargets": 0,
+          "Id": null,
+          "GrantsFlying": false,
+          "IgnoresResist": false,
+          "SlowTicksAdd": 0,
+          "SlowFactorTo": 1.0,
+          "PowerRadiusAdd": 0.0,
+          "PowerCapacityAdd": 0
         },
         {
           "Label": "+60% damage",
@@ -112,7 +303,14 @@
           "RangeAdd": 0.0,
           "SplashAdd": 0.0,
           "SlowTicksMul": 1.0,
-          "ExtraTargets": 0
+          "ExtraTargets": 0,
+          "Id": null,
+          "GrantsFlying": false,
+          "IgnoresResist": false,
+          "SlowTicksAdd": 0,
+          "SlowFactorTo": 1.0,
+          "PowerRadiusAdd": 0.0,
+          "PowerCapacityAdd": 0
         }
       ]
     },
@@ -133,6 +331,58 @@
       "TowerHealth": 8.0,
       "ShopWeight": 1.0,
       "Tier": 1,
+      "Upgrades": [
+        {
+          "Label": "Wide ring: +0.75 range",
+          "DamageMul": 1.0,
+          "IntervalMul": 1.0,
+          "RangeAdd": 0.75,
+          "SplashAdd": 0.0,
+          "SlowTicksMul": 1.0,
+          "ExtraTargets": 0,
+          "Id": "wide",
+          "GrantsFlying": false,
+          "IgnoresResist": false,
+          "SlowTicksAdd": 0,
+          "SlowFactorTo": 1.0,
+          "PowerRadiusAdd": 0.0,
+          "PowerCapacityAdd": 0
+        },
+        {
+          "Label": "Inferno: +50% damage",
+          "DamageMul": 1.5,
+          "IntervalMul": 1.0,
+          "RangeAdd": 0.0,
+          "SplashAdd": 0.0,
+          "SlowTicksMul": 1.0,
+          "ExtraTargets": 0,
+          "Id": "inferno",
+          "GrantsFlying": false,
+          "IgnoresResist": false,
+          "SlowTicksAdd": 0,
+          "SlowFactorTo": 1.0,
+          "PowerRadiusAdd": 0.0,
+          "PowerCapacityAdd": 0
+        },
+        {
+          "Label": "Smoke: slows what it burns",
+          "DamageMul": 1.0,
+          "IntervalMul": 1.0,
+          "RangeAdd": 0.0,
+          "SplashAdd": 0.0,
+          "SlowTicksMul": 1.0,
+          "ExtraTargets": 0,
+          "Id": "smoke",
+          "GrantsFlying": false,
+          "IgnoresResist": false,
+          "SlowTicksAdd": 25,
+          "SlowFactorTo": 0.6,
+          "PowerRadiusAdd": 0.0,
+          "PowerCapacityAdd": 0
+        }
+      ],
+      "PowerRadius": 0.0,
+      "PowerCapacity": 0,
       "Levels": [
         {
           "Label": "wider ring",
@@ -141,7 +391,14 @@
           "RangeAdd": 0.75,
           "SplashAdd": 0.0,
           "SlowTicksMul": 1.0,
-          "ExtraTargets": 0
+          "ExtraTargets": 0,
+          "Id": null,
+          "GrantsFlying": false,
+          "IgnoresResist": false,
+          "SlowTicksAdd": 0,
+          "SlowFactorTo": 1.0,
+          "PowerRadiusAdd": 0.0,
+          "PowerCapacityAdd": 0
         },
         {
           "Label": "burns the neighbours too",
@@ -150,7 +407,14 @@
           "RangeAdd": 0.0,
           "SplashAdd": 0.6,
           "SlowTicksMul": 1.0,
-          "ExtraTargets": 0
+          "ExtraTargets": 0,
+          "Id": null,
+          "GrantsFlying": false,
+          "IgnoresResist": false,
+          "SlowTicksAdd": 0,
+          "SlowFactorTo": 1.0,
+          "PowerRadiusAdd": 0.0,
+          "PowerCapacityAdd": 0
         }
       ]
     },
@@ -171,6 +435,58 @@
       "TowerHealth": 8.0,
       "ShopWeight": 1.0,
       "Tier": 1,
+      "Upgrades": [
+        {
+          "Label": "Deep freeze: slows to 25%",
+          "DamageMul": 1.0,
+          "IntervalMul": 1.0,
+          "RangeAdd": 0.0,
+          "SplashAdd": 0.0,
+          "SlowTicksMul": 1.0,
+          "ExtraTargets": 0,
+          "Id": "deep",
+          "GrantsFlying": false,
+          "IgnoresResist": false,
+          "SlowTicksAdd": 0,
+          "SlowFactorTo": 0.25,
+          "PowerRadiusAdd": 0.0,
+          "PowerCapacityAdd": 0
+        },
+        {
+          "Label": "Long chill: slows 60% longer",
+          "DamageMul": 1.0,
+          "IntervalMul": 1.0,
+          "RangeAdd": 0.0,
+          "SplashAdd": 0.0,
+          "SlowTicksMul": 1.6,
+          "ExtraTargets": 0,
+          "Id": "long",
+          "GrantsFlying": false,
+          "IgnoresResist": false,
+          "SlowTicksAdd": 0,
+          "SlowFactorTo": 1.0,
+          "PowerRadiusAdd": 0.0,
+          "PowerCapacityAdd": 0
+        },
+        {
+          "Label": "Ice spikes: x4 damage",
+          "DamageMul": 4.0,
+          "IntervalMul": 1.0,
+          "RangeAdd": 0.0,
+          "SplashAdd": 0.0,
+          "SlowTicksMul": 1.0,
+          "ExtraTargets": 0,
+          "Id": "spikes",
+          "GrantsFlying": false,
+          "IgnoresResist": false,
+          "SlowTicksAdd": 0,
+          "SlowFactorTo": 1.0,
+          "PowerRadiusAdd": 0.0,
+          "PowerCapacityAdd": 0
+        }
+      ],
+      "PowerRadius": 0.0,
+      "PowerCapacity": 0,
       "Levels": [
         {
           "Label": "longer slow",
@@ -179,7 +495,14 @@
           "RangeAdd": 0.0,
           "SplashAdd": 0.0,
           "SlowTicksMul": 1.6,
-          "ExtraTargets": 0
+          "ExtraTargets": 0,
+          "Id": null,
+          "GrantsFlying": false,
+          "IgnoresResist": false,
+          "SlowTicksAdd": 0,
+          "SlowFactorTo": 1.0,
+          "PowerRadiusAdd": 0.0,
+          "PowerCapacityAdd": 0
         },
         {
           "Label": "slows an area",
@@ -188,7 +511,14 @@
           "RangeAdd": 0.0,
           "SplashAdd": 1.0,
           "SlowTicksMul": 1.0,
-          "ExtraTargets": 0
+          "ExtraTargets": 0,
+          "Id": null,
+          "GrantsFlying": false,
+          "IgnoresResist": false,
+          "SlowTicksAdd": 0,
+          "SlowFactorTo": 1.0,
+          "PowerRadiusAdd": 0.0,
+          "PowerCapacityAdd": 0
         }
       ]
     },
@@ -209,6 +539,58 @@
       "TowerHealth": 8.0,
       "ShopWeight": 1.0,
       "Tier": 3,
+      "Upgrades": [
+        {
+          "Label": "Armour piercing: ignores armour",
+          "DamageMul": 1.0,
+          "IntervalMul": 1.0,
+          "RangeAdd": 0.0,
+          "SplashAdd": 0.0,
+          "SlowTicksMul": 1.0,
+          "ExtraTargets": 0,
+          "Id": "piercing",
+          "GrantsFlying": false,
+          "IgnoresResist": true,
+          "SlowTicksAdd": 0,
+          "SlowFactorTo": 1.0,
+          "PowerRadiusAdd": 0.0,
+          "PowerCapacityAdd": 0
+        },
+        {
+          "Label": "Quick scope: fires 40% faster",
+          "DamageMul": 1.0,
+          "IntervalMul": 0.7,
+          "RangeAdd": 0.0,
+          "SplashAdd": 0.0,
+          "SlowTicksMul": 1.0,
+          "ExtraTargets": 0,
+          "Id": "quick",
+          "GrantsFlying": false,
+          "IgnoresResist": false,
+          "SlowTicksAdd": 0,
+          "SlowFactorTo": 1.0,
+          "PowerRadiusAdd": 0.0,
+          "PowerCapacityAdd": 0
+        },
+        {
+          "Label": "Anti-air: hits flyers",
+          "DamageMul": 1.0,
+          "IntervalMul": 1.0,
+          "RangeAdd": 0.0,
+          "SplashAdd": 0.0,
+          "SlowTicksMul": 1.0,
+          "ExtraTargets": 0,
+          "Id": "antiair",
+          "GrantsFlying": true,
+          "IgnoresResist": false,
+          "SlowTicksAdd": 0,
+          "SlowFactorTo": 1.0,
+          "PowerRadiusAdd": 0.0,
+          "PowerCapacityAdd": 0
+        }
+      ],
+      "PowerRadius": 0.0,
+      "PowerCapacity": 0,
       "Levels": [
         {
           "Label": "+60% damage",
@@ -217,7 +599,14 @@
           "RangeAdd": 0.0,
           "SplashAdd": 0.0,
           "SlowTicksMul": 1.0,
-          "ExtraTargets": 0
+          "ExtraTargets": 0,
+          "Id": null,
+          "GrantsFlying": false,
+          "IgnoresResist": false,
+          "SlowTicksAdd": 0,
+          "SlowFactorTo": 1.0,
+          "PowerRadiusAdd": 0.0,
+          "PowerCapacityAdd": 0
         },
         {
           "Label": "two shots",
@@ -226,7 +615,14 @@
           "RangeAdd": 0.0,
           "SplashAdd": 0.0,
           "SlowTicksMul": 1.0,
-          "ExtraTargets": 1
+          "ExtraTargets": 1,
+          "Id": null,
+          "GrantsFlying": false,
+          "IgnoresResist": false,
+          "SlowTicksAdd": 0,
+          "SlowFactorTo": 1.0,
+          "PowerRadiusAdd": 0.0,
+          "PowerCapacityAdd": 0
         }
       ]
     },
@@ -247,6 +643,58 @@
       "TowerHealth": 8.0,
       "ShopWeight": 1.0,
       "Tier": 2,
+      "Upgrades": [
+        {
+          "Label": "Splinter: +2 shards",
+          "DamageMul": 1.0,
+          "IntervalMul": 1.0,
+          "RangeAdd": 0.0,
+          "SplashAdd": 0.0,
+          "SlowTicksMul": 1.0,
+          "ExtraTargets": 2,
+          "Id": "splinter",
+          "GrantsFlying": false,
+          "IgnoresResist": false,
+          "SlowTicksAdd": 0,
+          "SlowFactorTo": 1.0,
+          "PowerRadiusAdd": 0.0,
+          "PowerCapacityAdd": 0
+        },
+        {
+          "Label": "Sharper: +50% damage",
+          "DamageMul": 1.5,
+          "IntervalMul": 1.0,
+          "RangeAdd": 0.0,
+          "SplashAdd": 0.0,
+          "SlowTicksMul": 1.0,
+          "ExtraTargets": 0,
+          "Id": "sharper",
+          "GrantsFlying": false,
+          "IgnoresResist": false,
+          "SlowTicksAdd": 0,
+          "SlowFactorTo": 1.0,
+          "PowerRadiusAdd": 0.0,
+          "PowerCapacityAdd": 0
+        },
+        {
+          "Label": "Frostbite: slows what it hits",
+          "DamageMul": 1.0,
+          "IntervalMul": 1.0,
+          "RangeAdd": 0.0,
+          "SplashAdd": 0.0,
+          "SlowTicksMul": 1.0,
+          "ExtraTargets": 0,
+          "Id": "frostbite",
+          "GrantsFlying": false,
+          "IgnoresResist": false,
+          "SlowTicksAdd": 30,
+          "SlowFactorTo": 0.6,
+          "PowerRadiusAdd": 0.0,
+          "PowerCapacityAdd": 0
+        }
+      ],
+      "PowerRadius": 0.0,
+      "PowerCapacity": 0,
       "Levels": [
         {
           "Label": "four shards",
@@ -255,7 +703,14 @@
           "RangeAdd": 0.0,
           "SplashAdd": 0.0,
           "SlowTicksMul": 1.0,
-          "ExtraTargets": 1
+          "ExtraTargets": 1,
+          "Id": null,
+          "GrantsFlying": false,
+          "IgnoresResist": false,
+          "SlowTicksAdd": 0,
+          "SlowFactorTo": 1.0,
+          "PowerRadiusAdd": 0.0,
+          "PowerCapacityAdd": 0
         },
         {
           "Label": "+50% damage, +0.5 range",
@@ -264,7 +719,14 @@
           "RangeAdd": 0.5,
           "SplashAdd": 0.0,
           "SlowTicksMul": 1.0,
-          "ExtraTargets": 0
+          "ExtraTargets": 0,
+          "Id": null,
+          "GrantsFlying": false,
+          "IgnoresResist": false,
+          "SlowTicksAdd": 0,
+          "SlowFactorTo": 1.0,
+          "PowerRadiusAdd": 0.0,
+          "PowerCapacityAdd": 0
         }
       ]
     },
@@ -285,6 +747,58 @@
       "TowerHealth": 8.0,
       "ShopWeight": 1.0,
       "Tier": 2,
+      "Upgrades": [
+        {
+          "Label": "Fast loader: fires 40% faster",
+          "DamageMul": 1.0,
+          "IntervalMul": 0.7,
+          "RangeAdd": 0.0,
+          "SplashAdd": 0.0,
+          "SlowTicksMul": 1.0,
+          "ExtraTargets": 0,
+          "Id": "loader",
+          "GrantsFlying": false,
+          "IgnoresResist": false,
+          "SlowTicksAdd": 0,
+          "SlowFactorTo": 1.0,
+          "PowerRadiusAdd": 0.0,
+          "PowerCapacityAdd": 0
+        },
+        {
+          "Label": "Wide burst: +0.5 splash",
+          "DamageMul": 1.0,
+          "IntervalMul": 1.0,
+          "RangeAdd": 0.0,
+          "SplashAdd": 0.5,
+          "SlowTicksMul": 1.0,
+          "ExtraTargets": 0,
+          "Id": "burst",
+          "GrantsFlying": false,
+          "IgnoresResist": false,
+          "SlowTicksAdd": 0,
+          "SlowFactorTo": 1.0,
+          "PowerRadiusAdd": 0.0,
+          "PowerCapacityAdd": 0
+        },
+        {
+          "Label": "Ground shells: +60% damage",
+          "DamageMul": 1.6,
+          "IntervalMul": 1.0,
+          "RangeAdd": 0.0,
+          "SplashAdd": 0.0,
+          "SlowTicksMul": 1.0,
+          "ExtraTargets": 0,
+          "Id": "ground",
+          "GrantsFlying": false,
+          "IgnoresResist": false,
+          "SlowTicksAdd": 0,
+          "SlowFactorTo": 1.0,
+          "PowerRadiusAdd": 0.0,
+          "PowerCapacityAdd": 0
+        }
+      ],
+      "PowerRadius": 0.0,
+      "PowerCapacity": 0,
       "Levels": [
         {
           "Label": "faster shots",
@@ -293,7 +807,14 @@
           "RangeAdd": 0.0,
           "SplashAdd": 0.0,
           "SlowTicksMul": 1.0,
-          "ExtraTargets": 0
+          "ExtraTargets": 0,
+          "Id": null,
+          "GrantsFlying": false,
+          "IgnoresResist": false,
+          "SlowTicksAdd": 0,
+          "SlowFactorTo": 1.0,
+          "PowerRadiusAdd": 0.0,
+          "PowerCapacityAdd": 0
         },
         {
           "Label": "bigger blast",
@@ -302,9 +823,71 @@
           "RangeAdd": 0.0,
           "SplashAdd": 0.5,
           "SlowTicksMul": 1.0,
-          "ExtraTargets": 0
+          "ExtraTargets": 0,
+          "Id": null,
+          "GrantsFlying": false,
+          "IgnoresResist": false,
+          "SlowTicksAdd": 0,
+          "SlowFactorTo": 1.0,
+          "PowerRadiusAdd": 0.0,
+          "PowerCapacityAdd": 0
         }
       ]
+    },
+    {
+      "Id": "pylon",
+      "Cost": 30,
+      "DamageType": "Physical",
+      "Damage": 0.0,
+      "RangeTiles": 0.0,
+      "FireIntervalTicks": 50,
+      "Mode": "First",
+      "SplashRadiusTiles": 0.0,
+      "SlowTicks": 0,
+      "SlowFactor": 1.0,
+      "CanHitFlying": false,
+      "Targets": 1,
+      "DigCost": 20,
+      "TowerHealth": 12.0,
+      "ShopWeight": 1.0,
+      "Tier": 1,
+      "Upgrades": [
+        {
+          "Label": "Wide grid: reaches 1.5 tiles further",
+          "DamageMul": 1.0,
+          "IntervalMul": 1.0,
+          "RangeAdd": 0.0,
+          "SplashAdd": 0.0,
+          "SlowTicksMul": 1.0,
+          "ExtraTargets": 0,
+          "Id": "grid",
+          "GrantsFlying": false,
+          "IgnoresResist": false,
+          "SlowTicksAdd": 0,
+          "SlowFactorTo": 1.0,
+          "PowerRadiusAdd": 1.5,
+          "PowerCapacityAdd": 0
+        },
+        {
+          "Label": "Capacitor: powers 2 more towers",
+          "DamageMul": 1.0,
+          "IntervalMul": 1.0,
+          "RangeAdd": 0.0,
+          "SplashAdd": 0.0,
+          "SlowTicksMul": 1.0,
+          "ExtraTargets": 0,
+          "Id": "capacitor",
+          "GrantsFlying": false,
+          "IgnoresResist": false,
+          "SlowTicksAdd": 0,
+          "SlowFactorTo": 1.0,
+          "PowerRadiusAdd": 0.0,
+          "PowerCapacityAdd": 2
+        }
+      ],
+      "PowerRadius": 3.0,
+      "PowerCapacity": 3,
+      "Levels": null
     }
   ]
 }

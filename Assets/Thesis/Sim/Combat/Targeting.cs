@@ -41,6 +41,9 @@ namespace Thesis.Sim
             switch (mode)
             {
                 case TargetingMode.First: return PickFirst(tower, grid, core, live, taken, takenCount);
+                case TargetingMode.Raiders:
+                    int raider = PickFirst(tower, grid, core, live, taken, takenCount, true);
+                    return raider >= 0 ? raider : PickFirst(tower, grid, core, live, taken, takenCount);
                 case TargetingMode.Strongest:
                 case TargetingMode.Weakest:
                 case TargetingMode.Nearest: return PickBy(mode, tower, live, taken, takenCount);
@@ -84,7 +87,7 @@ namespace Thesis.Sim
         // a flyer is ranked by its straight line and a sapper by the sapper field.
         // Ties go to the lowest id: with a strict '<' the first one found keeps the
         // shot, and the list is in id order.
-        private static int PickFirst(TowerState tower, SimGrid grid, SimNode core, IList<AgentState> live, int[] taken, int takenCount)
+        private static int PickFirst(TowerState tower, SimGrid grid, SimNode core, IList<AgentState> live, int[] taken, int takenCount, bool raidersOnly = false)
         {
             int best = -1;
             int bestCost = int.MaxValue;
@@ -92,6 +95,7 @@ namespace Thesis.Sim
             {
                 AgentState a = live[i];
                 if (!a.IsAlive) continue; // killed earlier this tick, not yet removed
+                if (raidersOnly && !a.TargetsCollectors) continue;
                 if (!CanHit(tower, a)) continue;
                 if (!InRange(a.Position, tower.Position, tower.RangeSquared)) continue;
                 bool already = false;

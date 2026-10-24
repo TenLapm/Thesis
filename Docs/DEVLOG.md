@@ -1969,3 +1969,101 @@ the income, while the towers at the core kept firing; "your idea sounds good, ex
 - Upkeep (ore per tower per wave) was considered and rejected by the student as an annoying hindrance.
 - Open: the numbers (4 at the core, 2 per collector, the radii) are first guesses; the scripted player
   does not know about power, so many of its towers are dark.
+
+---
+
+## 2026-10-23 — Building moves to the bottom bar; raiders get a route line; 60 ore to start
+
+**Status:** at the student's request after a play test. 621 tests pass in both runners. Not committed.
+
+- **Starting ore 60** (was 40).
+- **A green route line for raiders** (`PathPreviewer.raiderColor`): from their entry, along the raid
+  field to the collector they reach first; "Raiders: to your collectors" in the key.
+- **The build section is in the bottom bar, by category, after RimWorld's architect menu**
+  (`DeckBar.UpdateBuild`): a column TOWERS [1], ECONOMY [2], GEAR [3], ORDERS [4], and beside it the
+  chosen category's buttons with price and a line each (locked ones dimmed with their tier). Economy
+  holds the collector, research and the core's repair; orders hold wall, sell, move, upgrade and target.
+  The right panel shrinks to the ore, the income, power and the route key (`TowerShopPanel.Compact`).
+- **Tester's opinion, not acted on yet:** gear is the biggest waste of ore, and research is the worst
+  feature.
+- **Research and gear at half price** (the student, after the tester's opinion): research tiers 15
+  and 30 ore; gear crafted for half its price (`GearCraftPriceFactor` 0.5, `Simulation.CraftPrice`):
+  chill, sky-sight, anti-armor and lure 4, beacon 5, extractor 2.
+
+---
+
+## 2026-10-24 — Undo and redo, a RimWorld-style hand and selection, power shown as tiles, walls for ore
+
+**Status:** at the student's request. 623 tests pass in both runners. Not committed.
+
+- **Undo and redo** (`UndoSteps` 30; commands `Undo`, `Redo`; Ctrl+Z / Ctrl+Y and two buttons in the
+  bar): whole copies of the state before every action of the build phase that changed anything;
+  emptied when a wave starts. The clock is not put back. They are commands, so a replay rebuilds the
+  same stacks; the pinned economy episode now undoes and redoes. **Found on the way:** a batch of
+  commands in one tick (as on a replay) lost the commands after a Redo, because putting a state back
+  emptied the list being worked through; the batch is now taken out first (`Simulation.ApplyPending`).
+- **The hand starts empty** (RimWorld): building is chosen in the bar; right click or Esc puts it
+  down, then lets go of the selection. With an empty hand a click **selects** a tower, a collector or
+  the core; the inspect pane at the bottom left shows it with its commands (upgrade, target, move,
+  sell; sell for a collector). Dragging a tower off its tile still moves it.
+- **Power reach as tiles**, only for the selected core or collector: every tile a tower would get
+  power on, outlined in gold (the rings were not where the rule is, and were always on).
+- **Tooltips** on the build bar's buttons: a tower's full numbers, what a piece of gear does.
+- **Walls cost 1 ore a tile** and selling one gives the ore back (`WallStock` 0, `WallSellRefund` 1);
+  to pay for them, 80 ore at the start and 4 a wave from the core.
+
+**Later: the mouse, and playing a wave again in place** (the student, after playing). 625 tests pass in
+both runners.
+- **The mouse picks what is drawn under it.** From the tilted camera the ray met the ground behind a
+  tower's top, so the player had to aim below things. The ray is now walked down from above the
+  tallest thing and stops at the first tile whose drawn top it passes under (`PlayerBuilder.NodeAtScreen`).
+  Checked: aiming at the tops of five towers picked them, where before it picked the tile behind each.
+- **RetryWave is a command** (replay schema 15): the simulation keeps the state each build phase
+  began with, and puts back the one before the last wave, after a loss or a win, in place. No scene
+  reload and no replay of the run any more, which is what made the old way slow (3 ms now). A lost
+  game takes this one command; a replay goes on past a loss that was retried (`ReplayRunner`), and
+  telemetry opens a window for the build phase played again (`SimState.Retries`). From a build phase
+  the retry can be undone. A "PLAY WAVE n AGAIN" button in the bar does it after a win.
+- Found on the way: a batch of commands at a lost game's tick dropped the ones after the retry on a
+  replay; and `EpisodeRunner` and `ReplayRunner.Verify` held on to a state that Undo or RetryWave had
+  replaced. All three fixed, with a test that loses, retries, plays on, verifies the recording tick by
+  tick and makes the same telemetry again.
+
+**And: outposts, and raids later** (the student: "I can't scale fast enough to build enough fire power
+around ore veins"). Defending one vein cost about 28 ore (a collector and two towers on walls) for 2 to
+4 ore a wave, so it paid back in 7 to 14 waves. 627 tests pass in both runners (2 new).
+- **Deposits in clusters** (`MapGenerator` `depositsPerCluster`, 4 in ArknightsTest, 28 deposits):
+  4 veins round each of about 7 centres, a free tile between two veins for a wall or a tower, centres
+  9 tiles apart and away from the middle, a cluster as rich as its centre is far out. One outpost of
+  2 or 3 towers now holds 3 or 4 collectors (8 to 14 ore a wave). `depositsPerCluster` 1 is the old
+  scatter.
+- **Raids from wave 6, every 3 waves, growing slowly** (`RaidPlanner.FirstRaidWave`, `RaidEvery`,
+  `RaidShare`: 0.4 of a wave at the first raid, 0.04 more each time, at most 0.8).
+
+---
+
+## 2026-10-24 — A pylon, a colour per tower, raiders first, frostborn out, and each tower its own upgrades
+
+**Status:** at the student's request. 630 tests pass in both runners (3 new). Not committed.
+
+- **The pylon** (`Pylon.asset`, 30 ore, tier 1, under ECONOMY in the bar): no attack; it powers up to 3
+  towers within 3 tiles and has power itself (`TowerDef.PowerCapacity`, `PowerRadius`; a source in
+  `Simulation.RecomputePower` after the core and the collectors). Its upgrades widen the reach or add
+  two places. Selected, it shows its tiles like a collector.
+- **A colour per tower** (`TowerView.ColorOfTower`): white archer, brown ballista, red cannon, orange
+  brazier, blue frost, violet sniper, teal shard, pink flak, lime pylon. Damage types share colours, so
+  the colour is the tower's, not its type's.
+- **A fifth target order, raiders first** (`TargetingMode.Raiders`): the raider closest to the core,
+  else as First.
+- **Frostborn out of the waves** (the student: too strong): `RaidPlanner` sends swarm and runners in
+  its place, and `EnemyArchetypes.Everything` no longer lists it. The type stays for the tests.
+- **Each tower its own upgrades** (`TowerDef.Upgrades`, from the asset's `upgrades`; the four shared
+  ones remain for a tower without its own): three choices a tower, and an upgrade may now give flyers,
+  ignore armour, add a slow, or widen power (`TowerLevelMod.GrantsFlying`, `IgnoresResist`,
+  `SlowTicksAdd`, `SlowFactorTo`, `PowerRadiusAdd`, `PowerCapacityAdd`). For example the ballista:
+  piercing, twin bolts, skyward; the frost: deep freeze, long chill, ice spikes; the sniper: armour
+  piercing, quick scope, anti-air. The chooser shows the tower's own.
+- The roster grew to nine, which changed the shop's offers: the restless episode's seed went from 7
+  to 4 so it still sells a tower; pinned replays re-recorded.
+- Open: the new upgrade numbers are first guesses; the gauntlet (`--upgrade <n>`) can now compare a
+  tower's choices.

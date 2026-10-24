@@ -109,6 +109,14 @@ namespace Thesis.Harness
             }
 
             if (s.CoreHp < config.CoreMaxHp / 2 && s.BuildBudget >= config.RepairPrice + 10f) send(SimCommand.RepairCore());
+
+            // Every fourth wave it changes its mind once: a tower bought and taken back, then
+            // bought again (the commands Undo and Redo in the recording).
+            if (config.UndoSteps > 0 && s.WaveIndex % 4 == 1 && sim.UndoCount > 0)
+            {
+                send(SimCommand.Undo());
+                send(SimCommand.Redo());
+            }
             int craft = s.WaveIndex % sim.GearLibrary.Length;
             if (s.WaveIndex % 3 == 2 && s.BuildBudget >= sim.GearLibrary[craft].Price + 10f) send(SimCommand.CraftGear(craft));
         }
@@ -300,7 +308,7 @@ namespace Thesis.Harness
                 {
                     TowerState tower = s.Towers[t];
                     if (!tower.IsAlive || tower.OnBench || tower.UpgradeCount >= config.UpgradesPerTower || s.BuildBudget < sim.UpgradePrice(tower) + 4f) continue;
-                    send(SimCommand.ChooseUpgrade(tower.Tile.X, tower.Tile.Y, tower.Id % TowerUpgradeChoices.All.Length));
+                    send(SimCommand.ChooseUpgrade(tower.Tile.X, tower.Tile.Y, tower.Id % TowerUpgradeChoices.For(tower.Def).Length));
                     break;
                 }
             }

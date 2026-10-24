@@ -41,3 +41,48 @@ MonoBehaviour:
     extraTargets: 0
   shopWeight: 1
   tier: 1
+  upgrades:
+  - label: 'Big blast: +0.5 splash'
+    damageMul: 1
+    intervalMul: 1
+    rangeAdd: 0
+    splashAdd: 0.5
+    slowTicksMul: 1
+    extraTargets: 0
+    id: blast
+    grantsFlying: 0
+    ignoresResist: 0
+    slowTicksAdd: 0
+    slowFactorTo: 1
+    powerRadiusAdd: 0
+    powerCapacityAdd: 0
+  - label: 'Heavy shell: +60% damage, 25% slower'
+    damageMul: 1.6
+    intervalMul: 1.25
+    rangeAdd: 0
+    splashAdd: 0
+    slowTicksMul: 1
+    extraTargets: 0
+    id: shell
+    grantsFlying: 0
+    ignoresResist: 0
+    slowTicksAdd: 0
+    slowFactorTo: 1
+    powerRadiusAdd: 0
+    powerCapacityAdd: 0
+  - label: 'Napalm: slows what it hits'
+    damageMul: 1
+    intervalMul: 1
+    rangeAdd: 0
+    splashAdd: 0
+    slowTicksMul: 1
+    extraTargets: 0
+    id: napalm
+    grantsFlying: 0
+    ignoresResist: 0
+    slowTicksAdd: 50
+    slowFactorTo: 0.6
+    powerRadiusAdd: 0
+    powerCapacityAdd: 0
+  powerCapacity: 0
+  powerRadius: 0

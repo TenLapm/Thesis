@@ -44,6 +44,7 @@ public class GameSpeedController : MonoBehaviour
         if (playerCore != null)
         {
             playerCore.OnGameOver.AddListener(HandleGameOver);
+            playerCore.OnRevived.AddListener(() => { isGameOver = false; ApplyTimeScale(); });
         }
     }
 
