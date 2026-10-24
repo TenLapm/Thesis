@@ -239,7 +239,8 @@ Maps/                         exported maps, Shapes.json, Towers.json and SimCon
 Results/                      committed results; Results/pinned-replays (recordings and their
                               telemetry) is re-run by tests
 Runs/                         (gitignored) raw output and Unity sessions (replay and telemetry)
-Assets/Scenes/                SampleScene + Bench_Open / Bench_Maze / Bench_Choke / Bench_Stress
+Assets/Scenes/                ArknightsTest (the game) + Bench_Open / Bench_Maze / Bench_Choke / Bench_Stress
+                              (SampleScene, the old top-down scene, was removed 2026-10-24; its map file stays as a fixture)
 Assets/Scripts/BlockS/        the wall shape assets: Wall (one tile, the game's) and the tetrominoes
 ```
 

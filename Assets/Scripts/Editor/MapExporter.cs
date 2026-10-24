@@ -15,7 +15,6 @@ public static class MapExporter
 {
     private static readonly string[] AllScenes =
     {
-        "Assets/Scenes/SampleScene.unity",
         "Assets/Scenes/Bench_Open.unity",
         "Assets/Scenes/Bench_Maze.unity",
         "Assets/Scenes/Bench_Choke.unity",
