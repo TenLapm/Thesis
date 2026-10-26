@@ -28,7 +28,7 @@ namespace Thesis.Sim
         // `core` is the grid's node for the core tile: where every enemy is heading,
         // and the one tile on which an enemy leaks.
         public static bool Step(SimGrid grid, SimNode core, IList<AgentState> agents, IList<TowerState> towers, float dt, OccupancyMap occupancy,
-                                 float towerBreachReward, ref float buildBudget, ref int coreHp, IList<SimEvent> events)
+                                 float towerBreachReward, ref float buildBudget, ref int coreHp, IList<SimEvent> events, SimConfig siege = null)
         {
             bool fieldDirty = false;
 
@@ -41,6 +41,7 @@ namespace Thesis.Sim
                 // effect on this tick's step is taken before the countdown, so a
                 // slow of N ticks slows exactly N steps.
                 float speed = agent.MoveSpeed;
+                float pace = agent.SlowTicks > 0 ? agent.SlowFactor : 1f;
                 if (agent.SlowTicks > 0)
                 {
                     speed = (float)(speed * agent.SlowFactor);
@@ -65,6 +66,9 @@ namespace Thesis.Sim
 
                 int cost = RouteCost.ToCore(agent, node, core, grid.TileSize);
                 if (cost < agent.MinCostSeen) agent.MinCostSeen = cost;
+
+                // A siege enemy with a tower in reach stands and bombards it instead of moving.
+                if (agent.Siege && siege != null && Besiege(agent, towers, grid.TileSize, siege, pace, events)) continue;
 
                 if (agent.Movement == MovementClass.Flying)
                 {
@@ -134,5 +138,62 @@ namespace Thesis.Sim
 
             return fieldDirty;
         }
+
+        // One tick of a siege enemy (2026-10-26). True when it stood still: setting up or firing.
+        // It aims at the tower in reach with the most standing towers within the splash of it
+        // (the lowest id among equals), so a stack is what it hurts most. Knocked-out towers
+        // are no longer targets; once none is left in reach it walks on.
+        private static bool Besiege(AgentState agent, IList<TowerState> towers, float tileSize, SimConfig c, float pace, IList<SimEvent> events)
+        {
+            float reach = (float)(c.SiegeRangeTiles * tileSize);
+            float reachSquared = (float)(reach * reach);
+            float blast = (float)(c.SiegeSplashTiles * tileSize);
+            float blastSquared = (float)(blast * blast);
+
+            int aim = -1, crowdOfAim = -1;
+            for (int t = 0; t < towers.Count; t++)
+            {
+                TowerState tower = towers[t];
+                if (!Standing(tower) || !Targeting.InRange(tower.Position, agent.Position, reachSquared)) continue;
+                int crowd = 0;
+                for (int u = 0; u < towers.Count; u++)
+                    if (Standing(towers[u]) && Targeting.InRange(towers[u].Position, tower.Position, blastSquared)) crowd++;
+                if (crowd > crowdOfAim) { crowdOfAim = crowd; aim = t; }
+            }
+            if (aim < 0)
+            {
+                agent.SiegeSetup = 0f;
+                agent.SiegeCooldown = 0;
+                return false;
+            }
+            if (agent.SiegeSetup < c.SiegeSetupTicks)
+            {
+                agent.SiegeSetup = (float)(agent.SiegeSetup + pace);
+                return true;
+            }
+            if (agent.SiegeCooldown > 0)
+            {
+                agent.SiegeCooldown--;
+                return true;
+            }
+
+            TowerState centre = towers[aim];
+            for (int u = 0; u < towers.Count; u++)
+            {
+                TowerState hit = towers[u];
+                if (!Standing(hit) || !Targeting.InRange(hit.Position, centre.Position, blastSquared)) continue;
+                hit.SiegeDamage = (float)(hit.SiegeDamage + c.SiegeDamage);
+                if (hit.SiegeDamage >= c.TowerSiegeHp)
+                {
+                    hit.KnockedOut = true;
+                    events?.Add(SimEvent.TowerKnockedOut(hit.Id));
+                }
+            }
+            events?.Add(SimEvent.TowerSieged(agent.Id, centre.Id));
+            agent.SiegeCooldown = c.SiegeIntervalTicks;
+            return true;
+        }
+
+        private static bool Standing(TowerState t) { return t.IsAlive && !t.OnBench && !t.KnockedOut; }
     }
 }

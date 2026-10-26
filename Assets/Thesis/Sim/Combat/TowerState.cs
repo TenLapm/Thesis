@@ -89,6 +89,20 @@ namespace Thesis.Sim
         // without the rule.
         public bool Powered = true;
 
+        // Which source powers it (the core's, a collector's or a pylon's tile), worked out with
+        // Powered; NoTile when none does. And the source the player tied it to (SetPowerSource,
+        // 2026-10-26), NoTile for none: the matching gives it that source first while the source
+        // stands, reaches it and has room. PowerPinOrder says which tie is older.
+        public static readonly TileCoord NoTile = new TileCoord(-1, -1);
+        public TileCoord PoweredBy = NoTile;
+        public TileCoord PowerPin = NoTile;
+        public int PowerPinOrder;
+
+        // Siege damage taken this wave, and whether it has knocked the tower out (SimConfig.
+        // TowerSiegeHp). Both are cleared when the next build phase begins.
+        public float SiegeDamage;
+        public bool KnockedOut;
+
         // Lifetime totals. DamageDealt is EFFECTIVE damage: hit points actually
         // removed, never the overkill on a dying enemy.
         public float DamageDealt;
@@ -143,6 +157,11 @@ namespace Thesis.Sim
             Combined = source.Combined;
             OnBench = source.OnBench;
             Powered = source.Powered;
+            PoweredBy = source.PoweredBy;
+            PowerPin = source.PowerPin;
+            PowerPinOrder = source.PowerPinOrder;
+            SiegeDamage = source.SiegeDamage;
+            KnockedOut = source.KnockedOut;
             Upgrade = source.Upgrade;
             Upgrade2 = source.Upgrade2;
             Mode = source.Mode;

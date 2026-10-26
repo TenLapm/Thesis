@@ -76,6 +76,13 @@ public class PlayerBuilder : MonoBehaviour
     // board. Refreshed every frame; the ghost and the tooltip read it.
     public Node HoverNode { get; private set; }
 
+    // The tower, collector or core whose drawn shape is under the mouse, the nearest if
+    // several overlap; null over open ground. Clicks with an empty hand select by this, not by
+    // the tile, so any part of what is drawn can be clicked (the student, 2026-10-26: still
+    // had to aim low to click a collector).
+    public Node HoverSelectable { get; private set; }
+    private Vector2 pressScreen;
+
     // Reused across placements to avoid allocating a new block every wall.
     private MaterialPropertyBlock wallPropertyBlock;
     private bool isGameOver = false;
@@ -651,6 +658,7 @@ public class PlayerBuilder : MonoBehaviour
         {
             bool overHud = EventSystem.current != null && EventSystem.current.IsPointerOverGameObject();
             if (!overHud) HoverNode = NodeUnderMouse();
+            HoverSelectable = overHud ? null : PickSelectable(Mouse.current.position.ReadValue());
 
             if (Keyboard.current.escapeKey.wasPressedThisFrame || Mouse.current.rightButton.wasPressedThisFrame)
             {
@@ -694,13 +702,17 @@ public class PlayerBuilder : MonoBehaviour
                 // the selection on empty ground). Dragging a tower off its tile moves it.
                 if (Tool == BuildTool.None && !overHud)
                 {
-                    Selected = SelectableAt(HoverNode);
-                    pressNode = HoverNode;
+                    // With a power source selected, a click on a tower in its reach ties the tower
+                    // to it (SetPowerSource) and keeps the source selected (2026-10-26).
+                    if (!TiePowerTo(HoverSelectable)) Selected = HoverSelectable;
+                    pressNode = TowerAt(HoverSelectable) != null ? HoverSelectable : null;
+                    pressScreen = Mouse.current.position.ReadValue();
                     dragging = false;
                 }
             }
             // The press on a tower became a drag: the tower is in the hand until let go.
             if (pressNode != null && Tool == BuildTool.None && Mouse.current.leftButton.isPressed && HoverNode != null && HoverNode != pressNode
+                && (Mouse.current.position.ReadValue() - pressScreen).sqrMagnitude > 100f
                 && deckBar != null && MayMoveTower && TowerAt(pressNode) != null && !IsBuildingBlocked)
             {
                 Node from = pressNode;
@@ -880,6 +892,70 @@ public class PlayerBuilder : MonoBehaviour
             }
         }
         return gridManager.NodeFromWorldPoint(hit.point);
+    }
+
+    public Node PickSelectable(Vector2 screenPoint)
+    {
+        Camera cam = Camera.main;
+        if (cam == null || Host == null) return null;
+        float cell = gridManager.nodeRadius * 2f;
+        Node best = null;
+        float bestDepth = float.MaxValue;
+        void Consider(TileCoord tile)
+        {
+            if (tile.X < 0 || tile.Y < 0 || tile.X >= gridManager.gridSizeX || tile.Y >= gridManager.gridSizeY) return;
+            Node node = gridManager.grid[tile.X, tile.Y];
+            float top = Mathf.Max(DrawnHeight(node, cell), cell * 0.3f);
+            float h = cell * 0.5f;
+            Vector2 min = new Vector2(float.MaxValue, float.MaxValue), max = new Vector2(float.MinValue, float.MinValue);
+            float depth = float.MaxValue;
+            for (int c = 0; c < 8; c++)
+            {
+                Vector3 corner = node.worldPosition + new Vector3((c & 1) == 0 ? -h : h, (c & 4) == 0 ? 0f : top, (c & 2) == 0 ? -h : h);
+                Vector3 sp = cam.WorldToScreenPoint(corner);
+                if (sp.z <= 0f) return;
+                min = Vector2.Min(min, sp); max = Vector2.Max(max, sp);
+                depth = Mathf.Min(depth, sp.z);
+            }
+            if (screenPoint.x < min.x || screenPoint.x > max.x || screenPoint.y < min.y || screenPoint.y > max.y) return;
+            if (depth < bestDepth) { bestDepth = depth; best = node; }
+        }
+        foreach (TowerState t in Host.State.Towers) if (t.IsAlive && !t.OnBench) Consider(t.Tile);
+        foreach (Deposit d in Host.Map.Deposits) if (Host.State.Grid[d.Tile.X, d.Tile.Y].Occupant == Occupant.Collector) Consider(d.Tile);
+        Consider(Host.State.Core);
+        return best;
+    }
+
+    // The top of the ground, wall or rock a tile shows, under any tower on it: where a mark on
+    // the tile is drawn so that nothing hides it.
+    public float SurfaceHeight(Node node)
+    {
+        float cell = gridManager.nodeRadius * 2f;
+        if (Host.State.Grid[node.gridX, node.gridY].Occupant == Occupant.Tower) return Plinth(node, cell);
+        return DrawnHeight(node, cell);
+    }
+
+    // The power source selected (core, collector or pylon): its tile, reach and room.
+    private bool SelectedSource(out TileCoord tile, out float radius)
+    {
+        tile = TowerState.NoTile; radius = 0f;
+        if (!PowerRule || Selected == null) return false;
+        TowerState pylon = SelectedTower != null && SelectedTower.PowerCapacity > 0 ? SelectedTower : null;
+        if (!SelectedIsCore && !SelectedIsCollector && pylon == null) return false;
+        tile = new TileCoord(Selected.gridX, Selected.gridY);
+        radius = pylon != null ? pylon.PowerRadius : SelectedIsCore ? Host.Config.CorePowerRadius : Host.Config.CollectorPowerRadius;
+        return true;
+    }
+
+    // A click on a tower while a source is selected: tie it there. False when the click is a
+    // plain selection (no source selected, not a tower, out of reach, or already powered from it).
+    private bool TiePowerTo(Node clicked)
+    {
+        TowerState tower = TowerAt(clicked);
+        if (tower == null || tower.PowerCapacity > 0 || !SelectedSource(out TileCoord source, out float radius)) return false;
+        if (!Simulation.InPowerReach(source, radius, tower.Tile) || tower.PoweredBy.Equals(source)) return false;
+        Host.Submit(SimCommand.SetPowerSource(tower.Tile.X, tower.Tile.Y, source.X, source.Y));
+        return true;
     }
 
     // How high what stands on a tile is drawn, above the ground.
@@ -1151,6 +1227,7 @@ public class PlayerBuilder : MonoBehaviour
     // whatever is selected. Shown only while something is selected (the student, 2026-10-24:
     // the rings were not where the rule is, and were always on).
     private readonly List<LineRenderer> squares = new List<LineRenderer>();
+    private readonly List<LineRenderer> powerLinks = new List<LineRenderer>();
     private LineRenderer selectionFrame;
 
     private void DrawPower()
@@ -1159,6 +1236,8 @@ public class PlayerBuilder : MonoBehaviour
         if (PowerRule)
             foreach (KeyValuePair<int, TowerView> pair in towerViews)
                 if (pair.Value != null) pair.Value.SetPowered(Host.State.Towers[pair.Key].Powered);
+        foreach (KeyValuePair<int, TowerView> pair in towerViews)
+            if (pair.Value != null) pair.Value.SetKnockedOut(Host.State.Towers[pair.Key].KnockedOut);
 
         float cell = gridManager.nodeRadius * 2f;
         int used = 0;
@@ -1174,10 +1253,35 @@ public class PlayerBuilder : MonoBehaviour
                     var tile = new TileCoord(centre.X + dx, centre.Y + dy);
                     if (tile.X < 0 || tile.Y < 0 || tile.X >= gridManager.gridSizeX || tile.Y >= gridManager.gridSizeY) continue;
                     if (!Simulation.InPowerReach(centre, radius, tile)) continue;
-                    Square(squares, ref used, gridManager.grid[tile.X, tile.Y].worldPosition, cell * 0.92f, new Color(1f, 0.82f, 0.25f, 0.55f), 0.06f);
+                    Node at = gridManager.grid[tile.X, tile.Y];
+                    Square(squares, ref used, at.worldPosition, cell * 0.92f, new Color(1f, 0.82f, 0.25f, 0.55f), 0.06f, SurfaceHeight(at) + cell * 0.04f);
                 }
         }
         for (int k = used; k < squares.Count; k++) squares[k].enabled = false;
+
+        // A line from each source to every tower it powers (2026-10-26); the selected source's
+        // lines bright, the rest faint.
+        int links = 0;
+        if (PowerRule)
+        {
+            bool hasSource = SelectedSource(out TileCoord chosen, out _);
+            foreach (TowerState t in Host.State.Towers)
+            {
+                if (!t.IsAlive || t.OnBench || t.PoweredBy.X < 0) continue;
+                if (links >= powerLinks.Count) powerLinks.Add(TowerView.Line(transform, "PowerLink", Color.white, 0.08f, false));
+                LineRenderer line = powerLinks[links++];
+                bool lit = hasSource && t.PoweredBy.Equals(chosen);
+                Color c = lit ? new Color(1f, 0.85f, 0.3f, 0.95f) : new Color(1f, 0.85f, 0.3f, 0.3f);
+                line.startColor = line.endColor = c;
+                line.startWidth = line.endWidth = lit ? cell * 0.09f : cell * 0.04f;
+                Node from = gridManager.grid[t.PoweredBy.X, t.PoweredBy.Y], to = gridManager.grid[t.Tile.X, t.Tile.Y];
+                line.positionCount = 2;
+                line.SetPosition(0, from.worldPosition + Vector3.up * (DrawnHeight(from, cell) + cell * 0.1f));
+                line.SetPosition(1, to.worldPosition + Vector3.up * (Plinth(to, cell) + cell * 0.45f));
+                line.enabled = true;
+            }
+        }
+        for (int k = links; k < powerLinks.Count; k++) powerLinks[k].enabled = false;
 
         if (selectionFrame == null) selectionFrame = TowerView.Line(transform, "Selection", new Color(0.18f, 0.83f, 0.75f, 1f), 0.12f, true);
         if (Selected != null)
@@ -1188,12 +1292,13 @@ public class PlayerBuilder : MonoBehaviour
         else selectionFrame.enabled = false;
     }
 
-    private void Square(List<LineRenderer> pool, ref int used, Vector3 centre, float size, Color color, float width)
+    public void Square(List<LineRenderer> pool, ref int used, Vector3 centre, float size, Color color, float width, float lift = 0.1f)
     {
         if (used >= pool.Count) pool.Add(TowerView.Line(transform, "PowerTile", color, width, true));
         LineRenderer line = pool[used++];
         line.startColor = line.endColor = color;
-        SetSquare(line, centre, size, 0.1f);
+        line.startWidth = line.endWidth = width;
+        SetSquare(line, centre, size, lift);
         line.enabled = true;
     }
 
@@ -1322,6 +1427,14 @@ public class PlayerBuilder : MonoBehaviour
             // A tower's level or gear changed: its view shows both.
             case SimEventKind.TowerChanged:
                 if (towerViews.TryGetValue(e.IntA, out TowerView changed) && changed != null) changed.Show(Host.State.Towers[e.IntA], Host.Sim.GearLibrary.Length);
+                break;
+            // IntA = the siege enemy, IntB = the tower it aimed at.
+            case SimEventKind.TowerSieged:
+                if (towerViews.TryGetValue(e.IntB, out TowerView struck) && struck != null)
+                {
+                    AgentState siege = Host.State.Agents[e.IntA];
+                    struck.Bombarded(new Vector3(siege.Position.X, Host.GroundY + gridManager.nodeRadius * 1.2f, siege.Position.Y));
+                }
                 break;
             case SimEventKind.TowerFired:
                 if (towerViews.TryGetValue(e.IntA, out TowerView view) && view != null)

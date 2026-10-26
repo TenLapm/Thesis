@@ -60,6 +60,10 @@ public class GameSpeedController : MonoBehaviour
         Keyboard kb = Keyboard.current;
         if (kb == null) return;
 
+        // A build phase has no clock (the student, 2026-10-26: pause should do nothing
+        // there), so it is never paused: a pause left over from the wave ends with it.
+        if (IsPaused && InBuildPhase) TogglePause();
+
         if (kb[pauseKey].wasPressedThisFrame) TogglePause();
 
         // Number ROW keys (digitNKey), explicitly not the numpad (numpadNKey),
@@ -88,9 +92,21 @@ public class GameSpeedController : MonoBehaviour
         ApplyTimeScale();
     }
 
+    private WaveSpawner waves;
+
+    private bool InBuildPhase
+    {
+        get
+        {
+            if (waves == null) waves = FindFirstObjectByType<WaveSpawner>();
+            return waves != null && waves.isIntermission;
+        }
+    }
+
     public void TogglePause()
     {
         if (isGameOver) return;
+        if (!IsPaused && InBuildPhase) return; // nothing to pause
 
         IsPaused = !IsPaused;
         // On resume, re-apply the currently selected level rather than a

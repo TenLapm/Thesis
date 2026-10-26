@@ -248,6 +248,7 @@ public class TowerView : MonoBehaviour
 
     void Update()
     {
+        if (siegeShot != null && siegeShot.enabled && Time.time >= siegeUntil) siegeShot.enabled = false;
         if (Time.time < shotUntil) return;
         for (int i = 0; i < shots.Count; i++) shots[i].enabled = false;
         if (splash != null) splash.enabled = false;
@@ -266,6 +267,44 @@ public class TowerView : MonoBehaviour
 
     // A red ring at the tower's foot while it has no power (SimConfig.PowerRule).
     private LineRenderer noPower;
+
+    // Knocked out by a siege (TowerState.KnockedOut): a grey ring and cross until the next build phase.
+    private LineRenderer knockedRing, knockedCross;
+
+    public void SetKnockedOut(bool knocked)
+    {
+        if (!knocked && knockedRing == null) return;
+        if (knockedRing == null)
+        {
+            Color grey = new Color(0.55f, 0.55f, 0.58f, 0.95f);
+            knockedRing = Line(transform, "KnockedOut", grey, cell * 0.1f, true);
+            DrawCircle(knockedRing, transform.position + new Vector3(0f, cell * 0.14f, 0f), cell * 0.42f, 24);
+            knockedCross = Line(transform, "KnockedOutCross", grey, cell * 0.1f, false);
+            float r = cell * 0.3f, y = cell * 0.9f;
+            knockedCross.positionCount = 5;
+            knockedCross.SetPosition(0, transform.position + new Vector3(-r, y, -r));
+            knockedCross.SetPosition(1, transform.position + new Vector3(r, y, r));
+            knockedCross.SetPosition(2, transform.position + new Vector3(0f, y, 0f));
+            knockedCross.SetPosition(3, transform.position + new Vector3(-r, y, r));
+            knockedCross.SetPosition(4, transform.position + new Vector3(r, y, -r));
+        }
+        knockedRing.enabled = knocked;
+        knockedCross.enabled = knocked;
+    }
+
+    // A siege shot landing on this tower: a thick line from the siege enemy, shown briefly.
+    private LineRenderer siegeShot;
+    private float siegeUntil;
+
+    public void Bombarded(Vector3 from)
+    {
+        if (siegeShot == null) siegeShot = Line(transform, "SiegeShot", new Color(0.95f, 0.6f, 0.1f, 0.95f), cell * 0.18f, false);
+        siegeShot.positionCount = 2;
+        siegeShot.SetPosition(0, from);
+        siegeShot.SetPosition(1, transform.position + new Vector3(0f, cell * 0.5f, 0f));
+        siegeShot.enabled = true;
+        siegeUntil = Time.time + 0.35f;
+    }
 
     public void SetPowered(bool powered)
     {

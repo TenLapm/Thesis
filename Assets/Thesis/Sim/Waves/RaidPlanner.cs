@@ -55,9 +55,12 @@ namespace Thesis.Sim
 
         public WavePlan PlanWave(WaveContext context)
         {
-            WavePlan plan = Compose(context.WaveIndex);
-            int[] entries = ChooseEntries(context);
+            return Spread(Compose(context.WaveIndex), ChooseEntries(context));
+        }
 
+        // The plan's groups shared out over the entries, as evenly as counts allow.
+        public static WavePlan Spread(WavePlan plan, int[] entries)
+        {
             var groups = new List<AgentGroup>();
             for (int g = 0; g < plan.Groups.Length; g++)
             {
@@ -72,7 +75,7 @@ namespace Thesis.Sim
                     groups.Add(part);
                 }
             }
-            return new WavePlan { WaveIndex = context.WaveIndex, StrategyId = Id, Groups = groups.ToArray(), ThreatSpent = 0f };
+            return new WavePlan { WaveIndex = plan.WaveIndex, StrategyId = plan.StrategyId ?? Id, AnnouncementId = plan.AnnouncementId, Groups = groups.ToArray(), ThreatSpent = 0f };
         }
 
         public const int CycleLength = 12;
@@ -81,9 +84,13 @@ namespace Thesis.Sim
         // plain ones first so that a new player meets them one at a time. Each group is
         // that wave's escalation enemy turned into a type (EnemyArchetypes), so every
         // type grows with the wave number as the baseline does.
-        public WavePlan Compose(int wave)
+        // The plain walker of a wave, which every type is made from.
+        public AgentGroup Basic(int wave) { return escalation.PlanFor(wave).Groups[0]; }
+
+        // raids: false leaves out the scheduled raiders (the rough director sends its own).
+        public WavePlan Compose(int wave, bool raids = true)
         {
-            AgentGroup basic = escalation.PlanFor(wave).Groups[0];
+            AgentGroup basic = Basic(wave);
             AgentGroup[] groups;
             switch ((wave - 1) % CycleLength)
             {
@@ -103,7 +110,7 @@ namespace Thesis.Sim
             // On a map with ore deposits raiders come too: from wave FirstRaidWave, every
             // RaidEvery waves, a little more of the wave each time (2026-10-24: the first
             // outposts need time to stand before anything comes for them).
-            if (deposits && wave >= FirstRaidWave && (wave - FirstRaidWave) % RaidEvery == 0)
+            if (raids && deposits && wave >= FirstRaidWave && (wave - FirstRaidWave) % RaidEvery == 0)
             {
                 var withRaiders = new AgentGroup[groups.Length + 1];
                 Array.Copy(groups, withRaiders, groups.Length);
@@ -113,7 +120,7 @@ namespace Thesis.Sim
             return new WavePlan { WaveIndex = wave, StrategyId = Id, Groups = groups };
         }
 
-        private int[] ChooseEntries(WaveContext context)
+        public int[] ChooseEntries(WaveContext context)
         {
             MapData map = context.Map;
             SimGrid grid = context.State.Grid;

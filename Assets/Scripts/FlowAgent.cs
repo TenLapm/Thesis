@@ -127,6 +127,7 @@ public class FlowAgent : MonoBehaviour
             case "bats": size = 0.6f; color = new Color(0.55f, 0.4f, 1f); break;
             case "swarm": size = 0.7f; break;
             case "raider": size = 1.1f; color = new Color(0.25f, 0.9f, 0.35f); break;
+            case "siege": size = 1.8f; color = new Color(0.85f, 0.65f, 0.15f); break;
         }
         transform.localScale *= size;
         if (color.a <= 0f) return;

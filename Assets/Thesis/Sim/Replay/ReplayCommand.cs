@@ -82,6 +82,7 @@ namespace Thesis.Sim
                 case SimCommandKind.Undo: return SimCommand.Undo();
                 case SimCommandKind.Redo: return SimCommand.Redo();
                 case SimCommandKind.RetryWave: return SimCommand.RetryWave();
+                case SimCommandKind.SetPowerSource: return SimCommand.SetPowerSource(X, Y, A, B);
                 default: throw new InvalidDataException("[Replay] Command '" + Cmd + "' at tick " + Tick + " cannot be replayed by this version.");
             }
         }

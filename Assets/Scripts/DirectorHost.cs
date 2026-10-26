@@ -18,6 +18,10 @@ public class DirectorHost : MonoBehaviour
         // strategies exist. See Thesis.Sim.ClassCyclePlanner.
         DevClassCycle = 100,
         DevRaid = 101,
+
+        // NOT a study condition either: a rough authored director (Thesis.Sim.RoughDirector)
+        // that answers towers stacked at the core with outpost raids or siege enemies.
+        DevRoughDirector = 102,
     }
 
     public Condition condition = Condition.StaticEscalation;
@@ -35,6 +39,10 @@ public class DirectorHost : MonoBehaviour
             case Condition.DevRaid:
                 planner = new RaidPlanner(config, map);
                 Debug.Log("[Director] DEVELOPMENT planner 'raid': the class cycle's enemies, coming in at one to three entry points chosen wave by wave. Not a study condition.");
+                break;
+            case Condition.DevRoughDirector:
+                planner = new RoughDirector(config, map);
+                Debug.Log("[Director] DEVELOPMENT planner 'rough-director': raids your outposts or sends siege enemies when your towers stand by the core. Not a study condition.");
                 break;
             case Condition.StaticEscalation:
             default:

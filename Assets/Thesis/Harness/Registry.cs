@@ -10,7 +10,7 @@ namespace Thesis.Harness
     {
         // class-cycle is a development planner, not a study condition: it sends
         // sappers and flyers until the director's strategies exist (WP9).
-        public static readonly string[] PlannerNames = { EscalationPlanner.Id, ClassCyclePlanner.Id, RaidPlanner.Id };
+        public static readonly string[] PlannerNames = { EscalationPlanner.Id, ClassCyclePlanner.Id, RaidPlanner.Id, RoughDirector.Id };
 
         public static readonly string[] PolicyNames = { IdlePolicy.Id, GreedyDetourPolicy.Id, SentryPolicy.Id, SentryPolicy.UpgraderId, SequencePolicy.MixedId, SequencePolicy.RestlessId, RaidPolicy.Id, SentryPolicy.TurtleId };
 
@@ -23,6 +23,7 @@ namespace Thesis.Harness
                 case EscalationPlanner.Id: return new EscalationPlanner(config, map);
                 case ClassCyclePlanner.Id: return new ClassCyclePlanner(config, map);
                 case RaidPlanner.Id: return new RaidPlanner(config, map);
+                case RoughDirector.Id: return new RoughDirector(config, map);
                 default: throw new ArgumentException("Unknown planner '" + name + "'. Known: " + string.Join(", ", PlannerNames) + ".");
             }
         }

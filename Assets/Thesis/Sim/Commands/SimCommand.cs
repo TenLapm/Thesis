@@ -50,6 +50,7 @@ namespace Thesis.Sim
         Undo,            // the last action of this build phase taken back (2026-10-24)
         Redo,            // the last action taken back done again
         RetryWave,       // back to the start of the build phase before the last wave, won or lost (2026-10-24)
+        SetPowerSource,  // tie the tower at (X, Y) to the power source at (A, B); A < 0 unties it (2026-10-26)
     }
 
     public readonly struct SimCommand
@@ -176,6 +177,8 @@ namespace Thesis.Sim
         public static SimCommand Redo() { return new SimCommand(SimCommandKind.Redo, 0, 0, 0); }
 
         public static SimCommand RetryWave() { return new SimCommand(SimCommandKind.RetryWave, 0, 0, 0); }
+
+        public static SimCommand SetPowerSource(int x, int y, int sourceX, int sourceY) { return new SimCommand(SimCommandKind.SetPowerSource, x, y, sourceX, sourceY); }
 
         public static SimCommand FeedCardOnBench(int offerSlot, int benchSlot) { return new SimCommand(SimCommandKind.FeedCard, 0, 0, offerSlot, benchSlot + 1); }
 

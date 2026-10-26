@@ -34,8 +34,8 @@ namespace Thesis.Sim
             for (int t = 0; t < towers.Count; t++)
             {
                 TowerState tower = towers[t];
-                // A power tower never fires.
-                if (!tower.IsAlive || tower.OnBench || !tower.Powered || tower.PowerCapacity > 0) continue;
+                // A power tower never fires, nor one a siege has knocked out.
+                if (!tower.IsAlive || tower.OnBench || !tower.Powered || tower.KnockedOut || tower.PowerCapacity > 0) continue;
 
                 if (tower.Cooldown > 0) tower.Cooldown--;
                 if (tower.Cooldown > 0) continue;

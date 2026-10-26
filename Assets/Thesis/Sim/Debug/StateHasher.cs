@@ -131,6 +131,9 @@ namespace Thesis.Sim
             h.Add(a.SlowTicks);
             h.Add(a.SlowFactor);
             h.Add(a.TargetsCollectors);
+            h.Add(a.Siege);
+            h.Add(a.SiegeSetup);
+            h.Add(a.SiegeCooldown);
             h.Add(a.KillReward);
             h.Add(a.WallBreakReward);
             h.Add(a.IsAlive);
@@ -159,6 +162,11 @@ namespace Thesis.Sim
             h.Add(t.Combined);
             h.Add(t.OnBench);
             h.Add(t.Powered);
+            h.Add(t.PowerPin.X);
+            h.Add(t.PowerPin.Y);
+            h.Add(t.PowerPinOrder);
+            h.Add(t.SiegeDamage);
+            h.Add(t.KnockedOut);
             h.Add(t.Upgrade);
             h.Add(t.Upgrade2);
             h.Add((int)t.Mode);
@@ -213,6 +221,8 @@ namespace Thesis.Sim
                 for (int r = 0; r < g.Resist.Length; r++) h.Add(g.Resist[r]);
                 h.Add(g.SpawnIntervalTicks);
                 h.Add(g.StartDelayTicks);
+                h.Add(g.TargetsCollectors);
+                h.Add(g.Siege);
             }
         }
 

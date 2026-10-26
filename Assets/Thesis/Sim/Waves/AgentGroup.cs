@@ -19,6 +19,9 @@ namespace Thesis.Sim
         // Raiders: for the nearest collector first (AgentState.TargetsCollectors).
         public bool TargetsCollectors;
 
+        // Siege enemies: stop near towers and knock them out (AgentState.Siege).
+        public bool Siege;
+
         public float MoveSpeed;         // world units / second; must be > 0
         public float Hp;                // hit points; must be > 0
         public float DigRate;           // structure health chewed per second; unused by Flying

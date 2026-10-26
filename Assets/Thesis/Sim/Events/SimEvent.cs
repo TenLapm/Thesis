@@ -31,6 +31,8 @@ namespace Thesis.Sim
         CoreMoved,
         CollectorDestroyed,  // IntA, IntB = the tile (2026-10-14)
         StateRestored,       // an Undo or a Redo put back a whole earlier state (2026-10-24)
+        TowerSieged,         // IntA = the siege agent, IntB = the tower aimed at (2026-10-26)
+        TowerKnockedOut,     // IntA = the tower
     }
 
     public readonly struct SimEvent
@@ -85,6 +87,8 @@ namespace Thesis.Sim
 
         // One shot; the hit has already been resolved. IntA = tower id, IntB = target agent id.
         public static SimEvent TowerFired(int towerId, int targetAgentId) { return new SimEvent(SimEventKind.TowerFired, towerId, targetAgentId, 0, 0f); }
+        public static SimEvent TowerSieged(int agentId, int towerId) { return new SimEvent(SimEventKind.TowerSieged, agentId, towerId, 0, 0f); }
+        public static SimEvent TowerKnockedOut(int towerId) { return new SimEvent(SimEventKind.TowerKnockedOut, towerId, 0, 0, 0f); }
 
         // The MaxWaveSeconds backstop took this agent off the board. IntA = agent id.
         public static SimEvent AgentRemoved(int agentId) { return new SimEvent(SimEventKind.AgentRemoved, agentId, 0, 0, 0f); }

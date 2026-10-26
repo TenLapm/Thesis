@@ -124,6 +124,8 @@ namespace Thesis.Sim
             int cx = width / 2, cy = height / 2;
             int half = Math.Max(1, Math.Min(cx, cy) - clear);
             var placed = new System.Collections.Generic.List<Deposit>();
+            TileCoord? middle = MiddleSite(rng, rock, width, height, 3, MiddleBand(half, 6));
+            if (middle.HasValue) placed.Add(new Deposit { Tile = middle.Value, Yield = 2 });
             for (int attempt = 0; attempt < wanted * 40 && placed.Count < wanted; attempt++)
             {
                 // At least one tile inside the build zone's border, never on the ring.
@@ -155,6 +157,8 @@ namespace Thesis.Sim
             int half = Math.Max(1, Math.Min(cx, cy) - clear);
             int clusters = (wanted + per - 1) / per;
             var centres = new System.Collections.Generic.List<TileCoord>();
+            TileCoord? middle = MiddleSite(rng, rock, width, height, 6, MiddleBand(half, 10));
+            if (middle.HasValue) centres.Add(middle.Value);
             for (int attempt = 0; attempt < clusters * 80 && centres.Count < clusters; attempt++)
             {
                 int x = rng.NextInt(clear + 3, width - clear - 3);
@@ -186,6 +190,33 @@ namespace Thesis.Sim
                 }
             }
             map.Deposits = placed.ToArray();
+        }
+
+        // How far from the middle the guaranteed first deposit (or cluster) may lie, in rings:
+        // a third of the way out, and at least `least`.
+        private static int MiddleBand(int half, int least) { return Math.Max(least, half / 3); }
+
+        // A free tile between rings `inner` and `outer` round the middle (2026-10-26, the student:
+        // "it'll be bad if all the spots are on the edge"). Every map gets one there, so a core
+        // built in the middle always has ore near it. Tried at random first, then searched ring
+        // by ring outward, so a rocky middle still finds one; null only if the band is all rock.
+        private static TileCoord? MiddleSite(Pcg32 rng, bool[,] rock, int width, int height, int inner, int outer)
+        {
+            int cx = width / 2, cy = height / 2;
+            outer = Math.Min(outer, Math.Min(cx, cy) - 4);
+            if (outer < inner) return null;
+            for (int attempt = 0; attempt < 80; attempt++)
+            {
+                int x = cx + rng.NextInt(-outer, outer + 1);
+                int y = cy + rng.NextInt(-outer, outer + 1);
+                int ring = Math.Max(Math.Abs(x - cx), Math.Abs(y - cy));
+                if (ring >= inner && !rock[x, y]) return new TileCoord(x, y);
+            }
+            for (int ring = inner; ring <= outer; ring++)
+                for (int x = cx - ring; x <= cx + ring; x++)
+                    for (int y = cy - ring; y <= cy + ring; y++)
+                        if (Math.Max(Math.Abs(x - cx), Math.Abs(y - cy)) == ring && !rock[x, y]) return new TileCoord(x, y);
+            return null;
         }
 
         private static void Entry(MapData map, SimGrid grid, int pass, ref int count, int x, int y)

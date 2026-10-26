@@ -266,8 +266,26 @@ namespace Thesis.Sim
         public int AgentsIncrementEveryWaves = 1;
         public float HpGrowthPerWave = 0f;
 
+        // A power tower (TowerDef.PowerCapacity) may not stand within this many tiles of the core
+        // (2026-10-26, with the pylon at 18 ore: cheap power, but not for a stack round the core).
+        // 0 = anywhere.
+        public float PylonCoreKeepOut = 0f;
+
         // The player may set which enemy a tower shoots (TowerState.Mode).
         public bool ChooseTargeting = false;
+
+        // The siege enemy (2026-10-26; only the rough director sends it). It stops as soon as a
+        // tower stands within SiegeRangeTiles, sets up for SiegeSetupTicks (a slow stretches
+        // that), then every SiegeIntervalTicks hits the tower with the most towers round it,
+        // and every tower within SiegeSplashTiles of that one, for SiegeDamage. A tower that
+        // has taken TowerSiegeHp is knocked out: it does not fire until the next build phase,
+        // when every tower is whole again. It is never destroyed by this.
+        public float SiegeRangeTiles = 4.5f;
+        public int SiegeSetupTicks = 100;
+        public int SiegeIntervalTicks = 75;
+        public float SiegeDamage = 4f;
+        public float SiegeSplashTiles = 1.5f;
+        public float TowerSiegeHp = 10f;
 
         // How many copies make the next level when the player merges (TowerMerge): 2 =
         // one card or one tower into another, 3 = three of a kind. Counts the one that stays.

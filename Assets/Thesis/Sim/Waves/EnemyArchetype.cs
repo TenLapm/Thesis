@@ -20,6 +20,7 @@ namespace Thesis.Sim
         public float DigRateFactor = 1f;
         public float SpawnIntervalFactor = 1f;
         public bool TargetsCollectors;
+        public bool Siege;
 
         // One damage multiplier per DamageType; null means 1 for every type.
         public float[] Resist;
@@ -32,6 +33,7 @@ namespace Thesis.Sim
             g.Archetype = Id;
             g.Movement = Movement;
             g.TargetsCollectors = TargetsCollectors;
+            g.Siege = Siege;
             float count = (float)((float)(basic.Count * share) * CountFactor);
             g.Count = Math.Max(1, (int)count);
             g.Hp = (float)(basic.Hp * HpFactor);
@@ -113,6 +115,12 @@ namespace Thesis.Sim
         // 2026-10-14: goes for the player's collectors, not the core, while any stand.
         public const string RaiderId = "raider";
         public static EnemyArchetype Raider() { return new EnemyArchetype { Id = RaiderId, CountFactor = 0.5f, HpFactor = 1f, SpeedFactor = 1.2f, DigRateFactor = 1.5f, TargetsCollectors = true }; }
+
+        // 2026-10-26: slow and tough; stops outside most towers' reach and knocks them out
+        // (SimConfig.SiegeRangeTiles). Not in Everything(): only the rough director sends it,
+        // a few at a time, and it says how many itself.
+        public const string SiegeId = "siege";
+        public static EnemyArchetype Siege() { return new EnemyArchetype { Id = SiegeId, CountFactor = 1f, HpFactor = 6f, SpeedFactor = 0.6f, SpawnIntervalFactor = 4f, Siege = true }; }
 
         // One multiplier per DamageType, in the enum's order: physical, fire, frost.
         private static float[] Resists(float physical, float fire, float frost)

@@ -101,6 +101,22 @@ namespace Thesis.Tests.Sim
         }
 
         [Test]
+        public void EveryGeneratedMapHasOreNearTheMiddle()
+        {
+            // The student (2026-10-26): it would be bad if every deposit lay out at the edge.
+            foreach (int size in new[] { 48, 96 })
+                for (ulong seed = 1; seed <= 20; seed++)
+                    foreach (int per in new[] { 1, 4 })
+                    {
+                        MapData map = MapGenerator.Generate(seed, size, size, ridges: size / 4, deposits: 25, depositsPerCluster: per);
+                        int nearest = int.MaxValue;
+                        foreach (Deposit d in map.Deposits)
+                            nearest = System.Math.Min(nearest, System.Math.Max(System.Math.Abs(d.Tile.X - size / 2), System.Math.Abs(d.Tile.Y - size / 2)));
+                        Assert.LessOrEqual(nearest, System.Math.Max(12, size / 6 + 3), "size " + size + ", seed " + seed + ", " + per + " a cluster");
+                    }
+        }
+
+        [Test]
         public void ClusteredDepositsLieInGroupsWithATileBetweenTwoVeins()
         {
             MapData map = MapGenerator.Generate(5, 48, 48, deposits: 24, depositsPerCluster: 4);
@@ -438,6 +454,59 @@ namespace Thesis.Tests.Sim
             TestSims.Send(sim, SimCommand.SellWall(4, 0)); // the collector comes down
             Assert.AreEqual(4, Powered(s));
             Assert.IsFalse(s.Towers[5].Powered);
+        }
+
+        [Test]
+        public void APylonMayNotStandNearTheCore()
+        {
+            SimConfig config = PowerConfig();
+            config.PylonCoreKeepOut = 2f;
+            var pylon = new TowerDef { Id = "pylon", Cost = 1, PowerCapacity = 2, PowerRadius = 2f, FireIntervalTicks = 50 };
+            Simulation sim = New(config, MapWithDeposits(), towers: new[] { TestTowers.Gun(cost: 1), pylon });
+            SimState s = sim.State; // the core is (8,2)
+            TestSims.Send(sim, SimCommand.BuyTower(1, 7, 2));
+            TestSims.Send(sim, SimCommand.BuyTower(1, 7, 1));
+            Assert.AreEqual(0, s.Towers.Count, "within two tiles of the core");
+            TestSims.Send(sim, SimCommand.BuyTower(0, 7, 2));
+            TestSims.Send(sim, SimCommand.BuyTower(1, 5, 1));
+            Assert.AreEqual(2, s.Towers.Count, "any tower beside the core, a pylon further out");
+            Assert.AreEqual("pylon", s.Towers[1].Def.Id);
+        }
+
+        [Test]
+        public void ATowerCanBeTiedToASourceInReachAndAFullSourceSwapsItsOldestTieOut()
+        {
+            Simulation sim = New(PowerConfig(), MapWithDeposits(), towers: new[] { TestTowers.Gun(cost: 1) });
+            SimState s = sim.State; // the core is (8,2); the collector (4,0) reaches 3 tiles and powers 2
+            TestSims.Send(sim, SimCommand.BuildCollector(4, 0));
+            TestSims.Send(sim, SimCommand.BuyTower(0, 5, 1));
+            TestSims.Send(sim, SimCommand.BuyTower(0, 6, 1));
+            TestSims.Send(sim, SimCommand.BuyTower(0, 2, 1)); // the collector only
+            var core = new TileCoord(8, 2);
+            var collector = new TileCoord(4, 0);
+            Assert.AreEqual(3, Powered(s));
+            Assert.AreEqual(collector, s.Towers[2].PoweredBy);
+
+            TestSims.Send(sim, SimCommand.SetPowerSource(5, 1, 4, 0));
+            TestSims.Send(sim, SimCommand.SetPowerSource(6, 1, 4, 0));
+            Assert.AreEqual(collector, s.Towers[0].PoweredBy);
+            Assert.AreEqual(collector, s.Towers[1].PoweredBy);
+            Assert.IsFalse(s.Towers[2].Powered, "the collector's two places are tied; (2,1) has no other source");
+
+            // A third tie to the full collector lets go of the oldest one, (5,1), which the core then powers.
+            TestSims.Send(sim, SimCommand.SetPowerSource(2, 1, 4, 0));
+            Assert.AreEqual(TowerState.NoTile, s.Towers[0].PowerPin);
+            Assert.AreEqual(core, s.Towers[0].PoweredBy);
+            Assert.AreEqual(collector, s.Towers[1].PoweredBy);
+            Assert.AreEqual(collector, s.Towers[2].PoweredBy);
+            Assert.AreEqual(3, Powered(s));
+
+            // Out of reach: nothing changes. Untied: the matching decides again.
+            TestSims.Send(sim, SimCommand.SetPowerSource(2, 1, 8, 2));
+            Assert.AreEqual(collector, s.Towers[2].PowerPin);
+            TestSims.Send(sim, SimCommand.SetPowerSource(6, 1, -1, -1));
+            Assert.AreEqual(TowerState.NoTile, s.Towers[1].PowerPin);
+            Assert.AreEqual(3, Powered(s));
         }
 
         [Test]

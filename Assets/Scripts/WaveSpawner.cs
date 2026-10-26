@@ -80,6 +80,16 @@ public class WaveSpawner : MonoBehaviour
         }
     }
 
+    // The director's line for the next wave (RoughDirector.Line), or empty.
+    public string NextWaveAnnouncement
+    {
+        get
+        {
+            WavePlan plan = Host.State.NextPlan;
+            return plan == null ? "" : RoughDirector.Line(plan.AnnouncementId) ?? "";
+        }
+    }
+
     // One short line about the unusual enemy types of the next wave, so that a name the
     // player has not met says what it means. Empty when the wave holds none of them.
     public string NextWaveHint
@@ -115,6 +125,8 @@ public class WaveSpawner : MonoBehaviour
             case "ember": return "shrugs off fire";
             case "frostborn": return "immune to frost and slow";
             case "bats": return "many small flyers";
+            case "raider": return "goes for your collectors";
+            case "siege": return "stops 4.5 tiles from towers and knocks them out; outrange or slow it";
             default: return null;
         }
     }

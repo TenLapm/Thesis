@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: Pylon
   m_EditorClassIdentifier: Assembly-CSharp::TowerDefAsset
   id: pylon
-  cost: 30
+  cost: 18
   damageType: 0
   damage: 0
   rangeTiles: 0
@@ -22,11 +22,10 @@ MonoBehaviour:
   slowTicks: 0
   slowFactor: 1
   canHitFlying: 0
+  targets: 1
   digCost: 20
   towerHealth: 12
   levels: []
-  shopWeight: 1
-  tier: 1
   upgrades:
   - label: 'Wide grid: reaches 1.5 tiles further'
     damageMul: 1
@@ -58,3 +57,5 @@ MonoBehaviour:
     powerCapacityAdd: 2
   powerCapacity: 3
   powerRadius: 3
+  shopWeight: 1
+  tier: 1

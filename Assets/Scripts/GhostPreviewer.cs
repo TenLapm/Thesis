@@ -70,9 +70,11 @@ public class GhostPreviewer : MonoBehaviour
                         tiles.Add(new Vector2Int(hover.gridX, hover.gridY));
                         bool afford = host.State.BuildBudget >= menu.Cost;
                         bool spot = playerBuilder.IsFreeTile(hover);
-                        valid = afford && spot;
+                        bool nearCore = Placement.PylonTooClose(host.Map, menu, new Thesis.Core.TileCoord(hover.gridX, hover.gridY), host.Config.PylonCoreKeepOut);
+                        valid = afford && spot && !nearCore;
                         ringRadius = menu.RangeTiles * cell;
                         HoverText = !spot ? (playerBuilder.TowersOnWalls ? "Towers stand on a wall or a rock" : "Cannot stand here")
+                                  : nearCore ? "A pylon stands at least " + host.Config.PylonCoreKeepOut.ToString("0.#") + " tiles from the core"
                                   : !afford ? "Not enough ore: " + menu.Cost
                                   : menu.Id + "  " + menu.Cost + " ore" + playerBuilder.PowerNote(hover);
                         break;
@@ -253,6 +255,14 @@ public class GhostPreviewer : MonoBehaviour
             }
         }
 
+        // A tower under the mouse, or the selected one, shows its reach even while a wave runs
+        // or the game is paused (the student, 2026-10-26).
+        if (ringRadius <= 0f && playerBuilder != null && gridManager != null)
+        {
+            Node shown = playerBuilder.HoverSelectable ?? playerBuilder.Selected;
+            TowerState t = playerBuilder.TowerAt(shown);
+            if (t != null && t.RangeTiles > 0f) { hover = shown; ringRadius = t.RangeTiles * gridManager.nodeRadius * 2f; valid = true; }
+        }
         ShowTiles(valid);
         ShowRing(hover, ringRadius, valid);
         ShowFigure(hover, valid);
@@ -312,15 +322,39 @@ public class GhostPreviewer : MonoBehaviour
         {
             ring = TowerView.Line(transform, "RangeRing", ringColor, 0.18f, true);
         }
+        rangeUsed = 0;
         if (hover == null || radius <= 0f)
         {
             ring.enabled = false;
+            HideRange();
             return;
         }
-        ring.startColor = ring.endColor = valid ? ringColor : ringBlockedColor;
-        TowerView.DrawCircle(ring, hover.worldPosition + Vector3.up * 0.4f, radius, 64);
-        ring.enabled = true;
+        ring.enabled = false;
+        // As tiles (2026-10-26): every tile whose centre the tower reaches, which is exactly
+        // where an enemy can be shot (Targeting measures to the enemy, tile centre to centre).
+        float cell = gridManager.nodeRadius * 2f;
+        float tiles = radius / cell;
+        int reach = Mathf.CeilToInt(tiles);
+        Color color = valid ? ringColor : ringBlockedColor;
+        color.a = 0.6f;
+        var centre = new Thesis.Core.TileCoord(hover.gridX, hover.gridY);
+        for (int dx = -reach; dx <= reach; dx++)
+            for (int dy = -reach; dy <= reach; dy++)
+            {
+                var tile = new Thesis.Core.TileCoord(centre.X + dx, centre.Y + dy);
+                if (tile.X < 0 || tile.Y < 0 || tile.X >= gridManager.gridSizeX || tile.Y >= gridManager.gridSizeY) continue;
+                if (!Simulation.InPowerReach(centre, tiles, tile)) continue;
+                Node at = gridManager.grid[tile.X, tile.Y];
+                playerBuilder.Square(rangeTiles, ref rangeUsed, at.worldPosition, cell * 0.86f, color, 0.05f, playerBuilder.SurfaceHeight(at) + cell * 0.05f);
+            }
     }
+
+    private readonly List<LineRenderer> rangeTiles = new List<LineRenderer>();
+    private int rangeUsed;
+
+    private void HideRange() { for (int k = rangeUsed; k < rangeTiles.Count; k++) rangeTiles[k].enabled = false; }
+
+    void LateUpdate() { HideRange(); }
 
     // Grows/activates the ghost tile pool to exactly `count` visible tiles.
     private void SyncGhostTiles(int count)

@@ -233,7 +233,7 @@ namespace Thesis.Sim
             // Each moves by its own class: ground field, sapper field, or a straight
             // line through the air (WP-C2).
             bool fieldDirty = AgentSystem.Step(s.Grid, core, s.Live, s.Towers, config.TickSeconds, s.Occupancy, config.TowerBreachReward,
-                                               ref s.BuildBudget, ref s.CoreHp, events);
+                                               ref s.BuildBudget, ref s.CoreHp, events, config);
             CountCombatEvents(s, firstCombatEvent);
             RemoveDead(s.Live);
 
@@ -262,6 +262,8 @@ namespace Thesis.Sim
                 s.MovesLeft = config.MovesPerWave;
                 s.MovesBought = 0;
                 s.PhaseLogStart = s.PlacementLog.Count;
+                // Siege damage lasts one wave: every tower is whole again for the build phase.
+                foreach (TowerState tower in s.Towers) { tower.SiegeDamage = 0f; tower.KnockedOut = false; }
                 s.Phase = SimPhase.Intermission;
                 s.PhaseTicksRemaining = config.Ticks(config.IntermissionSeconds);
                 phaseStart = s.Clone();
@@ -526,7 +528,7 @@ namespace Thesis.Sim
                 case SimCommandKind.MoveTower:
                     if (config.MoveTowers && InBuildPhase(s) && HasMove(s)
                         && Placement.TryMoveTower(s.Grid, map, fields, new TileCoord(command.X, command.Y), new TileCoord(command.B, command.C), s.Tick,
-                                                  s.Towers, s.PlacementLog, events, config.TowersOnWalls))
+                                                  s.Towers, s.PlacementLog, events, config.TowersOnWalls, config.PylonCoreKeepOut))
                     {
                         UseMove(s);
                     }
@@ -615,6 +617,9 @@ namespace Thesis.Sim
                             events.Add(SimEvent.TowerChanged(chosen.Id));
                         }
                     }
+                    break;
+                case SimCommandKind.SetPowerSource:
+                    TiePower(s, command);
                     break;
                 case SimCommandKind.SetTargeting:
                     if (config.ChooseTargeting && command.A >= 0 && command.A <= (int)TargetingMode.Raiders)
@@ -827,6 +832,7 @@ namespace Thesis.Sim
         private readonly List<int> powerSlotSource = new List<int>();
         private int[] slotTower = new int[0];
         private bool[] slotSeen = new bool[0];
+        private bool[] slotFixed = new bool[0];
 
         public void RecomputePower(SimState s)
         {
@@ -849,18 +855,100 @@ namespace Thesis.Sim
                     AddSource(towers[t].Tile, towers[t].PowerRadius, towers[t].PowerCapacity);
 
             int slots = powerSlotSource.Count;
-            if (slotTower.Length < slots) { slotTower = new int[slots]; slotSeen = new bool[slots]; }
-            for (int k = 0; k < slots; k++) slotTower[k] = -1;
+            if (slotTower.Length < slots) { slotTower = new int[slots]; slotSeen = new bool[slots]; slotFixed = new bool[slots]; }
+            for (int k = 0; k < slots; k++) { slotTower[k] = -1; slotFixed[k] = false; }
+            for (int t = 0; t < towers.Count; t++) { towers[t].Powered = false; towers[t].PoweredBy = TowerState.NoTile; }
+
+            // First the towers the player tied to a source, in id order, each to a free place of
+            // that source while it stands and reaches; those places are then fixed. A tie that
+            // cannot be kept leaves the tower to the matching like any other.
             for (int t = 0; t < towers.Count; t++)
             {
                 TowerState tower = towers[t];
-                tower.Powered = false;
+                if (!tower.IsAlive || tower.OnBench || tower.PowerCapacity > 0 || tower.PowerPin.X < 0) continue;
+                for (int k = 0; k < slots; k++)
+                {
+                    int source = powerSlotSource[k];
+                    if (slotTower[k] >= 0 || !powerSource[source].Equals(tower.PowerPin)) continue;
+                    if (!InPowerReach(powerSource[source], powerRadius[source], tower.Tile)) break;
+                    slotTower[k] = t;
+                    slotFixed[k] = true;
+                    break;
+                }
+            }
+
+            for (int t = 0; t < towers.Count; t++)
+            {
+                TowerState tower = towers[t];
                 if (!tower.IsAlive || tower.OnBench) continue;
                 if (tower.PowerCapacity > 0) { tower.Powered = true; continue; } // a power tower powers itself
-                for (int k = 0; k < slots; k++) slotSeen[k] = false;
+                if (Holds(t, slots)) continue;
+                for (int k = 0; k < slots; k++) slotSeen[k] = slotFixed[k];
                 Augment(t, towers, slots);
             }
-            for (int k = 0; k < slots; k++) if (slotTower[k] >= 0) towers[slotTower[k]].Powered = true;
+            for (int k = 0; k < slots; k++)
+                if (slotTower[k] >= 0)
+                {
+                    towers[slotTower[k]].Powered = true;
+                    towers[slotTower[k]].PoweredBy = powerSource[powerSlotSource[k]];
+                }
+        }
+
+        private bool Holds(int t, int slots)
+        {
+            for (int k = 0; k < slots; k++) if (slotFixed[k] && slotTower[k] == t) return true;
+            return false;
+        }
+
+        // SetPowerSource: tie a tower to a source in reach, or untie it (A < 0). A source tied to
+        // more towers than it powers lets go of its oldest tie, so the newest choice is kept:
+        // choosing a tower for a full collector swaps it in.
+        private void TiePower(SimState s, SimCommand command)
+        {
+            if (!config.PowerRule || !s.Grid.InBounds(new TileCoord(command.X, command.Y))) return;
+            SimNode node = s.Grid.Get(new TileCoord(command.X, command.Y));
+            if (node.Occupant != Occupant.Tower) return;
+            TowerState tower = s.Towers[node.TowerId];
+            if (!tower.IsAlive || tower.OnBench || tower.PowerCapacity > 0) return;
+            if (command.A < 0) { tower.PowerPin = TowerState.NoTile; RecomputePower(s); return; }
+
+            var at = new TileCoord(command.A, command.B);
+            float radius; int capacity;
+            if (!SourceAt(s, at, out radius, out capacity) || !InPowerReach(at, radius, tower.Tile)) return;
+            int order = 0;
+            foreach (TowerState t in s.Towers) order = Math.Max(order, t.PowerPinOrder);
+            tower.PowerPin = at;
+            tower.PowerPinOrder = order + 1;
+            while (true)
+            {
+                TowerState oldest = null;
+                int tied = 0;
+                foreach (TowerState t in s.Towers)
+                {
+                    if (!t.IsAlive || t.OnBench || !t.PowerPin.Equals(at)) continue;
+                    tied++;
+                    if (t != tower && (oldest == null || t.PowerPinOrder < oldest.PowerPinOrder)) oldest = t;
+                }
+                if (tied <= capacity || oldest == null) break;
+                oldest.PowerPin = TowerState.NoTile;
+            }
+            RecomputePower(s);
+        }
+
+        // The power source standing on this tile now, with its reach and its room.
+        private bool SourceAt(SimState s, TileCoord at, out float radius, out int capacity)
+        {
+            radius = 0f; capacity = 0;
+            if (at.Equals(map.Core)) { radius = config.CorePowerRadius; capacity = config.CorePowerCapacity; return true; }
+            if (!s.Grid.InBounds(at)) return false;
+            SimNode node = s.Grid.Get(at);
+            if (node.Occupant == Occupant.Collector) { radius = config.CollectorPowerRadius; capacity = config.CollectorPowerCapacity; return true; }
+            if (node.Occupant == Occupant.Tower)
+            {
+                TowerState pylon = s.Towers[node.TowerId];
+                if (pylon.IsAlive && pylon.PowerCapacity > 0) { radius = pylon.PowerRadius; capacity = pylon.PowerCapacity; return true; }
+            }
+            return false;
         }
 
         private void AddSource(TileCoord tile, float radius, int capacity)
@@ -932,7 +1020,7 @@ namespace Thesis.Sim
             if (!config.BuildMenu || index < 0 || index >= towerLibrary.Length) return;
             TowerDef def = towerLibrary[index];
             if (def.Tier > s.ResearchLevel || !TowerCombine.HasRoomFor(s.Towers, def, 1, config, s.WaveIndex)) return;
-            Placement.TryPlaceTower(s.Grid, map, fields, def, def.Cost, tile, ref s.BuildBudget, s.Tick, s.Towers, s.PlacementLog, events, 1, config.TowersOnWalls);
+            Placement.TryPlaceTower(s.Grid, map, fields, def, def.Cost, tile, ref s.BuildBudget, s.Tick, s.Towers, s.PlacementLog, events, 1, config.TowersOnWalls, config.PylonCoreKeepOut);
         }
 
         private void Research(SimState s)
@@ -1001,6 +1089,13 @@ namespace Thesis.Sim
             if (!node.IsWalkable || node.Occupant != Occupant.None || map.DepositAt(tile) >= 0) return;
             if (map.EdgeDistance(tile.X, tile.Y) < Math.Max(map.BuildMargin, config.CoreEdgeMargin)) return;
             for (int i = 0; i < map.Spawns.Length; i++) if (map.Spawns[i] == tile) return;
+            if (config.PylonCoreKeepOut > 0f)
+                foreach (TowerState t in s.Towers)
+                    if (t.IsAlive && !t.OnBench && t.PowerCapacity > 0)
+                    {
+                        int dx = t.Tile.X - tile.X, dy = t.Tile.Y - tile.Y;
+                        if ((float)(dx * dx + dy * dy) <= (float)(config.PylonCoreKeepOut * config.PylonCoreKeepOut)) return; // not next to a pylon
+                    }
 
             TileCoord old = s.Core;
             fields.Generate(s.Grid, tile);
@@ -1400,6 +1495,7 @@ namespace Thesis.Sim
                     WaveIndex = s.WaveIndex,
                     Archetype = group.Archetype,
                     TargetsCollectors = group.TargetsCollectors,
+                    Siege = group.Siege,
                 };
                 s.Agents.Add(agent);
                 s.Live.Add(agent);

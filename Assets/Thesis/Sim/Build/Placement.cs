@@ -53,6 +53,14 @@ namespace Thesis.Sim
             return !node.IsWalkable && node.Occupant == Occupant.None;
         }
 
+        // A power tower too close to the core (SimConfig.PylonCoreKeepOut), tile centre to centre.
+        public static bool PylonTooClose(MapData map, TowerDef def, TileCoord tile, float keepOut)
+        {
+            if (def == null || def.PowerCapacity <= 0 || !(keepOut > 0f)) return false;
+            int dx = tile.X - map.Core.X, dy = tile.Y - map.Core.Y;
+            return (float)(dx * dx + dy * dy) <= (float)(keepOut * keepOut);
+        }
+
         public static bool IsProtected(MapData map, TileCoord t)
         {
             if (t == map.Core) return true;
@@ -144,13 +152,13 @@ namespace Thesis.Sim
         // tower, because a later sale refunds a share of what was actually paid.
         public static bool TryPlaceTower(SimGrid grid, MapData map, FlowFieldSet fields, TowerDef def, int price, TileCoord tile,
                                          ref float buildBudget, int tick, IList<TowerState> towers,
-                                         IList<PlacementRecord> log, IList<SimEvent> events, int level = 1, bool onWalls = false)
+                                         IList<PlacementRecord> log, IList<SimEvent> events, int level = 1, bool onWalls = false, float pylonKeepOut = 0f)
         {
             if (def == null) throw new ArgumentNullException(nameof(def));
             if (towers == null) throw new ArgumentNullException(nameof(towers));
 
             var tiles = new[] { tile };
-            if (!CanPlaceTower(grid, map, tile, onWalls)) return false;
+            if (!CanPlaceTower(grid, map, tile, onWalls) || PylonTooClose(map, def, tile, pylonKeepOut)) return false;
             if (buildBudget < price) return false;
 
             buildBudget -= price;
@@ -224,7 +232,7 @@ namespace Thesis.Sim
         // the tile changes. `to` must be a tile a tower could be built on (CanPlace,
         // I9). Returns false, changing nothing, otherwise.
         public static bool TryMoveTower(SimGrid grid, MapData map, FlowFieldSet fields, TileCoord from, TileCoord to, int tick,
-                                        IList<TowerState> towers, IList<PlacementRecord> log, IList<SimEvent> events, bool onWalls = false)
+                                        IList<TowerState> towers, IList<PlacementRecord> log, IList<SimEvent> events, bool onWalls = false, float pylonKeepOut = 0f)
         {
             if (towers == null) throw new ArgumentNullException(nameof(towers));
             if (!grid.InBounds(from)) return false;
@@ -234,6 +242,7 @@ namespace Thesis.Sim
             if (!CanPlaceTower(grid, map, to, onWalls)) return false;
 
             TowerState tower = towers[source.TowerId];
+            if (PylonTooClose(map, tower.Def, to, pylonKeepOut)) return false;
             int terrainCost = source.TerrainCost;
             float health = source.WallHealth;
             float fullHealth = source.MaxWallHealth;

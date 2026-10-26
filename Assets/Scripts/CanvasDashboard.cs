@@ -326,7 +326,7 @@ public class CanvasDashboard : MonoBehaviour
                     // No clock: the build phase lasts until the player presses Start.
                     string next = waveSpawner.NextWaveText;
                     waveText.text = next.Length > 0
-                        ? $"Next, wave {waveSpawner.currentWave + 1}: {next}\n" + (waveSpawner.NextWaveHint.Length > 0 ? waveSpawner.NextWaveHint : "Build, then press Start")
+                        ? $"Next, wave {waveSpawner.currentWave + 1}: {next}\n" + (waveSpawner.NextWaveAnnouncement.Length > 0 ? $"<color=#fbbf24>{waveSpawner.NextWaveAnnouncement}</color>\n" : "") + (waveSpawner.NextWaveHint.Length > 0 ? waveSpawner.NextWaveHint : "Build, then press Start")
                         : waveSpawner.currentWave == 0 ? "Build, then press Start"
                         : $"Wave {waveSpawner.currentWave} cleared\nPress Start for wave {waveSpawner.currentWave + 1}";
                 }

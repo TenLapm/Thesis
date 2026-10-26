@@ -56,6 +56,13 @@ namespace Thesis.Sim
         // while any stands.
         public bool TargetsCollectors;
 
+        // A siege enemy (2026-10-26): see SimConfig.SiegeRangeTiles. SiegeSetup counts the
+        // ticks it has stood setting up (less than one a tick while slowed); SiegeCooldown the
+        // ticks to its next shot. Both go back to 0 when no tower is in reach.
+        public bool Siege;
+        public float SiegeSetup;
+        public int SiegeCooldown;
+
         // The nearest this agent has come to the core so far, in flow-field units
         // (tiles x 10), measured the way it travels: see RouteCost. SimNode.Infinity
         // until it takes its first live step. Feeds WaveOutcome.PressureShare.
@@ -101,6 +108,10 @@ namespace Thesis.Sim
             WaveIndex = source.WaveIndex;
             Archetype = source.Archetype;
             MinCostSeen = source.MinCostSeen;
+            TargetsCollectors = source.TargetsCollectors; // missing until 2026-10-26: a restored raider forgot it
+            Siege = source.Siege;
+            SiegeSetup = source.SiegeSetup;
+            SiegeCooldown = source.SiegeCooldown;
         }
 
         internal AgentState Clone() { return new AgentState(this); }

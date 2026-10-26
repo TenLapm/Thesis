@@ -101,7 +101,14 @@ MonoBehaviour:
     CollectorPowerCapacity: 2
     AgentsIncrementEveryWaves: 2
     HpGrowthPerWave: 0.08
+    PylonCoreKeepOut: 5
     ChooseTargeting: 1
+    SiegeRangeTiles: 4.5
+    SiegeSetupTicks: 100
+    SiegeIntervalTicks: 75
+    SiegeDamage: 4
+    SiegeSplashTiles: 1.5
+    TowerSiegeHp: 10
     MergeCount: 3
     CorePlacement: 1
     CoreEdgeMargin: 6

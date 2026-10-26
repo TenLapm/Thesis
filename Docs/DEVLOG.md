@@ -2067,3 +2067,73 @@ around ore veins"). Defending one vein cost about 28 ore (a collector and two to
   to 4 so it still sells a tower; pinned replays re-recorded.
 - Open: the new upgrade numbers are first guesses; the gauntlet (`--upgrade <n>`) can now compare a
   tower's choices.
+
+---
+
+## 2026-10-26 — A rough director: outpost raids and siege enemies against a stack at the core
+
+**Status:** at the student's request ("I can still stack the towers in the same set-up for most of
+the waves"). 636 tests pass in both runners (6 new). Not committed. ArknightsTest now runs it
+(`DirectorHost.Condition.DevRoughDirector`). Not a study condition and not the director of §5: no
+learning, no build profile, no threat cost table.
+
+- **Why not just vary the path.** Every ground path ends at the core, so towers stacked there cover
+  the end of every route whatever the entry; RaidPlanner already sent odd waves in at the weak side.
+  The director therefore changes what a wave goes for and what it is.
+- **`RoughDirector`** (Sim/Waves) reads the board as the build phase begins: the share of tower
+  damage within 5 tiles of the core (the stack) and which collectors no tower covers (bare). Authored
+  scores pick one strategy a wave: `outpost_raid` (stacked, bare outposts: 15 to 40 % raiders),
+  `siege_stack` (stacked, nothing bare to raid: one to three siege enemies, each in place of four
+  plain ones), or `baseline`. Same strategy as last wave: 0.15 less. At least half of every wave goes
+  for the core. It keeps no memory (the previous strategy is `State.CurrentPlan`), so a retried wave
+  is planned the same. Its line is shown under the next wave (`RoughDirector.Line`).
+- **The siege enemy** (`EnemyArchetypes.Siege`, `AgentState.Siege`, `AgentSystem.Besiege`): six times
+  the hit points, 0.6 the speed. It stops as soon as a tower is within 4.5 tiles, sets up for 2 s
+  (a slow stretches that), then every 1.5 s hits the tower with the most towers round it and every
+  tower within 1.5 tiles of it for 4. A tower that has taken 10 is knocked out
+  (`TowerState.KnockedOut`, a grey ring and cross) until the next build phase; never destroyed (the
+  student's choice). Counters: ballista, sniper and range upgrades outrange it; flak matches it;
+  frost slows the set-up; towers spread apart take one shot at a time. Numbers in `SimConfig.Siege*`.
+- **Found on the way:** `AgentState.Clone` did not copy `TargetsCollectors`, so a raider restored by
+  an Undo or a retry forgot it was one. Fixed; the plan hash now includes it and the siege flag.
+  Pinned replays re-recorded.
+- Open: every number is a first guess, played by nobody yet; raiders still go for the NEAREST
+  collector, not the barest one; a knocked-out pylon still gives power.
+- **Ore near the middle, on every map** (the student: "it'll be bad if all the spots are on the
+  edge"). `MapGenerator` places the first cluster centre (or, unclustered, the first deposit) in a
+  band round the middle: 6 to max(10, a third of the way out) rings for clusters, 3 to max(6, a
+  third) for single deposits. Tried at random first, then searched ring by ring, so a rocky middle
+  still gets one. New test over 20 seeds, 48 and 96 tiles, both modes. Pinned replays re-recorded.
+
+---
+
+## 2026-10-26 — Power links you can swap, range as tiles, forgiving clicks, no pause in a build phase
+
+**Status:** the student's play notes. 638 tests pass in both runners (1 new). Not committed.
+
+- **Power tiles on top** of walls, rocks and the towers' plinths (`PlayerBuilder.SurfaceHeight`);
+  they were drawn at ground level and hidden.
+- **Pause does nothing in a build phase** (`GameSpeedController`): there is no clock to stop, and a
+  pause left from the wave ends when the build phase begins.
+- **Clicks select by what is drawn** (`PlayerBuilder.PickSelectable`): any part of a tower's,
+  collector's or core's drawn box under the mouse, the nearest if several overlap. The tile picker
+  was checked again and was right (camera and real mouse alike), so the student's "aim low" could not
+  be reproduced; this makes the click forgiving whatever the cause. A press turns into a tower drag
+  only after the mouse moves 10 pixels.
+- **Power links** (`TowerState.PoweredBy`, worked out with `Powered`): a line from each source to
+  each tower it powers, bright for the selected source. **Swappable**: with a core, collector or
+  pylon selected, clicking a tower in its reach ties the tower to it (`SimCommand.SetPowerSource`,
+  `TowerState.PowerPin`); a source tied to more towers than it powers lets go of its oldest tie. The
+  matching places tied towers first, then the rest as before (`Simulation.RecomputePower`).
+- **Range as tiles** (`GhostPreviewer.ShowRing`): the tiles whose centres a tower reaches, which is
+  where it can shoot. Shown for the tower under the mouse in any phase, paused or not, else the
+  selected one, else the tower in the hand.
+- **Pylon 18 ore, not within 5 tiles of the core** (the student; `SimConfig.PylonCoreKeepOut`,
+  `Placement.PylonTooClose`, checked on buying and moving a pylon and on moving the core): cheap
+  power for outposts, not for a stack round the core. The ghost says why a tile is refused.
+- **Sappers rare** (the student: if sappers always go for walls, why build walls). The rough director
+  sends the composer's sappers as plain walkers, and sappers only as `maze_breach` (30 % of the wave,
+  announced) when the board has 10 or more wall tiles and the shortest walk from an entry is more
+  than 1.4 times the straight line, from wave 6. Stacking at the core: left as it is for now (the
+  student).
+- 640 tests pass in both runners (3 new in this entry and the one above).
