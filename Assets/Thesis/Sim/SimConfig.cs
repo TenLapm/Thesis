@@ -275,6 +275,11 @@ namespace Thesis.Sim
         // pieces went into the towers' upgrade paths.
         public bool FlatGear = false;
 
+        // Research opens upgrades, not towers (2026-10-27, the student): every tower can be built
+        // from the start, none upgraded at tier 1; each tier researched allows one more upgrade a
+        // tower (tier 2 the first, tier 3 the second). Gear keeps its tiers.
+        public bool ResearchUnlocksUpgrades = false;
+
         // The player may set which enemy a tower shoots (TowerState.Mode).
         public bool ChooseTargeting = false;
 

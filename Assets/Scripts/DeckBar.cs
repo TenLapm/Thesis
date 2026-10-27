@@ -718,7 +718,8 @@ public class DeckBar : MonoBehaviour
     private string Unlocks(int tier)
     {
         var names = new List<string>();
-        foreach (TowerDef t in Host.Sim.TowerLibrary) if (t.Tier == tier) names.Add(t.Id);
+        if (Host.Config.ResearchUnlocksUpgrades) names.Add(tier == 2 ? "first upgrades" : "second upgrades");
+        else foreach (TowerDef t in Host.Sim.TowerLibrary) if (t.Tier == tier) names.Add(t.Id);
         foreach (GearDef g in Host.Sim.GearLibrary) if (g.Tier == tier && g.OnSale(Host.Config)) names.Add(g.Id);
         return string.Join(", ", names);
     }
@@ -785,7 +786,7 @@ public class DeckBar : MonoBehaviour
             if (shown[g]) Enable(gizmos[g], usable[g]);
         }
         if (towerSel && playerBuilder.UpgradesOn)
-            Set(gizmos[0].label, playerBuilder.HasUpgradeLeft(playerBuilder.SelectedTower) ? playerBuilder.UpgradeCostFor(playerBuilder.SelectedTower).ToString("0.#") : "MAX");
+            Set(gizmos[0].label, !playerBuilder.HasUpgradeLeft(playerBuilder.SelectedTower) ? "MAX" : playerBuilder.UpgradeNeedsResearch(playerBuilder.SelectedTower) ? "T" + (playerBuilder.SelectedTower.UpgradeCount + 2) : playerBuilder.UpgradeCostFor(playerBuilder.SelectedTower).ToString("0.#"));
         if (towerSel || collectorSel)
         {
             float back = towerSel ? playerBuilder.SelectedTower.PricePaid * Host.Config.SellRefund : Host.Config.CollectorPrice * Host.Config.SellRefund;

@@ -603,7 +603,7 @@ namespace Thesis.Sim
                     {
                         TowerState chosen = GearTarget(s, command);
                         float price = chosen != null ? UpgradePrice(chosen) : 0f;
-                        if (chosen != null && TowerUpgradeChoices.Allowed(chosen, command.A) && chosen.UpgradeCount < config.UpgradesPerTower && s.BuildBudget >= price)
+                        if (chosen != null && TowerUpgradeChoices.Allowed(chosen, command.A) && chosen.UpgradeCount < UpgradesAllowed(s) && s.BuildBudget >= price)
                         {
                             s.BuildBudget -= price;
                             if (chosen.Upgrade == TowerUpgradeChoices.None) chosen.Upgrade = command.A;
@@ -990,6 +990,10 @@ namespace Thesis.Sim
         public int CraftPrice(int piece) { return Math.Max(0, (int)(float)(gearLibrary[piece].Price * config.GearCraftPriceFactor)); }
 
         // What the next research tier costs, or a negative number when all are bought.
+        // How many upgrades a tower may have now: all of SimConfig.UpgradesPerTower, or with
+        // ResearchUnlocksUpgrades one fewer than the research tier reached.
+        public int UpgradesAllowed(SimState s) { return config.ResearchUnlocksUpgrades ? Math.Max(0, Math.Min(config.UpgradesPerTower, s.ResearchLevel - 1)) : config.UpgradesPerTower; }
+
         public float ResearchPrice => State.ResearchLevel >= 3 ? -1f : State.ResearchLevel == 1 ? config.ResearchTier2Price : config.ResearchTier3Price;
 
         private void BuildCollector(SimState s, TileCoord tile)
@@ -1021,7 +1025,7 @@ namespace Thesis.Sim
         {
             if (!config.BuildMenu || index < 0 || index >= towerLibrary.Length) return;
             TowerDef def = towerLibrary[index];
-            if (def.Tier > s.ResearchLevel || !TowerCombine.HasRoomFor(s.Towers, def, 1, config, s.WaveIndex)) return;
+            if ((!config.ResearchUnlocksUpgrades && def.Tier > s.ResearchLevel) || !TowerCombine.HasRoomFor(s.Towers, def, 1, config, s.WaveIndex)) return;
             Placement.TryPlaceTower(s.Grid, map, fields, def, def.Cost, tile, ref s.BuildBudget, s.Tick, s.Towers, s.PlacementLog, events, 1, config.TowersOnWalls, config.PylonCoreKeepOut);
         }
 

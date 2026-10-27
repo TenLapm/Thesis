@@ -103,6 +103,7 @@ MonoBehaviour:
     HpGrowthPerWave: 0.08
     PylonCoreKeepOut: 5
     FlatGear: 1
+    ResearchUnlocksUpgrades: 1
     ChooseTargeting: 1
     SiegeRangeTiles: 4.5
     SiegeSetupTicks: 100

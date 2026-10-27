@@ -101,6 +101,30 @@ namespace Thesis.Tests.Sim
         }
 
         [Test]
+        public void WithResearchUnlockingUpgradesEveryTowerIsBuiltAtOnceAndEachTierOpensOneUpgrade()
+        {
+            var config = new SimConfig { ShopOffers = 0, StartBudget = 500f, BuildMenu = true, UpgradesPerTower = 2, WaitForStart = true, ChoiceUpgradeCost = 5f,
+                                         ResearchUnlocksUpgrades = true, ResearchTier2Price = 10f, ResearchTier3Price = 20f };
+            AsciiFixture f = TestMaps.Parse("S . . . . C");
+            var sim = new Simulation(config, f.Map, TestShapes.SampleSceneLibrary(), TestSims.GameTowers(), 1, new EscalationPlanner(config, f.Map));
+            int sniper = System.Array.FindIndex(sim.TowerLibrary, d => d.Id == "sniper");
+            Assert.AreEqual(3, sim.TowerLibrary[sniper].Tier);
+            TestSims.Send(sim, SimCommand.BuyTower(sniper, 2, 0));
+            Assert.AreEqual(1, sim.State.Towers.Count, "a tier 3 tower at research tier 1");
+            TowerState tower = sim.State.Towers[0];
+
+            TestSims.Send(sim, SimCommand.ChooseUpgrade(2, 0, 0));
+            Assert.AreEqual(0, tower.UpgradeCount, "no upgrade at tier 1");
+            TestSims.Send(sim, SimCommand.Research());
+            TestSims.Send(sim, SimCommand.ChooseUpgrade(2, 0, 0));
+            TestSims.Send(sim, SimCommand.ChooseUpgrade(2, 0, 1));
+            Assert.AreEqual(1, tower.UpgradeCount, "tier 2: the first upgrade only");
+            TestSims.Send(sim, SimCommand.Research());
+            TestSims.Send(sim, SimCommand.ChooseUpgrade(2, 0, 1));
+            Assert.AreEqual(2, tower.UpgradeCount, "tier 3: the second");
+        }
+
+        [Test]
         public void EveryThirdShotIsACrit()
         {
             Rig rig = NewRig();

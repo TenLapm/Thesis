@@ -2180,3 +2180,8 @@ both runners (8 new). Not committed.
   The bar's tiles show a colour tile and the price with an ore gem; the categories have icons; the
   inspect pane has a header (colour, name, rarity pips, path), stat bars for damage, rate and range,
   one line of what else the tower does, and icon commands.
+- **Research opens upgrades, not towers** (the student; `SimConfig.ResearchUnlocksUpgrades`, on in
+  the game): every tower can be built from the start; at research tier 1 no tower can be upgraded,
+  tier 2 allows a tower's first upgrade, tier 3 its second (`Simulation.UpgradesAllowed`). Gear keeps
+  its tiers. The research tile says what it opens; the inspect pane's upgrade button shows the tier
+  it waits for ("T2"). 649 tests pass in both runners (1 new).

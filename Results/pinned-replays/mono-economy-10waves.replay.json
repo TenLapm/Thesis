@@ -98,6 +98,7 @@
     "HpGrowthPerWave": 0.08,
     "PylonCoreKeepOut": 0.0,
     "FlatGear": false,
+    "ResearchUnlocksUpgrades": false,
     "ChooseTargeting": true,
     "SiegeRangeTiles": 4.5,
     "SiegeSetupTicks": 100,
@@ -3528,7 +3529,7 @@
       "Levels": null
     }
   ],
-  "SetupHash": "f98c86282b6b1754",
+  "SetupHash": "c18bd49ab713e447",
   "InitialHash": "9fa72fb4a80f4d10",
   "Commands": [
     {

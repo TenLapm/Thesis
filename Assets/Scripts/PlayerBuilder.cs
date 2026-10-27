@@ -188,7 +188,7 @@ public class PlayerBuilder : MonoBehaviour
 
     public bool CanUpgrade(TowerState tower)
     {
-        return UpgradesOn && HasUpgradeLeft(tower) && IsBuildPhase && Host.State.BuildBudget >= UpgradeCostFor(tower);
+        return UpgradesOn && HasUpgradeLeft(tower) && !UpgradeNeedsResearch(tower) && IsBuildPhase && Host.State.BuildBudget >= UpgradeCostFor(tower);
     }
 
     // Both upgrades a tower has, by name, or "".
@@ -526,7 +526,10 @@ public class PlayerBuilder : MonoBehaviour
 
     public bool HasDeposits => Host.Map.Deposits.Length > 0;
 
-    public bool TowerUnlocked(int index) { return Host.Sim.TowerLibrary[index].Tier <= Host.State.ResearchLevel; }
+    public bool TowerUnlocked(int index) { return Host.Config.ResearchUnlocksUpgrades || Host.Sim.TowerLibrary[index].Tier <= Host.State.ResearchLevel; }
+
+    // The tower may take another upgrade but the research has not opened it yet (SimConfig.ResearchUnlocksUpgrades).
+    public bool UpgradeNeedsResearch(TowerState tower) { return HasUpgradeLeft(tower) && tower.UpgradeCount >= Host.Sim.UpgradesAllowed(Host.State); }
 
     // A tower of the menu into the hand. It stays there after it is placed, for the next.
     public void SelectMenuTower(int index)

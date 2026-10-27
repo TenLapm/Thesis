@@ -740,7 +740,8 @@ public class TowerShopPanel : MonoBehaviour
     private string Unlocks(int tier)
     {
         var names = new List<string>();
-        foreach (TowerDef t in Host.Sim.TowerLibrary) if (t.Tier == tier) names.Add(t.Id);
+        if (Host.Config.ResearchUnlocksUpgrades) names.Add(tier == 2 ? "first upgrades" : "second upgrades");
+        else foreach (TowerDef t in Host.Sim.TowerLibrary) if (t.Tier == tier) names.Add(t.Id);
         foreach (GearDef g in Host.Sim.GearLibrary) if (g.Tier == tier && g.OnSale(Host.Config)) names.Add(g.Id);
         return string.Join(", ", names);
     }
