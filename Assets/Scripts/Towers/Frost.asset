@@ -49,40 +49,166 @@ MonoBehaviour:
     splashAdd: 0
     slowTicksMul: 1
     extraTargets: 0
-    id: deep
+    id: deep-freeze
     grantsFlying: 0
     ignoresResist: 0
     slowTicksAdd: 0
     slowFactorTo: 0.25
     powerRadiusAdd: 0
     powerCapacityAdd: 0
-  - label: 'Long chill: slows 60% longer'
+    path: 1
+    step: 1
+    pathName: Deep freeze
+    damageAdd: 0
+    lure: 0
+    beacon: 0
+    critEvery: 0
+    critMul: 1
+    executeBelow: 0
+    flyingDamageMul: 1
+    burnDps: 0
+    burnTicks: 0
+    exposeMul: 1
+    exposeTicks: 0
+  - label: 'Permafrost: slows twice as long, +1 range'
     damageMul: 1
     intervalMul: 1
-    rangeAdd: 0
+    rangeAdd: 1
     splashAdd: 0
-    slowTicksMul: 1.6
+    slowTicksMul: 2
     extraTargets: 0
-    id: long
+    id: permafrost
     grantsFlying: 0
     ignoresResist: 0
     slowTicksAdd: 0
     slowFactorTo: 1
     powerRadiusAdd: 0
     powerCapacityAdd: 0
-  - label: 'Ice spikes: x4 damage'
-    damageMul: 4
+    path: 1
+    step: 2
+    pathName: Deep freeze
+    damageAdd: 0
+    lure: 0
+    beacon: 0
+    critEvery: 0
+    critMul: 1
+    executeBelow: 0
+    flyingDamageMul: 1
+    burnDps: 0
+    burnTicks: 0
+    exposeMul: 1
+    exposeTicks: 0
+  - label: 'Brittle: enemies hit take +25% damage for 2 s'
+    damageMul: 1
     intervalMul: 1
     rangeAdd: 0
     splashAdd: 0
     slowTicksMul: 1
     extraTargets: 0
-    id: spikes
+    id: brittle
     grantsFlying: 0
     ignoresResist: 0
     slowTicksAdd: 0
     slowFactorTo: 1
     powerRadiusAdd: 0
     powerCapacityAdd: 0
+    path: 2
+    step: 1
+    pathName: Brittle
+    damageAdd: 0
+    lure: 0
+    beacon: 0
+    critEvery: 0
+    critMul: 1
+    executeBelow: 0
+    flyingDamageMul: 1
+    burnDps: 0
+    burnTicks: 0
+    exposeMul: 1.25
+    exposeTicks: 100
+  - label: 'Shatter: enemies hit take +50% damage for 2 s'
+    damageMul: 1
+    intervalMul: 1
+    rangeAdd: 0
+    splashAdd: 0
+    slowTicksMul: 1
+    extraTargets: 0
+    id: shatter
+    grantsFlying: 0
+    ignoresResist: 0
+    slowTicksAdd: 0
+    slowFactorTo: 1
+    powerRadiusAdd: 0
+    powerCapacityAdd: 0
+    path: 2
+    step: 2
+    pathName: Brittle
+    damageAdd: 0
+    lure: 0
+    beacon: 0
+    critEvery: 0
+    critMul: 1
+    executeBelow: 0
+    flyingDamageMul: 1
+    burnDps: 0
+    burnTicks: 0
+    exposeMul: 1.5
+    exposeTicks: 100
+  - label: 'Ice spikes: +3 damage'
+    damageMul: 1
+    intervalMul: 1
+    rangeAdd: 0
+    splashAdd: 0
+    slowTicksMul: 1
+    extraTargets: 0
+    id: ice-spikes
+    grantsFlying: 0
+    ignoresResist: 0
+    slowTicksAdd: 0
+    slowFactorTo: 1
+    powerRadiusAdd: 0
+    powerCapacityAdd: 0
+    path: 3
+    step: 1
+    pathName: Ice spikes
+    damageAdd: 3
+    lure: 0
+    beacon: 0
+    critEvery: 0
+    critMul: 1
+    executeBelow: 0
+    flyingDamageMul: 1
+    burnDps: 0
+    burnTicks: 0
+    exposeMul: 1
+    exposeTicks: 0
+  - label: 'Glacier: +5 damage, +0.5 splash'
+    damageMul: 1
+    intervalMul: 1
+    rangeAdd: 0
+    splashAdd: 0.5
+    slowTicksMul: 1
+    extraTargets: 0
+    id: glacier
+    grantsFlying: 0
+    ignoresResist: 0
+    slowTicksAdd: 0
+    slowFactorTo: 1
+    powerRadiusAdd: 0
+    powerCapacityAdd: 0
+    path: 3
+    step: 2
+    pathName: Ice spikes
+    damageAdd: 5
+    lure: 0
+    beacon: 0
+    critEvery: 0
+    critMul: 1
+    executeBelow: 0
+    flyingDamageMul: 1
+    burnDps: 0
+    burnTicks: 0
+    exposeMul: 1
+    exposeTicks: 0
   powerCapacity: 0
   powerRadius: 0

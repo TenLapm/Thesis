@@ -27,8 +27,22 @@ namespace Thesis.Sim
         // `core` is the grid's node for the core tile: target choice ranks enemies
         // by how far they still have to go to it.
         public static void Step(SimGrid grid, SimNode core, IList<TowerState> towers, IList<AgentState> live, DamageMap damage,
-                                float[] damageByType, float minSlowFactor, ref float buildBudget, IList<SimEvent> events)
+                                float[] damageByType, float minSlowFactor, ref float buildBudget, IList<SimEvent> events, float tickSeconds = 0.02f)
         {
+            // Burning and exposed enemies first (path abilities, 2026-10-27): the burn's damage
+            // for this tick, credited to the tower that lit it, and both clocks run down.
+            for (int i = 0; i < live.Count; i++)
+            {
+                AgentState agent = live[i];
+                if (!agent.IsAlive) continue;
+                if (agent.ExposeTicks > 0 && --agent.ExposeTicks == 0) agent.ExposeMul = 1f;
+                if (agent.BurnTicks <= 0) continue;
+                agent.BurnTicks--;
+                if (agent.BurnTower < 0 || agent.BurnTower >= towers.Count) continue;
+                float burn = (float)((float)(agent.BurnDps * tickSeconds) * agent.Resist[(int)DamageType.Fire]);
+                Deal(towers[agent.BurnTower], agent, burn, (int)DamageType.Fire, grid, damage, damageByType, ref buildBudget, events);
+            }
+
             // Scratch for one shot's targets; a tower never has more bolts than this.
             int[] taken = new int[8];
             for (int t = 0; t < towers.Count; t++)
@@ -91,6 +105,22 @@ namespace Thesis.Sim
             if (!(resist > 0f)) return;
 
             float dealt = (float)(tower.Damage * resist);
+            // A crit is every CritEvery-th shot of the tower, counted by Shots (the shot now
+            // being fired is Shots + 1): no dice, so a replay sees the same crits.
+            if (tower.CritEvery > 0 && (tower.Shots + 1) % tower.CritEvery == 0) dealt = (float)(dealt * tower.CritMul);
+            if (agent.Movement == MovementClass.Flying) dealt = (float)(dealt * tower.FlyingDamageMul);
+            if (agent.ExposeTicks > 0) dealt = (float)(dealt * agent.ExposeMul);
+            if (tower.ExecuteBelow > 0f && (float)(agent.Hp - dealt) < (float)(agent.MaxHp * tower.ExecuteBelow)) dealt = agent.Hp;
+            if (tower.BurnTicks > 0)
+            {
+                if (tower.BurnTicks >= agent.BurnTicks) { agent.BurnTicks = tower.BurnTicks; agent.BurnTower = tower.Id; }
+                if (tower.BurnDps > agent.BurnDps) agent.BurnDps = tower.BurnDps;
+            }
+            if (tower.ExposeTicks > 0)
+            {
+                if (tower.ExposeTicks > agent.ExposeTicks) agent.ExposeTicks = tower.ExposeTicks;
+                if (tower.ExposeMul > agent.ExposeMul) agent.ExposeMul = tower.ExposeMul;
+            }
             if (dealt > agent.Hp) dealt = agent.Hp; // overkill is not damage
             if (dealt > 0f)
             {
@@ -98,6 +128,7 @@ namespace Thesis.Sim
                 damage.Add(grid.NodeFromPosition(agent.Position), dealt);
                 if (damageByType != null) damageByType[type] = (float)(damageByType[type] + dealt);
                 tower.DamageDealt = (float)(tower.DamageDealt + dealt);
+                tower.WaveDamage = (float)(tower.WaveDamage + dealt);
             }
 
             // Slow keeps the LONGEST remaining time and the STRONGEST (smallest)
@@ -116,6 +147,30 @@ namespace Thesis.Sim
                 agent.Killed = true;
                 buildBudget += agent.KillReward;
                 tower.Kills++;
+                tower.WaveKills++;
+                events?.Add(SimEvent.AgentKilled(agent.Id, agent.KillReward));
+            }
+        }
+
+        // Damage that is not a shot (a burn): taken, credited, and a kill paid, like a hit.
+        private static void Deal(TowerState tower, AgentState agent, float amount, int type, SimGrid grid, DamageMap damage, float[] damageByType,
+                                 ref float buildBudget, IList<SimEvent> events)
+        {
+            if (agent.ExposeTicks > 0) amount = (float)(amount * agent.ExposeMul);
+            if (amount > agent.Hp) amount = agent.Hp;
+            if (!(amount > 0f)) return;
+            agent.Hp = (float)(agent.Hp - amount);
+            damage.Add(grid.NodeFromPosition(agent.Position), amount);
+            if (damageByType != null) damageByType[type] = (float)(damageByType[type] + amount);
+            tower.DamageDealt = (float)(tower.DamageDealt + amount);
+            tower.WaveDamage = (float)(tower.WaveDamage + amount);
+            if (agent.Hp <= 0f)
+            {
+                agent.IsAlive = false;
+                agent.Killed = true;
+                buildBudget += agent.KillReward;
+                tower.Kills++;
+                tower.WaveKills++;
                 events?.Add(SimEvent.AgentKilled(agent.Id, agent.KillReward));
             }
         }

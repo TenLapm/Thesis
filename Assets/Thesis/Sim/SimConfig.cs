@@ -271,6 +271,10 @@ namespace Thesis.Sim
         // 0 = anywhere.
         public float PylonCoreKeepOut = 0f;
 
+        // Gear is flat damage or flat range only (GearDef.IsFlat, 2026-10-27); the ability
+        // pieces went into the towers' upgrade paths.
+        public bool FlatGear = false;
+
         // The player may set which enemy a tower shoots (TowerState.Mode).
         public bool ChooseTargeting = false;
 

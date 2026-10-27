@@ -2137,3 +2137,46 @@ learning, no build profile, no threat cost table.
   than 1.4 times the straight line, from wave 6. Stacking at the core: left as it is for now (the
   student).
 - 640 tests pass in both runners (3 new in this entry and the one above).
+
+---
+
+## 2026-10-27 — Upgrade paths, flat gear, restart mid-wave, a damage panel
+
+**Status:** the student's decisions after a discussion (gear still useless; towers should be unique
+by upgrading, in two or three distinct paths; restart unlimited; a damage panel). 648 tests pass in
+both runners (8 new). Not committed.
+
+- **Paths** (`TowerLevelMod.Path`, `Step`, `PathName`; `TowerUpgradeChoices.Allowed`, `Options`):
+  every tower has three paths of two steps; the first upgrade picks a path, the second can only be
+  its next step (a tower without paths keeps the old free choice). Rarity still counts upgrades. The
+  chooser shows only what may be taken next. The paths, by tower:
+  archer Ranger (2, then 3 targets) / Hawkeye (x2, x3 against flyers) / Marksman (every 3rd shot x3,
+  x5); ballista Breaker (ignores armour, pierces 3) / Executioner (finishes under 20 %, 35 %) /
+  Skyward (hits flyers, fires faster); cannon Mortar (range, bigger blast) / Incendiary (burning) /
+  Concussion (slows); brazier Inferno (flat damage, burning) / Bonfire (lure) / Smoke (slows,
+  exposes); frost Deep freeze / Brittle (enemies take +25 %, +50 %) / Ice spikes (flat damage);
+  sniper Assassin (every 2nd shot x2, execute) / Anti-air / Spotter (ignores armour, exposes);
+  shard Splinter / Frostbite / Lance (one big shard); flak Barrage / Skybreaker / Fire shells;
+  pylon Grid / Relay / Beacon. First guesses, unbalanced.
+- **New abilities** (`TowerLevelMod`, `TowerSystem`): flat damage, crits on every n-th shot (counted,
+  no dice), execute, damage against flyers, burning (fire damage a second, credited to the tower that
+  lit it), exposed (takes more from every tower), and lure and beacon, which were gear.
+- **Gear is flat** (`SimConfig.FlatGear`, `GearDef.IsFlat`, `FlatOnly`): scope (+1 range), edge (+1
+  damage), keen edge (+3), far scope (+2 range), and the extractor. The other pieces stay in the
+  roster for old replays and shops, unsold. Flat damage is far more on a fast weak tower (+1 on the
+  brazier's 0.8) than on the ballista; that is the trial the student asked for.
+- **Restart a running wave** (`Simulation.CanRetry` any time after the first wave began): back to the
+  start of that wave's build phase, what was bought in it bought back. "RESTART WAVE n" in the bar.
+- **Damage panel** (`DamagePanel`, added by `DeckBar`): a bar a tower, longest first, for this wave
+  or the whole game (Tab or a click switches; a third press folds it), share and kills, the split by
+  damage type and what leaked. When a wave ends, its three best towers show for five seconds. The sim
+  keeps `TowerState.WaveDamage` and `WaveKills` for it.
+- **The HUD of the approved mockup** (the student: the UI was all text): `HudOverlay` (top left the
+  core's health and the wave's progress as bars; top centre the director's line; top right ore,
+  power and research as badges over the base panel; under it the wave's enemies as coloured chips,
+  then the damage panel; bottom right pause, 1x/2x/3x and one wave button, START or RESTART, with
+  PLAY WAVE n AGAIN under it in a build phase). It hides the old HP text, wave text and buttons and
+  calls what they called. `HudArt` draws the rounded panels and the icons in code (no art files).
+  The bar's tiles show a colour tile and the price with an ore gem; the categories have icons; the
+  inspect pane has a header (colour, name, rarity pips, path), stat bars for damage, rate and range,
+  one line of what else the tower does, and icon commands.

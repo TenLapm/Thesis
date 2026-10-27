@@ -29,6 +29,8 @@ public class GameSpeedController : MonoBehaviour
     private int speedIndex = 0;
 
     public bool IsPaused { get; private set; }
+    public int SpeedIndex => speedIndex;
+
     public float CurrentSpeed => speedLevels[Mathf.Clamp(speedIndex, 0, speedLevels.Length - 1)];
     // "x1" / "x2" / "x3" for the HUD button label.
     public string CurrentSpeedLabel => "x" + Mathf.RoundToInt(CurrentSpeed);

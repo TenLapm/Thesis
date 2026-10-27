@@ -66,7 +66,7 @@ public class DeckBar : MonoBehaviour
     private class Item
     {
         public GameObject root;
-        public Image outline, fill, icon;
+        public Image outline, fill, icon, gem;
         public TextMeshProUGUI name, price, note;
         public CanvasGroup group;
         public System.Action onClick;
@@ -83,7 +83,8 @@ public class DeckBar : MonoBehaviour
     private readonly List<Action> categoryButtons = new List<Action>();
     private readonly List<Item> items = new List<Item>();
     private int category;
-    private static readonly string[] Categories = { "TOWERS  [1]", "ECONOMY  [2]", "GEAR  [3]", "ORDERS  [4]" };
+    private static readonly string[] Categories = { "TOWERS  1", "ECONOMY  2", "GEAR  3", "ORDERS  4" };
+    private static readonly string[] CategoryIcons = { "tower", "gem", "sword", "flag" };
     private const float ItemWidth = 140f;
     private const float ItemHeight = 70f;
     private const int ItemsPerRow = 4;
@@ -108,6 +109,12 @@ public class DeckBar : MonoBehaviour
         canvasRect = GetComponent<RectTransform>();
         if (dashboard == null) dashboard = GetComponent<CanvasDashboard>();
         Build();
+        if (GetComponent<DamagePanel>() == null) gameObject.AddComponent<DamagePanel>(); // the damage panel (2026-10-27)
+        if (GetComponent<HudOverlay>() == null) gameObject.AddComponent<HudOverlay>(); // the HUD of the approved mockup (2026-10-27)
+        HudArt.Skin(bar);
+        HudArt.Skin(info);
+        HudArt.Skin(tipBox);
+        HudArt.Skin(spareArea);
         MoveGameButtons();
     }
 
@@ -161,7 +168,11 @@ public class DeckBar : MonoBehaviour
         for (int c = 0; c < Categories.Length; c++)
         {
             int which = c;
-            categoryButtons.Add(Button(buildArea, Categories[c], new Vector2(0f, -32f - c * 38f), 122f, () => category = which));
+            Action button = Button(buildArea, Categories[c], new Vector2(0f, -32f - c * 38f), 122f, () => category = which);
+            HudArt.AddIcon(button.root.transform, CategoryIcons[c], Bright, new Vector2(8f, -8f), 18f);
+            button.label.rectTransform.offsetMin = new Vector2(32f, button.label.rectTransform.offsetMin.y);
+            button.label.alignment = TextAlignmentOptions.Left;
+            categoryButtons.Add(button);
         }
         for (int i = 0; i < 2 * ItemsPerRow; i++) items.Add(AddItem(i));
         buildArea.gameObject.SetActive(false);
@@ -171,18 +182,23 @@ public class DeckBar : MonoBehaviour
         info.anchorMin = info.anchorMax = new Vector2(0f, 0f);
         info.pivot = new Vector2(0f, 0f);
         info.anchoredPosition = new Vector2(14f, 18f + height);
-        info.sizeDelta = new Vector2(330f, 296f);
+        info.sizeDelta = new Vector2(330f, 308f);
         Image infoBack = info.gameObject.AddComponent<Image>();
         infoBack.color = new Color(0.04f, 0.06f, 0.1f, 0.94f);
         infoBack.raycastTarget = false;
-        infoText = Label(info, "", 17, Bright, TextAlignmentOptions.TopLeft, new Vector2(14f, -12f), new Vector2(302f, 196f), false); // ends above the commands
+        BuildInfoHeader();
+        infoText = Label(info, "", 14, Bright, TextAlignmentOptions.TopLeft, new Vector2(14f, -156f), new Vector2(302f, 92f), false); // ends above the commands
         infoText.textWrappingMode = TextWrappingModes.Normal;
         infoText.richText = true;
-        string[] gizmoNames = { "UPGRADE [U]", "TARGET [T]", "MOVE [M]", "SELL [X]" };
+        string[] gizmoNames = { "", "AIM", "MOVE", "" };
+        string[] gizmoIcons = { "up", "target", "move", "gem" };
         for (int g = 0; g < gizmoNames.Length; g++)
         {
             int which = g;
-            Action gizmo = Button(info, gizmoNames[g], new Vector2(8f + (g % 2) * 158f, -214f - (g / 2) * 38f), 152f, () => UseGizmo(which));
+            Action gizmo = Button(info, gizmoNames[g], new Vector2(8f + g * 79f, -262f), 74f, () => UseGizmo(which));
+            HudArt.AddIcon(gizmo.root.transform, gizmoIcons[g], Bright, new Vector2(7f, -8f), 18f);
+            gizmo.label.rectTransform.offsetMin = new Vector2(29f, gizmo.label.rectTransform.offsetMin.y);
+            gizmo.label.alignment = TextAlignmentOptions.Left;
             gizmos.Add(gizmo);
         }
         info.gameObject.SetActive(false);
@@ -243,13 +259,14 @@ public class DeckBar : MonoBehaviour
         RectTransform icon = Rect("Icon", root);
         icon.anchorMin = icon.anchorMax = new Vector2(0f, 1f);
         icon.pivot = new Vector2(0f, 1f);
-        icon.anchoredPosition = new Vector2(9f, -10f);
-        icon.sizeDelta = new Vector2(14f, 14f);
+        icon.anchoredPosition = new Vector2(10f, -10f);
+        icon.sizeDelta = new Vector2(30f, 30f);
         item.icon = icon.gameObject.AddComponent<Image>();
         item.icon.raycastTarget = false;
-        item.name = Label(root, "", 16, Bright, TextAlignmentOptions.TopLeft, new Vector2(28f, -6f), new Vector2(ItemWidth - 72f, 22f), true);
-        item.price = Label(root, "", 16, Gold, TextAlignmentOptions.TopRight, new Vector2(ItemWidth - 52f, -6f), new Vector2(44f, 22f), true);
-        item.note = Label(root, "", 12, Dim, TextAlignmentOptions.TopLeft, new Vector2(9f, -30f), new Vector2(ItemWidth - 16f, 36f), false);
+        item.name = Label(root, "", 16, Bright, TextAlignmentOptions.TopLeft, new Vector2(48f, -7f), new Vector2(ItemWidth - 54f, 22f), true);
+        item.gem = HudArt.AddIcon(root, "gem", Gold, new Vector2(48f, -32f), 14f);
+        item.price = Label(root, "", 16, Gold, TextAlignmentOptions.TopLeft, new Vector2(66f, -28f), new Vector2(60f, 22f), true);
+        item.note = Label(root, "", 11, Dim, TextAlignmentOptions.TopLeft, new Vector2(10f, -50f), new Vector2(ItemWidth - 16f, 18f), false);
         item.note.textWrappingMode = TextWrappingModes.Normal;
         Button button = root.gameObject.AddComponent<Button>();
         button.transition = Selectable.Transition.None;
@@ -440,9 +457,11 @@ public class DeckBar : MonoBehaviour
         undoButton.root.SetActive(undo);
         redoButton.root.SetActive(undo);
         if (undo) { Enable(undoButton, playerBuilder.CanUndo); Enable(redoButton, playerBuilder.CanRedo); }
-        bool again = Host.CanRetryWave && playerBuilder.IsBuildPhase && !moves;
+        // In a build phase it plays the last wave again; while a wave runs it restarts it from
+        // its build phase (2026-10-27).
+        bool again = false; // the HUD's wave buttons restart and replay waves now (HudOverlay)
         retryButton.root.SetActive(again);
-        if (again) Set(retryButton.label, "PLAY WAVE " + Host.RetryWaveNumber + " AGAIN");
+        if (again) Set(retryButton.label, (playerBuilder.IsBuildPhase ? "PLAY WAVE " : "RESTART WAVE ") + Host.RetryWaveNumber + (playerBuilder.IsBuildPhase ? " AGAIN" : ""));
         bool freeMoves = !moves || playerBuilder.MovesAreFree;
         Set(movesValue, freeMoves ? "free" : state.MovesLeft.ToString());
         movesValue.color = freeMoves || state.MovesLeft > 0 ? Bright : Dim;
@@ -658,6 +677,8 @@ public class DeckBar : MonoBehaviour
         Set(item.price, price);
         Set(item.note, note);
         item.icon.color = icon;
+        if (item.gem.gameObject.activeSelf != (price.Length > 0)) item.gem.gameObject.SetActive(price.Length > 0);
+        item.gem.color = !open ? Dim : affordable ? Gold : new Color(0.97f, 0.44f, 0.44f, 1f);
         item.price.color = !open ? Dim : affordable ? Gold : new Color(0.97f, 0.44f, 0.44f, 1f);
         item.group.alpha = open ? 1f : 0.45f;
         item.outline.color = selected ? Teal : Edge;
@@ -744,9 +765,14 @@ public class DeckBar : MonoBehaviour
         bool show = (tower != null || selected) && !Dragging;
         if (info.gameObject.activeSelf != show) info.gameObject.SetActive(show);
         if (!show) return;
-        if (tower != null) Set(infoText, Describe(tower));
-        else if (playerBuilder.SelectedIsCollector) Set(infoText, DescribeCollector());
-        else if (playerBuilder.SelectedIsCore) Set(infoText, DescribeCore());
+        if (tower != null)
+        {
+            ShowHeader(Title(tower.Def.Id), TowerView.ColorOfTower(tower.Def), tower.Rarity, PathName(tower));
+            ShowStats(tower);
+            Set(infoText, Detail(tower));
+        }
+        else if (playerBuilder.SelectedIsCollector) { ShowHeader("Collector", PlayerBuilder.CollectorColor, 0, "outpost"); ShowStats(null); Set(infoText, DescribeCollector()); }
+        else if (playerBuilder.SelectedIsCore) { ShowHeader("Core", Teal, 0, "lose it and the game is over"); ShowStats(null); Set(infoText, DescribeCore()); }
 
         // The commands, for what is selected only.
         bool towerSel = selected && playerBuilder.SelectedTower != null;
@@ -759,11 +785,11 @@ public class DeckBar : MonoBehaviour
             if (shown[g]) Enable(gizmos[g], usable[g]);
         }
         if (towerSel && playerBuilder.UpgradesOn)
-            Set(gizmos[0].label, playerBuilder.HasUpgradeLeft(playerBuilder.SelectedTower) ? "UPGRADE  " + playerBuilder.UpgradeCostFor(playerBuilder.SelectedTower).ToString("0.#") : "FULLY UPGRADED");
+            Set(gizmos[0].label, playerBuilder.HasUpgradeLeft(playerBuilder.SelectedTower) ? playerBuilder.UpgradeCostFor(playerBuilder.SelectedTower).ToString("0.#") : "MAX");
         if (towerSel || collectorSel)
         {
             float back = towerSel ? playerBuilder.SelectedTower.PricePaid * Host.Config.SellRefund : Host.Config.CollectorPrice * Host.Config.SellRefund;
-            Set(gizmos[3].label, "SELL  +" + back.ToString("0.#"));
+            Set(gizmos[3].label, "+" + back.ToString("0.#"));
         }
     }
 
@@ -785,7 +811,6 @@ public class DeckBar : MonoBehaviour
         int yield = d >= 0 ? Host.Map.Deposits[d].Yield : 0;
         bool beacon = Simulation.NearBeacon(Host.State, new Thesis.Core.TileCoord(n.gridX, n.gridY));
         var text = new System.Text.StringBuilder();
-        text.Append("<size=24><b>Collector</b></size>\n");
         text.Append("+").Append(yield + (beacon ? 1 : 0)).Append(" ore after every wave it survives").Append(beacon ? " (a beacon adds 1)" : "").Append('\n');
         if (playerBuilder.PowerRule)
             text.Append("powers up to ").Append(Host.Config.CollectorPowerCapacity).Append(" towers on the gold tiles\n");
@@ -796,11 +821,141 @@ public class DeckBar : MonoBehaviour
     private string DescribeCore()
     {
         var text = new System.Text.StringBuilder();
-        text.Append("<size=24><b>Core</b></size>\n");
         text.Append("health ").Append(Host.State.CoreHp).Append(" / ").Append(Host.Config.CoreMaxHp).Append('\n');
         text.Append("+").Append(Host.Config.StipendPerWave).Append(" ore after every wave\n");
         if (playerBuilder.PowerRule)
             text.Append("powers up to ").Append(Host.Config.CorePowerCapacity).Append(" towers on the gold tiles\n");
+        return text.ToString();
+    }
+
+    // --- the inspect pane's header and stat bars (2026-10-27, the approved mockup) ---
+    private Image portrait, portraitBack;
+    private TextMeshProUGUI infoName, infoRarity;
+    private readonly Image[] pips = new Image[3];
+    private GameObject statsRoot;
+    private readonly Image[] statFill = new Image[3];
+    private readonly TextMeshProUGUI[] statValue = new TextMeshProUGUI[3];
+    private const float StatBar = 196f;
+
+    private void BuildInfoHeader()
+    {
+        RectTransform back = Rect("Portrait", info);
+        back.anchorMin = back.anchorMax = back.pivot = new Vector2(0f, 1f);
+        back.anchoredPosition = new Vector2(14f, -14f);
+        back.sizeDelta = new Vector2(52f, 52f);
+        portraitBack = back.gameObject.AddComponent<Image>();
+        portraitBack.color = HudOverlay.Ink;
+        portraitBack.raycastTarget = false;
+        RectTransform face = Rect("Face", back);
+        face.anchorMin = face.anchorMax = face.pivot = new Vector2(0.5f, 0.5f);
+        face.sizeDelta = new Vector2(28f, 28f);
+        portrait = face.gameObject.AddComponent<Image>();
+        portrait.raycastTarget = false;
+        infoName = Label(info, "", 24, Bright, TextAlignmentOptions.TopLeft, new Vector2(78f, -12f), new Vector2(240f, 30f), true);
+        for (int i = 0; i < 3; i++) pips[i] = HudArt.AddIcon(info, "dot", Teal, new Vector2(80f + i * 15f, -46f), 11f);
+        infoRarity = Label(info, "", 14, Dim, TextAlignmentOptions.TopLeft, new Vector2(128f, -41f), new Vector2(190f, 20f), false);
+
+        statsRoot = Rect("Stats", info).gameObject;
+        RectTransform stats = (RectTransform)statsRoot.transform;
+        stats.anchorMin = stats.anchorMax = stats.pivot = new Vector2(0f, 1f);
+        stats.anchoredPosition = new Vector2(14f, -78f);
+        stats.sizeDelta = new Vector2(302f, 76f);
+        string[] icons = { "sword", "clock", "range" };
+        for (int i = 0; i < 3; i++)
+        {
+            float y = -i * 25f;
+            HudArt.AddIcon(stats, icons[i], Dim, new Vector2(0f, y), 18f);
+            RectTransform track = Rect("Track", stats);
+            track.anchorMin = track.anchorMax = track.pivot = new Vector2(0f, 1f);
+            track.anchoredPosition = new Vector2(28f, y - 6f);
+            track.sizeDelta = new Vector2(StatBar, 6f);
+            Image t = track.gameObject.AddComponent<Image>();
+            t.color = HudOverlay.Track;
+            t.raycastTarget = false;
+            RectTransform fill = Rect("Fill", track);
+            fill.anchorMin = fill.anchorMax = fill.pivot = new Vector2(0f, 1f);
+            fill.anchoredPosition = Vector2.zero;
+            fill.sizeDelta = new Vector2(0f, 6f);
+            statFill[i] = fill.gameObject.AddComponent<Image>();
+            statFill[i].color = new Color(0.8f, 0.84f, 0.88f, 1f);
+            statFill[i].raycastTarget = false;
+            statValue[i] = Label(stats, "", 14, Bright, TextAlignmentOptions.TopRight, new Vector2(StatBar + 30f, y), new Vector2(72f, 20f), true);
+        }
+    }
+
+    private void ShowHeader(string name, Color color, int rarity, string note)
+    {
+        Set(infoName, name);
+        portrait.color = color;
+        Color level = TowerView.ColorOfLevel(Mathf.Max(1, rarity));
+        for (int i = 0; i < 3; i++)
+        {
+            bool shown = rarity > 0;
+            if (pips[i].gameObject.activeSelf != shown) pips[i].gameObject.SetActive(shown);
+            pips[i].sprite = HudArt.Icon(i < rarity ? "dot" : "ring");
+            pips[i].color = i < rarity ? level : HudOverlay.Edge;
+        }
+        string head = rarity > 0 ? "<color=#" + ColorUtility.ToHtmlStringRGB(level) + ">" + TowerView.LevelName(rarity).Substring(0, 1) + TowerView.LevelName(rarity).Substring(1).ToLowerInvariant() + "</color>" : "";
+        if (note.Length > 0) head += (head.Length > 0 ? "  \u00b7  " : "") + note;
+        Set(infoRarity, head);
+        infoRarity.rectTransform.anchoredPosition = new Vector2(rarity > 0 ? 128f : 80f, -41f);
+    }
+
+    // Damage a hit, shots a second, range: a bar each against a fixed top, the number beside it.
+    // Hidden for what does not shoot (a pylon, a collector, the core).
+    private void ShowStats(TowerState t)
+    {
+        bool shown = t != null && t.PowerCapacity == 0;
+        if (statsRoot.activeSelf != shown) statsRoot.SetActive(shown);
+        infoText.rectTransform.anchoredPosition = new Vector2(14f, shown ? -156f : -78f);
+        infoText.rectTransform.sizeDelta = new Vector2(302f, shown ? 96f : 174f);
+        if (!shown) return;
+        float rate = 50f / Mathf.Max(1, t.FireIntervalTicks);
+        float[] share = { t.Damage * t.Targets / 40f, rate / 10f, t.RangeTiles / 9f };
+        string[] text = { t.Damage.ToString("0.#") + (t.Targets > 1 ? " \u00d7" + t.Targets : ""), rate.ToString("0.#") + "/s", t.RangeTiles.ToString("0.#") };
+        for (int i = 0; i < 3; i++)
+        {
+            statFill[i].rectTransform.sizeDelta = new Vector2(StatBar * Mathf.Clamp01(share[i]), 6f);
+            Set(statValue[i], text[i]);
+        }
+    }
+
+    private static string PathName(TowerState t)
+    {
+        TowerLevelMod[] list = TowerUpgradeChoices.For(t.Def);
+        return TowerUpgradeChoices.IsValidFor(t.Def, t.Upgrade) && list[t.Upgrade].Path > 0 ? list[t.Upgrade].PathName : "";
+    }
+
+    // Under the stat bars: what else the tower does, its upgrades, gear, power and target.
+    private string Detail(TowerState t)
+    {
+        var text = new System.Text.StringBuilder();
+        var tags = new List<string>();
+        if (t.PowerCapacity > 0) tags.Add("powers " + t.PowerCapacity + " towers within " + t.PowerRadius.ToString("0.#"));
+        else
+        {
+            tags.Add(t.Def.DamageType.ToString().ToLowerInvariant());
+            if (t.CanHitFlying) tags.Add("hits flyers");
+            if (t.SplashSquared > 0f) tags.Add("splash " + (Mathf.Sqrt(t.SplashSquared) / Mathf.Max(0.01f, Host.Map.NodeDiameter)).ToString("0.##"));
+            if (t.SlowTicks > 0) tags.Add("slows to " + (t.SlowFactor * 100f).ToString("0") + "%");
+            if (t.CritEvery > 0) tags.Add("every " + t.CritEvery + (t.CritEvery == 2 ? "nd" : t.CritEvery == 3 ? "rd" : "th") + " shot \u00d7" + t.CritMul.ToString("0.#"));
+            if (t.FlyingDamageMul != 1f) tags.Add("\u00d7" + t.FlyingDamageMul.ToString("0.#") + " to flyers");
+            if (t.BurnTicks > 0) tags.Add("burns " + t.BurnDps.ToString("0.#") + "/s");
+            if (t.ExposeTicks > 0) tags.Add("+" + ((t.ExposeMul - 1f) * 100f).ToString("0") + "% damage taken");
+            if (t.ExecuteBelow > 0f) tags.Add("finishes under " + (t.ExecuteBelow * 100f).ToString("0") + "%");
+            if (t.IgnoresResist) tags.Add("ignores armour");
+        }
+        if (t.Lure) tags.Add("draws enemies");
+        if (t.Beacon) tags.Add("+1 ore nearby");
+        text.Append("<color=#cbd5e1>").Append(string.Join("  \u00b7  ", tags)).Append("</color>\n");
+        if (playerBuilder.UpgradesOn)
+        {
+            string names = PlayerBuilder.UpgradeNames(t);
+            text.Append("<color=#94a3b8>upgrades</color> ").Append(names.Length > 0 ? names : "none yet").Append('\n');
+        }
+        if (t.PowerCapacity == 0) text.Append("<color=#94a3b8>gear</color> ").Append(GearLine(t)).Append('\n');
+        if (playerBuilder.PowerRule && !t.OnBench && !t.Powered) text.Append("<color=#f87171>no power: out of reach, or the sources are full</color>\n");
+        if (playerBuilder.TargetingOn && t.PowerCapacity == 0) text.Append("<color=#94a3b8>shoots</color> ").Append(PlayerBuilder.ModeName(t.Mode));
         return text.ToString();
     }
 

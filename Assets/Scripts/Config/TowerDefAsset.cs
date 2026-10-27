@@ -61,6 +61,22 @@ public class TowerDefAsset : ScriptableObject
         public float powerRadiusAdd;
         public int powerCapacityAdd;
 
+        [Header("Paths (2026-10-27): path 1-3, step 1 or 2; 0 = no path")]
+        public int path;
+        public int step;
+        public string pathName;
+        public float damageAdd;
+        public bool lure;
+        public bool beacon;
+        public int critEvery;
+        public float critMul = 1f;
+        [Range(0f, 1f)] public float executeBelow;
+        public float flyingDamageMul = 1f;
+        public float burnDps;
+        public int burnTicks;
+        public float exposeMul = 1f;
+        public int exposeTicks;
+
         public TowerLevelMod ToMod()
         {
             return new TowerLevelMod
@@ -68,6 +84,8 @@ public class TowerDefAsset : ScriptableObject
                 Label = label, DamageMul = damageMul, IntervalMul = intervalMul, RangeAdd = rangeAdd, SplashAdd = splashAdd, SlowTicksMul = slowTicksMul,
                 ExtraTargets = extraTargets, Id = id, GrantsFlying = grantsFlying, IgnoresResist = ignoresResist, SlowTicksAdd = slowTicksAdd,
                 SlowFactorTo = slowFactorTo, PowerRadiusAdd = powerRadiusAdd, PowerCapacityAdd = powerCapacityAdd,
+                Path = path, Step = step, PathName = pathName, DamageAdd = damageAdd, Lure = lure, Beacon = beacon, CritEvery = critEvery, CritMul = critMul,
+                ExecuteBelow = executeBelow, FlyingDamageMul = flyingDamageMul, BurnDps = burnDps, BurnTicks = burnTicks, ExposeMul = exposeMul, ExposeTicks = exposeTicks,
             };
         }
     }

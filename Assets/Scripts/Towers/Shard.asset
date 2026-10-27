@@ -57,21 +57,49 @@ MonoBehaviour:
     slowFactorTo: 1
     powerRadiusAdd: 0
     powerCapacityAdd: 0
-  - label: 'Sharper: +50% damage'
-    damageMul: 1.5
-    intervalMul: 1
+    path: 1
+    step: 1
+    pathName: Splinter
+    damageAdd: 0
+    lure: 0
+    beacon: 0
+    critEvery: 0
+    critMul: 1
+    executeBelow: 0
+    flyingDamageMul: 1
+    burnDps: 0
+    burnTicks: 0
+    exposeMul: 1
+    exposeTicks: 0
+  - label: 'Hail: +2 more shards, 20% faster'
+    damageMul: 1
+    intervalMul: 0.8
     rangeAdd: 0
     splashAdd: 0
     slowTicksMul: 1
-    extraTargets: 0
-    id: sharper
+    extraTargets: 2
+    id: hail
     grantsFlying: 0
     ignoresResist: 0
     slowTicksAdd: 0
     slowFactorTo: 1
     powerRadiusAdd: 0
     powerCapacityAdd: 0
-  - label: 'Frostbite: slows what it hits'
+    path: 1
+    step: 2
+    pathName: Splinter
+    damageAdd: 0
+    lure: 0
+    beacon: 0
+    critEvery: 0
+    critMul: 1
+    executeBelow: 0
+    flyingDamageMul: 1
+    burnDps: 0
+    burnTicks: 0
+    exposeMul: 1
+    exposeTicks: 0
+  - label: 'Frostbite: slows what it hits to 60% for 1 s'
     damageMul: 1
     intervalMul: 1
     rangeAdd: 0
@@ -81,9 +109,107 @@ MonoBehaviour:
     id: frostbite
     grantsFlying: 0
     ignoresResist: 0
-    slowTicksAdd: 30
+    slowTicksAdd: 50
     slowFactorTo: 0.6
     powerRadiusAdd: 0
     powerCapacityAdd: 0
+    path: 2
+    step: 1
+    pathName: Frostbite
+    damageAdd: 0
+    lure: 0
+    beacon: 0
+    critEvery: 0
+    critMul: 1
+    executeBelow: 0
+    flyingDamageMul: 1
+    burnDps: 0
+    burnTicks: 0
+    exposeMul: 1
+    exposeTicks: 0
+  - label: 'Brittle shards: enemies hit take +25% damage for 2 s'
+    damageMul: 1
+    intervalMul: 1
+    rangeAdd: 0
+    splashAdd: 0
+    slowTicksMul: 1
+    extraTargets: 0
+    id: brittle-shards
+    grantsFlying: 0
+    ignoresResist: 0
+    slowTicksAdd: 0
+    slowFactorTo: 1
+    powerRadiusAdd: 0
+    powerCapacityAdd: 0
+    path: 2
+    step: 2
+    pathName: Frostbite
+    damageAdd: 0
+    lure: 0
+    beacon: 0
+    critEvery: 0
+    critMul: 1
+    executeBelow: 0
+    flyingDamageMul: 1
+    burnDps: 0
+    burnTicks: 0
+    exposeMul: 1.25
+    exposeTicks: 100
+  - label: 'Lance: one shard, x3 damage, +1.5 range'
+    damageMul: 3
+    intervalMul: 1
+    rangeAdd: 1.5
+    splashAdd: 0
+    slowTicksMul: 1
+    extraTargets: -2
+    id: lance
+    grantsFlying: 0
+    ignoresResist: 0
+    slowTicksAdd: 0
+    slowFactorTo: 1
+    powerRadiusAdd: 0
+    powerCapacityAdd: 0
+    path: 3
+    step: 1
+    pathName: Lance
+    damageAdd: 0
+    lure: 0
+    beacon: 0
+    critEvery: 0
+    critMul: 1
+    executeBelow: 0
+    flyingDamageMul: 1
+    burnDps: 0
+    burnTicks: 0
+    exposeMul: 1
+    exposeTicks: 0
+  - label: 'Piercing lance: ignores armour, +50% damage'
+    damageMul: 1.5
+    intervalMul: 1
+    rangeAdd: 0
+    splashAdd: 0
+    slowTicksMul: 1
+    extraTargets: 0
+    id: piercing-lance
+    grantsFlying: 0
+    ignoresResist: 1
+    slowTicksAdd: 0
+    slowFactorTo: 1
+    powerRadiusAdd: 0
+    powerCapacityAdd: 0
+    path: 3
+    step: 2
+    pathName: Lance
+    damageAdd: 0
+    lure: 0
+    beacon: 0
+    critEvery: 0
+    critMul: 1
+    executeBelow: 0
+    flyingDamageMul: 1
+    burnDps: 0
+    burnTicks: 0
+    exposeMul: 1
+    exposeTicks: 0
   powerCapacity: 0
   powerRadius: 0

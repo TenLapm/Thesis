@@ -50,40 +50,166 @@ MonoBehaviour:
     splashAdd: 0
     slowTicksMul: 1
     extraTargets: 0
-    id: loader
+    id: fast-loader
     grantsFlying: 0
     ignoresResist: 0
     slowTicksAdd: 0
     slowFactorTo: 1
     powerRadiusAdd: 0
     powerCapacityAdd: 0
-  - label: 'Wide burst: +0.5 splash'
+    path: 1
+    step: 1
+    pathName: Barrage
+    damageAdd: 0
+    lure: 0
+    beacon: 0
+    critEvery: 0
+    critMul: 1
+    executeBelow: 0
+    flyingDamageMul: 1
+    burnDps: 0
+    burnTicks: 0
+    exposeMul: 1
+    exposeTicks: 0
+  - label: 'Barrage: shoots 2 enemies'
+    damageMul: 1
+    intervalMul: 1
+    rangeAdd: 0
+    splashAdd: 0
+    slowTicksMul: 1
+    extraTargets: 1
+    id: barrage
+    grantsFlying: 0
+    ignoresResist: 0
+    slowTicksAdd: 0
+    slowFactorTo: 1
+    powerRadiusAdd: 0
+    powerCapacityAdd: 0
+    path: 1
+    step: 2
+    pathName: Barrage
+    damageAdd: 0
+    lure: 0
+    beacon: 0
+    critEvery: 0
+    critMul: 1
+    executeBelow: 0
+    flyingDamageMul: 1
+    burnDps: 0
+    burnTicks: 0
+    exposeMul: 1
+    exposeTicks: 0
+  - label: 'Skybreaker: x2 damage to flyers'
+    damageMul: 1
+    intervalMul: 1
+    rangeAdd: 0
+    splashAdd: 0
+    slowTicksMul: 1
+    extraTargets: 0
+    id: skybreaker
+    grantsFlying: 0
+    ignoresResist: 0
+    slowTicksAdd: 0
+    slowFactorTo: 1
+    powerRadiusAdd: 0
+    powerCapacityAdd: 0
+    path: 2
+    step: 1
+    pathName: Skybreaker
+    damageAdd: 0
+    lure: 0
+    beacon: 0
+    critEvery: 0
+    critMul: 1
+    executeBelow: 0
+    flyingDamageMul: 2
+    burnDps: 0
+    burnTicks: 0
+    exposeMul: 1
+    exposeTicks: 0
+  - label: 'Air burst: x4 damage to flyers, +0.5 splash'
     damageMul: 1
     intervalMul: 1
     rangeAdd: 0
     splashAdd: 0.5
     slowTicksMul: 1
     extraTargets: 0
-    id: burst
+    id: air-burst
     grantsFlying: 0
     ignoresResist: 0
     slowTicksAdd: 0
     slowFactorTo: 1
     powerRadiusAdd: 0
     powerCapacityAdd: 0
-  - label: 'Ground shells: +60% damage'
-    damageMul: 1.6
+    path: 2
+    step: 2
+    pathName: Skybreaker
+    damageAdd: 0
+    lure: 0
+    beacon: 0
+    critEvery: 0
+    critMul: 1
+    executeBelow: 0
+    flyingDamageMul: 2
+    burnDps: 0
+    burnTicks: 0
+    exposeMul: 1
+    exposeTicks: 0
+  - label: 'Burning shells: sets enemies burning (3 a second, 2 s)'
+    damageMul: 1
     intervalMul: 1
     rangeAdd: 0
     splashAdd: 0
     slowTicksMul: 1
     extraTargets: 0
-    id: ground
+    id: burning-shells
     grantsFlying: 0
     ignoresResist: 0
     slowTicksAdd: 0
     slowFactorTo: 1
     powerRadiusAdd: 0
     powerCapacityAdd: 0
+    path: 3
+    step: 1
+    pathName: Fire shells
+    damageAdd: 0
+    lure: 0
+    beacon: 0
+    critEvery: 0
+    critMul: 1
+    executeBelow: 0
+    flyingDamageMul: 1
+    burnDps: 3
+    burnTicks: 100
+    exposeMul: 1
+    exposeTicks: 0
+  - label: 'Heavy shells: +60% damage, +1 range'
+    damageMul: 1.6
+    intervalMul: 1
+    rangeAdd: 1
+    splashAdd: 0
+    slowTicksMul: 1
+    extraTargets: 0
+    id: heavy-shells
+    grantsFlying: 0
+    ignoresResist: 0
+    slowTicksAdd: 0
+    slowFactorTo: 1
+    powerRadiusAdd: 0
+    powerCapacityAdd: 0
+    path: 3
+    step: 2
+    pathName: Fire shells
+    damageAdd: 0
+    lure: 0
+    beacon: 0
+    critEvery: 0
+    critMul: 1
+    executeBelow: 0
+    flyingDamageMul: 1
+    burnDps: 0
+    burnTicks: 0
+    exposeMul: 1
+    exposeTicks: 0
   powerCapacity: 0
   powerRadius: 0

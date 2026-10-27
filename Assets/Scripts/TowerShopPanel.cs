@@ -26,6 +26,12 @@ public class TowerShopPanel : MonoBehaviour
     [Header("Layout, in the Canvas's reference pixels")]
     public float width = 430f;
     public float topInset = 96f;
+
+    // The HUD's badges (HudOverlay) stand in the compact panel's header: its own title,
+    // research line and budget are hidden (2026-10-27).
+    [System.NonSerialized] public bool hudHeader;
+
+    public RectTransform PanelRect => panel;
     public float bottomInset = 196f;
 
     private static readonly Color PanelColor = new Color(0.07f, 0.1f, 0.17f, 0.94f);
@@ -502,12 +508,16 @@ public class TowerShopPanel : MonoBehaviour
         if (upgradePanel.gameObject.activeSelf != (pending != null)) upgradePanel.gameObject.SetActive(pending != null);
         if (pending != null)
         {
+            // Only what the tower may take next: a path's first step, then that path's second.
             TowerLevelMod[] choices = TowerUpgradeChoices.For(pending.Def);
+            int[] options = TowerUpgradeChoices.Options(pending);
             for (int i = 0; i < upgradeButtons.Count; i++)
             {
-                bool shown = i < choices.Length;
+                bool shown = i < options.Length;
                 if (upgradeButtons[i].activeSelf != shown) upgradeButtons[i].SetActive(shown);
-                if (shown) Set(upgradeLabels[i], choices[i].Label);
+                if (!shown) continue;
+                TowerLevelMod mod = choices[options[i]];
+                Set(upgradeLabels[i], mod.Path > 0 ? "<b>" + (mod.PathName ?? "").ToUpperInvariant() + (mod.Step > 1 ? " II" : "") + "</b>  " + mod.Label : mod.Label);
             }
         }
         if (pending != null) Set(upgradeTitle, "UPGRADE " + Title(pending.Def.Id).ToUpperInvariant() + " TO " + TowerView.LevelName(pending.Rarity + 1).ToUpperInvariant() + "   " + playerBuilder.UpgradeCostFor(pending).ToString("0.#") + " budget.  Choose:");
@@ -632,6 +642,11 @@ public class TowerShopPanel : MonoBehaviour
     private void UpdateStatus(SimState state, out float cardsHeight, out float gearHeight)
     {
         Set(title, "BASE");
+        if (hudHeader)
+        {
+            foreach (TextMeshProUGUI hidden in new[] { title, subtitle, budget, budgetCaption, income })
+                if (hidden != null && hidden.gameObject.activeSelf) hidden.gameObject.SetActive(false);
+        }
         string power = "";
         if (playerBuilder.PowerRule)
         {
@@ -877,7 +892,7 @@ public class TowerShopPanel : MonoBehaviour
         {
             int choice = i;
             float fromCentre = (upgradePanel.sizeDelta.y / 2f) - 82f - i * 58f;
-            Image button = OverlayButton(upgradePanel, TowerUpgradeChoices.All[i].Label, new Vector2(0f, fromCentre), 560f, () => playerBuilder.ChooseUpgrade(choice), out TextMeshProUGUI label, out _);
+            Image button = OverlayButton(upgradePanel, TowerUpgradeChoices.All[i].Label, new Vector2(0f, fromCentre), 560f, () => playerBuilder.ChooseOption(choice), out TextMeshProUGUI label, out _);
             upgradeButtons.Add(button.gameObject);
             upgradeLabels.Add(label);
         }

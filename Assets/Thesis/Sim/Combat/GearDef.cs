@@ -16,6 +16,8 @@ namespace Thesis.Sim
         public int Tier = 1;
 
         public float DamageMul = 1f;
+        public float DamageAdd;          // flat damage (2026-10-27)
+        public bool FlatOnly;            // sold only with SimConfig.FlatGear, so older shops stay as they were
         public float IntervalMul = 1f;   // below 1 = fires faster
         public float RangeAdd;           // tiles
         public float SplashAdd;          // tiles; gives a single-target tower a small splash
@@ -47,12 +49,18 @@ namespace Thesis.Sim
 
         // A plain number on the tower, which since 2026-10-14 is the upgrade's job; the
         // shops leave these out unless SimConfig.StatGear.
-        public bool IsStatBoost => !HasAbility && (DamageMul != 1f || IntervalMul != 1f || RangeAdd != 0f || SplashAdd != 0f);
+        public bool IsStatBoost => !HasAbility && (DamageMul != 1f || IntervalMul != 1f || RangeAdd != 0f || SplashAdd != 0f || DamageAdd != 0f);
+
+        // Flat damage or flat range and nothing else (2026-10-27, the student: gear is plain
+        // numbers again, a tower's character is its upgrade path). Never splash.
+        public bool IsFlat => !HasAbility && DamageMul == 1f && IntervalMul == 1f && SplashAdd == 0f && (DamageAdd != 0f || RangeAdd != 0f);
 
         // Whether a shop may offer it under this config. Without one: everything but the extractor.
         public bool OnSale(SimConfig config)
         {
             if (Extracts) return config != null && config.ExtractorGear;
+            if (config != null && config.FlatGear) return IsFlat;
+            if (FlatOnly) return false;
             if (Beacon || IgnoresResist || Lure) return config != null && config.AbilityGear;
             if (IsStatBoost) return config == null || config.StatGear;
             return true;
@@ -80,6 +88,10 @@ namespace Thesis.Sim
                 new GearDef { Id = "beacon", Label = "+1 ore from collectors within 3 tiles", Beacon = true, Price = 10 },
                 new GearDef { Id = "anti-armor", Label = "ignores resistance; 20% slower", IgnoresResist = true, IntervalMul = 1.25f, Price = 8, Tier = 2 },
                 new GearDef { Id = "lure", Label = "enemies within 4 go for it; 3x tough", Lure = true, Price = 8, Tier = 2 },
+                // 2026-10-27: flat numbers, the only gear with SimConfig.FlatGear.
+                new GearDef { Id = "edge", Label = "+1 damage", DamageAdd = 1f, Price = 8, FlatOnly = true },
+                new GearDef { Id = "keen-edge", Label = "+3 damage", DamageAdd = 3f, Price = 20, Tier = 2, FlatOnly = true },
+                new GearDef { Id = "far-scope", Label = "+2 range", RangeAdd = 2f, Price = 18, Tier = 2, FlatOnly = true },
             };
         }
     }

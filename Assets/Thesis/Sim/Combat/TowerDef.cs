@@ -32,6 +32,27 @@ namespace Thesis.Sim
         public float SlowFactorTo = 1f;  // ...to this share of its speed, if lower than before
         public float PowerRadiusAdd;     // a power tower reaches this many tiles further
         public int PowerCapacityAdd;     // and powers this many towers more
+
+        // 2026-10-27: paths. Every upgrade of a tower with paths belongs to one (Path 1..3)
+        // and is its first or second step (Step 1, 2): the first upgrade chooses a path, the
+        // second can only be that path's second step (TowerUpgradeChoices.Allowed). Path 0:
+        // no paths, any two different choices, as before.
+        public int Path;
+        public int Step;
+        public string PathName;          // the path's name, shown on its first step
+
+        // What a path can make a tower do besides numbers (2026-10-27).
+        public float DamageAdd;          // flat damage, after DamageMul
+        public bool Lure;                // enemies on foot within GearDef.LureRadius go for it; 3x tough
+        public bool Beacon;              // collectors within GearDef.BeaconRange pay one more ore
+        public int CritEvery;            // every this-many-th shot...
+        public float CritMul = 1f;       // ...does this many times the damage
+        public float ExecuteBelow;       // a hit that leaves an enemy under this share of its hit points kills it
+        public float FlyingDamageMul = 1f; // damage against flyers
+        public float BurnDps;            // a hit sets the enemy burning: fire damage a second...
+        public int BurnTicks;            // ...for this many ticks
+        public float ExposeMul = 1f;     // a hit makes the enemy take this many times the damage...
+        public int ExposeTicks;          // ...from every tower, for this many ticks
     }
 
     public sealed class TowerDef

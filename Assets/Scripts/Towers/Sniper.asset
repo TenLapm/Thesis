@@ -43,34 +43,62 @@ MonoBehaviour:
   shopWeight: 1
   tier: 3
   upgrades:
-  - label: 'Armour piercing: ignores armour'
+  - label: 'Headshot: every 2nd shot x2'
     damageMul: 1
     intervalMul: 1
     rangeAdd: 0
     splashAdd: 0
     slowTicksMul: 1
     extraTargets: 0
-    id: piercing
-    grantsFlying: 0
-    ignoresResist: 1
-    slowTicksAdd: 0
-    slowFactorTo: 1
-    powerRadiusAdd: 0
-    powerCapacityAdd: 0
-  - label: 'Quick scope: fires 40% faster'
-    damageMul: 1
-    intervalMul: 0.7
-    rangeAdd: 0
-    splashAdd: 0
-    slowTicksMul: 1
-    extraTargets: 0
-    id: quick
+    id: headshot
     grantsFlying: 0
     ignoresResist: 0
     slowTicksAdd: 0
     slowFactorTo: 1
     powerRadiusAdd: 0
     powerCapacityAdd: 0
+    path: 1
+    step: 1
+    pathName: Assassin
+    damageAdd: 0
+    lure: 0
+    beacon: 0
+    critEvery: 2
+    critMul: 2
+    executeBelow: 0
+    flyingDamageMul: 1
+    burnDps: 0
+    burnTicks: 0
+    exposeMul: 1
+    exposeTicks: 0
+  - label: 'Assassinate: finishes enemies under 30% HP'
+    damageMul: 1
+    intervalMul: 1
+    rangeAdd: 0
+    splashAdd: 0
+    slowTicksMul: 1
+    extraTargets: 0
+    id: assassinate
+    grantsFlying: 0
+    ignoresResist: 0
+    slowTicksAdd: 0
+    slowFactorTo: 1
+    powerRadiusAdd: 0
+    powerCapacityAdd: 0
+    path: 1
+    step: 2
+    pathName: Assassin
+    damageAdd: 0
+    lure: 0
+    beacon: 0
+    critEvery: 0
+    critMul: 1
+    executeBelow: 0.3
+    flyingDamageMul: 1
+    burnDps: 0
+    burnTicks: 0
+    exposeMul: 1
+    exposeTicks: 0
   - label: 'Anti-air: hits flyers'
     damageMul: 1
     intervalMul: 1
@@ -78,12 +106,110 @@ MonoBehaviour:
     splashAdd: 0
     slowTicksMul: 1
     extraTargets: 0
-    id: antiair
+    id: anti-air
     grantsFlying: 1
     ignoresResist: 0
     slowTicksAdd: 0
     slowFactorTo: 1
     powerRadiusAdd: 0
     powerCapacityAdd: 0
+    path: 2
+    step: 1
+    pathName: Anti-air
+    damageAdd: 0
+    lure: 0
+    beacon: 0
+    critEvery: 0
+    critMul: 1
+    executeBelow: 0
+    flyingDamageMul: 1
+    burnDps: 0
+    burnTicks: 0
+    exposeMul: 1
+    exposeTicks: 0
+  - label: 'Flak rounds: x2 damage to flyers, 30% faster'
+    damageMul: 1
+    intervalMul: 0.7
+    rangeAdd: 0
+    splashAdd: 0
+    slowTicksMul: 1
+    extraTargets: 0
+    id: flak-rounds
+    grantsFlying: 0
+    ignoresResist: 0
+    slowTicksAdd: 0
+    slowFactorTo: 1
+    powerRadiusAdd: 0
+    powerCapacityAdd: 0
+    path: 2
+    step: 2
+    pathName: Anti-air
+    damageAdd: 0
+    lure: 0
+    beacon: 0
+    critEvery: 0
+    critMul: 1
+    executeBelow: 0
+    flyingDamageMul: 2
+    burnDps: 0
+    burnTicks: 0
+    exposeMul: 1
+    exposeTicks: 0
+  - label: 'Armour piercing: ignores armour'
+    damageMul: 1
+    intervalMul: 1
+    rangeAdd: 0
+    splashAdd: 0
+    slowTicksMul: 1
+    extraTargets: 0
+    id: armour-piercing
+    grantsFlying: 0
+    ignoresResist: 1
+    slowTicksAdd: 0
+    slowFactorTo: 1
+    powerRadiusAdd: 0
+    powerCapacityAdd: 0
+    path: 3
+    step: 1
+    pathName: Spotter
+    damageAdd: 0
+    lure: 0
+    beacon: 0
+    critEvery: 0
+    critMul: 1
+    executeBelow: 0
+    flyingDamageMul: 1
+    burnDps: 0
+    burnTicks: 0
+    exposeMul: 1
+    exposeTicks: 0
+  - label: 'Spotter: enemies hit take +50% damage from all towers for 3 s'
+    damageMul: 1
+    intervalMul: 1
+    rangeAdd: 0
+    splashAdd: 0
+    slowTicksMul: 1
+    extraTargets: 0
+    id: spotter
+    grantsFlying: 0
+    ignoresResist: 0
+    slowTicksAdd: 0
+    slowFactorTo: 1
+    powerRadiusAdd: 0
+    powerCapacityAdd: 0
+    path: 3
+    step: 2
+    pathName: Spotter
+    damageAdd: 0
+    lure: 0
+    beacon: 0
+    critEvery: 0
+    critMul: 1
+    executeBelow: 0
+    flyingDamageMul: 1
+    burnDps: 0
+    burnTicks: 0
+    exposeMul: 1.5
+    exposeTicks: 150
   powerCapacity: 0
   powerRadius: 0

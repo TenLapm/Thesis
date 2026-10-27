@@ -309,7 +309,7 @@ namespace Thesis.Tests.Sim
             GearDef[] gear = GearRoster.Default();
             var names = new List<string>();
             foreach (GearDef g in gear) names.Add(g.Id);
-            CollectionAssert.AreEqual(new[] { "scope", "whetstone", "sky-sight", "powder", "chill", "extractor", "beacon", "anti-armor", "lure" }, names, "order is part of a replay");
+            CollectionAssert.AreEqual(new[] { "scope", "whetstone", "sky-sight", "powder", "chill", "extractor", "beacon", "anti-armor", "lure", "edge", "keen-edge", "far-scope" }, names, "order is part of a replay");
 
             TowerDef def = TestTowers.Gun(damage: 10f, range: 3f, interval: 20);
             System.Func<int, TowerState> with = piece =>

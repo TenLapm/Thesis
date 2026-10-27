@@ -63,6 +63,15 @@ namespace Thesis.Sim
         public float SiegeSetup;
         public int SiegeCooldown;
 
+        // Burning (a path ability, 2026-10-27): fire damage a second for BurnTicks more ticks,
+        // credited to tower BurnTower. Exposed: takes ExposeMul times the damage from every
+        // tower for ExposeTicks more ticks. Both counted down in the tower pass.
+        public int BurnTicks;
+        public float BurnDps;
+        public int BurnTower = -1;
+        public int ExposeTicks;
+        public float ExposeMul = 1f;
+
         // The nearest this agent has come to the core so far, in flow-field units
         // (tiles x 10), measured the way it travels: see RouteCost. SimNode.Infinity
         // until it takes its first live step. Feeds WaveOutcome.PressureShare.
@@ -112,6 +121,11 @@ namespace Thesis.Sim
             Siege = source.Siege;
             SiegeSetup = source.SiegeSetup;
             SiegeCooldown = source.SiegeCooldown;
+            BurnTicks = source.BurnTicks;
+            BurnDps = source.BurnDps;
+            BurnTower = source.BurnTower;
+            ExposeTicks = source.ExposeTicks;
+            ExposeMul = source.ExposeMul;
         }
 
         internal AgentState Clone() { return new AgentState(this); }

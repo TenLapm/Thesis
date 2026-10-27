@@ -218,6 +218,13 @@ public class PlayerBuilder : MonoBehaviour
         CancelUpgrade();
     }
 
+    // The i-th of the choices the pending tower may take next (TowerUpgradeChoices.Options).
+    public void ChooseOption(int i)
+    {
+        int[] options = TowerUpgradeChoices.Options(UpgradePending);
+        if (i >= 0 && i < options.Length) ChooseUpgrade(options[i]);
+    }
+
     public void CancelUpgrade()
     {
         upgradeNode = null;

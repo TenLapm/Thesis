@@ -308,7 +308,7 @@ namespace Thesis.Harness
                 {
                     TowerState tower = s.Towers[t];
                     if (!tower.IsAlive || tower.OnBench || tower.UpgradeCount >= config.UpgradesPerTower || s.BuildBudget < sim.UpgradePrice(tower) + 4f) continue;
-                    send(SimCommand.ChooseUpgrade(tower.Tile.X, tower.Tile.Y, tower.Id % TowerUpgradeChoices.For(tower.Def).Length));
+                    { int[] options = TowerUpgradeChoices.Options(tower); if (options.Length > 0) send(SimCommand.ChooseUpgrade(tower.Tile.X, tower.Tile.Y, options[tower.Id % options.Length])); }
                     break;
                 }
             }

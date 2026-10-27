@@ -53,6 +53,14 @@ namespace Thesis.Sim
         public bool Lure;               // gear: walkers path to it
         public bool Beacon;             // gear: nearby collectors pay more
         public float PowerRadius;       // a power tower: its reach, in tiles
+        public int CritEvery;           // path abilities (TowerLevelMod, 2026-10-27)
+        public float CritMul = 1f;
+        public float ExecuteBelow;
+        public float FlyingDamageMul = 1f;
+        public float BurnDps;
+        public int BurnTicks;
+        public float ExposeMul = 1f;
+        public int ExposeTicks;
         public int PowerCapacity;       // and how many towers it powers
 
         // Ticks until it may fire again. 0 = ready.
@@ -108,6 +116,11 @@ namespace Thesis.Sim
         public float DamageDealt;
         public int Shots;
         public int Kills;
+
+        // The same, for the wave now running or last run (the damage panel, 2026-10-27).
+        // Zeroed as each wave starts.
+        public float WaveDamage;
+        public int WaveKills;
 
         private readonly float tileSize;
 
@@ -168,6 +181,16 @@ namespace Thesis.Sim
             DamageDealt = source.DamageDealt;
             Shots = source.Shots;
             Kills = source.Kills;
+            WaveDamage = source.WaveDamage;
+            WaveKills = source.WaveKills;
+            CritEvery = source.CritEvery;
+            CritMul = source.CritMul;
+            ExecuteBelow = source.ExecuteBelow;
+            FlyingDamageMul = source.FlyingDamageMul;
+            BurnDps = source.BurnDps;
+            BurnTicks = source.BurnTicks;
+            ExposeMul = source.ExposeMul;
+            ExposeTicks = source.ExposeTicks;
         }
 
         internal TowerState Clone() { return new TowerState(this); }
@@ -207,11 +230,23 @@ namespace Thesis.Sim
             int targets = Def.Targets;
             float powerRadius = Def.PowerRadius;
             int powerCapacity = Def.PowerCapacity;
+            int critEvery = 0, burnTicks = 0, exposeTicks = 0;
+            float critMul = 1f, executeBelow = 0f, flyingMul = 1f, burnDps = 0f, exposeMul = 1f;
 
             // A level or an upgrade: the numbers, then what it adds besides them.
             void Apply(TowerLevelMod mod)
             {
                 damage = (float)(damage * mod.DamageMul);
+                damage = (float)(damage + mod.DamageAdd);
+                if (mod.Lure) lure = true;
+                if (mod.Beacon) beacon = true;
+                if (mod.CritEvery > 0) { critEvery = mod.CritEvery; critMul = Math.Max(critMul, mod.CritMul); }
+                if (mod.ExecuteBelow > executeBelow) executeBelow = mod.ExecuteBelow;
+                flyingMul = (float)(flyingMul * mod.FlyingDamageMul);
+                if (mod.BurnDps > burnDps) burnDps = mod.BurnDps;
+                if (mod.BurnTicks > burnTicks) burnTicks = mod.BurnTicks;
+                if (mod.ExposeMul > exposeMul) exposeMul = mod.ExposeMul;
+                if (mod.ExposeTicks > exposeTicks) exposeTicks = mod.ExposeTicks;
                 interval = (float)(interval * mod.IntervalMul);
                 range = (float)(range + mod.RangeAdd);
                 splash = (float)(splash + mod.SplashAdd);
@@ -241,6 +276,7 @@ namespace Thesis.Sim
                 if (gear == null) throw new InvalidOperationException("[Sim] Tower #" + Id + " has gear but no gear roster was given.");
                 GearDef g = gear[Gear[slot]];
                 damage = (float)(damage * g.DamageMul);
+                damage = (float)(damage + g.DamageAdd);
                 interval = (float)(interval * g.IntervalMul);
                 range = (float)(range + g.RangeAdd);
                 splash = (float)(splash + g.SplashAdd);
@@ -268,6 +304,14 @@ namespace Thesis.Sim
             PowerRadius = powerRadius;
             PowerCapacity = powerCapacity;
             Targets = Math.Max(1, targets);
+            CritEvery = critEvery;
+            CritMul = critMul;
+            ExecuteBelow = executeBelow;
+            FlyingDamageMul = flyingMul;
+            BurnDps = burnDps;
+            BurnTicks = burnTicks;
+            ExposeMul = exposeMul;
+            ExposeTicks = exposeTicks;
         }
 
         public override string ToString()

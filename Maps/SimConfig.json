@@ -88,6 +88,7 @@
   "AgentsIncrementEveryWaves": 2,
   "HpGrowthPerWave": 0.08,
   "PylonCoreKeepOut": 5.0,
+  "FlatGear": true,
   "ChooseTargeting": true,
   "SiegeRangeTiles": 4.5,
   "SiegeSetupTicks": 100,

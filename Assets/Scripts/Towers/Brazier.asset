@@ -42,22 +42,36 @@ MonoBehaviour:
   shopWeight: 1
   tier: 1
   upgrades:
-  - label: 'Wide ring: +0.75 range'
+  - label: 'Hot coals: +0.4 damage'
     damageMul: 1
     intervalMul: 1
-    rangeAdd: 0.75
+    rangeAdd: 0
     splashAdd: 0
     slowTicksMul: 1
     extraTargets: 0
-    id: wide
+    id: hot-coals
     grantsFlying: 0
     ignoresResist: 0
     slowTicksAdd: 0
     slowFactorTo: 1
     powerRadiusAdd: 0
     powerCapacityAdd: 0
-  - label: 'Inferno: +50% damage'
-    damageMul: 1.5
+    path: 1
+    step: 1
+    pathName: Inferno
+    damageAdd: 0.4
+    lure: 0
+    beacon: 0
+    critEvery: 0
+    critMul: 1
+    executeBelow: 0
+    flyingDamageMul: 1
+    burnDps: 0
+    burnTicks: 0
+    exposeMul: 1
+    exposeTicks: 0
+  - label: 'Inferno: +0.8 damage, sets enemies burning (3 a second, 2 s)'
+    damageMul: 1
     intervalMul: 1
     rangeAdd: 0
     splashAdd: 0
@@ -70,7 +84,77 @@ MonoBehaviour:
     slowFactorTo: 1
     powerRadiusAdd: 0
     powerCapacityAdd: 0
-  - label: 'Smoke: slows what it burns'
+    path: 1
+    step: 2
+    pathName: Inferno
+    damageAdd: 0.8
+    lure: 0
+    beacon: 0
+    critEvery: 0
+    critMul: 1
+    executeBelow: 0
+    flyingDamageMul: 1
+    burnDps: 3
+    burnTicks: 100
+    exposeMul: 1
+    exposeTicks: 0
+  - label: 'Bonfire: enemies within 4 tiles go for it; 3x tough'
+    damageMul: 1
+    intervalMul: 1
+    rangeAdd: 0
+    splashAdd: 0
+    slowTicksMul: 1
+    extraTargets: 0
+    id: bonfire
+    grantsFlying: 0
+    ignoresResist: 0
+    slowTicksAdd: 0
+    slowFactorTo: 1
+    powerRadiusAdd: 0
+    powerCapacityAdd: 0
+    path: 2
+    step: 1
+    pathName: Bonfire
+    damageAdd: 0
+    lure: 1
+    beacon: 0
+    critEvery: 0
+    critMul: 1
+    executeBelow: 0
+    flyingDamageMul: 1
+    burnDps: 0
+    burnTicks: 0
+    exposeMul: 1
+    exposeTicks: 0
+  - label: 'Pyre: +1 range, +0.5 splash'
+    damageMul: 1
+    intervalMul: 1
+    rangeAdd: 1
+    splashAdd: 0.5
+    slowTicksMul: 1
+    extraTargets: 0
+    id: pyre
+    grantsFlying: 0
+    ignoresResist: 0
+    slowTicksAdd: 0
+    slowFactorTo: 1
+    powerRadiusAdd: 0
+    powerCapacityAdd: 0
+    path: 2
+    step: 2
+    pathName: Bonfire
+    damageAdd: 0
+    lure: 0
+    beacon: 0
+    critEvery: 0
+    critMul: 1
+    executeBelow: 0
+    flyingDamageMul: 1
+    burnDps: 0
+    burnTicks: 0
+    exposeMul: 1
+    exposeTicks: 0
+  - label: 'Smoke: slows what it burns to 70%'
     damageMul: 1
     intervalMul: 1
     rangeAdd: 0
@@ -81,8 +165,50 @@ MonoBehaviour:
     grantsFlying: 0
     ignoresResist: 0
     slowTicksAdd: 25
-    slowFactorTo: 0.6
+    slowFactorTo: 0.7
     powerRadiusAdd: 0
     powerCapacityAdd: 0
+    path: 3
+    step: 1
+    pathName: Smoke
+    damageAdd: 0
+    lure: 0
+    beacon: 0
+    critEvery: 0
+    critMul: 1
+    executeBelow: 0
+    flyingDamageMul: 1
+    burnDps: 0
+    burnTicks: 0
+    exposeMul: 1
+    exposeTicks: 0
+  - label: 'Choking smoke: enemies hit take +25% damage for 1 s'
+    damageMul: 1
+    intervalMul: 1
+    rangeAdd: 0
+    splashAdd: 0
+    slowTicksMul: 1
+    extraTargets: 0
+    id: choking
+    grantsFlying: 0
+    ignoresResist: 0
+    slowTicksAdd: 0
+    slowFactorTo: 1
+    powerRadiusAdd: 0
+    powerCapacityAdd: 0
+    path: 3
+    step: 2
+    pathName: Smoke
+    damageAdd: 0
+    lure: 0
+    beacon: 0
+    critEvery: 0
+    critMul: 1
+    executeBelow: 0
+    flyingDamageMul: 1
+    burnDps: 0
+    burnTicks: 0
+    exposeMul: 1.25
+    exposeTicks: 50
   powerCapacity: 0
   powerRadius: 0

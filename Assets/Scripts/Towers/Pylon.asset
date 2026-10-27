@@ -27,20 +27,6 @@ MonoBehaviour:
   towerHealth: 12
   levels: []
   upgrades:
-  - label: 'Wide grid: reaches 1.5 tiles further'
-    damageMul: 1
-    intervalMul: 1
-    rangeAdd: 0
-    splashAdd: 0
-    slowTicksMul: 1
-    extraTargets: 0
-    id: grid
-    grantsFlying: 0
-    ignoresResist: 0
-    slowTicksAdd: 0
-    slowFactorTo: 1
-    powerRadiusAdd: 1.5
-    powerCapacityAdd: 0
   - label: 'Capacitor: powers 2 more towers'
     damageMul: 1
     intervalMul: 1
@@ -55,6 +41,160 @@ MonoBehaviour:
     slowFactorTo: 1
     powerRadiusAdd: 0
     powerCapacityAdd: 2
+    path: 1
+    step: 1
+    pathName: Grid
+    damageAdd: 0
+    lure: 0
+    beacon: 0
+    critEvery: 0
+    critMul: 1
+    executeBelow: 0
+    flyingDamageMul: 1
+    burnDps: 0
+    burnTicks: 0
+    exposeMul: 1
+    exposeTicks: 0
+  - label: 'Substation: powers 2 more towers'
+    damageMul: 1
+    intervalMul: 1
+    rangeAdd: 0
+    splashAdd: 0
+    slowTicksMul: 1
+    extraTargets: 0
+    id: substation
+    grantsFlying: 0
+    ignoresResist: 0
+    slowTicksAdd: 0
+    slowFactorTo: 1
+    powerRadiusAdd: 0
+    powerCapacityAdd: 2
+    path: 1
+    step: 2
+    pathName: Grid
+    damageAdd: 0
+    lure: 0
+    beacon: 0
+    critEvery: 0
+    critMul: 1
+    executeBelow: 0
+    flyingDamageMul: 1
+    burnDps: 0
+    burnTicks: 0
+    exposeMul: 1
+    exposeTicks: 0
+  - label: 'Relay: reaches 2 tiles further'
+    damageMul: 1
+    intervalMul: 1
+    rangeAdd: 0
+    splashAdd: 0
+    slowTicksMul: 1
+    extraTargets: 0
+    id: relay
+    grantsFlying: 0
+    ignoresResist: 0
+    slowTicksAdd: 0
+    slowFactorTo: 1
+    powerRadiusAdd: 2
+    powerCapacityAdd: 0
+    path: 2
+    step: 1
+    pathName: Relay
+    damageAdd: 0
+    lure: 0
+    beacon: 0
+    critEvery: 0
+    critMul: 1
+    executeBelow: 0
+    flyingDamageMul: 1
+    burnDps: 0
+    burnTicks: 0
+    exposeMul: 1
+    exposeTicks: 0
+  - label: 'Long line: reaches 2 more tiles'
+    damageMul: 1
+    intervalMul: 1
+    rangeAdd: 0
+    splashAdd: 0
+    slowTicksMul: 1
+    extraTargets: 0
+    id: long-line
+    grantsFlying: 0
+    ignoresResist: 0
+    slowTicksAdd: 0
+    slowFactorTo: 1
+    powerRadiusAdd: 2
+    powerCapacityAdd: 0
+    path: 2
+    step: 2
+    pathName: Relay
+    damageAdd: 0
+    lure: 0
+    beacon: 0
+    critEvery: 0
+    critMul: 1
+    executeBelow: 0
+    flyingDamageMul: 1
+    burnDps: 0
+    burnTicks: 0
+    exposeMul: 1
+    exposeTicks: 0
+  - label: 'Beacon: collectors within 3 tiles pay +1 ore'
+    damageMul: 1
+    intervalMul: 1
+    rangeAdd: 0
+    splashAdd: 0
+    slowTicksMul: 1
+    extraTargets: 0
+    id: beacon
+    grantsFlying: 0
+    ignoresResist: 0
+    slowTicksAdd: 0
+    slowFactorTo: 1
+    powerRadiusAdd: 0
+    powerCapacityAdd: 0
+    path: 3
+    step: 1
+    pathName: Beacon
+    damageAdd: 0
+    lure: 0
+    beacon: 1
+    critEvery: 0
+    critMul: 1
+    executeBelow: 0
+    flyingDamageMul: 1
+    burnDps: 0
+    burnTicks: 0
+    exposeMul: 1
+    exposeTicks: 0
+  - label: 'Dynamo: powers 1 more, reaches 1 further'
+    damageMul: 1
+    intervalMul: 1
+    rangeAdd: 0
+    splashAdd: 0
+    slowTicksMul: 1
+    extraTargets: 0
+    id: dynamo
+    grantsFlying: 0
+    ignoresResist: 0
+    slowTicksAdd: 0
+    slowFactorTo: 1
+    powerRadiusAdd: 1
+    powerCapacityAdd: 1
+    path: 3
+    step: 2
+    pathName: Beacon
+    damageAdd: 0
+    lure: 0
+    beacon: 0
+    critEvery: 0
+    critMul: 1
+    executeBelow: 0
+    flyingDamageMul: 1
+    burnDps: 0
+    burnTicks: 0
+    exposeMul: 1
+    exposeTicks: 0
   powerCapacity: 3
   powerRadius: 3
   shopWeight: 1

@@ -134,6 +134,11 @@ namespace Thesis.Sim
             h.Add(a.Siege);
             h.Add(a.SiegeSetup);
             h.Add(a.SiegeCooldown);
+            h.Add(a.BurnTicks);
+            h.Add(a.BurnDps);
+            h.Add(a.BurnTower);
+            h.Add(a.ExposeTicks);
+            h.Add(a.ExposeMul);
             h.Add(a.KillReward);
             h.Add(a.WallBreakReward);
             h.Add(a.IsAlive);
@@ -173,6 +178,8 @@ namespace Thesis.Sim
             h.Add(t.DamageDealt);
             h.Add(t.Shots);
             h.Add(t.Kills);
+            h.Add(t.WaveDamage);
+            h.Add(t.WaveKills);
         }
 
         private static void AddRng(ref Fnv1a64 h, Pcg32State r)

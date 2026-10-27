@@ -56,33 +56,159 @@ MonoBehaviour:
     slowFactorTo: 1
     powerRadiusAdd: 0
     powerCapacityAdd: 0
-  - label: 'Longbow: +1.5 range'
+    path: 1
+    step: 1
+    pathName: Ranger
+    damageAdd: 0
+    lure: 0
+    beacon: 0
+    critEvery: 0
+    critMul: 1
+    executeBelow: 0
+    flyingDamageMul: 1
+    burnDps: 0
+    burnTicks: 0
+    exposeMul: 1
+    exposeTicks: 0
+  - label: 'Storm: shoots 3 enemies, 25% faster'
     damageMul: 1
-    intervalMul: 1
-    rangeAdd: 1.5
+    intervalMul: 0.8
+    rangeAdd: 0
     splashAdd: 0
     slowTicksMul: 1
-    extraTargets: 0
-    id: longbow
+    extraTargets: 1
+    id: storm
     grantsFlying: 0
     ignoresResist: 0
     slowTicksAdd: 0
     slowFactorTo: 1
     powerRadiusAdd: 0
     powerCapacityAdd: 0
-  - label: 'Barbed: slows what it hits'
+    path: 1
+    step: 2
+    pathName: Ranger
+    damageAdd: 0
+    lure: 0
+    beacon: 0
+    critEvery: 0
+    critMul: 1
+    executeBelow: 0
+    flyingDamageMul: 1
+    burnDps: 0
+    burnTicks: 0
+    exposeMul: 1
+    exposeTicks: 0
+  - label: 'Sky hunter: x2 damage to flyers, +1 range'
+    damageMul: 1
+    intervalMul: 1
+    rangeAdd: 1
+    splashAdd: 0
+    slowTicksMul: 1
+    extraTargets: 0
+    id: sky-hunter
+    grantsFlying: 0
+    ignoresResist: 0
+    slowTicksAdd: 0
+    slowFactorTo: 1
+    powerRadiusAdd: 0
+    powerCapacityAdd: 0
+    path: 2
+    step: 1
+    pathName: Hawkeye
+    damageAdd: 0
+    lure: 0
+    beacon: 0
+    critEvery: 0
+    critMul: 1
+    executeBelow: 0
+    flyingDamageMul: 2
+    burnDps: 0
+    burnTicks: 0
+    exposeMul: 1
+    exposeTicks: 0
+  - label: 'Falconer: x3 damage to flyers, +1 range'
+    damageMul: 1
+    intervalMul: 1
+    rangeAdd: 1
+    splashAdd: 0
+    slowTicksMul: 1
+    extraTargets: 0
+    id: falconer
+    grantsFlying: 0
+    ignoresResist: 0
+    slowTicksAdd: 0
+    slowFactorTo: 1
+    powerRadiusAdd: 0
+    powerCapacityAdd: 0
+    path: 2
+    step: 2
+    pathName: Hawkeye
+    damageAdd: 0
+    lure: 0
+    beacon: 0
+    critEvery: 0
+    critMul: 1
+    executeBelow: 0
+    flyingDamageMul: 1.5
+    burnDps: 0
+    burnTicks: 0
+    exposeMul: 1
+    exposeTicks: 0
+  - label: 'Aimed shot: every 3rd shot x3'
     damageMul: 1
     intervalMul: 1
     rangeAdd: 0
     splashAdd: 0
     slowTicksMul: 1
     extraTargets: 0
-    id: barbed
+    id: aimed
     grantsFlying: 0
     ignoresResist: 0
-    slowTicksAdd: 40
-    slowFactorTo: 0.7
+    slowTicksAdd: 0
+    slowFactorTo: 1
     powerRadiusAdd: 0
     powerCapacityAdd: 0
+    path: 3
+    step: 1
+    pathName: Marksman
+    damageAdd: 0
+    lure: 0
+    beacon: 0
+    critEvery: 3
+    critMul: 3
+    executeBelow: 0
+    flyingDamageMul: 1
+    burnDps: 0
+    burnTicks: 0
+    exposeMul: 1
+    exposeTicks: 0
+  - label: 'Deadeye: every 3rd shot x5, +2 damage'
+    damageMul: 1
+    intervalMul: 1
+    rangeAdd: 0
+    splashAdd: 0
+    slowTicksMul: 1
+    extraTargets: 0
+    id: deadeye
+    grantsFlying: 0
+    ignoresResist: 0
+    slowTicksAdd: 0
+    slowFactorTo: 1
+    powerRadiusAdd: 0
+    powerCapacityAdd: 0
+    path: 3
+    step: 2
+    pathName: Marksman
+    damageAdd: 2
+    lure: 0
+    beacon: 0
+    critEvery: 3
+    critMul: 5
+    executeBelow: 0
+    flyingDamageMul: 1
+    burnDps: 0
+    burnTicks: 0
+    exposeMul: 1
+    exposeTicks: 0
   powerCapacity: 0
   powerRadius: 0

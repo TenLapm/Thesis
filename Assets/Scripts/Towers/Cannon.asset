@@ -42,35 +42,63 @@ MonoBehaviour:
   shopWeight: 1
   tier: 1
   upgrades:
-  - label: 'Big blast: +0.5 splash'
+  - label: 'Mortar: +2 range'
     damageMul: 1
+    intervalMul: 1
+    rangeAdd: 2
+    splashAdd: 0
+    slowTicksMul: 1
+    extraTargets: 0
+    id: mortar
+    grantsFlying: 0
+    ignoresResist: 0
+    slowTicksAdd: 0
+    slowFactorTo: 1
+    powerRadiusAdd: 0
+    powerCapacityAdd: 0
+    path: 1
+    step: 1
+    pathName: Mortar
+    damageAdd: 0
+    lure: 0
+    beacon: 0
+    critEvery: 0
+    critMul: 1
+    executeBelow: 0
+    flyingDamageMul: 1
+    burnDps: 0
+    burnTicks: 0
+    exposeMul: 1
+    exposeTicks: 0
+  - label: 'Bombard: +0.5 splash, +40% damage'
+    damageMul: 1.4
     intervalMul: 1
     rangeAdd: 0
     splashAdd: 0.5
     slowTicksMul: 1
     extraTargets: 0
-    id: blast
+    id: bombard
     grantsFlying: 0
     ignoresResist: 0
     slowTicksAdd: 0
     slowFactorTo: 1
     powerRadiusAdd: 0
     powerCapacityAdd: 0
-  - label: 'Heavy shell: +60% damage, 25% slower'
-    damageMul: 1.6
-    intervalMul: 1.25
-    rangeAdd: 0
-    splashAdd: 0
-    slowTicksMul: 1
-    extraTargets: 0
-    id: shell
-    grantsFlying: 0
-    ignoresResist: 0
-    slowTicksAdd: 0
-    slowFactorTo: 1
-    powerRadiusAdd: 0
-    powerCapacityAdd: 0
-  - label: 'Napalm: slows what it hits'
+    path: 1
+    step: 2
+    pathName: Mortar
+    damageAdd: 0
+    lure: 0
+    beacon: 0
+    critEvery: 0
+    critMul: 1
+    executeBelow: 0
+    flyingDamageMul: 1
+    burnDps: 0
+    burnTicks: 0
+    exposeMul: 1
+    exposeTicks: 0
+  - label: 'Napalm: sets enemies burning (4 a second, 3 s)'
     damageMul: 1
     intervalMul: 1
     rangeAdd: 0
@@ -80,9 +108,107 @@ MonoBehaviour:
     id: napalm
     grantsFlying: 0
     ignoresResist: 0
+    slowTicksAdd: 0
+    slowFactorTo: 1
+    powerRadiusAdd: 0
+    powerCapacityAdd: 0
+    path: 2
+    step: 1
+    pathName: Incendiary
+    damageAdd: 0
+    lure: 0
+    beacon: 0
+    critEvery: 0
+    critMul: 1
+    executeBelow: 0
+    flyingDamageMul: 1
+    burnDps: 4
+    burnTicks: 150
+    exposeMul: 1
+    exposeTicks: 0
+  - label: 'Firestorm: burning 10 a second for 4 s'
+    damageMul: 1
+    intervalMul: 1
+    rangeAdd: 0
+    splashAdd: 0
+    slowTicksMul: 1
+    extraTargets: 0
+    id: firestorm
+    grantsFlying: 0
+    ignoresResist: 0
+    slowTicksAdd: 0
+    slowFactorTo: 1
+    powerRadiusAdd: 0
+    powerCapacityAdd: 0
+    path: 2
+    step: 2
+    pathName: Incendiary
+    damageAdd: 0
+    lure: 0
+    beacon: 0
+    critEvery: 0
+    critMul: 1
+    executeBelow: 0
+    flyingDamageMul: 1
+    burnDps: 10
+    burnTicks: 200
+    exposeMul: 1
+    exposeTicks: 0
+  - label: 'Concussion: slows what it hits to 60% for 1 s'
+    damageMul: 1
+    intervalMul: 1
+    rangeAdd: 0
+    splashAdd: 0
+    slowTicksMul: 1
+    extraTargets: 0
+    id: concussion
+    grantsFlying: 0
+    ignoresResist: 0
     slowTicksAdd: 50
     slowFactorTo: 0.6
     powerRadiusAdd: 0
     powerCapacityAdd: 0
+    path: 3
+    step: 1
+    pathName: Concussion
+    damageAdd: 0
+    lure: 0
+    beacon: 0
+    critEvery: 0
+    critMul: 1
+    executeBelow: 0
+    flyingDamageMul: 1
+    burnDps: 0
+    burnTicks: 0
+    exposeMul: 1
+    exposeTicks: 0
+  - label: 'Shockwave: slows to 40%, +0.5 splash'
+    damageMul: 1
+    intervalMul: 1
+    rangeAdd: 0
+    splashAdd: 0.5
+    slowTicksMul: 1
+    extraTargets: 0
+    id: shockwave
+    grantsFlying: 0
+    ignoresResist: 0
+    slowTicksAdd: 25
+    slowFactorTo: 0.4
+    powerRadiusAdd: 0
+    powerCapacityAdd: 0
+    path: 3
+    step: 2
+    pathName: Concussion
+    damageAdd: 0
+    lure: 0
+    beacon: 0
+    critEvery: 0
+    critMul: 1
+    executeBelow: 0
+    flyingDamageMul: 1
+    burnDps: 0
+    burnTicks: 0
+    exposeMul: 1
+    exposeTicks: 0
   powerCapacity: 0
   powerRadius: 0

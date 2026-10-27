@@ -29,6 +29,33 @@ namespace Thesis.Sim
 
         public static bool IsValidFor(TowerDef def, int choice) { return choice >= 0 && choice < For(def).Length; }
 
+        // Whether the tower's upgrades come in paths (TowerLevelMod.Path).
+        public static bool HasPaths(TowerDef def)
+        {
+            foreach (TowerLevelMod mod in For(def)) if (mod.Path > 0) return true;
+            return false;
+        }
+
+        // Whether this tower may take this choice next (2026-10-27). With paths: a first step
+        // first, then the second step of the same path. Without: any choice, the same one twice too.
+        public static bool Allowed(TowerState tower, int choice)
+        {
+            if (tower == null || !IsValidFor(tower.Def, choice)) return false;
+            TowerLevelMod[] list = For(tower.Def);
+            if (!HasPaths(tower.Def)) return true;
+            if (tower.UpgradeCount == 0) return list[choice].Step == 1;
+            if (tower.UpgradeCount == 1) return list[choice].Step == 2 && IsValidFor(tower.Def, tower.Upgrade) && list[choice].Path == list[tower.Upgrade].Path;
+            return false;
+        }
+
+        // The choices the tower may take next, in list order.
+        public static int[] Options(TowerState tower)
+        {
+            var options = new System.Collections.Generic.List<int>();
+            if (tower != null) for (int i = 0; i < For(tower.Def).Length; i++) if (Allowed(tower, i)) options.Add(i);
+            return options.ToArray();
+        }
+
         // The name of a choice in the build log.
         public static string IdOf(TowerDef def, int choice)
         {

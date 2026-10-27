@@ -227,7 +227,7 @@ namespace Thesis.Sim
             SimNode core = s.Grid.Get(map.Core);
             int firstCombatEvent = events.Count;
             TowerSystem.Step(s.Grid, core, s.Towers, s.Live, s.Damage, s.CurrentOutcome == null ? null : s.CurrentOutcome.DamageByType,
-                             config.MinSlowFactor, ref s.BuildBudget, events);
+                             config.MinSlowFactor, ref s.BuildBudget, events, config.TickSeconds);
 
             // 4. Agent pass (ascending agent id). Agents killed in step 3 are skipped.
             // Each moves by its own class: ground field, sapper field, or a straight
@@ -328,7 +328,9 @@ namespace Thesis.Sim
         private SimState phaseStart;
         private SimState retryStart;
 
-        public bool CanRetry => retryStart != null && (InBuildPhase(State) || State.Phase == SimPhase.GameOver);
+        // Any time once a wave has begun: in its build phase, while it runs (2026-10-27, the
+        // student: restart a wave that is going badly), and after it, won or lost.
+        public bool CanRetry => retryStart != null;
 
         // The wave a retry plays again.
         public int RetryWaveNumber => retryStart != null ? retryStart.WaveIndex + 1 : 0;
@@ -601,7 +603,7 @@ namespace Thesis.Sim
                     {
                         TowerState chosen = GearTarget(s, command);
                         float price = chosen != null ? UpgradePrice(chosen) : 0f;
-                        if (chosen != null && TowerUpgradeChoices.IsValidFor(chosen.Def, command.A) && chosen.UpgradeCount < config.UpgradesPerTower && s.BuildBudget >= price)
+                        if (chosen != null && TowerUpgradeChoices.Allowed(chosen, command.A) && chosen.UpgradeCount < config.UpgradesPerTower && s.BuildBudget >= price)
                         {
                             s.BuildBudget -= price;
                             if (chosen.Upgrade == TowerUpgradeChoices.None) chosen.Upgrade = command.A;
@@ -1447,6 +1449,7 @@ namespace Thesis.Sim
             BuildSchedule(s, s.CurrentPlan);
             s.Occupancy.Reset();
             s.Damage.Reset();
+            foreach (TowerState tower in s.Towers) { tower.WaveDamage = 0f; tower.WaveKills = 0; }
             s.CurrentOutcome = new WaveOutcome
             {
                 WaveIndex = s.WaveIndex,
