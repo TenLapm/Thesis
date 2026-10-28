@@ -31,8 +31,8 @@ MonoBehaviour:
     BaseMoveSpeed: 1.25
     MoveSpeedIncrementPerWave: 0.0375
     MaxMoveSpeed: 2.25
-    BaseHp: 24
-    HpIncrementPerWave: 0
+    BaseHp: 30
+    HpIncrementPerWave: 4.5
     ShopOffers: 0
     RerollCost: -1
     RerollCostStep: 1
@@ -100,10 +100,22 @@ MonoBehaviour:
     CollectorPowerRadius: 3
     CollectorPowerCapacity: 2
     AgentsIncrementEveryWaves: 2
-    HpGrowthPerWave: 0.08
+    HpGrowthPerWave: 0.04
     PylonCoreKeepOut: 5
     FlatGear: 1
     ResearchUnlocksUpgrades: 1
+    FreshSellFullRefund: 1
+    RetryKeepsBuild: 1
+    WallTiers: 1
+    DepositOre: 50
+    StoneWallCost: 3
+    StoneWallDigCost: 30
+    StoneWallHealth: 18
+    FortWallCost: 5
+    FortWallDigCost: 45
+    FortWallHealth: 36
+    RockHealth: 60
+    RockDigCost: 60
     ChooseTargeting: 1
     SiegeRangeTiles: 4.5
     SiegeSetupTicks: 100

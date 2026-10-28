@@ -51,7 +51,9 @@ namespace Thesis.Tests.Sim
         [Test]
         public void WalkingAgentsAreDrawnOnTheirTile()
         {
-            Simulation sim = Running(30);
+            // 45 ticks: the first agent is past the spawn tile's midpoint boundary (2026-10-28; with
+            // the old skewed tile rule it left the spawn tile sooner).
+            Simulation sim = Running(45);
             Assert.Greater(sim.State.LiveAgentCount, 0);
 
             string text = AsciiState.Render(sim, AsciiLayer.Route);

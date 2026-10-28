@@ -54,8 +54,13 @@ public class GridManager : MonoBehaviour
         percentX = Mathf.Clamp01(percentX);
         percentY = Mathf.Clamp01(percentY);
 
-        int x = Mathf.RoundToInt((gridSizeX - 1) * percentX);
-        int y = Mathf.RoundToInt((gridSizeY - 1) * percentY);
+        // The tile the point lies in. RoundToInt((size - 1) * percent) was the tile whose
+        // centre is nearest a point scaled by (size - 1) / size: right in the middle, up to half
+        // a tile off at the edges (the student, 2026-10-28: the hover was a tile away from the
+        // mouse). The same rule as SimGrid.NodeFromPosition since 2026-10-28.
+        float tile = nodeRadius * 2f;
+        int x = Mathf.Clamp(Mathf.FloorToInt((worldPosition.x + gridWorldSize.x / 2) / tile), 0, gridSizeX - 1);
+        int y = Mathf.Clamp(Mathf.FloorToInt((worldPosition.z + gridWorldSize.y / 2) / tile), 0, gridSizeY - 1);
 
         return grid[x, y];
     }

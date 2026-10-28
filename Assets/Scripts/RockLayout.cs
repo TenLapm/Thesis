@@ -113,6 +113,7 @@ public class RockLayout : MonoBehaviour
             ring.SetPositions(new[] { c + new Vector3(-halfX, 0f, -halfZ), c + new Vector3(halfX, 0f, -halfZ), c + new Vector3(halfX, 0f, halfZ), c + new Vector3(-halfX, 0f, halfZ) });
         }
 
+        rocks.Clear();
         var parent = new GameObject("Rocks").transform;
         parent.SetParent(transform, false);
         for (int x = 0; x < width; x++)
@@ -130,10 +131,28 @@ public class RockLayout : MonoBehaviour
                 rock.transform.position = gridManager.grid[x, y].worldPosition + new Vector3(0f, tall / 2f, 0f);
                 rock.transform.localScale = new Vector3(cell, tall, cell);
                 rock.GetComponent<MeshRenderer>().SetPropertyBlock(block);
+                rocks[x * height + y] = rock;
+                rocksHeight = height;
             }
         }
 
         if (generated != null) DrawDeposits(generated, cell);
+    }
+
+    // The rocks drawn, by tile, so a mountain enemies broke (SimConfig.RockHealth) can be taken
+    // off the board, and put back when an Undo or a retry brings it back.
+    private readonly System.Collections.Generic.Dictionary<int, GameObject> rocks = new System.Collections.Generic.Dictionary<int, GameObject>();
+    private int rocksHeight;
+
+    public void Sync(Thesis.Sim.SimGrid grid)
+    {
+        if (grid == null) return;
+        foreach (var pair in rocks)
+        {
+            if (pair.Value == null) continue;
+            bool standing = grid[pair.Key / rocksHeight, pair.Key % rocksHeight].IsRock;
+            if (pair.Value.activeSelf != standing) pair.Value.SetActive(standing);
+        }
     }
 
     // The ore deposits (2026-10-14): a flat gold disc, wider the richer it is, with its
@@ -145,6 +164,8 @@ public class RockLayout : MonoBehaviour
         var gold = new MaterialPropertyBlock();
         gold.SetColor("_BaseColor", PlayerBuilder.CollectorColor);
         gold.SetColor("_EmissionColor", PlayerBuilder.CollectorColor * 1.2f);
+        depositDiscs.Clear();
+        depositLabels.Clear();
         foreach (Thesis.Sim.Deposit d in map.Deposits)
         {
             Vector3 at = gridManager.grid[d.Tile.X, d.Tile.Y].worldPosition;
@@ -157,6 +178,7 @@ public class RockLayout : MonoBehaviour
             disc.transform.position = at + new Vector3(0f, 0.04f, 0f);
             disc.transform.localScale = new Vector3(size, 0.06f, size);
             disc.GetComponent<MeshRenderer>().SetPropertyBlock(gold);
+            depositDiscs.Add(disc);
 
             var label = new GameObject("Yield").AddComponent<TMPro.TextMeshPro>();
             label.transform.SetParent(disc.transform.parent, false);
@@ -168,6 +190,28 @@ public class RockLayout : MonoBehaviour
             label.rectTransform.sizeDelta = new Vector2(cell * 1.4f, cell * 0.8f);
             label.transform.position = at + new Vector3(0f, 0.16f, 0f);
             label.transform.rotation = Quaternion.Euler(90f, 0f, 0f);
+            depositLabels.Add(label);
+        }
+    }
+
+    // With SimConfig.DepositOre: each deposit's label says how much ore it has left, and an
+    // empty one turns grey (2026-10-28).
+    private readonly System.Collections.Generic.List<GameObject> depositDiscs = new System.Collections.Generic.List<GameObject>();
+    private readonly System.Collections.Generic.List<TMPro.TextMeshPro> depositLabels = new System.Collections.Generic.List<TMPro.TextMeshPro>();
+
+    public void SyncDeposits(Thesis.Sim.Simulation sim, Thesis.Sim.SimState state, Thesis.Sim.MapData map)
+    {
+        if (sim == null || state == null || state.DepositLeft == null) return;
+        for (int d = 0; d < depositLabels.Count && d < map.Deposits.Length; d++)
+        {
+            int left = sim.DepositLeft(state, d);
+            string text = left > 0 ? "+" + map.Deposits[d].Yield + "\n<size=6>" + left + " left</size>" : "empty";
+            if (depositLabels[d].text != text) depositLabels[d].text = text;
+            var block = new MaterialPropertyBlock();
+            Color c = left > 0 ? PlayerBuilder.CollectorColor : new Color(0.35f, 0.33f, 0.3f);
+            block.SetColor("_BaseColor", c);
+            block.SetColor("_EmissionColor", left > 0 ? c * 1.2f : Color.black);
+            depositDiscs[d].GetComponent<MeshRenderer>().SetPropertyBlock(block);
         }
     }
 }

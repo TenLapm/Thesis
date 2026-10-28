@@ -121,7 +121,12 @@ public class PlayerBuilder : MonoBehaviour
     // Selling is for the time between waves (SimConfig.SellDuringWave).
     public bool MaySell => IsBuildPhase || Host.Config.SellDuringWave;
 
-    public void SelectWall() { Hold(BuildTool.Wall); }
+    // The wall tier in the hand (SimConfig.WallTiers): 0 plain, 1 stone, 2 fortified.
+    public int WallTier { get; private set; }
+
+    public void SelectWall() { SelectWall(0); }
+
+    public void SelectWall(int tier) { WallTier = Host.Config.WallTiers ? Mathf.Clamp(tier, 0, 2) : 0; Hold(BuildTool.Wall); }
 
     public void SelectSell() { Hold(BuildTool.Sell); }
 
@@ -680,10 +685,10 @@ public class PlayerBuilder : MonoBehaviour
             if (ctrl && Keyboard.current.yKey.wasPressedThisFrame) Redo();
 
             // The tools and the reroll have a key each (the student, 2026-10-13).
-            if (Keyboard.current.wKey.wasPressedThisFrame) SelectWall();
+            if (Keyboard.current.qKey.wasPressedThisFrame) SelectWall(); // W, A, S and D move the view
             if (Keyboard.current.xKey.wasPressedThisFrame) SelectSell();
             if (Keyboard.current.mKey.wasPressedThisFrame) SelectMoveTower();
-            if (Keyboard.current.dKey.wasPressedThisFrame) Reroll();
+            if (Keyboard.current.rKey.wasPressedThisFrame) Reroll();
             if (Keyboard.current.gKey.wasPressedThisFrame && !ExtractorInGame) SelectMoveGear();
             if (Keyboard.current.uKey.wasPressedThisFrame && UpgradesOn) SelectUpgrade();
             if (Keyboard.current.tKey.wasPressedThisFrame && TargetingOn) SelectTarget();
@@ -767,7 +772,7 @@ public class PlayerBuilder : MonoBehaviour
         switch (Tool)
         {
             case BuildTool.Wall:
-                if (CanPlaceWall(node)) Host.Submit(SimCommand.PlaceShape(node.gridX, node.gridY));
+                if (CanPlaceWall(node)) Host.Submit(SimCommand.PlaceShape(node.gridX, node.gridY, WallTier));
                 break;
             case BuildTool.Sell:
                 if (first || Host.State.Grid[node.gridX, node.gridY].Occupant == Occupant.Wall) TrySell(node.gridX, node.gridY);
@@ -976,9 +981,9 @@ public class PlayerBuilder : MonoBehaviour
         {
             case Occupant.Tower: return Plinth(node, cell) + cell * 0.8f;
             case Occupant.Collector: return cell * Mathf.Max(0.45f, wallHeight * 1.6f);
-            case Occupant.Wall: return cell * wallHeight;
+            case Occupant.Wall: if (sim.PieceId != SimNode.RockPiece) return cell * wallHeight; break;
         }
-        if (!sim.IsWalkable)
+        if (sim.IsRock)
         {
             RockLayout rocks = gridManager.GetComponent<RockLayout>();
             return cell * (rocks != null ? rocks.heightShare : 0.45f);
@@ -995,6 +1000,7 @@ public class PlayerBuilder : MonoBehaviour
         get
         {
             ShapeDef shape = Host.State.Bag.CurrentShape;
+            if (shape != null && WallTier > 0) shape = Host.Sim.WallTier(WallTier, shape);
             return shape != null ? shape.BuildCost : -1;
         }
     }
@@ -1093,7 +1099,7 @@ public class PlayerBuilder : MonoBehaviour
         if (sim.Occupant == Occupant.Tower)
         {
             tiles.Add(new Vector2Int(sim.X, sim.Y));
-            refund = state.Towers[sim.TowerId].PricePaid * Host.Config.SellRefund;
+            refund = state.Towers[sim.TowerId].PricePaid * Host.Sim.TowerRefundShare(state, state.Towers[sim.TowerId]);
             return true;
         }
         if (sim.Occupant != Occupant.Wall || sim.PieceId < 0 || sim.PieceId >= state.PlacementLog.Count) return false;
@@ -1105,7 +1111,7 @@ public class PlayerBuilder : MonoBehaviour
             SimNode tile = state.Grid.Get(piece.Tiles[i]);
             if (tile.Occupant == Occupant.Wall && tile.PieceId == sim.PieceId) tiles.Add(new Vector2Int(tile.X, tile.Y));
         }
-        refund = piece.Cost * Host.Config.WallSellRefund * tiles.Count / piece.Tiles.Length;
+        refund = piece.Cost * Host.Sim.WallRefundShare(state, new TileCoord(node.gridX, node.gridY)) * tiles.Count / piece.Tiles.Length;
         return tiles.Count > 0;
     }
 
@@ -1213,12 +1219,23 @@ public class PlayerBuilder : MonoBehaviour
         }
     }
 
+    // A wall's colour tells its tier (SimConfig.WallTiers): plain, stone grey, fortified slate.
+    public static readonly Color StoneColor = new Color(0.62f, 0.66f, 0.72f);
+    public static readonly Color FortColor = new Color(0.33f, 0.4f, 0.5f);
+
+    public Color WallColorOf(float maxHealth)
+    {
+        if (Host.Config.WallTiers && Mathf.Approximately(maxHealth, Host.Config.FortWallHealth)) return FortColor;
+        if (Host.Config.WallTiers && Mathf.Approximately(maxHealth, Host.Config.StoneWallHealth)) return StoneColor;
+        return wallColor;
+    }
+
     private void DrawWall(Node node, float cellSize, float popDelay)
     {
         RemoveVisual(node);
         GameObject wall = Instantiate(standardWallPrefab, node.worldPosition + new Vector3(0, cellSize * wallHeight / 2f, 0), Quaternion.identity);
         wall.transform.localScale = new Vector3(cellSize * 0.94f, cellSize * wallHeight, cellSize * 0.94f);
-        ApplyShapeColor(wall, wallColor);
+        ApplyShapeColor(wall, WallColorOf(Host.State.Grid[node.gridX, node.gridY].MaxWallHealth));
 
         // Pop-in flourish. Added AFTER the final scale is set so the animator captures it.
         if (popDelay >= 0f) wall.AddComponent<WallSpawnAnimator>().Play(popDelay);
@@ -1278,6 +1295,8 @@ public class PlayerBuilder : MonoBehaviour
             foreach (TowerState t in Host.State.Towers)
             {
                 if (!t.IsAlive || t.OnBench || t.PoweredBy.X < 0) continue;
+                // Only for what is selected (2026-10-28): the selected source's towers, or the selected tower's own source.
+                if (!(hasSource && t.PoweredBy.Equals(chosen)) && t != SelectedTower) continue;
                 if (links >= powerLinks.Count) powerLinks.Add(TowerView.Line(transform, "PowerLink", Color.white, 0.08f, false));
                 LineRenderer line = powerLinks[links++];
                 bool lit = hasSource && t.PoweredBy.Equals(chosen);
@@ -1370,15 +1389,16 @@ public class PlayerBuilder : MonoBehaviour
     private void ClearTile(Node node, float cellSize)
     {
         RemoveVisual(node);
-        if (Host.State.Grid[node.gridX, node.gridY].Occupant == Occupant.Wall) DrawWall(node, cellSize, -1f);
+        SimNode left = Host.State.Grid[node.gridX, node.gridY];
+        if (left.Occupant == Occupant.Wall && left.PieceId != SimNode.RockPiece) DrawWall(node, cellSize, -1f); // a mountain is drawn by RockLayout
     }
 
     // How high a tower's base stands: on a wall or a rock it stands on top of it.
     private float Plinth(Node node, float cellSize)
     {
         SimNode sim = Host.State.Grid[node.gridX, node.gridY];
-        if (sim.FoundationCost > 0) return cellSize * wallHeight;
-        if (!sim.IsWalkable)
+        if (sim.FoundationCost > 0 && sim.FoundationPiece != SimNode.RockPiece) return cellSize * wallHeight;
+        if (sim.IsRock)
         {
             RockLayout rocks = gridManager.GetComponent<RockLayout>();
             return cellSize * (rocks != null ? rocks.heightShare : 0.45f);
@@ -1395,13 +1415,13 @@ public class PlayerBuilder : MonoBehaviour
         RemoveVisual(node);
         float plinth = Plinth(node, cellSize);
         TowerView view = TowerView.Create(tower, node.worldPosition + Vector3.up * plinth, cellSize, billboards);
-        if (Host.State.Grid[node.gridX, node.gridY].FoundationCost > 0)
+        if (Host.State.Grid[node.gridX, node.gridY].FoundationCost > 0 && Host.State.Grid[node.gridX, node.gridY].FoundationPiece != SimNode.RockPiece)
         {
             // The wall it stands on, drawn as part of the tower: it goes when the tower goes.
             GameObject under = Instantiate(standardWallPrefab, view.transform);
             under.transform.position = node.worldPosition + new Vector3(0, plinth / 2f, 0);
             under.transform.localScale = new Vector3(cellSize * 0.94f, plinth, cellSize * 0.94f);
-            ApplyShapeColor(under, wallColor);
+            ApplyShapeColor(under, WallColorOf(Host.State.Grid[node.gridX, node.gridY].FoundationMaxHealth));
         }
         view.Show(tower, Host.Sim.GearLibrary.Length);
         towerViews[tower.Id] = view;
@@ -1418,16 +1438,23 @@ public class PlayerBuilder : MonoBehaviour
     {
         switch (e.Kind)
         {
+            // The collectors were paid: the deposits show what they have left (SimConfig.DepositOre).
+            case SimEventKind.WaveResolved:
+                if (gridManager.GetComponent<RockLayout>() != null) gridManager.GetComponent<RockLayout>().SyncDeposits(Host.Sim, Host.State, Host.Map);
+                break;
             // A breached wall and a chewed-through tower both leave an empty tile.
             // WallBreached carries the tile in IntA/IntB, TowerDestroyed in IntB/IntC.
             case SimEventKind.WallBreached:
                 RemoveVisual(gridManager.grid[e.IntA, e.IntB]);
+                if (gridManager.GetComponent<RockLayout>() != null) gridManager.GetComponent<RockLayout>().Sync(Host.State.Grid);
                 break;
             case SimEventKind.TowerDestroyed:
                 RemoveVisual(gridManager.grid[e.IntB, e.IntC]);
                 break;
             case SimEventKind.StateRestored:
                 RedrawBoard();
+                if (gridManager.GetComponent<RockLayout>() != null) gridManager.GetComponent<RockLayout>().SyncDeposits(Host.Sim, Host.State, Host.Map);
+                if (gridManager.GetComponent<RockLayout>() != null) gridManager.GetComponent<RockLayout>().Sync(Host.State.Grid);
                 break;
             case SimEventKind.CollectorDestroyed:
                 RemoveVisual(gridManager.grid[e.IntA, e.IntB]);

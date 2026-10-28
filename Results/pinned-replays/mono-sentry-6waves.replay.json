@@ -99,6 +99,18 @@
     "PylonCoreKeepOut": 0.0,
     "FlatGear": false,
     "ResearchUnlocksUpgrades": false,
+    "FreshSellFullRefund": false,
+    "RetryKeepsBuild": false,
+    "WallTiers": false,
+    "DepositOre": 0,
+    "StoneWallCost": 3,
+    "StoneWallDigCost": 30,
+    "StoneWallHealth": 18.0,
+    "FortWallCost": 5,
+    "FortWallDigCost": 45,
+    "FortWallHealth": 36.0,
+    "RockHealth": 0.0,
+    "RockDigCost": 60,
     "ChooseTargeting": false,
     "SiegeRangeTiles": 4.5,
     "SiegeSetupTicks": 100,
@@ -2510,8 +2522,8 @@
       "Levels": null
     }
   ],
-  "SetupHash": "15e2592957bf5504",
-  "InitialHash": "ec401f252e629f33",
+  "SetupHash": "4014be4f97e29b90",
+  "InitialHash": "d46c48d991930997",
   "Commands": [
     {
       "Tick": 0,
@@ -2544,11 +2556,11 @@
   "WaveHashes": [
     {
       "Wave": 1,
-      "Tick": 2715,
-      "Hash": "cad20e97ec33bda8"
+      "Tick": 2676,
+      "Hash": "70ceab124c94dbd8"
     }
   ],
-  "FinalTick": 2715,
-  "FinalHash": "cad20e97ec33bda8",
+  "FinalTick": 2676,
+  "FinalHash": "70ceab124c94dbd8",
   "TickHashes": null
 }

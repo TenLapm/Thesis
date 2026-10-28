@@ -455,6 +455,10 @@ public class SimHost : MonoBehaviour
     // own events behind the ones in progress, and the outer loop delivers them.
     private void Dispatch()
     {
+        // An Undo, a Redo or a retried wave puts a whole other state in place, grid and all: the
+        // route lines and the field view read the one that runs now (2026-10-28, the student: the
+        // raiders' line did not follow new walls; it was drawing the grid of before the undo).
+        if (flowManager != null && flowManager.Grid != sim.State.Grid) flowManager.Bind(sim.State.Grid);
         if (SimEventRaised == null) return;
 
         var events = sim.LastTickEvents;

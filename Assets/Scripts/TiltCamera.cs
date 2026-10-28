@@ -76,10 +76,12 @@ public class TiltCamera : MonoBehaviour
         else if (Keyboard.current != null)
         {
             float step = panSpeed * Time.unscaledDeltaTime / zoom;
-            if (Keyboard.current.leftArrowKey.isPressed) move.x -= step;
-            if (Keyboard.current.rightArrowKey.isPressed) move.x += step;
-            if (Keyboard.current.upArrowKey.isPressed) move.y += step;
-            if (Keyboard.current.downArrowKey.isPressed) move.y -= step;
+            // Arrows or WASD (2026-10-28); the wall tool's key moved from W to Q.
+            Keyboard k = Keyboard.current;
+            if (k.leftArrowKey.isPressed || k.aKey.isPressed) move.x -= step;
+            if (k.rightArrowKey.isPressed || k.dKey.isPressed) move.x += step;
+            if (k.upArrowKey.isPressed || k.wKey.isPressed) move.y += step;
+            if (k.downArrowKey.isPressed || k.sKey.isPressed) move.y -= step;
         }
         pan += move;
 

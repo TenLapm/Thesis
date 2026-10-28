@@ -70,7 +70,11 @@ public class DeckBar : MonoBehaviour
         public TextMeshProUGUI name, price, note;
         public CanvasGroup group;
         public System.Action onClick;
-        public string tip;
+        public string tip;     // the card's body (rich text); the note when null
+        public TowerDef def;   // a tower or pylon: the card shows its stat bars
+        public string noteText;
+        public string title, cost;
+        public Color color;
     }
 
     private RectTransform buildArea, tipBox;
@@ -83,7 +87,7 @@ public class DeckBar : MonoBehaviour
     private readonly List<Action> categoryButtons = new List<Action>();
     private readonly List<Item> items = new List<Item>();
     private int category;
-    private static readonly string[] Categories = { "TOWERS  1", "ECONOMY  2", "GEAR  3", "ORDERS  4" };
+    private static readonly string[] Categories = { "TOWERS", "ECONOMY", "GEAR", "ORDERS" };
     private static readonly string[] CategoryIcons = { "tower", "gem", "sword", "flag" };
     private const float ItemWidth = 140f;
     private const float ItemHeight = 70f;
@@ -207,13 +211,16 @@ public class DeckBar : MonoBehaviour
         tipBox = Rect("BuildTip", transform);
         tipBox.anchorMin = tipBox.anchorMax = new Vector2(0f, 0f);
         tipBox.pivot = new Vector2(0f, 0f);
-        tipBox.sizeDelta = new Vector2(320f, 150f);
+        tipBox.sizeDelta = new Vector2(CardWidth, 150f);
         Image tipBack = tipBox.gameObject.AddComponent<Image>();
-        tipBack.color = new Color(0.03f, 0.05f, 0.09f, 0.96f);
+        tipBack.color = new Color(0.03f, 0.05f, 0.09f, 0.97f);
         tipBack.raycastTarget = false;
-        tipText = Label(tipBox, "", 15, Bright, TextAlignmentOptions.TopLeft, new Vector2(12f, -10f), new Vector2(296f, 132f), false);
+        BuildCard();
+        tipText = Label(tipBox, "", 14, Bright, TextAlignmentOptions.TopLeft, new Vector2(14f, -72f), new Vector2(CardWidth - 28f, 200f), false);
         tipText.textWrappingMode = TextWrappingModes.Normal;
         tipText.richText = true;
+        tipText.enableAutoSizing = false;
+        tipText.overflowMode = TextOverflowModes.Overflow;
         tipBox.gameObject.SetActive(false);
 
         // Spare gear: pieces that came back and found the inventory full. Shown only then.
@@ -594,7 +601,8 @@ public class DeckBar : MonoBehaviour
                     Fill(items[n++], Title(def.Id), def.Cost.ToString(), unlocked ? Tags(def) : "research tier " + def.Tier,
                          TowerView.ColorOfTower(def), unlocked, unlocked && ore >= def.Cost,
                          playerBuilder.Tool == BuildTool.Tower && playerBuilder.SelectedMenuTower == i, () => playerBuilder.SelectMenuTower(index));
-                    items[n - 1].tip = TowerTip(def, unlocked);
+                    items[n - 1].tip = TowerCard(def, unlocked);
+                    items[n - 1].def = def;
                 }
                 break;
             case 1:
@@ -612,7 +620,8 @@ public class DeckBar : MonoBehaviour
                     bool open = playerBuilder.TowerUnlocked(i);
                     Fill(items[n++], Title(def.Id), def.Cost.ToString(), open ? Tags(def) : "research tier " + def.Tier, TowerView.ColorOfTower(def), open, open && ore >= def.Cost,
                          playerBuilder.Tool == BuildTool.Tower && playerBuilder.SelectedMenuTower == i, () => playerBuilder.SelectMenuTower(index));
-                    items[n - 1].tip = TowerTip(def, open);
+                    items[n - 1].tip = TowerCard(def, open);
+                    items[n - 1].def = def;
                 }
                 float research = Host.Sim.ResearchPrice;
                 Fill(items[n++], research < 0f ? "Researched" : "Research " + (state.ResearchLevel + 1), research < 0f ? "" : research.ToString("0.#"),
@@ -629,16 +638,29 @@ public class DeckBar : MonoBehaviour
                 {
                     if (!gear[g].OnSale(config)) continue;
                     int piece = g;
-                    bool unlocked = gear[g].Tier <= state.ResearchLevel;
+                    bool unlocked = config.ResearchUnlocksUpgrades || gear[g].Tier <= state.ResearchLevel;
                     Fill(items[n++], Title(gear[g].Id), Host.Sim.CraftPrice(g).ToString(), !unlocked ? "research tier " + gear[g].Tier : !room ? "inventory full" : gear[g].Label,
                          TowerView.ColorOfGear(g), unlocked, unlocked && room && ore >= Host.Sim.CraftPrice(g), false, () => playerBuilder.CraftGear(piece));
-                    items[n - 1].tip = "<b>" + Title(gear[g].Id) + "</b>   " + Host.Sim.CraftPrice(g) + " ore\n" + gear[g].Label
+                    items[n - 1].tip = gear[g].Label
                                        + (unlocked ? "\n<color=#94a3b8>click: into the inventory, then drag it onto a tower</color>" : "\n<color=#f87171>needs research tier " + gear[g].Tier + "</color>");
                 }
                 break;
             default:
                 hint = "what the hand does on the board";
-                Fill(items[n++], "Wall  [W]", playerBuilder.WallPrice > 0 ? playerBuilder.WallPrice.ToString() : "", "click or drag; towers stand on walls", playerBuilder.wallColor, true, true, playerBuilder.Tool == BuildTool.Wall, () => playerBuilder.SelectWall());
+                if (config.WallTiers)
+                {
+                    // Three walls (2026-10-28): dearer is tougher to walk through and to chew.
+                    string[] names = { "Wall  [Q]", "Stone wall", "Fort wall" };
+                    string[] notes = { "plain; towers stand on walls", "twice as tough", "the toughest" };
+                    Color[] colors = { playerBuilder.wallColor, PlayerBuilder.StoneColor, PlayerBuilder.FortColor };
+                    int[] prices = { Host.State.Bag.CurrentShape != null ? Host.State.Bag.CurrentShape.BuildCost : 1, config.StoneWallCost, config.FortWallCost };
+                    for (int t = 0; t < 3; t++)
+                    {
+                        int tier = t;
+                        Fill(items[n++], names[t], prices[t].ToString(), notes[t], colors[t], true, ore >= prices[t], playerBuilder.Tool == BuildTool.Wall && playerBuilder.WallTier == t, () => playerBuilder.SelectWall(tier));
+                    }
+                }
+                else Fill(items[n++], "Wall  [Q]", playerBuilder.WallPrice > 0 ? playerBuilder.WallPrice.ToString() : "", "click or drag; towers stand on walls", playerBuilder.wallColor, true, true, playerBuilder.Tool == BuildTool.Wall, () => playerBuilder.SelectWall());
                 Fill(items[n++], "Sell  [X]", "", "half back; takes walls up", Teal, true, playerBuilder.MaySell, playerBuilder.Tool == BuildTool.Sell, () => playerBuilder.SelectSell());
                 Fill(items[n++], "Move  [M]", "", "a tower to another wall or rock", Teal, true, playerBuilder.MayMoveTower, playerBuilder.Tool == BuildTool.MoveTower, () => playerBuilder.SelectMoveTower());
                 if (playerBuilder.UpgradesOn)
@@ -656,15 +678,14 @@ public class DeckBar : MonoBehaviour
             Vector2 mouse = Mouse.current.position.ReadValue();
             for (int i = 0; i < n; i++)
                 if (RectTransformUtility.RectangleContainsScreenPoint((RectTransform)items[i].root.transform, mouse, null)) hovered = items[i];
-            if (hovered != null && !string.IsNullOrEmpty(hovered.tip)
-                && RectTransformUtility.ScreenPointToLocalPointInRectangle(canvasRect, mouse, null, out Vector2 local))
+            if (hovered != null && RectTransformUtility.ScreenPointToLocalPointInRectangle(canvasRect, mouse, null, out Vector2 local))
             {
-                Set(tipText, hovered.tip);
+                ShowCard(hovered);
                 Vector2 corner = local + canvasRect.rect.size / 2f;
-                tipBox.anchoredPosition = new Vector2(Mathf.Min(corner.x - 40f, canvasRect.rect.width - 340f), 18f + height);
+                tipBox.anchoredPosition = new Vector2(Mathf.Min(corner.x - 40f, canvasRect.rect.width - CardWidth - 20f), 18f + height);
             }
         }
-        bool tipShown = hovered != null && !string.IsNullOrEmpty(hovered.tip);
+        bool tipShown = hovered != null;
         if (tipBox.gameObject.activeSelf != tipShown) tipBox.gameObject.SetActive(tipShown);
         Set(buildTitle, "BUILD   " + Categories[category].Split(' ')[0] + "   " + hint);
     }
@@ -675,7 +696,13 @@ public class DeckBar : MonoBehaviour
         if (!item.root.activeSelf) item.root.SetActive(true);
         Set(item.name, name);
         Set(item.price, price);
-        Set(item.note, note);
+        // The tile shows colour, name and price; the line about it is on its card (2026-10-28).
+        Set(item.note, "");
+        item.title = name;
+        item.cost = price;
+        item.color = icon;
+        item.def = null;
+        item.noteText = open ? note : "<color=#f87171>" + note + "</color>";
         item.icon.color = icon;
         if (item.gem.gameObject.activeSelf != (price.Length > 0)) item.gem.gameObject.SetActive(price.Length > 0);
         item.gem.color = !open ? Dim : affordable ? Gold : new Color(0.97f, 0.44f, 0.44f, 1f);
@@ -685,6 +712,134 @@ public class DeckBar : MonoBehaviour
         item.fill.color = selected ? CardSelected : CardColor;
         item.onClick = onClick;
         item.tip = null;
+    }
+
+    // --- the card of a build button (2026-10-28, the student: hovering a button should show the
+    // thing's card, so the buttons can be plain) ---
+    private const float CardWidth = 360f;
+    private Image cardFace;
+    private TextMeshProUGUI cardName, cardCost;
+    private Image cardGem;
+    private GameObject cardStats;
+    private readonly Image[] cardFill = new Image[3];
+    private readonly TextMeshProUGUI[] cardValue = new TextMeshProUGUI[3];
+    private const float CardBar = 190f;
+
+    private void BuildCard()
+    {
+        RectTransform back = Rect("Portrait", tipBox);
+        back.anchorMin = back.anchorMax = back.pivot = new Vector2(0f, 1f);
+        back.anchoredPosition = new Vector2(14f, -14f);
+        back.sizeDelta = new Vector2(46f, 46f);
+        Image b = back.gameObject.AddComponent<Image>();
+        b.color = HudOverlay.Ink;
+        b.raycastTarget = false;
+        RectTransform face = Rect("Face", back);
+        face.anchorMin = face.anchorMax = face.pivot = new Vector2(0.5f, 0.5f);
+        face.sizeDelta = new Vector2(26f, 26f);
+        cardFace = face.gameObject.AddComponent<Image>();
+        cardFace.raycastTarget = false;
+        cardName = Label(tipBox, "", 22, Bright, TextAlignmentOptions.TopLeft, new Vector2(72f, -12f), new Vector2(CardWidth - 86f, 28f), true);
+        cardGem = HudArt.AddIcon(tipBox, "gem", Gold, new Vector2(73f, -43f), 14f);
+        cardCost = Label(tipBox, "", 16, Gold, TextAlignmentOptions.TopLeft, new Vector2(91f, -39f), new Vector2(200f, 22f), true);
+
+        RectTransform stats = Rect("Stats", tipBox);
+        stats.anchorMin = stats.anchorMax = stats.pivot = new Vector2(0f, 1f);
+        stats.anchoredPosition = new Vector2(14f, -72f);
+        stats.sizeDelta = new Vector2(CardWidth - 28f, 76f);
+        cardStats = stats.gameObject;
+        string[] icons = { "sword", "clock", "range" };
+        for (int i = 0; i < 3; i++)
+        {
+            float y = -i * 24f;
+            HudArt.AddIcon(stats, icons[i], Dim, new Vector2(0f, y), 18f);
+            RectTransform track = Rect("Track", stats);
+            track.anchorMin = track.anchorMax = track.pivot = new Vector2(0f, 1f);
+            track.anchoredPosition = new Vector2(28f, y - 6f);
+            track.sizeDelta = new Vector2(CardBar, 6f);
+            Image t = track.gameObject.AddComponent<Image>();
+            t.color = HudOverlay.Track;
+            t.raycastTarget = false;
+            RectTransform fill = Rect("Fill", track);
+            fill.anchorMin = fill.anchorMax = fill.pivot = new Vector2(0f, 1f);
+            fill.anchoredPosition = Vector2.zero;
+            fill.sizeDelta = new Vector2(0f, 6f);
+            cardFill[i] = fill.gameObject.AddComponent<Image>();
+            cardFill[i].raycastTarget = false;
+            cardValue[i] = Label(stats, "", 13, Bright, TextAlignmentOptions.TopRight, new Vector2(CardBar - 10f, y), new Vector2(112f, 20f), true);
+        }
+    }
+
+    private void ShowCard(Item item)
+    {
+        cardFace.color = item.color;
+        Set(cardName, item.title ?? "");
+        bool priced = !string.IsNullOrEmpty(item.cost);
+        if (cardGem.gameObject.activeSelf != priced) cardGem.gameObject.SetActive(priced);
+        Set(cardCost, priced ? item.cost + " ore" : "");
+        bool stats = item.def != null && item.def.PowerCapacity == 0;
+        if (cardStats.activeSelf != stats) cardStats.SetActive(stats);
+        if (stats)
+        {
+            TowerDef d = item.def;
+            float rate = 50f / Mathf.Max(1, d.FireIntervalTicks);
+            // The first bar is damage a SECOND (2026-10-28, the student: a slow tower should not show a
+            // full bar for one big hit); the number beside it gives the hit and the second.
+            float dps = d.Damage * d.Targets * rate;
+            float[] share = { dps / 30f, rate / 10f, d.RangeTiles / 9f };
+            string[] text = { d.Damage.ToString("0.#") + (d.Targets > 1 ? "\u00d7" + d.Targets : "") + "  \u00b7  " + dps.ToString("0.#") + "/s", rate.ToString("0.#") + "/s", d.RangeTiles.ToString("0.#") };
+            for (int i = 0; i < 3; i++)
+            {
+                cardFill[i].rectTransform.sizeDelta = new Vector2(CardBar * Mathf.Clamp01(share[i]), 6f);
+                cardFill[i].color = item.color;
+                Set(cardValue[i], text[i]);
+            }
+        }
+        string body = !string.IsNullOrEmpty(item.tip) ? item.tip : item.noteText ?? "";
+        Set(tipText, body);
+        float top = stats ? 148f : 72f;
+        tipText.rectTransform.anchoredPosition = new Vector2(14f, -top);
+        float textHeight = body.Length > 0 ? tipText.GetPreferredValues(body, CardWidth - 28f, 0f).y : 0f;
+        tipBox.sizeDelta = new Vector2(CardWidth, top + textHeight + 14f);
+    }
+
+    // A tower's card under its stat bars: what else it does, its three paths, how to place it.
+    private string TowerCard(TowerDef d, bool unlocked)
+    {
+        var t = new System.Text.StringBuilder();
+        var traits = new List<string>();
+        if (d.PowerCapacity > 0)
+        {
+            traits.Add("powers " + d.PowerCapacity + " towers within " + d.PowerRadius.ToString("0.#") + " tiles");
+            traits.Add("no attack");
+            if (Host.Config.PylonCoreKeepOut > 0f) traits.Add("not within " + Host.Config.PylonCoreKeepOut.ToString("0.#") + " of the core");
+        }
+        else
+        {
+            traits.Add(d.DamageType.ToString().ToLowerInvariant());
+            traits.Add(d.CanHitFlying ? "hits flyers" : "ground only");
+            if (d.SplashRadiusTiles > 0f) traits.Add("splash " + d.SplashRadiusTiles.ToString("0.##"));
+            if (d.SlowTicks > 0) traits.Add("slows to " + (d.SlowFactor * 100f).ToString("0") + "%");
+        }
+        t.Append("<color=#cbd5e1>").Append(string.Join("  \u00b7  ", traits)).Append("</color>");
+        TowerLevelMod[] list = TowerUpgradeChoices.For(d);
+        if (playerBuilder.UpgradesOn && list.Length > 0 && TowerUpgradeChoices.HasPaths(d))
+        {
+            t.Append("\n\n<color=#94a3b8><size=12>UPGRADE PATHS</size></color>");
+            for (int i = 0; i + 1 < list.Length; i += 2)
+                t.Append("\n<b>").Append(list[i].PathName).Append("</b>  <color=#cbd5e1>").Append(Effect(list[i].Label))
+                 .Append("</color> <color=#94a3b8>\u2192</color> <color=#cbd5e1>").Append(Effect(list[i + 1].Label)).Append("</color>");
+        }
+        t.Append(unlocked ? "\n\n<color=#94a3b8>click, then a wall or a rock</color>" : "\n\n<color=#f87171>needs research tier " + d.Tier + "</color>");
+        return t.ToString();
+    }
+
+    // "Volley: shoots 2 enemies" -> "shoots 2 enemies": the path's name says the rest.
+    private static string Effect(string label)
+    {
+        if (string.IsNullOrEmpty(label)) return "";
+        int colon = label.IndexOf(": ");
+        return colon > 0 ? label.Substring(colon + 2) : label;
     }
 
     private static string TowerTip(TowerDef d, bool unlocked)
@@ -720,7 +875,7 @@ public class DeckBar : MonoBehaviour
         var names = new List<string>();
         if (Host.Config.ResearchUnlocksUpgrades) names.Add(tier == 2 ? "first upgrades" : "second upgrades");
         else foreach (TowerDef t in Host.Sim.TowerLibrary) if (t.Tier == tier) names.Add(t.Id);
-        foreach (GearDef g in Host.Sim.GearLibrary) if (g.Tier == tier && g.OnSale(Host.Config)) names.Add(g.Id);
+        if (!Host.Config.ResearchUnlocksUpgrades) foreach (GearDef g in Host.Sim.GearLibrary) if (g.Tier == tier && g.OnSale(Host.Config)) names.Add(g.Id);
         return string.Join(", ", names);
     }
 
@@ -789,7 +944,8 @@ public class DeckBar : MonoBehaviour
             Set(gizmos[0].label, !playerBuilder.HasUpgradeLeft(playerBuilder.SelectedTower) ? "MAX" : playerBuilder.UpgradeNeedsResearch(playerBuilder.SelectedTower) ? "T" + (playerBuilder.SelectedTower.UpgradeCount + 2) : playerBuilder.UpgradeCostFor(playerBuilder.SelectedTower).ToString("0.#"));
         if (towerSel || collectorSel)
         {
-            float back = towerSel ? playerBuilder.SelectedTower.PricePaid * Host.Config.SellRefund : Host.Config.CollectorPrice * Host.Config.SellRefund;
+            float back = towerSel ? playerBuilder.SelectedTower.PricePaid * Host.Sim.TowerRefundShare(Host.State, playerBuilder.SelectedTower)
+                                  : Host.Config.CollectorPrice * Host.Sim.CollectorRefundShare(Host.State, new Thesis.Core.TileCoord(playerBuilder.Selected.gridX, playerBuilder.Selected.gridY));
             Set(gizmos[3].label, "+" + back.ToString("0.#"));
         }
     }
@@ -813,6 +969,8 @@ public class DeckBar : MonoBehaviour
         bool beacon = Simulation.NearBeacon(Host.State, new Thesis.Core.TileCoord(n.gridX, n.gridY));
         var text = new System.Text.StringBuilder();
         text.Append("+").Append(yield + (beacon ? 1 : 0)).Append(" ore after every wave it survives").Append(beacon ? " (a beacon adds 1)" : "").Append('\n');
+        int left = Host.Sim.DepositLeft(Host.State, d);
+        if (left >= 0) text.Append(left > 0 ? "<color=#fbbf24>" + left + " ore left in the deposit</color>\n" : "<color=#f87171>the deposit is empty: sell it</color>\n");
         if (playerBuilder.PowerRule)
             text.Append("powers up to ").Append(Host.Config.CollectorPowerCapacity).Append(" towers on the gold tiles\n");
         text.Append("<color=#94a3b8>raiders come for it; destroyed, it pays half its price back</color>");
@@ -836,7 +994,7 @@ public class DeckBar : MonoBehaviour
     private GameObject statsRoot;
     private readonly Image[] statFill = new Image[3];
     private readonly TextMeshProUGUI[] statValue = new TextMeshProUGUI[3];
-    private const float StatBar = 196f;
+    private const float StatBar = 166f;
 
     private void BuildInfoHeader()
     {
@@ -880,7 +1038,7 @@ public class DeckBar : MonoBehaviour
             statFill[i] = fill.gameObject.AddComponent<Image>();
             statFill[i].color = new Color(0.8f, 0.84f, 0.88f, 1f);
             statFill[i].raycastTarget = false;
-            statValue[i] = Label(stats, "", 14, Bright, TextAlignmentOptions.TopRight, new Vector2(StatBar + 30f, y), new Vector2(72f, 20f), true);
+            statValue[i] = Label(stats, "", 13, Bright, TextAlignmentOptions.TopRight, new Vector2(StatBar - 10f, y), new Vector2(112f, 20f), true);
         }
     }
 
@@ -912,8 +1070,11 @@ public class DeckBar : MonoBehaviour
         infoText.rectTransform.sizeDelta = new Vector2(302f, shown ? 96f : 174f);
         if (!shown) return;
         float rate = 50f / Mathf.Max(1, t.FireIntervalTicks);
-        float[] share = { t.Damage * t.Targets / 40f, rate / 10f, t.RangeTiles / 9f };
-        string[] text = { t.Damage.ToString("0.#") + (t.Targets > 1 ? " \u00d7" + t.Targets : ""), rate.ToString("0.#") + "/s", t.RangeTiles.ToString("0.#") };
+        // The first bar is damage a SECOND (2026-10-28, the student: a slow tower should not show a
+        // full bar for one big hit); the number beside it gives the hit and the second.
+        float dps = t.Damage * t.Targets * rate;
+        float[] share = { dps / 30f, rate / 10f, t.RangeTiles / 9f };
+        string[] text = { t.Damage.ToString("0.#") + (t.Targets > 1 ? "\u00d7" + t.Targets : "") + "  \u00b7  " + dps.ToString("0.#") + "/s", rate.ToString("0.#") + "/s", t.RangeTiles.ToString("0.#") };
         for (int i = 0; i < 3; i++)
         {
             statFill[i].rectTransform.sizeDelta = new Vector2(StatBar * Mathf.Clamp01(share[i]), 6f);

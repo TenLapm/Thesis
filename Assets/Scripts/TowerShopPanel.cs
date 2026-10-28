@@ -720,7 +720,7 @@ public class TowerShopPanel : MonoBehaviour
             row.root.SetActive(i < craftable.Count);
             if (i >= craftable.Count) continue;
             GearDef piece = gear[craftable[i]];
-            bool unlocked = piece.Tier <= state.ResearchLevel;
+            bool unlocked = Host.Config.ResearchUnlocksUpgrades || piece.Tier <= state.ResearchLevel;
             Set(row.name, Title(piece.Id));
             Set(row.tags, !unlocked ? "research tier " + piece.Tier : full ? "inventory full" : piece.Label);
             Set(row.price, Host.Sim.CraftPrice(craftable[i]).ToString());
@@ -742,7 +742,7 @@ public class TowerShopPanel : MonoBehaviour
         var names = new List<string>();
         if (Host.Config.ResearchUnlocksUpgrades) names.Add(tier == 2 ? "first upgrades" : "second upgrades");
         else foreach (TowerDef t in Host.Sim.TowerLibrary) if (t.Tier == tier) names.Add(t.Id);
-        foreach (GearDef g in Host.Sim.GearLibrary) if (g.Tier == tier && g.OnSale(Host.Config)) names.Add(g.Id);
+        if (!Host.Config.ResearchUnlocksUpgrades) foreach (GearDef g in Host.Sim.GearLibrary) if (g.Tier == tier && g.OnSale(Host.Config)) names.Add(g.Id);
         return string.Join(", ", names);
     }
 

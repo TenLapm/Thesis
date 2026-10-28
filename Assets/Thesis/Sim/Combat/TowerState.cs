@@ -231,6 +231,7 @@ namespace Thesis.Sim
             float powerRadius = Def.PowerRadius;
             int powerCapacity = Def.PowerCapacity;
             int critEvery = 0, burnTicks = 0, exposeTicks = 0;
+            float dpsAdd = 0f;
             float critMul = 1f, executeBelow = 0f, flyingMul = 1f, burnDps = 0f, exposeMul = 1f;
 
             // A level or an upgrade: the numbers, then what it adds besides them.
@@ -277,6 +278,7 @@ namespace Thesis.Sim
                 GearDef g = gear[Gear[slot]];
                 damage = (float)(damage * g.DamageMul);
                 damage = (float)(damage + g.DamageAdd);
+                dpsAdd = (float)(dpsAdd + g.DpsAdd);
                 interval = (float)(interval * g.IntervalMul);
                 range = (float)(range + g.RangeAdd);
                 splash = (float)(splash + g.SplashAdd);
@@ -288,8 +290,10 @@ namespace Thesis.Sim
                 if (g.Beacon) beacon = true;
             }
 
-            Damage = damage;
             FireIntervalTicks = Math.Max(1, (int)interval);
+            // Damage a second from gear, as damage a hit at this tower's rate (50 ticks a second).
+            if (dpsAdd != 0f) damage = (float)(damage + (float)((float)(dpsAdd * FireIntervalTicks) / 50f));
+            Damage = damage;
             RangeTiles = range;
             float reach = (float)(range * tileSize);
             RangeSquared = (float)(reach * reach);

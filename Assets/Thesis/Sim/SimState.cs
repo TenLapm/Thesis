@@ -47,6 +47,10 @@ namespace Thesis.Sim
         // The research tier reached (2026-10-14, SimConfig.BuildMenu): 1 at the start, at most 3.
         public int ResearchLevel = 1;
 
+        // The ore left in each deposit (MapData.Deposits, in order) with SimConfig.DepositOre; null
+        // when deposits never run out.
+        public int[] DepositLeft;
+
         // How many times a wave was played again (RetryWave). Telemetry opens a new window on a change.
         public int Retries;
 
@@ -121,6 +125,7 @@ namespace Thesis.Sim
         internal SimState Clone()
         {
             var c = (SimState)MemberwiseClone();
+            c.DepositLeft = DepositLeft != null ? (int[])DepositLeft.Clone() : null;
 
             c.Grid = Grid.Clone();
             c.BagRng = Pcg32.FromState(BagRng.Save());

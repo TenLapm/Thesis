@@ -157,18 +157,47 @@ public class TowerView : MonoBehaviour
             return view;
         }
 
-        // From above: a ring in the colour of the damage type round a dark middle, so
-        // that a tower reads as a tower and not as a wall tile.
-        Part(PrimitiveType.Cylinder, root.transform, new Vector3(0f, cell * 0.2f, 0f), new Vector3(cell * 0.92f, cell * 0.2f, cell * 0.92f), color);
-        Part(PrimitiveType.Cylinder, root.transform, new Vector3(0f, cell * 0.45f, 0f), new Vector3(cell * 0.62f, cell * 0.08f, cell * 0.62f), new Color(0.05f, 0.07f, 0.11f));
-
-        view.turret = new GameObject("Turret").transform;
-        view.turret.SetParent(root.transform, false);
-        view.turret.localPosition = new Vector3(0f, cell * 0.6f, 0f);
-        Part(PrimitiveType.Cube, view.turret, new Vector3(0f, 0f, cell * 0.22f), new Vector3(cell * 0.2f, cell * 0.16f, cell * 0.6f), color);
-
+        view.turret = Body(root.transform, tower.Def, cell, -1f);
         view.splash = Line(root.transform, "Splash", color, cell * 0.05f, true);
         return view;
+    }
+
+    // What a tower or a pylon looks like, built under `root`. alpha < 0: solid; otherwise a
+    // see-through ghost of it (the hand's tower over the tile it would go on, 2026-10-28).
+    // Returns the turret, which turns to aim (a pylon's never does).
+    private static Transform Body(Transform root, TowerDef def, float cell, float alpha)
+    {
+        Color color = ColorOfTower(def);
+        Color dark = new Color(0.05f, 0.07f, 0.11f);
+        var turret = new GameObject("Turret").transform;
+        turret.SetParent(root, false);
+        if (def.PowerCapacity > 0)
+        {
+            // A pylon is no tower (the student, 2026-10-28): a low square base, a thin mast with a
+            // cross-arm, and a glowing orb on top, the colour of power.
+            Color glow = new Color(1f, 0.86f, 0.3f);
+            Part(PrimitiveType.Cube, root, new Vector3(0f, cell * 0.08f, 0f), new Vector3(cell * 0.56f, cell * 0.16f, cell * 0.56f), dark, alpha);
+            Part(PrimitiveType.Cylinder, root, new Vector3(0f, cell * 0.55f, 0f), new Vector3(cell * 0.14f, cell * 0.45f, cell * 0.14f), color, alpha);
+            Part(PrimitiveType.Cube, root, new Vector3(0f, cell * 0.72f, 0f), new Vector3(cell * 0.5f, cell * 0.05f, cell * 0.08f), color, alpha);
+            Part(PrimitiveType.Sphere, root, new Vector3(0f, cell * 1.08f, 0f), new Vector3(cell * 0.3f, cell * 0.3f, cell * 0.3f), glow, alpha);
+            turret.localPosition = new Vector3(0f, cell * 1.08f, 0f);
+            return turret;
+        }
+        // From above: a ring in the colour of the damage type round a dark middle, so
+        // that a tower reads as a tower and not as a wall tile.
+        Part(PrimitiveType.Cylinder, root, new Vector3(0f, cell * 0.2f, 0f), new Vector3(cell * 0.92f, cell * 0.2f, cell * 0.92f), color, alpha);
+        Part(PrimitiveType.Cylinder, root, new Vector3(0f, cell * 0.45f, 0f), new Vector3(cell * 0.62f, cell * 0.08f, cell * 0.62f), dark, alpha);
+        turret.localPosition = new Vector3(0f, cell * 0.6f, 0f);
+        Part(PrimitiveType.Cube, turret, new Vector3(0f, 0f, cell * 0.22f), new Vector3(cell * 0.2f, cell * 0.16f, cell * 0.6f), color, alpha);
+        return turret;
+    }
+
+    // A see-through model of a tower or a pylon, for placing it.
+    public static GameObject Ghost(TowerDef def, float cell, float alpha = 0.45f)
+    {
+        var root = new GameObject("Ghost " + def.Id);
+        Body(root.transform, def, cell, alpha);
+        return root;
     }
 
     // Shows the tower's level (pips along its lower edge: none, one, two) and its
@@ -359,17 +388,27 @@ public class TowerView : MonoBehaviour
         if (solid != null) primitive.GetComponent<MeshRenderer>().sharedMaterial = solid;
     }
 
-    private static void Part(PrimitiveType type, Transform parent, Vector3 localPosition, Vector3 scale, Color color)
+    private static void Part(PrimitiveType type, Transform parent, Vector3 localPosition, Vector3 scale, Color color, float alpha = -1f)
     {
         GameObject part = GameObject.CreatePrimitive(type);
-        UseSolidMaterial(part);
         Destroy(part.GetComponent<Collider>());
         part.transform.SetParent(parent, false);
         part.transform.localPosition = localPosition;
         part.transform.localScale = scale;
 
         var block = new MaterialPropertyBlock();
-        block.SetColor("_BaseColor", color);
+        if (alpha >= 0f)
+        {
+            // A ghost: the see-through line material, which takes _Color with its alpha.
+            part.GetComponent<MeshRenderer>().sharedMaterial = LineMaterial();
+            color.a = alpha;
+            block.SetColor("_Color", color);
+        }
+        else
+        {
+            UseSolidMaterial(part);
+            block.SetColor("_BaseColor", color);
+        }
         part.GetComponent<MeshRenderer>().SetPropertyBlock(block);
     }
 }

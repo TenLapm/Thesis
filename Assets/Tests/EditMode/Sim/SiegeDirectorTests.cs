@@ -155,8 +155,10 @@ namespace Thesis.Tests.Sim
         // ------------------------------------------------------------------ the rough director
 
         [Test]
-        public void TheDirectorRaidsBareOutpostsOfAStackSiegesAStackWithNothingToRaidAndLeavesASpreadBoardAlone()
+        public void TheDirectorAnswersEachWeaknessOnItsOwn()
         {
+            // 2026-10-28: a raid needs bare outposts, not a stack; a stack is the densest cluster
+            // anywhere; one damage type relied on brings resistant enemies; weak anti-air, flyers.
             var stackedWithBareOutposts = new RoughDirector.Board { Towers = 6, StackLean = 1f, Collectors = 2, BareCollectors = 2 };
             var stackedNoOutposts = new RoughDirector.Board { Towers = 6, StackLean = 1f };
             var stackedGuardedOutposts = new RoughDirector.Board { Towers = 6, StackLean = 1f, Collectors = 2 };
@@ -165,14 +167,22 @@ namespace Thesis.Tests.Sim
             Assert.AreEqual(RoughDirector.Raid, RoughDirector.Choose(stackedWithBareOutposts, 8, null));
             Assert.AreEqual(RoughDirector.SiegeStack, RoughDirector.Choose(stackedNoOutposts, 8, null));
             Assert.AreEqual(RoughDirector.SiegeStack, RoughDirector.Choose(stackedGuardedOutposts, 8, null));
-            Assert.AreEqual(RoughDirector.Baseline, RoughDirector.Choose(spread, 8, null));
+            Assert.AreEqual(RoughDirector.Raid, RoughDirector.Choose(spread, 8, null), "bare outposts are raided, stacked or not");
+            Assert.AreEqual(RoughDirector.Baseline, RoughDirector.Choose(new RoughDirector.Board { Towers = 6, StackLean = 0.2f, Collectors = 2 }, 8, null), "nothing to answer");
             Assert.AreEqual(RoughDirector.Baseline, RoughDirector.Choose(stackedNoOutposts, 4, null), "no siege before wave 5");
             Assert.AreEqual(RoughDirector.Baseline, RoughDirector.Choose(stackedWithBareOutposts, 3, null), "no raid before wave 4");
 
             // A close call goes the other way after the same strategy last wave.
             var lean = new RoughDirector.Board { Towers = 6, StackLean = 0.4f, Collectors = 1, BareCollectors = 1 };
             Assert.AreEqual(RoughDirector.Raid, RoughDirector.Choose(lean, 8, null));
-            Assert.AreEqual(RoughDirector.Baseline, RoughDirector.Choose(lean, 8, RoughDirector.Raid));
+            Assert.AreEqual(RoughDirector.SiegeStack, RoughDirector.Choose(lean, 8, RoughDirector.Raid));
+
+            var fire = new RoughDirector.Board { Towers = 6, Dominant = DamageType.Fire, DominantShare = 0.95f, AirShare = 0.5f };
+            Assert.AreEqual(RoughDirector.ResistMix, RoughDirector.Choose(fire, 8, null));
+            var weakAir = new RoughDirector.Board { Towers = 6, DominantShare = 0.5f, AirShare = 0.05f };
+            Assert.AreEqual(RoughDirector.AirRaid, RoughDirector.Choose(weakAir, 8, null));
+            var noAir = new RoughDirector.Board { Towers = 6, DominantShare = 0.5f, AirShare = 0f };
+            Assert.AreEqual(RoughDirector.Baseline, RoughDirector.Choose(noAir, 8, null), "no flyers against a board that cannot hit them");
         }
 
         [Test]
@@ -221,6 +231,7 @@ namespace Thesis.Tests.Sim
             TestSims.Send(sim, SimCommand.BuyTower(0, 7, 1));
             TestSims.Send(sim, SimCommand.BuyTower(0, 7, 3));
             TestSims.Send(sim, SimCommand.BuyTower(0, 8, 1));
+            TestSims.Send(sim, SimCommand.BuyTower(0, 8, 3));
 
             // Stacked, nothing to raid: siege.
             WavePlan siege = director.PlanWave(new WaveContext(6, sim.State, map, config));
@@ -230,11 +241,12 @@ namespace Thesis.Tests.Sim
             Assert.IsNotNull(engines);
             Assert.That(engines.Count, Is.InRange(1, 3));
 
-            // A bare collector beside the stack: a raid, and most of the wave still for the core.
+            // Bare collectors beside the stack: a raid, and most of the wave still for the core.
             TestSims.Send(sim, SimCommand.BuildCollector(4, 0));
+            TestSims.Send(sim, SimCommand.BuildCollector(4, 4));
             RoughDirector.Board b = RoughDirector.Read(new WaveContext(6, sim.State, map, config));
             Assert.AreEqual(1f, b.StackShare);
-            Assert.AreEqual(1, b.BareCollectors, "no tower reaches (4,0)");
+            Assert.AreEqual(2, b.BareCollectors, "no tower reaches (4,0) or (4,4)");
             WavePlan raid = director.PlanWave(new WaveContext(6, sim.State, map, config));
             Assert.AreEqual(RoughDirector.Raid, raid.StrategyId);
             int raiders = 0;
@@ -249,6 +261,24 @@ namespace Thesis.Tests.Sim
         }
 
         [Test]
+        public void AClusterFarFromTheCoreIsAStackToo()
+        {
+            SimConfig config = Config();
+            MapData map = MapWithDeposits(); // the core is (8,2)
+            Simulation sim = New(config, map, new RoughDirector(config, map));
+            TestSims.Send(sim, SimCommand.BuyTower(0, 1, 0));
+            TestSims.Send(sim, SimCommand.BuyTower(0, 1, 1));
+            TestSims.Send(sim, SimCommand.BuyTower(0, 2, 0));
+            TestSims.Send(sim, SimCommand.BuyTower(0, 2, 1));
+            TestSims.Send(sim, SimCommand.BuyTower(0, 7, 4));
+            RoughDirector.Board b = RoughDirector.Read(new WaveContext(6, sim.State, map, config));
+            Assert.AreEqual(0.8f, b.StackShare, 1e-5f, "four of the five towers stand together, far from the core");
+            Assert.AreEqual(1f, b.StackLean, 1e-5f);
+            Assert.AreEqual(DamageType.Physical, b.Dominant);
+            Assert.AreEqual(1f, b.DominantShare);
+        }
+
+        [Test]
         public void TheDirectorRunsInsideTheSimulationWithoutTouchingTheState()
         {
             SimConfig config = Config();
@@ -258,6 +288,7 @@ namespace Thesis.Tests.Sim
             TestSims.Send(sim, SimCommand.BuyTower(0, 7, 1));
             TestSims.Send(sim, SimCommand.BuyTower(0, 7, 3));
             TestSims.Send(sim, SimCommand.BuyTower(0, 8, 1));
+            TestSims.Send(sim, SimCommand.BuyTower(0, 8, 3));
             var seen = new HashSet<string>();
             for (int wave = 0; wave < 8; wave++)
             {

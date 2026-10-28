@@ -94,6 +94,11 @@ namespace Thesis.Sim
         // digging, the corner-cut rule) means both. Occupant says which.
         public bool HasWall => WallHealth > 0f;
 
+        // A mountain tile (SimConfig.RockHealth): a wall with this piece id, or a tower standing on
+        // one. Static rocks (not walkable) count too.
+        public const int RockPiece = -2;
+        public bool IsRock => !IsWalkable || PieceId == RockPiece || (Occupant == Occupant.Tower && FoundationPiece == RockPiece);
+
         // Corner-cut rule input: agents may enter a wall tile head-on (that is how
         // digging starts) but may not slip diagonally BETWEEN two solid tiles.
         public bool BlocksCorner => !IsWalkable || HasWall;

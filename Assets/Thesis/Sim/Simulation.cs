@@ -63,7 +63,7 @@ namespace Thesis.Sim
 
             var s = new SimState
             {
-                Grid = new SimGrid(map),
+                Grid = new SimGrid(map, config.RockHealth > 0f),
                 BagRng = new Pcg32(rngSeed, RngStreams.Bag),
                 SpawnRng = new Pcg32(rngSeed, RngStreams.Spawn),
                 BuildBudget = config.StartBudget,
@@ -77,6 +77,16 @@ namespace Thesis.Sim
                 Phase = SimPhase.Prep,
                 PhaseTicksRemaining = config.Ticks(config.PrepSeconds),
             };
+            // Mountains that can be broken: every rock of the map is a tough wall that is nobody's piece.
+            if (config.RockHealth > 0f)
+                for (int x = 0; x < map.Width; x++)
+                    for (int y = 0; y < map.Height; y++)
+                        if (!map.IsWalkable(x, y)) s.Grid.SetWall(s.Grid[x, y], Math.Max(2, config.RockDigCost), config.RockHealth, SimNode.RockPiece);
+            if (config.DepositOre > 0 && map.Deposits != null && map.Deposits.Length > 0)
+            {
+                s.DepositLeft = new int[map.Deposits.Length];
+                for (int d = 0; d < s.DepositLeft.Length; d++) s.DepositLeft[d] = config.DepositOre;
+            }
             s.Bag = new ShapeBag(library, s.BagRng);
             s.Occupancy = new OccupancyMap(s.Grid.NodeCount);
             s.Damage = new DamageMap(s.Grid.NodeCount);
@@ -256,7 +266,7 @@ namespace Thesis.Sim
                 CloseWave(s, coreDestroyed: false);
                 // Stipend at intermission start, as WaveSpawner.IntermissionRoutine did, and
                 // the ore of every collector that stood through the wave (2026-10-14).
-                s.BuildBudget += config.StipendPerWave + CollectorIncome(s);
+                s.BuildBudget += config.StipendPerWave + CollectIncome(s);
                 if (config.WallStock > 0) s.WallsLeft += config.WallStockPerWave;
                 s.RelaysLeft = config.WallRelayPerWave;
                 s.MovesLeft = config.MovesPerWave;
@@ -429,6 +439,13 @@ namespace Thesis.Sim
                         }
                         break;
                     }
+                    if (config.WallTiers && command.A > 0)
+                    {
+                        // A dearer, tougher wall: the bag's shape with the tier's numbers; the bag is not drawn from.
+                        ShapeDef tier = WallTier(command.A, s.Bag.CurrentShape);
+                        if (tier != null) Placement.TryPlace(s.Grid, map, fields, tier, 0, new TileCoord(command.X, command.Y), ref s.BuildBudget, s.Tick, s.PlacementLog, events);
+                        break;
+                    }
                     if (Placement.TryPlace(s.Grid, map, fields, s.Bag.CurrentShape, s.Bag.CurrentRotationTurns,
                                            new TileCoord(command.X, command.Y), ref s.BuildBudget, s.Tick,
                                            s.PlacementLog, events))
@@ -585,7 +602,7 @@ namespace Thesis.Sim
                 case SimCommandKind.Research: Research(s); break;
                 case SimCommandKind.CraftGear:
                     if (config.BuildMenu && command.A >= 0 && command.A < gearLibrary.Length && gearLibrary[command.A].OnSale(config)
-                        && gearLibrary[command.A].Tier <= s.ResearchLevel)
+                        && (config.ResearchUnlocksUpgrades || gearLibrary[command.A].Tier <= s.ResearchLevel))
                         StoreGear(s, command.A, CraftPrice(command.A));
                     break;
                 case SimCommandKind.RepairCore:
@@ -694,7 +711,7 @@ namespace Thesis.Sim
                 case SimCommandKind.SellTower:
                     TowerState toSell = TowerOn(s, new TileCoord(command.X, command.Y));
                     if (MaySell(s) && HasMove(s)
-                        && Placement.TrySellTower(s.Grid, map, fields, new TileCoord(command.X, command.Y), config.SellRefund,
+                        && Placement.TrySellTower(s.Grid, map, fields, new TileCoord(command.X, command.Y), toSell != null ? TowerRefundShare(s, toSell) : config.SellRefund,
                                                   ref s.BuildBudget, s.Tick, s.Towers, s.PlacementLog, events))
                     {
                         UseMove(s);
@@ -710,7 +727,7 @@ namespace Thesis.Sim
                     }
                     if (MaySell(s))
                     {
-                        Placement.TrySellWall(s.Grid, map, fields, new TileCoord(command.X, command.Y), config.WallSellRefund,
+                        Placement.TrySellWall(s.Grid, map, fields, new TileCoord(command.X, command.Y), WallRefundShare(s, new TileCoord(command.X, command.Y)),
                                               ref s.BuildBudget, s.Tick, s.PlacementLog, events);
                     }
                     break;
@@ -770,12 +787,33 @@ namespace Thesis.Sim
         public int CollectorIncome(SimState s)
         {
             int ore = 0;
+            for (int d = 0; d < map.Deposits.Length; d++) ore += CollectorPays(s, d);
+            return ore;
+        }
+
+        // What the collector on deposit d pays after a wave: its yield (one more by a beacon), at
+        // most what the deposit has left (SimConfig.DepositOre). 0 with no collector there.
+        public int CollectorPays(SimState s, int d)
+        {
+            Deposit deposit = map.Deposits[d];
+            if (s.Grid.Get(deposit.Tile).Occupant != Occupant.Collector) return 0;
+            int ore = deposit.Yield + (NearBeacon(s, deposit.Tile) ? 1 : 0);
+            if (s.DepositLeft != null) ore = Math.Min(ore, s.DepositLeft[d]);
+            return ore;
+        }
+
+        // The ore deposit d has left, or -1 when deposits never run out.
+        public int DepositLeft(SimState s, int d) { return s.DepositLeft != null && d >= 0 && d < s.DepositLeft.Length ? s.DepositLeft[d] : -1; }
+
+        // Pays every standing collector, taking the ore out of its deposit.
+        private int CollectIncome(SimState s)
+        {
+            int ore = 0;
             for (int d = 0; d < map.Deposits.Length; d++)
             {
-                Deposit deposit = map.Deposits[d];
-                if (s.Grid.Get(deposit.Tile).Occupant != Occupant.Collector) continue;
-                ore += deposit.Yield;
-                if (NearBeacon(s, deposit.Tile)) ore++;
+                int pays = CollectorPays(s, d);
+                ore += pays;
+                if (s.DepositLeft != null) s.DepositLeft[d] -= pays;
             }
             return ore;
         }
@@ -990,6 +1028,45 @@ namespace Thesis.Sim
         public int CraftPrice(int piece) { return Math.Max(0, (int)(float)(gearLibrary[piece].Price * config.GearCraftPriceFactor)); }
 
         // What the next research tier costs, or a negative number when all are bought.
+        // --- selling what was built this build phase (SimConfig.FreshSellFullRefund) ---
+
+        // The share of what was paid that a sale gives back now.
+        public float TowerRefundShare(SimState s, TowerState t)
+        {
+            if (config.FreshSellFullRefund && t != null)
+                for (int i = Math.Max(0, s.PhaseLogStart); i < s.PlacementLog.Count; i++)
+                    if (s.PlacementLog[i].Kind == PlacementKind.Tower && s.PlacementLog[i].TowerId == t.Id) return 1f;
+            return config.SellRefund;
+        }
+
+        public float WallRefundShare(SimState s, TileCoord tile)
+        {
+            if (config.FreshSellFullRefund && s.Grid.InBounds(tile) && s.Grid.Get(tile).PieceId >= s.PhaseLogStart) return 1f;
+            return config.WallSellRefund;
+        }
+
+        public float CollectorRefundShare(SimState s, TileCoord tile)
+        {
+            if (config.FreshSellFullRefund)
+                for (int i = Math.Max(0, s.PhaseLogStart); i < s.PlacementLog.Count; i++)
+                {
+                    PlacementRecord row = s.PlacementLog[i];
+                    if (row.Kind == PlacementKind.CollectorBuilt && row.OriginX == tile.X && row.OriginY == tile.Y) return 1f;
+                }
+            return config.SellRefund;
+        }
+
+        // A wall tier (SimConfig.WallTiers): 1 stone, 2 fortified; the bag's shape with that
+        // tier's price, walking cost and health. Made once each.
+        private ShapeDef stoneWall, fortWall;
+
+        public ShapeDef WallTier(int tier, ShapeDef shape)
+        {
+            if (shape == null || tier < 1 || tier > 2) return null;
+            if (tier == 1) return stoneWall ?? (stoneWall = new ShapeDef { Name = "Stone", BuildCost = config.StoneWallCost, DigCost = Math.Max(2, config.StoneWallDigCost), WallHealth = config.StoneWallHealth, LocalTiles = shape.LocalTiles });
+            return fortWall ?? (fortWall = new ShapeDef { Name = "Fort", BuildCost = config.FortWallCost, DigCost = Math.Max(2, config.FortWallDigCost), WallHealth = config.FortWallHealth, LocalTiles = shape.LocalTiles });
+        }
+
         // How many upgrades a tower may have now: all of SimConfig.UpgradesPerTower, or with
         // ResearchUnlocksUpgrades one fewer than the research tier reached.
         public int UpgradesAllowed(SimState s) { return config.ResearchUnlocksUpgrades ? Math.Max(0, Math.Min(config.UpgradesPerTower, s.ResearchLevel - 1)) : config.UpgradesPerTower; }
@@ -999,6 +1076,7 @@ namespace Thesis.Sim
         private void BuildCollector(SimState s, TileCoord tile)
         {
             if (!InBuildPhase(s) || map.DepositAt(tile) < 0 || s.BuildBudget < config.CollectorPrice) return;
+            if (s.DepositLeft != null && s.DepositLeft[map.DepositAt(tile)] <= 0) return; // nothing left to dig
             SimNode node = s.Grid.Get(tile);
             if (!node.IsWalkable || node.Occupant != Occupant.None || tile == map.Core) return;
             s.BuildBudget -= config.CollectorPrice;
@@ -1012,7 +1090,7 @@ namespace Thesis.Sim
         {
             if (!s.Grid.InBounds(tile) || s.Grid.Get(tile).Occupant != Occupant.Collector) return false;
             if (!MaySell(s)) return true;
-            float refund = (float)(config.CollectorPrice * config.SellRefund);
+            float refund = (float)(config.CollectorPrice * CollectorRefundShare(s, tile));
             s.Grid.ClearWall(s.Grid.Get(tile));
             s.BuildBudget += refund;
             fields.Generate(s.Grid, map.Core);
@@ -1445,7 +1523,15 @@ namespace Thesis.Sim
             WavePlan plan = s.NextPlan ?? PlanNextWave(s);
             undoStack.Clear();
             redoStack.Clear();
-            retryStart = phaseStart;
+            if (config.RetryKeepsBuild)
+            {
+                // The moment before the wave: everything built for it stands, the plan is the one
+                // it was given, and nothing asks for it to start until the player does.
+                retryStart = s.Clone();
+                retryStart.Pending.Clear();
+                retryStart.StartWaveRequested = false;
+            }
+            else retryStart = phaseStart;
 
             s.NextPlan = null;
             s.WaveIndex = wave;

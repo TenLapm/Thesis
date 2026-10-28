@@ -153,9 +153,9 @@ namespace Thesis.Tests.Sim
             Assert.AreEqual(0, sim.State.Towers[0].Shots, "a tower that cannot hit flyers had nothing to shoot");
             Assert.AreEqual(60f, o.BudgetAfter, 1e-4f, "nothing was killed, nothing was breached");
 
-            // 8 tiles = 16 world units at 5 a second is 160 ticks to the core's centre;
-            // the core tile begins a little before its centre.
-            Assert.That(firstLeakTick, Is.InRange(155, 162), "straight-line flight time");
+            // 8 tiles = 16 world units at 5 a second is 160 ticks to the core's centre; the
+            // core tile begins half a tile (one unit, ten ticks) before it.
+            Assert.That(firstLeakTick, Is.InRange(148, 155), "straight-line flight time");
         }
 
         [Test]

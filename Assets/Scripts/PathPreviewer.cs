@@ -175,13 +175,9 @@ public class PathPreviewer : MonoBehaviour
                 // Raiders: along the raid field to the collector they reach first.
                 color = raiderColor;
                 Vector3 lift = new Vector3(-sapperOffset, 0.08f, sapperOffset);
-                SimNode at = start;
-                for (int guard = 0; at != null && guard < grid.NodeCount; guard++)
-                {
-                    points.Add(SceneMapBuilder.ToWorld(at.Position, y) + lift);
-                    if (at.RaidCost == 0) break;
-                    at = grid.NextRaid(at);
-                }
+                // The agents' own steps (SimGrid.NextStep): a lure on the way bends the line as it does them.
+                Route.CollectSteps(grid, start, route, MovementClass.Ground, true);
+                for (int k = 0; k < route.Count; k++) points.Add(SceneMapBuilder.ToWorld(route[k].Position, y) + lift);
             }
             else if (lane.Movement == MovementClass.Flying)
             {
@@ -197,7 +193,7 @@ public class PathPreviewer : MonoBehaviour
                 bool sapper = lane.Movement == MovementClass.Sapper;
                 color = sapper ? sapperColor : walkerColor;
                 Vector3 offset = sapper ? new Vector3(sapperOffset, 0.05f, -sapperOffset) : Vector3.zero;
-                Route.Collect(grid, start, route, lane.Movement);
+                Route.CollectSteps(grid, start, route, lane.Movement, false);
                 for (int k = 0; k < route.Count; k++) points.Add(SceneMapBuilder.ToWorld(route[k].Position, y) + offset);
             }
 

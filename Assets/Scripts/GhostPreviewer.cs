@@ -278,18 +278,22 @@ public class GhostPreviewer : MonoBehaviour
     {
         TowerDef def = null;
         int level = 1;
-        if (playerBuilder != null && playerBuilder.billboards && hover != null && !playerBuilder.IsBuildingBlocked) def = playerBuilder.HandTower(out level);
+        if (playerBuilder != null && hover != null && !playerBuilder.IsBuildingBlocked) def = playerBuilder.HandTower(out level);
         // Over a tower the hand's figure would hide the one that stands there.
         if (def != null && playerBuilder.TowerAt(hover) != null) def = null;
 
         if (def != figureDef || level != figureLevel)
         {
             if (figure != null) Destroy(figure);
-            figure = def != null ? TowerView.Figure(def, level, gridManager.nodeRadius * 2f, 0.6f) : null;
+            // The billboard scene shows a figure; the tilted one a see-through model of the tower
+            // or the pylon (2026-10-28).
+            float cell = gridManager.nodeRadius * 2f;
+            figure = def == null ? null : playerBuilder.billboards ? TowerView.Figure(def, level, cell, 0.6f) : TowerView.Ghost(def, cell);
             figureDef = def;
             figureLevel = level;
         }
-        if (figure != null) figure.transform.position = hover.worldPosition + Vector3.up * 0.1f;
+        // On top of the wall or the rock it would stand on.
+        if (figure != null) figure.transform.position = hover.worldPosition + Vector3.up * (playerBuilder.billboards ? 0.1f : playerBuilder.SurfaceHeight(hover));
     }
 
     private void ShowTiles(bool valid)
@@ -304,6 +308,11 @@ public class GhostPreviewer : MonoBehaviour
                          && !(playerBuilder.Tool == BuildTool.MoveTower && onMap && playerBuilder.TowerAt(gridManager.grid[pos.x, pos.y]) == null);
             float lift = built ? gridManager.nodeRadius * 2f + 0.1f : 0.1f;
             activeGhostTiles[i].transform.position = onMap ? gridManager.grid[pos.x, pos.y].worldPosition + Vector3.up * lift : Vector3.down * 100;
+            // Flat on the ground (2026-10-28): a ghost a unit tall showed its top a quarter of a tile
+            // above the tile it marks, from the tilted camera, and read as the wrong tile.
+            Vector3 scale = activeGhostTiles[i].transform.localScale;
+            float flat = built ? 1f : 0.08f;
+            if (!Mathf.Approximately(scale.y, flat)) activeGhostTiles[i].transform.localScale = new Vector3(scale.x, flat, scale.z);
         }
 
         Material material = valid && !redGhost ? validMaterial : invalidMaterial;

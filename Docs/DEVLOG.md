@@ -2185,3 +2185,79 @@ both runners (8 new). Not committed.
   tier 2 allows a tower's first upgrade, tier 3 its second (`Simulation.UpgradesAllowed`). Gear keeps
   its tiers. The research tile says what it opens; the inspect pane's upgrade button shows the tier
   it waits for ("T2"). 649 tests pass in both runners (1 new).
+
+---
+
+## 2026-10-28 — Picking fixed at its root, WASD, focused power lines, full refunds, restart keeps the build
+
+**Status:** the student's play notes. 650 tests pass in both runners (1 new). Not committed.
+
+- **The hover tile was off by up to half a tile** (the student's screenshot: the wall ghost a tile
+  from the mouse). The cause was `GridManager.NodeFromWorldPoint`: `RoundToInt((size - 1) * percent)`
+  is right in the middle of the board and up to half a tile off at its edges; now `Floor(size *
+  percent)`. The ray walk of 2026-10-24 was not wrong. The ghost of a tile on the ground is also flat
+  now (a unit-tall cube showed its top a quarter tile up). **Not changed:** `SimGrid.NodeFromPosition`
+  has the same rule; it decides which tile an agent is on (digging, the damage map, leaking), and
+  every replay was recorded with it, so changing it is a decision of its own.
+- **WASD** moves the view, like the arrows; the wall tool's key is now Q and the reroll's R.
+- **Power lines only for what is selected**: a source's lines to its towers, or a tower's to its
+  source.
+- **Build categories** without their key numbers.
+- **Gear from the start** (`ResearchUnlocksUpgrades` now leaves gear untiered too).
+- **Sold in the build phase it was built in: all back** (`SimConfig.FreshSellFullRefund`, on):
+  towers (with what was paid into them), walls and collectors; older things at half.
+- **A restart keeps the build** (`SimConfig.RetryKeepsBuild`, on): a retried wave starts from the
+  moment it began, with everything built for it standing and the build phase's full refunds still
+  open; it waits for Start.
+- **DEVIATION: the simulation's tile rule fixed too** (the student: enemies sometimes dig through a
+  wall the route line says they walk round). `SimGrid.NodeFromPosition` had the original game's
+  `round((size - 1) * percent)`, kept on purpose since WP1 (ARCHITECTURE.md §4.3): up to half a tile
+  off near the board's edges, so an enemy passing a wall counted as standing on it early and dug.
+  Now tile boundaries are the midpoints between centres (`floor((x + size/2) / tile)`), the same rule
+  as the view's. A gameplay change: every replay recorded again; two tests that counted on the old
+  boundaries were moved to the new ones (a flyer reaches the core tile ten ticks sooner). Not
+  reproduced by hand first: if enemies still leave their route, a session's replay.json shows where.
+- **Damage gear adds damage a second** (the student: +3 damage made the brazier far too strong; it
+  hits ten times a second): `GearDef.DpsAdd`, turned into damage a hit at the tower's own rate. Edge
+  +2 a second, keen edge +6 a second: worth the same to every tower.
+- **Route lines stuck after an Undo, a Redo or a retry** (the student: the raiders' line did not
+  follow new walls). The simulation rebuilt every field, raiders' included, on every change; but
+  `FlowFieldManager` was bound once to the first state's grid, and those three put a whole other state
+  in place. `SimHost.Dispatch` binds it to the running grid whenever it changes, so the route lines and
+  the field view always read the board being played.
+- **Wall tiers** (`SimConfig.WallTiers`, on): wall 1 ore (walk cost 15, 6 s to chew), stone wall 3
+  (30, 18 s), fort wall 5 (45, 36 s), in the ORDERS tab, each its own colour. `PlaceShape`'s A is the
+  tier (`Simulation.WallTier`); 0 is the plain wall, so old replays mean what they meant.
+- **Mountains can be broken** (`SimConfig.RockHealth` 60, `RockDigCost` 60, on): every rock of the
+  map is a wall of piece `SimNode.RockPiece`, ten times as tough as a plain wall and four times as
+  costly to walk through as a fort wall. It cannot be sold, pays nothing when broken, and a tower on
+  it that is chewed through leaves the rock standing. `RockLayout.Sync` takes a broken one off the
+  board and puts it back after an Undo or a retry. Off (0), rocks are impassable as before.
+- 653 tests pass in both runners (3 new).
+- **The pylon looks like a pylon** (the student): a low base, a thin mast with a cross-arm and a
+  glowing orb on top (`TowerView.Body`), not a tower's ring and barrel. **A ghost model when placing**:
+  the tower or pylon in the hand is drawn see-through on the tile under the mouse, on top of the wall
+  or rock it would stand on (`TowerView.Ghost`, `GhostPreviewer.ShowFigure`); also while moving a
+  tower. Written while the Unity bridge was down: not yet compiled in Unity or looked at.
+- **A card for every build button** (the student: hovering a button should show the thing's card,
+  and the bar should look cleaner): the tiles show only colour, name and price; hovering one shows a
+  card over the bar (`DeckBar.BuildCard`, `ShowCard`): a portrait, the name, the price with an ore gem,
+  for a tower its damage, rate and range as bars, then its traits, its three upgrade paths (each as
+  its two steps) and how to place it; for gear, walls, collectors, research and repair, what they do.
+  Written while the Unity bridge was down: not yet compiled in Unity or looked at.
+- **A tester's 77 waves** (`Results/2026-10-28_tester-session`): no pressure for 66 waves, 28
+  collectors never raided, 877 ore banked, an 8 %-compounding HP cliff at wave 70, a director that
+  answered nothing after wave 11, fire doing ~90 % of the damage. Answers, chosen by the student:
+  **deposits run out** (`SimConfig.DepositOre` 50; the deposit shows what is left; an empty one takes
+  no collector), **a steadier HP curve** (30 + 4.5 a wave, +4 % compounded, was 24 and +8 %), and
+  **the rough director answers any weakness**: bare outposts (raid, no stack needed), the densest
+  cluster anywhere (siege), one damage type over 60 % (armoured or ember enemies), anti-air under a
+  quarter of the damage (flyers, vetoed when nothing can hit them). New lines for each. The card's
+  first bar is damage a second (the student: a slow tower showed a full bar).
+- 655 tests pass in both runners (2 new, director tests moved to the new rules).
+- **One step rule for enemies and route lines** (`SimGrid.NextStep`, `StepGoal`, `Route.CollectSteps`):
+  raid field, own field, or a lure within reach, used by the agent pass and walked by `PathPreviewer`,
+  so a line bends to a Bonfire lure as the enemies do. The agents' behaviour is unchanged (the pinned
+  replays still pass). A new test walks an enemy past a lure: every tile of its line, in order, and
+  it ends where the line ends; the only extra tiles are the side tiles a diagonal step brushes.
+  656 tests pass in both runners.

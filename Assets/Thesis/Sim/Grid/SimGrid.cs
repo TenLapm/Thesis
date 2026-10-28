@@ -23,7 +23,9 @@ namespace Thesis.Sim
         // (FlowFieldVisualizer, PathPreviewer) can rebuild only when needed.
         public int FieldVersion;
 
-        public SimGrid(MapData map)
+        // rocksAsTerrain: the map's rocks are walkable tiles, for the simulation to put
+        // breakable rock walls on (SimConfig.RockHealth, 2026-10-28).
+        public SimGrid(MapData map, bool rocksAsTerrain = false)
         {
             if (map == null) throw new ArgumentNullException(nameof(map));
 
@@ -50,7 +52,7 @@ namespace Thesis.Sim
                     var position = new Vec2f((float)(bottomLeftX + (float)((float)(x * d) + r)),
                                              (float)(bottomLeftZ + (float)((float)(y * d) + r)));
                     int index = x * Height + y;
-                    nodes[index] = new SimNode(x, y, index, map.IsWalkable(x, y), position);
+                    nodes[index] = new SimNode(x, y, index, rocksAsTerrain || map.IsWalkable(x, y), position);
                 }
             }
         }
@@ -133,6 +135,26 @@ namespace Thesis.Sim
         // The next tile toward the nearest collector, or null.
         public SimNode NextRaid(SimNode node) { return node.RaidNextIndex < 0 ? null : nodes[node.RaidNextIndex]; }
 
+        // The tile an enemy on foot steps to next from `node` (2026-10-28): the one rule, used by
+        // the agent pass and by the route lines alike, so a line can never show a way the enemies
+        // do not walk. A raider follows the raid field while a collector stands and it can reach
+        // one; otherwise its class's field. A lure tower within reach pulls every enemy on foot,
+        // raiders too. Flying enemies take no steps on the grid.
+        public SimNode NextStep(SimNode node, MovementClass movement, bool raider)
+        {
+            SimNode next = raider && RaidGoals > 0 && node.RaidCost != SimNode.Infinity ? NextRaid(node) : NextOf(node, movement);
+            if (LureGoals > 0 && node.LureCost <= GearDef.LureRadius * FlowField.CardinalCost) next = NextLure(node);
+            return next;
+        }
+
+        // Whether `node` is where a walk by NextStep ends: the goal of the field it is following.
+        public bool StepGoal(SimNode node, MovementClass movement, bool raider)
+        {
+            if (LureGoals > 0 && node.LureCost == 0) return true;
+            if (raider && RaidGoals > 0 && node.RaidCost != SimNode.Infinity) return node.RaidCost == 0;
+            return node.CostFor(movement) == 0;
+        }
+
         // How many lure towers the lure field leads to, and the next tile toward the nearest.
         public int LureGoals;
 
@@ -145,26 +167,24 @@ namespace Thesis.Sim
             node.Occupant = Occupant.Collector;
         }
 
-        // Line-for-line port of GridManager.NodeFromWorldPoint. Two quirks are kept
-        // on purpose (ARCHITECTURE.md §4.3):
-        //   * it ignores the grid origin (assumes the grid is centred on world 0,0);
-        //   * it scales by (gridSize - 1) against gridWorldSize, which need not equal
-        //     gridSize * nodeDiameter, so tile boundaries are skewed away from the
-        //     midpoints between centres (strongly near the low-x / low-z edge).
-        // The skew decides which tile an agent is "on" mid-hop, and so when digging
-        // starts. Fixing it would be a gameplay change; record it as a deviation if
-        // anyone ever does.
+        // The tile a point lies in: tile boundaries at the midpoints between centres. It still
+        // assumes the grid is centred on world 0,0 (ARCHITECTURE.md §4.3).
+        //
+        // DEVIATION (2026-10-28): until then this was a line-for-line port of the original
+        // game's GridManager.NodeFromWorldPoint, round((gridSize - 1) * percent), kept on
+        // purpose. That rule is up to half a tile off near the board's edges, so an enemy
+        // walking round a wall was "on" the wall early and dug through it although its route
+        // went round (the student: enemies do not walk the path they are shown). Fixed as a
+        // gameplay change; every replay was recorded again.
         public SimNode NodeFromPosition(Vec2f worldXZ)
         {
             // Explicit casts round every float intermediate (ARCHITECTURE.md §9 rule 3).
-            float percentX = (float)((float)(worldXZ.X + (float)(worldSizeX / 2)) / worldSizeX);
-            float percentY = (float)((float)(worldXZ.Y + (float)(worldSizeY / 2)) / worldSizeY);
-
-            percentX = Clamp01(percentX);
-            percentY = Clamp01(percentY);
-
-            int x = RoundToInt((float)((Width - 1) * percentX));
-            int y = RoundToInt((float)((Height - 1) * percentY));
+            // Tiles from the low edge; the cast truncates, which is a floor for anything on the
+            // board, and the clamp keeps a point off it on the nearest edge tile.
+            float fromLeft = (float)((float)(worldXZ.X + (float)(worldSizeX / 2)) / TileSize);
+            float fromBottom = (float)((float)(worldXZ.Y + (float)(worldSizeY / 2)) / TileSize);
+            int x = fromLeft <= 0f ? 0 : Math.Min(Width - 1, (int)fromLeft);
+            int y = fromBottom <= 0f ? 0 : Math.Min(Height - 1, (int)fromBottom);
 
             return nodes[x * Height + y];
         }

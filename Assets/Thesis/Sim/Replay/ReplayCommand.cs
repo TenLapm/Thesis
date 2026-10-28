@@ -41,7 +41,7 @@ namespace Thesis.Sim
 
             switch (kind)
             {
-                case SimCommandKind.PlaceShape: return SimCommand.PlaceShape(X, Y);
+                case SimCommandKind.PlaceShape: return SimCommand.PlaceShape(X, Y, A);
                 case SimCommandKind.Rotate: return SimCommand.Rotate();
                 case SimCommandKind.Hold: return SimCommand.Hold();
                 case SimCommandKind.StartWaveNow: return SimCommand.StartWaveNow();

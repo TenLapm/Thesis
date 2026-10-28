@@ -34,6 +34,8 @@ namespace Thesis.Sim
             h.Add(s.MovesBought);
             h.Add(s.PhaseLogStart);
             h.Add(s.ResearchLevel);
+            h.Add(s.DepositLeft != null ? s.DepositLeft.Length : -1);
+            if (s.DepositLeft != null) for (int i = 0; i < s.DepositLeft.Length; i++) h.Add(s.DepositLeft[i]);
             h.Add(s.Retries);
             h.Add(s.GearOverflow.Count);
             for (int i = 0; i < s.GearOverflow.Count; i++) h.Add(s.GearOverflow[i]);

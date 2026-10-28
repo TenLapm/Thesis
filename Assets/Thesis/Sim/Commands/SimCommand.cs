@@ -81,7 +81,8 @@ namespace Thesis.Sim
             C = c;
         }
 
-        public static SimCommand PlaceShape(int originX, int originY) { return new SimCommand(SimCommandKind.PlaceShape, originX, originY, 0); }
+        // tier: SimConfig.WallTiers' wall (0 the plain one, 1 stone, 2 fortified).
+        public static SimCommand PlaceShape(int originX, int originY, int tier = 0) { return new SimCommand(SimCommandKind.PlaceShape, originX, originY, tier); }
 
         public static SimCommand Rotate() { return new SimCommand(SimCommandKind.Rotate, 0, 0, 0); }
 

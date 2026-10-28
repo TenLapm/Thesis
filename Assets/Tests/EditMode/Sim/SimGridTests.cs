@@ -106,22 +106,19 @@ namespace Thesis.Tests.Sim
         }
 
         [Test]
-        public void NodeFromPositionKeepsTheOriginalBoundarySkew()
+        public void NodeFromPositionPutsTileBoundariesAtTheMidpointsBetweenCentres()
         {
-            // Hand-computed from NodeFromWorldPoint with gridWorldSize 75, 38 tiles:
-            //   index = round(37 * (wx + 37.5) / 75)
-            // Tile 0's centre is -36.5, but tile 1 already starts at wx ~ -36.4865,
-            // i.e. only 0.0135 past tile 0's centre - not at the midpoint (-35.5).
-            // This is the original game's behaviour and is kept on purpose.
+            // 38 tiles of 2 units, world size 75: tile 0's centre is -36.5 and tile 1's -34.5, so
+            // the boundary is -35.5, at either edge of the board alike (2026-10-28; the original
+            // rule put tile 1's start at -36.49, a hair past tile 0's centre).
             var grid = new SimGrid(TestMaps.Open(38, 38, 75f, 75f, 1f));
 
             Assert.AreEqual(0, grid.NodeFromPosition(new Vec2f(-36.5f, 0f)).X);
-            Assert.AreEqual(1, grid.NodeFromPosition(new Vec2f(-36.4f, 0f)).X);
-            Assert.AreEqual(1, grid.NodeFromPosition(new Vec2f(-35.5f, 0f)).X);
-
-            // Near the high edge the boundary sits close to the midpoint instead.
-            Assert.AreEqual(36, grid.NodeFromPosition(new Vec2f(36.4f, 0f)).X);
-            Assert.AreEqual(37, grid.NodeFromPosition(new Vec2f(36.6f, 0f)).X);
+            Assert.AreEqual(0, grid.NodeFromPosition(new Vec2f(-35.6f, 0f)).X);
+            Assert.AreEqual(1, grid.NodeFromPosition(new Vec2f(-35.4f, 0f)).X);
+            Assert.AreEqual(35, grid.NodeFromPosition(new Vec2f(34.4f, 0f)).X);
+            Assert.AreEqual(36, grid.NodeFromPosition(new Vec2f(34.6f, 0f)).X);
+            Assert.AreEqual(37, grid.NodeFromPosition(new Vec2f(37.4f, 0f)).X);
         }
 
         [Test]

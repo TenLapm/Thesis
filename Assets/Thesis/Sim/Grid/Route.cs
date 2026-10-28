@@ -42,6 +42,22 @@ namespace Thesis.Sim
             }
         }
 
+        // The tiles an enemy on foot walks from `start` (2026-10-28): SimGrid.NextStep, the agents'
+        // own rule, raid field and lures included, until the goal it is heading for. The route
+        // lines draw this. A visited tile ends the walk, so no field can make it loop.
+        public static void CollectSteps(SimGrid grid, SimNode start, List<SimNode> into, MovementClass movement, bool raider)
+        {
+            into.Clear();
+            var seen = new HashSet<int>();
+            SimNode walk = start;
+            while (walk != null && seen.Add(walk.Index))
+            {
+                into.Add(walk);
+                if (grid.StepGoal(walk, movement, raider)) break;
+                walk = grid.NextStep(walk, movement, raider);
+            }
+        }
+
         // Cost to the goal in tile units, or -1 when unreachable. The /10 undoes
         // FlowField's x10 integer costs.
         public static double CostInTiles(SimNode start, MovementClass movement = MovementClass.Ground)

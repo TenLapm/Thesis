@@ -105,14 +105,18 @@ namespace Thesis.Sim
                             // pays the player nothing by default (spec gap S12).
                             TowerState tower = towers[node.TowerId];
                             tower.IsAlive = false;
-                            grid.ClearWall(node);
+                            // A tower on a mountain leaves the mountain (2026-10-28): it is far
+                            // tougher than the tower and has to be chewed through on its own.
+                            if (node.FoundationPiece == SimNode.RockPiece) grid.LiftTower(node);
+                            else grid.ClearWall(node);
                             buildBudget += towerBreachReward;
                             events?.Add(SimEvent.TowerDestroyed(tower.Id, node.X, node.Y));
                         }
                         else
                         {
+                            bool rock = node.PieceId == SimNode.RockPiece;
                             grid.ClearWall(node);
-                            buildBudget += agent.WallBreakReward;
+                            if (!rock) buildBudget += agent.WallBreakReward; // a broken mountain pays nothing
                             events?.Add(SimEvent.WallBreached(node.X, node.Y));
                         }
                         fieldDirty = true;
@@ -125,11 +129,8 @@ namespace Thesis.Sim
                 // target, so no matter how fast the agent is or how large dt is, it
                 // can never overshoot past a tile in a single step - it always stops
                 // at Next and re-samples next tick, so no built tile is ever skipped.
-                // A raider follows the raid field while a collector stands and it can reach one.
-                SimNode next = agent.TargetsCollectors && grid.RaidGoals > 0 && node.RaidCost != SimNode.Infinity
-                    ? grid.NextRaid(node) : grid.NextOf(node, agent.Movement);
-                // A lure tower within reach pulls every enemy on foot, raiders too.
-                if (grid.LureGoals > 0 && node.LureCost <= GearDef.LureRadius * FlowField.CardinalCost) next = grid.NextLure(node);
+                // Raid field, own field or a lure: SimGrid.NextStep, which the route lines walk too.
+                SimNode next = grid.NextStep(node, agent.Movement, agent.TargetsCollectors);
                 if (next != null)
                 {
                     agent.Position = Vec2f.MoveTowards(agent.Position, next.Position, (float)(speed * dt));

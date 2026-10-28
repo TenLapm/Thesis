@@ -125,6 +125,46 @@ namespace Thesis.Tests.Sim
         }
 
         [Test]
+        public void WhatIsSoldInTheBuildPhaseItWasBuiltInComesBackInFullAndARestartKeepsTheBuild()
+        {
+            var config = new SimConfig { ShopOffers = 0, StartBudget = 100f, BuildMenu = true, WaitForStart = true, CoreMaxHp = 1000,
+                                         FreshSellFullRefund = true, RetryKeepsBuild = true, SellRefund = 0.5f };
+            // The path runs along the top row; the towers stand on the bottom one (y = 0), off it.
+            AsciiFixture f = TestMaps.Parse(@"
+                S . . . . . . . . C
+                . . . . . . . . . .");
+            var sim = new Simulation(config, f.Map, TestShapes.SampleSceneLibrary(), new[] { TestTowers.Gun(damage: 1f, range: 3f, cost: 10) }, 1,
+                                     new EscalationPlanner(config, f.Map));
+            TestSims.Send(sim, SimCommand.BuyTower(0, 6, 0));
+            TestSims.Send(sim, SimCommand.SellTower(6, 0));
+            Assert.AreEqual(100f, sim.State.BuildBudget, "sold in the phase it was built in: all of it back");
+
+            TestSims.Send(sim, SimCommand.BuyTower(0, 6, 0));
+            TestSims.Send(sim, SimCommand.BuyTower(0, 4, 0));
+            TestSims.Send(sim, SimCommand.StartWaveNow());
+            TestSims.Run(sim, 300);
+            Assert.IsTrue(sim.CanRetry);
+
+            TestSims.Send(sim, SimCommand.RetryWave());
+            SimState s = sim.State;
+            Assert.AreEqual(0, s.WaveIndex);
+            Assert.AreEqual(2, s.Towers.FindAll(t => t.IsAlive).Count, "the restart keeps what was built for the wave (the one sold before stays in the list, gone)");
+            Assert.AreEqual(80f, s.BuildBudget);
+            Assert.IsTrue(s.Phase == SimPhase.Prep || s.Phase == SimPhase.Intermission);
+            TestSims.Run(sim, 5);
+            Assert.AreEqual(0, s.WaveIndex, "and waits for Start");
+
+            TestSims.Send(sim, SimCommand.SellTower(6, 0));
+            Assert.AreEqual(90f, sim.State.BuildBudget, "still the build phase it was bought in");
+
+            TestSims.Send(sim, SimCommand.StartWaveNow());
+            TestSims.RunUntilWaveResolves(sim);
+            float before = sim.State.BuildBudget;
+            TestSims.Send(sim, SimCommand.SellTower(4, 0));
+            Assert.AreEqual(before + 5f, sim.State.BuildBudget, "a wave later: half");
+        }
+
+        [Test]
         public void EveryThirdShotIsACrit()
         {
             Rig rig = NewRig();
@@ -197,7 +237,11 @@ namespace Thesis.Tests.Sim
             var t = new TowerState(0, TestTowers.Gun(damage: 0.8f, range: 2f), new TileCoord(0, 0), new Vec2f(0f, 0f), 2f, 0);
             t.Gear[0] = edge;
             t.Recompute(gear);
-            Assert.AreEqual(1.8f, t.Damage, 1e-5f);
+            Assert.AreEqual(1.8f, t.Damage, 1e-5f, "+2 a second at two shots a second: +1 a shot");
+            var fast = new TowerState(1, TestTowers.Gun(damage: 0.8f, range: 2f, interval: 5), new TileCoord(0, 0), new Vec2f(0f, 0f), 2f, 0);
+            fast.Gear[0] = edge;
+            fast.Recompute(gear);
+            Assert.AreEqual(1.0f, fast.Damage, 1e-5f, "ten shots a second: +0.2 a shot, the same +2 a second");
 
             var config = new SimConfig { FlatGear = true, ExtractorGear = true, GearCardWeight = 5f };
             var sold = new HashSet<string>();

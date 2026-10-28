@@ -280,6 +280,37 @@ namespace Thesis.Sim
         // tower (tier 2 the first, tier 3 the second). Gear keeps its tiers.
         public bool ResearchUnlocksUpgrades = false;
 
+        // 2026-10-28, the student. Whatever is sold in the build phase it was built in comes
+        // back in full (a tower with what was paid into it, a wall, a collector); older things
+        // at SellRefund / WallSellRefund as before.
+        public bool FreshSellFullRefund = false;
+
+        // A retried wave starts from the moment it began, with everything that was built for
+        // it still standing (2026-10-28); without, from the start of its build phase.
+        public bool RetryKeepsBuild = false;
+
+        // Wall tiers (2026-10-28): besides the plain wall of the shape library, a stone wall and a
+        // fortified wall, each dearer, costlier to walk through and longer to chew. PlaceShape's
+        // A names the tier (0 the plain wall).
+        public bool WallTiers = false;
+
+        // Ore runs out (2026-10-28, after a tester banked 877 ore from 28 collectors no raid ever
+        // touched): every deposit holds this much ore in all, and a collector on it pays what is left
+        // when that is less than its yield. 0: deposits never run out, as before.
+        public int DepositOre = 0;
+        public int StoneWallCost = 3;
+        public int StoneWallDigCost = 30;
+        public float StoneWallHealth = 18f;
+        public int FortWallCost = 5;
+        public int FortWallDigCost = 45;
+        public float FortWallHealth = 36f;
+
+        // Mountains (the map's rocks) that enemies can break (2026-10-28): above 0, every rock is a
+        // wall of this health and walking cost that cannot be sold and pays nothing when broken.
+        // 0: rocks are impassable static geometry, as before.
+        public float RockHealth = 0f;
+        public int RockDigCost = 60;
+
         // The player may set which enemy a tower shoots (TowerState.Mode).
         public bool ChooseTargeting = false;
 

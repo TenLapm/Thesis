@@ -457,6 +457,31 @@ namespace Thesis.Tests.Sim
         }
 
         [Test]
+        public void ADepositRunsOutAndAnEmptyOneTakesNoCollector()
+        {
+            SimConfig config = Config();
+            config.DepositOre = 7;
+            config.StipendPerWave = 0;
+            Simulation sim = New(config, MapWithDeposits());
+            SimState s = sim.State;
+            TestSims.Send(sim, SimCommand.BuildCollector(4, 0)); // yields 3
+            Assert.AreEqual(3, sim.CollectorIncome(s));
+            var paid = new List<float>();
+            for (int wave = 0; wave < 4; wave++)
+            {
+                float before = s.BuildBudget;
+                PlayOneWave(sim);
+                paid.Add(s.BuildBudget - before);
+            }
+            CollectionAssert.AreEqual(new[] { 3f, 3f, 1f, 0f }, paid, "7 ore in all: 3, 3, what is left, then nothing");
+            Assert.AreEqual(0, sim.DepositLeft(s, 0));
+
+            TestSims.Send(sim, SimCommand.SellWall(4, 0));
+            TestSims.Send(sim, SimCommand.BuildCollector(4, 0));
+            Assert.AreEqual(Occupant.None, s.Grid[4, 0].Occupant, "nothing left to dig there");
+        }
+
+        [Test]
         public void APylonMayNotStandNearTheCore()
         {
             SimConfig config = PowerConfig();
