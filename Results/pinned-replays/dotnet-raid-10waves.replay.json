@@ -2876,7 +2876,7 @@
       "Tier": 1,
       "Upgrades": [
         {
-          "Label": "Capacitor: powers 2 more towers",
+          "Label": "Capacitor: powers 1 more tower",
           "DamageMul": 1.0,
           "IntervalMul": 1.0,
           "RangeAdd": 0.0,
@@ -2889,7 +2889,7 @@
           "SlowTicksAdd": 0,
           "SlowFactorTo": 1.0,
           "PowerRadiusAdd": 0.0,
-          "PowerCapacityAdd": 2,
+          "PowerCapacityAdd": 1,
           "Path": 1,
           "Step": 1,
           "PathName": "Grid",
@@ -2906,7 +2906,7 @@
           "ExposeTicks": 0
         },
         {
-          "Label": "Substation: powers 2 more towers",
+          "Label": "Substation: powers 1 more tower",
           "DamageMul": 1.0,
           "IntervalMul": 1.0,
           "RangeAdd": 0.0,
@@ -2919,7 +2919,7 @@
           "SlowTicksAdd": 0,
           "SlowFactorTo": 1.0,
           "PowerRadiusAdd": 0.0,
-          "PowerCapacityAdd": 2,
+          "PowerCapacityAdd": 1,
           "Path": 1,
           "Step": 2,
           "PathName": "Grid",
@@ -2936,7 +2936,7 @@
           "ExposeTicks": 0
         },
         {
-          "Label": "Relay: reaches 2 tiles further",
+          "Label": "Relay: reaches 1 tile further",
           "DamageMul": 1.0,
           "IntervalMul": 1.0,
           "RangeAdd": 0.0,
@@ -2948,7 +2948,7 @@
           "IgnoresResist": false,
           "SlowTicksAdd": 0,
           "SlowFactorTo": 1.0,
-          "PowerRadiusAdd": 2.0,
+          "PowerRadiusAdd": 1.0,
           "PowerCapacityAdd": 0,
           "Path": 2,
           "Step": 1,
@@ -2966,7 +2966,7 @@
           "ExposeTicks": 0
         },
         {
-          "Label": "Long line: reaches 2 more tiles",
+          "Label": "Long line: reaches 1 more tile",
           "DamageMul": 1.0,
           "IntervalMul": 1.0,
           "RangeAdd": 0.0,
@@ -2978,7 +2978,7 @@
           "IgnoresResist": false,
           "SlowTicksAdd": 0,
           "SlowFactorTo": 1.0,
-          "PowerRadiusAdd": 2.0,
+          "PowerRadiusAdd": 1.0,
           "PowerCapacityAdd": 0,
           "Path": 2,
           "Step": 2,
@@ -3057,11 +3057,11 @@
         }
       ],
       "PowerRadius": 3.0,
-      "PowerCapacity": 3,
+      "PowerCapacity": 2,
       "Levels": null
     }
   ],
-  "SetupHash": "c060ea2ef043f332",
+  "SetupHash": "071eec2f7f7bd703",
   "InitialHash": "0e0b550b5d766ebd",
   "Commands": [
     {

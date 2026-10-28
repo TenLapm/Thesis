@@ -210,6 +210,32 @@ namespace Thesis.Tests.Sim
         }
 
         [Test]
+        public void TheFirstSiegesComeAloneAndWeakerAndGrowToTheFullEngine()
+        {
+            // 2026-10-28: early sieges beat a tester's seven towers; they now start small.
+            var stacked = new RoughDirector.Board { Towers = 6, StackLean = 1f };
+            Assert.AreNotEqual(RoughDirector.SiegeStack, RoughDirector.Choose(stacked, RoughDirector.FirstSiegeWave - 1, null), "no siege before its wave");
+            SimConfig config = Config();
+            config.AgentsPerWave = 20;
+            MapData map = MapWithDeposits();
+            var director = new RoughDirector(config, map);
+            Simulation sim = New(config, map, director);
+            foreach (int x in new[] { 7, 8 }) { TestSims.Send(sim, SimCommand.BuyTower(0, x, 1)); TestSims.Send(sim, SimCommand.BuyTower(0, x, 3)); }
+            var composer = new RaidPlanner(config, map);
+            int first = RoughDirector.FirstSiegeWave;
+            foreach (int wave in new[] { first, first + 2, first + 6, first + 20 })
+            {
+                WavePlan plan = director.PlanWave(new WaveContext(wave, sim.State, map, config));
+                Assert.AreEqual(RoughDirector.SiegeStack, plan.StrategyId, "wave " + wave);
+                AgentGroup engines = System.Array.Find(plan.Groups, g => g.Siege);
+                float basicHp = composer.Basic(wave).Hp;
+                float factor = System.Math.Min(6f, RoughDirector.SiegeHpFirst + RoughDirector.SiegeHpStep * (wave - first));
+                Assert.AreEqual(basicHp * factor, engines.Hp, 1e-3f, "wave " + wave);
+                if (wave < first + RoughDirector.LoneSiegeWaves) Assert.AreEqual(1, engines.Count, "alone at first, wave " + wave);
+            }
+        }
+
+        [Test]
         public void ACollectorOnAnEmptiedDepositIsNoOutpostToRaid()
         {
             SimConfig config = Config();
@@ -250,7 +276,7 @@ namespace Thesis.Tests.Sim
             TestSims.Send(sim, SimCommand.BuyTower(0, 8, 3));
 
             // Stacked, nothing to raid: siege.
-            WavePlan siege = director.PlanWave(new WaveContext(6, sim.State, map, config));
+            WavePlan siege = director.PlanWave(new WaveContext(RoughDirector.FirstSiegeWave, sim.State, map, config));
             Assert.AreEqual(RoughDirector.SiegeStack, siege.StrategyId);
             Assert.IsNotNull(RoughDirector.Line(siege.AnnouncementId));
             AgentGroup engines = System.Array.Find(siege.Groups, g => g.Siege);

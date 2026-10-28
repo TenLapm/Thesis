@@ -58,7 +58,14 @@ namespace Thesis.Sim
         public const float MaxRaidShare = 0.4f;
         public const int SiegeWorth = 4;             // plain enemies a siege enemy replaces
         public const int FirstRaidWave = 4;
-        public const int FirstSiegeWave = 5;
+        // 2026-10-28, a tester's run: two sieges of 337 HP at wave 5 beat seven towers twice.
+        // Sieges now come from wave 8, one alone for the first three waves of them, and start at
+        // SiegeHpFirst times a plain enemy's hit points, growing SiegeHpStep a wave to the
+        // archetype's own six times.
+        public const int FirstSiegeWave = 8;
+        public const int LoneSiegeWaves = 3;
+        public const float SiegeHpFirst = 3f;
+        public const float SiegeHpStep = 0.5f;
         public const int FirstCounterWave = 5;
         public const int MinTowers = 4;
         public const float MazeFloor = 1.4f;         // a route this many times the straight line is no maze yet
@@ -253,9 +260,12 @@ namespace Thesis.Sim
             }
             else if (strategy == SiegeStack)
             {
-                int count = 1 + (b.StackLean > 0.5f ? 1 : 0) + (b.StackLean > 0.85f ? 1 : 0);
-                AgentGroup siege = EnemyArchetypes.Siege().Apply(basic, 1f);
+                int count = wave < FirstSiegeWave + LoneSiegeWaves ? 1 : 1 + (b.StackLean > 0.5f ? 1 : 0) + (b.StackLean > 0.85f ? 1 : 0);
+                EnemyArchetype engine = EnemyArchetypes.Siege();
+                AgentGroup siege = engine.Apply(basic, 1f);
                 siege.Count = count;
+                float hpFactor = Math.Min(engine.HpFactor, (float)(SiegeHpFirst + (float)(SiegeHpStep * (wave - FirstSiegeWave))));
+                siege.Hp = (float)(basic.Hp * hpFactor);
                 int total = plan.TotalAgents();
                 Scale(plan, Math.Max(0.5f, total > 0 ? (float)(1f - (float)(count * SiegeWorth) / total) : 1f));
                 Add(plan, siege);

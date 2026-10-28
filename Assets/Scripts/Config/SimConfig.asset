@@ -107,7 +107,7 @@ MonoBehaviour:
     FreshSellFullRefund: 1
     RetryKeepsBuild: 1
     WallTiers: 1
-    DepositOre: 50
+    DepositOre: 30
     StoneWallCost: 3
     StoneWallDigCost: 30
     StoneWallHealth: 18

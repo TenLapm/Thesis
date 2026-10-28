@@ -93,7 +93,7 @@
   "FreshSellFullRefund": true,
   "RetryKeepsBuild": true,
   "WallTiers": true,
-  "DepositOre": 50,
+  "DepositOre": 30,
   "StoneWallCost": 3,
   "StoneWallDigCost": 30,
   "StoneWallHealth": 18.0,

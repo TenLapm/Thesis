@@ -1038,7 +1038,7 @@ public class TowerShopPanel : MonoBehaviour
         if (!show) return;
 
         Set(tooltipText, text);
-        tooltip.sizeDelta = new Vector2(Mathf.Min(520f, tooltipText.preferredWidth + 28f), 38f);
+        tooltip.sizeDelta = new Vector2(tooltipText.preferredWidth + 28f, 38f); // no cap: one line, never past the outline
         Vector2 mouse = Mouse.current.position.ReadValue();
         if (RectTransformUtility.ScreenPointToLocalPointInRectangle(canvasRect, mouse, null, out Vector2 local))
         {

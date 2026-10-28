@@ -53,7 +53,7 @@ public class SimHost : MonoBehaviour
     public int mapMargin = 2;
     public int mapRidges = 10;
     [Tooltip("Upper bound on ticks per rendered frame. After a long hitch the game slows down instead of freezing to catch up.")]
-    public int maxTicksPerFrame = 20;
+    public int maxTicksPerFrame = 40; // x6 at 15 fps is 20 ticks a frame (2026-10-28)
 
     [Header("Replay and telemetry")]
     [Tooltip("Record this session to Sessions/<session>/replay.json and telemetry.jsonl (project Runs/ folder in the editor, persistentDataPath in a build).")]

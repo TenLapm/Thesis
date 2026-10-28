@@ -4793,8 +4793,8 @@ MonoBehaviour:
   playerCore: {fileID: 427945556}
   speedLevels:
   - 1
-  - 2
   - 3
+  - 6
   pauseKey: 1
 --- !u!114 &1537456304
 MonoBehaviour:
@@ -4848,7 +4848,7 @@ MonoBehaviour:
   depositsPerCluster: 4
   mapMargin: 2
   mapRidges: 22
-  maxTicksPerFrame: 20
+  maxTicksPerFrame: 40
   recordReplay: 1
   recordTickHashes: 1
   towerRoster:

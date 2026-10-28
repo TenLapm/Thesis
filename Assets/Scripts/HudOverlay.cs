@@ -78,6 +78,7 @@ public class HudOverlay : MonoBehaviour
         Card(banner, new Color(0.1f, 0.078f, 0.031f, 0.95f), new Color(0.63f, 0.38f, 0.03f, 1f));
         HudArt.AddIcon(banner, "flag", Amber, new Vector2(16f, -11f), 24f);
         bannerText = Label(banner, "", 19, new Color(0.99f, 0.9f, 0.54f, 1f), TextAlignmentOptions.Left, new Vector2(50f, -9f), new Vector2(596f, 28f), false);
+        bannerText.textWrappingMode = TextWrappingModes.Normal; // a long line wraps (FitBanner)
 
         // Top right, over the base panel: ore, power, research.
         RectTransform ore = Badge("Ore", new Vector2(-270f, -112f), new Vector2(170f, 46f));
@@ -116,7 +117,8 @@ public class HudOverlay : MonoBehaviour
         {
             int index = i;
             RectTransform b = Button(controls, new Vector2(72f + i * 120f, 0f), new Vector2(112f, 48f), () => { if (speed != null) speed.SetSpeedIndex(index); }, out Image outline);
-            speedButtons.Add((outline, Label(b, (i + 1) + "×", 22, Bright, TextAlignmentOptions.Center, new Vector2(0f, -9f), new Vector2(112f, 30f), true)));
+            string tag = speed != null && i < speed.speedLevels.Length ? Mathf.RoundToInt(speed.speedLevels[i]) + "×" : (i + 1) + "×";
+            speedButtons.Add((outline, Label(b, tag, 22, Bright, TextAlignmentOptions.Center, new Vector2(0f, -9f), new Vector2(112f, 30f), true)));
         }
         RectTransform main = Button(controls, new Vector2(0f, -58f), new Vector2(430f, 56f), MainPressed, out mainOutline);
         mainIcon = HudArt.AddIcon(main, "play", Gold, new Vector2(112f, -15f), 26f);
@@ -166,7 +168,7 @@ public class HudOverlay : MonoBehaviour
         string line = plan != null ? RoughDirector.Line(plan.AnnouncementId) : null;
         if (line == null && build && !builder.ChoosingCore) line = "Build, then start the wave.";
         banner.gameObject.SetActive(line != null && !builder.ChoosingCore);
-        if (line != null) Set(bannerText, line);
+        if (line != null && line != bannerText.text) { Set(bannerText, line); FitBanner(); }
 
         // Ore, power, research.
         Set(oreText, s.BuildBudget.ToString("0"));
@@ -348,6 +350,18 @@ public class HudOverlay : MonoBehaviour
         label.overflowMode = TextOverflowModes.Overflow;
         label.raycastTarget = false;
         return label;
+    }
+
+    // The banner's card fits its line (2026-10-28, the student: the director's warnings ran
+    // over the outline): as wide as the text up to BannerMaxText, wrapped and taller beyond it.
+    private const float BannerMaxText = 760f;
+    private void FitBanner()
+    {
+        float width = Mathf.Min(BannerMaxText, Mathf.Max(200f, bannerText.GetPreferredValues(bannerText.text).x));
+        float height = bannerText.GetPreferredValues(bannerText.text, width, 0f).y;
+        bannerText.rectTransform.sizeDelta = new Vector2(width, height);
+        banner.sizeDelta = new Vector2(width + 66f, Mathf.Max(46f, height + 18f));
+        banner.anchoredPosition = new Vector2(-banner.sizeDelta.x * 0.5f, -18f);
     }
 
     private static void Set(TextMeshProUGUI label, string text) { if (label.text != text) label.text = text; }

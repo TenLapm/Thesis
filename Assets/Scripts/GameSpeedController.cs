@@ -20,7 +20,7 @@ public class GameSpeedController : MonoBehaviour
 
     [Header("Speed Levels")]
     [Tooltip("Selectable time-scale multipliers. The speed button cycles up through these and wraps; number-row keys 1..N jump straight to the matching entry.")]
-    public float[] speedLevels = { 1f, 2f, 3f };
+    public float[] speedLevels = { 1f, 3f, 6f };
 
     [Header("Pause")]
     public Key pauseKey = Key.Space;
