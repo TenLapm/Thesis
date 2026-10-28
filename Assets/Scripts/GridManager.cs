@@ -42,17 +42,10 @@ public class GridManager : MonoBehaviour
         }
     }
 
-    // Same math as SimGrid.NodeFromPosition (including its origin and rounding
-    // quirks, kept on purpose - see that method's comment).
+    // Same rule as SimGrid.NodeFromPosition (it also assumes the grid is centred on world 0,0).
     public Node NodeFromWorldPoint(Vector3 worldPosition)
     {
         if (grid == null) return null;
-
-        float percentX = (worldPosition.x + gridWorldSize.x / 2) / gridWorldSize.x;
-        float percentY = (worldPosition.z + gridWorldSize.y / 2) / gridWorldSize.y;
-
-        percentX = Mathf.Clamp01(percentX);
-        percentY = Mathf.Clamp01(percentY);
 
         // The tile the point lies in. RoundToInt((size - 1) * percent) was the tile whose
         // centre is nearest a point scaled by (size - 1) / size: right in the middle, up to half

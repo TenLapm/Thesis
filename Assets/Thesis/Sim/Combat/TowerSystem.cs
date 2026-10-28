@@ -67,7 +67,9 @@ namespace Thesis.Sim
 
                     AgentState target = live[index];
                     Vec2f centre = target.Position; // a splash is centred where the target stood
-                    Hit(tower, target, grid, damage, damageByType, minSlowFactor, ref buildBudget, events);
+                    // Gear's damage a second, as damage this shot at this tower's rate: the first target only.
+                    float bonus = bolt == 0 && tower.GearDps > 0f ? (float)((float)(tower.GearDps * tower.FireIntervalTicks) * tickSeconds) : 0f;
+                    Hit(tower, target, grid, damage, damageByType, minSlowFactor, ref buildBudget, events, bonus);
 
                     // Only the first bolt splashes (2026-10-14). Enemies walk in file, so a
                     // splash hits several at once, and with one splash per bolt the Volley
@@ -93,7 +95,7 @@ namespace Thesis.Sim
         }
 
         private static void Hit(TowerState tower, AgentState agent, SimGrid grid, DamageMap damage, float[] damageByType,
-                                float minSlowFactor, ref float buildBudget, IList<SimEvent> events)
+                                float minSlowFactor, ref float buildBudget, IList<SimEvent> events, float bonus = 0f)
         {
             TowerDef def = tower.Def;
             int type = (int)def.DamageType;
@@ -108,6 +110,7 @@ namespace Thesis.Sim
             // A crit is every CritEvery-th shot of the tower, counted by Shots (the shot now
             // being fired is Shots + 1): no dice, so a replay sees the same crits.
             if (tower.CritEvery > 0 && (tower.Shots + 1) % tower.CritEvery == 0) dealt = (float)(dealt * tower.CritMul);
+            if (bonus > 0f) dealt = (float)(dealt + (float)(bonus * resist)); // gear's damage a second, never crit
             if (agent.Movement == MovementClass.Flying) dealt = (float)(dealt * tower.FlyingDamageMul);
             if (agent.ExposeTicks > 0) dealt = (float)(dealt * agent.ExposeMul);
             if (tower.ExecuteBelow > 0f && (float)(agent.Hp - dealt) < (float)(agent.MaxHp * tower.ExecuteBelow)) dealt = agent.Hp;

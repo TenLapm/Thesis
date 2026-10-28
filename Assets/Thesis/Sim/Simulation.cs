@@ -443,7 +443,7 @@ namespace Thesis.Sim
                     {
                         // A dearer, tougher wall: the bag's shape with the tier's numbers; the bag is not drawn from.
                         ShapeDef tier = WallTier(command.A, s.Bag.CurrentShape);
-                        if (tier != null) Placement.TryPlace(s.Grid, map, fields, tier, 0, new TileCoord(command.X, command.Y), ref s.BuildBudget, s.Tick, s.PlacementLog, events);
+                        if (tier != null) Placement.TryPlace(s.Grid, map, fields, tier, s.Bag.CurrentRotationTurns, new TileCoord(command.X, command.Y), ref s.BuildBudget, s.Tick, s.PlacementLog, events);
                         break;
                     }
                     if (Placement.TryPlace(s.Grid, map, fields, s.Bag.CurrentShape, s.Bag.CurrentRotationTurns,
@@ -1057,14 +1057,22 @@ namespace Thesis.Sim
         }
 
         // A wall tier (SimConfig.WallTiers): 1 stone, 2 fortified; the bag's shape with that
-        // tier's price, walking cost and health. Made once each.
+        // tier's price, walking cost and health. Made again whenever the bag's shape changes.
+        public const string StoneWallName = "Stone", FortWallName = "Fort";
         private ShapeDef stoneWall, fortWall;
 
         public ShapeDef WallTier(int tier, ShapeDef shape)
         {
             if (shape == null || tier < 1 || tier > 2) return null;
-            if (tier == 1) return stoneWall ?? (stoneWall = new ShapeDef { Name = "Stone", BuildCost = config.StoneWallCost, DigCost = Math.Max(2, config.StoneWallDigCost), WallHealth = config.StoneWallHealth, LocalTiles = shape.LocalTiles });
-            return fortWall ?? (fortWall = new ShapeDef { Name = "Fort", BuildCost = config.FortWallCost, DigCost = Math.Max(2, config.FortWallDigCost), WallHealth = config.FortWallHealth, LocalTiles = shape.LocalTiles });
+            if (tier == 1)
+            {
+                if (stoneWall == null || stoneWall.LocalTiles != shape.LocalTiles)
+                    stoneWall = new ShapeDef { Name = StoneWallName, BuildCost = config.StoneWallCost, DigCost = Math.Max(2, config.StoneWallDigCost), WallHealth = config.StoneWallHealth, LocalTiles = shape.LocalTiles };
+                return stoneWall;
+            }
+            if (fortWall == null || fortWall.LocalTiles != shape.LocalTiles)
+                fortWall = new ShapeDef { Name = FortWallName, BuildCost = config.FortWallCost, DigCost = Math.Max(2, config.FortWallDigCost), WallHealth = config.FortWallHealth, LocalTiles = shape.LocalTiles };
+            return fortWall;
         }
 
         // How many upgrades a tower may have now: all of SimConfig.UpgradesPerTower, or with
@@ -1530,6 +1538,8 @@ namespace Thesis.Sim
                 retryStart = s.Clone();
                 retryStart.Pending.Clear();
                 retryStart.StartWaveRequested = false;
+                // Without WaitForStart the clock runs again from a whole phase, not from the 0 it had reached.
+                retryStart.PhaseTicksRemaining = config.Ticks(s.Phase == SimPhase.Prep ? config.PrepSeconds : config.IntermissionSeconds);
             }
             else retryStart = phaseStart;
 

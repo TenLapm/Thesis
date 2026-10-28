@@ -315,19 +315,5 @@ namespace Thesis.Sim
             node.FoundationMaxHealth = 0f;
             node.FoundationPiece = -1;
         }
-
-        // Mathf.Clamp01 / Mathf.RoundToInt equivalents. RoundToInt is (int)Math.Round,
-        // i.e. round-half-to-even, which is what Unity does too.
-        private static float Clamp01(float v)
-        {
-            if (v < 0f) return 0f;
-            if (v > 1f) return 1f;
-            return v;
-        }
-
-        private static int RoundToInt(float v)
-        {
-            return (int)Math.Round(v);
-        }
     }
 }

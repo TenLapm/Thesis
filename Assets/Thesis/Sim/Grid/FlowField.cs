@@ -139,6 +139,9 @@ namespace Thesis.Sim
         public static int SapperTerrainCost(SimNode node, float digCostFactor)
         {
             if (!node.HasWall) return node.TerrainCost;
+            // A mountain is no cheaper for a sapper than for anyone (2026-10-28, the student: sappers
+            // dig through walls, but must not always take the same tunnel through the mountains).
+            if (node.IsRock) return node.TerrainCost;
             int scaled = (int)Math.Round((float)(node.TerrainCost * digCostFactor));
             return scaled < 1 ? 1 : scaled;
         }

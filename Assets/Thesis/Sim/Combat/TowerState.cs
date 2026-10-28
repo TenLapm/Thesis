@@ -41,6 +41,10 @@ namespace Thesis.Sim
 
         // --- effective numbers (Recompute) ---
         public float Damage;
+        // Damage a second from gear (GearDef.DpsAdd), kept apart from Damage: TowerSystem adds it to
+        // the first target of each shot only, after crits, so it is worth exactly this to any tower
+        // whatever its rate, targets, splash or crits (2026-10-28).
+        public float GearDps;
         public int FireIntervalTicks;
         public float RangeTiles;
         public float RangeSquared;      // in world units, squared
@@ -151,6 +155,7 @@ namespace Thesis.Sim
             Gear[1] = source.Gear[1];
             tileSize = source.tileSize;
             Damage = source.Damage;
+            GearDps = source.GearDps;
             FireIntervalTicks = source.FireIntervalTicks;
             RangeTiles = source.RangeTiles;
             RangeSquared = source.RangeSquared;
@@ -291,9 +296,8 @@ namespace Thesis.Sim
             }
 
             FireIntervalTicks = Math.Max(1, (int)interval);
-            // Damage a second from gear, as damage a hit at this tower's rate (50 ticks a second).
-            if (dpsAdd != 0f) damage = (float)(damage + (float)((float)(dpsAdd * FireIntervalTicks) / 50f));
             Damage = damage;
+            GearDps = dpsAdd;
             RangeTiles = range;
             float reach = (float)(range * tileSize);
             RangeSquared = (float)(reach * reach);

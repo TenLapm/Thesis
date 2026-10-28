@@ -44,13 +44,13 @@ namespace Thesis.Sim
 
         // The tiles an enemy on foot walks from `start` (2026-10-28): SimGrid.NextStep, the agents'
         // own rule, raid field and lures included, until the goal it is heading for. The route
-        // lines draw this. A visited tile ends the walk, so no field can make it loop.
+        // lines draw this. The guard stops a field with a cycle from hanging the caller.
         public static void CollectSteps(SimGrid grid, SimNode start, List<SimNode> into, MovementClass movement, bool raider)
         {
             into.Clear();
-            var seen = new HashSet<int>();
             SimNode walk = start;
-            while (walk != null && seen.Add(walk.Index))
+            int guard = grid.Width * grid.Height + 5;
+            while (walk != null && guard-- > 0)
             {
                 into.Add(walk);
                 if (grid.StepGoal(walk, movement, raider)) break;

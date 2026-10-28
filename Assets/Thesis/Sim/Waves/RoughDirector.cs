@@ -169,6 +169,8 @@ namespace Thesis.Sim
                 {
                     TileCoord tile = map.Deposits[d].Tile;
                     if (s.Grid.Get(tile).Occupant != Occupant.Collector) continue;
+                    // A collector on an emptied deposit earns nothing: no outpost worth raiding (2026-10-28).
+                    if (s.DepositLeft != null && d < s.DepositLeft.Length && s.DepositLeft[d] <= 0) continue;
                     b.Collectors++;
                     float cover = 0f;
                     for (int t = 0; t < s.Towers.Count; t++)
@@ -185,7 +187,8 @@ namespace Thesis.Sim
 
         private static bool Shoots(TowerState t) { return t.IsAlive && !t.OnBench && t.PowerCapacity == 0; }
 
-        private static float Dps(TowerState t) { return (float)((float)(t.Damage * t.Targets) / Math.Max(1, t.FireIntervalTicks)); }
+        // Damage a tick (TowerState.GearDps is a second: 50 ticks).
+        private static float Dps(TowerState t) { return (float)((float)((float)(t.Damage * t.Targets) / Math.Max(1, t.FireIntervalTicks)) + (float)(t.GearDps / 50f)); }
 
         private static float Clamp01(float v) { return Math.Max(0f, Math.Min(1f, v)); }
 

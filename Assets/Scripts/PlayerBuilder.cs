@@ -1223,10 +1223,14 @@ public class PlayerBuilder : MonoBehaviour
     public static readonly Color StoneColor = new Color(0.62f, 0.66f, 0.72f);
     public static readonly Color FortColor = new Color(0.33f, 0.4f, 0.5f);
 
-    public Color WallColorOf(float maxHealth)
+    // By the piece's row in the build log (its shape's name), so a change of numbers cannot mix the tiers up.
+    public Color WallColorOf(int pieceId)
     {
-        if (Host.Config.WallTiers && Mathf.Approximately(maxHealth, Host.Config.FortWallHealth)) return FortColor;
-        if (Host.Config.WallTiers && Mathf.Approximately(maxHealth, Host.Config.StoneWallHealth)) return StoneColor;
+        var log = Host.State.PlacementLog;
+        if (pieceId < 0 || pieceId >= log.Count) return wallColor;
+        string name = log[pieceId].ShapeName;
+        if (name == Simulation.FortWallName) return FortColor;
+        if (name == Simulation.StoneWallName) return StoneColor;
         return wallColor;
     }
 
@@ -1235,7 +1239,7 @@ public class PlayerBuilder : MonoBehaviour
         RemoveVisual(node);
         GameObject wall = Instantiate(standardWallPrefab, node.worldPosition + new Vector3(0, cellSize * wallHeight / 2f, 0), Quaternion.identity);
         wall.transform.localScale = new Vector3(cellSize * 0.94f, cellSize * wallHeight, cellSize * 0.94f);
-        ApplyShapeColor(wall, WallColorOf(Host.State.Grid[node.gridX, node.gridY].MaxWallHealth));
+        ApplyShapeColor(wall, WallColorOf(Host.State.Grid[node.gridX, node.gridY].PieceId));
 
         // Pop-in flourish. Added AFTER the final scale is set so the animator captures it.
         if (popDelay >= 0f) wall.AddComponent<WallSpawnAnimator>().Play(popDelay);
@@ -1421,7 +1425,7 @@ public class PlayerBuilder : MonoBehaviour
             GameObject under = Instantiate(standardWallPrefab, view.transform);
             under.transform.position = node.worldPosition + new Vector3(0, plinth / 2f, 0);
             under.transform.localScale = new Vector3(cellSize * 0.94f, plinth, cellSize * 0.94f);
-            ApplyShapeColor(under, WallColorOf(Host.State.Grid[node.gridX, node.gridY].FoundationMaxHealth));
+            ApplyShapeColor(under, WallColorOf(Host.State.Grid[node.gridX, node.gridY].FoundationPiece));
         }
         view.Show(tower, Host.Sim.GearLibrary.Length);
         towerViews[tower.Id] = view;

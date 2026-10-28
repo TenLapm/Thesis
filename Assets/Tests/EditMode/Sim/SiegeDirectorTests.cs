@@ -209,6 +209,22 @@ namespace Thesis.Tests.Sim
             }
         }
 
+        [Test]
+        public void ACollectorOnAnEmptiedDepositIsNoOutpostToRaid()
+        {
+            SimConfig config = Config();
+            config.DepositOre = 50;
+            MapData map = MapWithDeposits();
+            Simulation sim = New(config, map, new RoughDirector(config, map));
+            TestSims.Send(sim, SimCommand.BuildCollector(4, 0));
+            TestSims.Send(sim, SimCommand.BuildCollector(4, 4));
+            Assert.AreEqual(2, RoughDirector.Read(new WaveContext(6, sim.State, map, config)).BareCollectors);
+            sim.State.DepositLeft[0] = 0;
+            RoughDirector.Board b = RoughDirector.Read(new WaveContext(6, sim.State, map, config));
+            Assert.AreEqual(1, b.Collectors, "the emptied one does not count");
+            Assert.AreEqual(1, b.BareCollectors);
+        }
+
         private static MapData MapWithDeposits()
         {
             MapData map = TestMaps.Parse(Open).Map;

@@ -1072,7 +1072,7 @@ public class DeckBar : MonoBehaviour
         float rate = 50f / Mathf.Max(1, t.FireIntervalTicks);
         // The first bar is damage a SECOND (2026-10-28, the student: a slow tower should not show a
         // full bar for one big hit); the number beside it gives the hit and the second.
-        float dps = t.Damage * t.Targets * rate;
+        float dps = t.Damage * t.Targets * rate + t.GearDps;
         float[] share = { dps / 30f, rate / 10f, t.RangeTiles / 9f };
         string[] text = { t.Damage.ToString("0.#") + (t.Targets > 1 ? "\u00d7" + t.Targets : "") + "  \u00b7  " + dps.ToString("0.#") + "/s", rate.ToString("0.#") + "/s", t.RangeTiles.ToString("0.#") };
         for (int i = 0; i < 3; i++)
@@ -1137,7 +1137,7 @@ public class DeckBar : MonoBehaviour
             }
             return text.ToString();
         }
-        float perSecond = t.Damage * t.Targets * 50f / Mathf.Max(1, t.FireIntervalTicks);
+        float perSecond = t.Damage * t.Targets * 50f / Mathf.Max(1, t.FireIntervalTicks) + t.GearDps;
         text.Append(d.DamageType.ToString().ToLowerInvariant()).Append("  ·  ").Append(t.Damage.ToString("0.#")).Append(" damage every ")
             .Append((t.FireIntervalTicks / 50f).ToString("0.##")).Append(" s  (").Append(perSecond.ToString("0.#")).Append(" a second)\n");
         text.Append("range ").Append(t.RangeTiles.ToString("0.#")).Append(" tiles  ·  ").Append(t.CanHitFlying ? "hits flyers" : "ground only").Append('\n');

@@ -53,6 +53,22 @@ namespace Thesis.Tests.Sim
             Assert.AreEqual(6f, sim.State.Grid[2, 0].MaxWallHealth);
         }
 
+        [Test]
+        public void ASapperPaysFullPriceForAMountainAndLessForAWall()
+        {
+            // 2026-10-28, the student: sappers dig walls, but must not always tunnel the same mountain.
+            var config = new SimConfig { ShopOffers = 0, StartBudget = 100f, WaitForStart = true, RockHealth = 60f, RockDigCost = 60 };
+            MapData map = TestMaps.Parse(@"
+                S . X . . C
+                . . . . . .").Map;
+            var sim = new Simulation(config, map, OneTile(), new[] { TestTowers.Gun() }, 1, new EscalationPlanner(config, map));
+            TestSims.Send(sim, SimCommand.PlaceShape(3, 1)); // the top row is y = 1
+            SimNode rock = sim.State.Grid[2, 1], wall = sim.State.Grid[3, 1];
+            Assert.IsTrue(rock.IsRock);
+            Assert.AreEqual(60, FlowField.SapperTerrainCost(rock, config.SapperDigCostFactor), "a mountain: full price");
+            Assert.Less(FlowField.SapperTerrainCost(wall, config.SapperDigCostFactor), wall.TerrainCost, "a wall: the sapper's discount");
+        }
+
         // A ridge of rock between the entry and the core, open only at the bottom: the walk round
         // is long, so with a cheap rock (RockDigCost 2) the enemy digs through (3,3).
         private const string Ridge = @"

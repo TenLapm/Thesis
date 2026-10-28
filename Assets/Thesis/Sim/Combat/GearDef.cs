@@ -18,8 +18,8 @@ namespace Thesis.Sim
         public float DamageMul = 1f;
         public float DamageAdd;          // flat damage a hit (2026-10-27)
         // Flat damage a SECOND (2026-10-28, the student: +3 a hit made the brazier, which hits
-        // ten times a second, far too strong): turned into damage a hit by the tower's own
-        // rate, so it is worth the same to every tower.
+        // ten times a second, far too strong): TowerState.GearDps, dealt to the first target of
+        // each shot, so it is worth the same to every tower. Halved again the same day.
         public float DpsAdd;
         public bool FlatOnly;            // sold only with SimConfig.FlatGear, so older shops stay as they were
         public float IntervalMul = 1f;   // below 1 = fires faster
@@ -93,8 +93,8 @@ namespace Thesis.Sim
                 new GearDef { Id = "anti-armor", Label = "ignores resistance; 20% slower", IgnoresResist = true, IntervalMul = 1.25f, Price = 8, Tier = 2 },
                 new GearDef { Id = "lure", Label = "enemies within 4 go for it; 3x tough", Lure = true, Price = 8, Tier = 2 },
                 // 2026-10-27: flat numbers, the only gear with SimConfig.FlatGear.
-                new GearDef { Id = "edge", Label = "+2 damage a second", DpsAdd = 2f, Price = 8, FlatOnly = true },
-                new GearDef { Id = "keen-edge", Label = "+6 damage a second", DpsAdd = 6f, Price = 20, Tier = 2, FlatOnly = true },
+                new GearDef { Id = "edge", Label = "+1 damage a second", DpsAdd = 1f, Price = 8, FlatOnly = true },
+                new GearDef { Id = "keen-edge", Label = "+3 damage a second", DpsAdd = 3f, Price = 20, Tier = 2, FlatOnly = true },
                 new GearDef { Id = "far-scope", Label = "+2 range", RangeAdd = 2f, Price = 18, Tier = 2, FlatOnly = true },
             };
         }

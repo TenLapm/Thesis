@@ -165,6 +165,25 @@ namespace Thesis.Tests.Sim
         }
 
         [Test]
+        public void WithoutWaitingForStartARestartedWaveGetsAWholeBuildPhaseAgain()
+        {
+            var config = new SimConfig { ShopOffers = 0, StartBudget = 100f, BuildMenu = true, WaitForStart = false, CoreMaxHp = 1000,
+                                         RetryKeepsBuild = true, PrepSeconds = 2f, IntermissionSeconds = 2f };
+            AsciiFixture f = TestMaps.Parse(@"
+                S . . . . . . . . C
+                . . . . . . . . . .");
+            var sim = new Simulation(config, f.Map, TestShapes.SampleSceneLibrary(), new[] { TestTowers.Gun(damage: 1f, range: 3f, cost: 10) }, 1,
+                                     new EscalationPlanner(config, f.Map));
+            TestSims.Run(sim, config.Ticks(config.PrepSeconds) + 50);
+            Assert.AreEqual(1, sim.State.WaveIndex, "the prep timer ran out and the wave began");
+            Assert.IsTrue(sim.CanRetry);
+            TestSims.Send(sim, SimCommand.RetryWave());
+            Assert.AreEqual(0, sim.State.WaveIndex);
+            TestSims.Run(sim, 10);
+            Assert.AreEqual(0, sim.State.WaveIndex, "the timer runs from a whole phase, not from the 0 it had reached");
+        }
+
+        [Test]
         public void EveryThirdShotIsACrit()
         {
             Rig rig = NewRig();
@@ -237,17 +256,41 @@ namespace Thesis.Tests.Sim
             var t = new TowerState(0, TestTowers.Gun(damage: 0.8f, range: 2f), new TileCoord(0, 0), new Vec2f(0f, 0f), 2f, 0);
             t.Gear[0] = edge;
             t.Recompute(gear);
-            Assert.AreEqual(1.8f, t.Damage, 1e-5f, "+2 a second at two shots a second: +1 a shot");
-            var fast = new TowerState(1, TestTowers.Gun(damage: 0.8f, range: 2f, interval: 5), new TileCoord(0, 0), new Vec2f(0f, 0f), 2f, 0);
-            fast.Gear[0] = edge;
-            fast.Recompute(gear);
-            Assert.AreEqual(1.0f, fast.Damage, 1e-5f, "ten shots a second: +0.2 a shot, the same +2 a second");
+            Assert.AreEqual(0.8f, t.Damage, 1e-5f, "damage a second is kept apart from the hit");
+            Assert.AreEqual(1f, t.GearDps, 1e-5f, "edge: +1 a second");
 
             var config = new SimConfig { FlatGear = true, ExtractorGear = true, GearCardWeight = 5f };
             var sold = new HashSet<string>();
             for (int stock = 0; stock < 60; stock++)
                 foreach (TowerOffer item in ShopRoller.RollGearShop(3, stock, gear, 3, 0, config)) sold.Add(gear[item.GearIndex].Id);
             CollectionAssert.AreEquivalent(new[] { "scope", "edge", "keen-edge", "far-scope", "extractor" }, sold);
+        }
+
+        [Test]
+        public void GearDamageASecondIsTheSameForATowerOfThreeTargetsOrOfCrits()
+        {
+            // 2026-10-28: added to the first target of a shot only, after the crit, so a volley or a
+            // crit does not multiply it. Edge (+1 a second) at 10 ticks a shot: +0.2 a shot.
+            GearDef[] gear = GearRoster.Default();
+            int edge = System.Array.FindIndex(gear, g => g.Id == "edge");
+
+            Rig rig = NewRig();
+            TowerState volley = rig.Tower(With(new TowerLevelMod { ExtraTargets = 2 }), 2, 0);
+            volley.Gear[0] = edge;
+            volley.Recompute(gear);
+            AgentState[] three = { rig.AgentAt(volley, 0.5f, 1000f), rig.AgentAt(volley, 0.7f, 1000f), rig.AgentAt(volley, 0.9f, 1000f) };
+            rig.Step(1);
+            float dealt = 0f;
+            foreach (AgentState a in three) dealt += 1000f - a.Hp;
+            Assert.AreEqual(30.2f, dealt, 1e-3f, "three bolts of 10, and the gear's 0.2 once");
+
+            Rig crit = NewRig();
+            TowerState critter = crit.Tower(With(new TowerLevelMod { CritEvery = 1, CritMul = 3f }), 2, 0);
+            critter.Gear[0] = edge;
+            critter.Recompute(gear);
+            AgentState target = crit.AgentAt(critter, 1f, 1000f);
+            crit.Step(1);
+            Assert.AreEqual(30.2f, 1000f - target.Hp, 1e-3f, "the crit triples the hit, not the gear's 0.2");
         }
 
         [Test]
