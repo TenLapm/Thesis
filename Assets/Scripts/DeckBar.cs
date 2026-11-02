@@ -52,7 +52,7 @@ public class DeckBar : MonoBehaviour
     private TextMeshProUGUI spareText;
     private readonly List<Slot> spare = new List<Slot>();
     private readonly List<Action> spareSell = new List<Action>();
-    private TextMeshProUGUI movesValue, wallsValue, wallsNote, benchTitle, gearTitle, infoText, coreText;
+    private TextMeshProUGUI movesValue, wallsValue, wallsNote, benchTitle, infoText, coreText;
     private Action buyMove, buyWalls, confirmCore;
     private Image dragImage;
     private readonly List<Slot> bench = new List<Slot>();
@@ -83,7 +83,6 @@ public class DeckBar : MonoBehaviour
     // The inspect pane's commands (2026-10-24): for a tower, upgrade, target, move, sell;
     // for a collector, sell.
     private readonly List<Action> gizmos = new List<Action>();
-    private TextMeshProUGUI buildTitle;
     private readonly List<Action> categoryButtons = new List<Action>();
     private readonly List<Item> items = new List<Item>();
     private int category;
@@ -161,14 +160,12 @@ public class DeckBar : MonoBehaviour
         gearArea.pivot = new Vector2(1f, 1f);
         gearArea.anchoredPosition = new Vector2(-12f, 0f);
         gearArea.sizeDelta = new Vector2(3f * (GearSlotWidth + 6f), height);
-        gearTitle = Label(gearArea, "GEAR", 16, Dim, TextAlignmentOptions.TopLeft, new Vector2(0f, -8f), new Vector2(400f, 22f), true);
 
         buildArea = Rect("Build", bar);
         buildArea.anchorMin = buildArea.anchorMax = new Vector2(0f, 1f);
         buildArea.pivot = new Vector2(0f, 1f);
         buildArea.anchoredPosition = new Vector2(256f, 0f);
         buildArea.sizeDelta = new Vector2(132f + ItemsPerRow * (ItemWidth + 6f), height);
-        buildTitle = Label(buildArea, "", 16, Dim, TextAlignmentOptions.TopLeft, new Vector2(0f, -8f), new Vector2(720f, 22f), true);
         for (int c = 0; c < Categories.Length; c++)
         {
             int which = c;
@@ -485,7 +482,7 @@ public class DeckBar : MonoBehaviour
         wallsValue.gameObject.SetActive(walls);
         Set(wallsValue, walls ? state.WallsLeft.ToString() : "");
         wallsValue.color = state.WallsLeft > 0 ? Bright : Dim;
-        Set(wallsNote, !walls ? (playerBuilder.BuildMenu ? "walls " + playerBuilder.WallPrice + " ore a tile; selling one gives it back" : "") : config.FreeWallPickup ? "take any wall up again with SELL [X]" : "old walls you may still take up: " + state.RelaysLeft);
+        Set(wallsNote, !walls ? "" : config.FreeWallPickup ? "take any wall up again with SELL [X]" : "old walls you may still take up: " + state.RelaysLeft);
         bool wallSold = walls && config.WallPackSize > 0;
         buyWalls.root.SetActive(wallSold);
         if (wallSold)
@@ -532,7 +529,6 @@ public class DeckBar : MonoBehaviour
         // The gear inventory.
         int pieces = state.GearInventory.Length;
         gearArea.gameObject.SetActive(pieces > 0);
-        Set(gearTitle, playerBuilder.Tool == BuildTool.EquipGear ? "GEAR   drop it on a tower" : "GEAR   drag a piece onto a tower");
         while (gear.Count < pieces)
         {
             int i = gear.Count;
@@ -586,11 +582,9 @@ public class DeckBar : MonoBehaviour
 
         float ore = state.BuildBudget;
         int n = 0;
-        string hint = "";
         switch (category)
         {
             case 0:
-                hint = "click one, then a wall or a rock  \u00b7  right-click to stop";
                 TowerDef[] roster = Host.Sim.TowerLibrary;
                 for (int i = 0; i < roster.Length && n < items.Count; i++)
                 {
@@ -606,7 +600,6 @@ public class DeckBar : MonoBehaviour
                 }
                 break;
             case 1:
-                hint = "collectors pay ore after every wave they survive";
                 if (playerBuilder.HasDeposits)
                     Fill(items[n++], "Collector", config.CollectorPrice.ToString("0.#"), "on an ore deposit: +2 to +4 a wave  [C]",
                          PlayerBuilder.CollectorColor, true, ore >= config.CollectorPrice, playerBuilder.Tool == BuildTool.Collector, () => playerBuilder.SelectCollector());
@@ -631,7 +624,6 @@ public class DeckBar : MonoBehaviour
                      Teal, true, playerBuilder.CanRepair, false, () => playerBuilder.RepairCore());
                 break;
             case 2:
-                hint = "crafted into the inventory on the right; drag a piece onto a tower";
                 GearDef[] gear = Host.Sim.GearLibrary;
                 bool room = System.Array.IndexOf(state.GearInventory, TowerState.NoGear) >= 0;
                 for (int g = 0; g < gear.Length && n < items.Count; g++)
@@ -646,7 +638,6 @@ public class DeckBar : MonoBehaviour
                 }
                 break;
             default:
-                hint = "what the hand does on the board";
                 if (config.WallTiers)
                 {
                     // Three walls (2026-10-28): dearer is tougher to walk through and to chew.
@@ -687,7 +678,6 @@ public class DeckBar : MonoBehaviour
         }
         bool tipShown = hovered != null;
         if (tipBox.gameObject.activeSelf != tipShown) tipBox.gameObject.SetActive(tipShown);
-        Set(buildTitle, "BUILD   " + Categories[category].Split(' ')[0] + "   " + hint);
     }
 
     // One button of the build section: what it is, its price, a line about it.

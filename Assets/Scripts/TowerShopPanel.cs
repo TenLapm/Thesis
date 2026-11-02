@@ -83,7 +83,6 @@ public class TowerShopPanel : MonoBehaviour
     private Image upgradeButton, targetButton;
     private CanvasGroup upgradeGroup, targetGroup;
     private TextMeshProUGUI upgradeTitle;
-    private TextMeshProUGUI legendNote;
     private Image wallButton, sellButton, moveTowerButton, moveButton, rerollButton;
     private TextMeshProUGUI toolNote, rerollLabel, rerollNote;
     private CanvasGroup moveGroup, moveTowerGroup, rerollGroup;
@@ -235,7 +234,6 @@ public class TowerShopPanel : MonoBehaviour
         collectButton = ToolButton("COLLECT [C]", new Vector2(18f, row2), quarter, () => playerBuilder.SelectCollector());
 
         Label(lower, "ROUTES", 17, Dim, TextAlignmentOptions.TopLeft, new Vector2(18f, -114f), new Vector2(120f, 24f), true);
-        legendNote = Label(lower, "", 15, Dim, TextAlignmentOptions.TopRight, new Vector2(-18f, -115f), new Vector2(290f, 24f), false, true);
         Color walker = pathPreviewer != null ? pathPreviewer.walkerColor : Color.magenta;
         Color sapper = pathPreviewer != null ? pathPreviewer.sapperColor : new Color(1f, 0.6f, 0.2f);
         Color flyer = pathPreviewer != null ? pathPreviewer.flyerColor : Color.cyan;
@@ -539,8 +537,6 @@ public class TowerShopPanel : MonoBehaviour
         }
         Set(toolNote, note);
 
-        bool inWave = !playerBuilder.IsBuildPhase;
-        Set(legendNote, inWave ? "the wave now on the board" : state.NextPlan != null ? "the wave that comes next" : "every kind you have met");
         float y = -140f;
         for (int i = 0; i < legend.Count; i++)
         {
