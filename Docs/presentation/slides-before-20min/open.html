@@ -1,0 +1,14 @@
+<section id="open" style="background:#ffffff;color:#000000;font-family:Arial, sans-serif;padding:72px 88px 120px;display:flex;flex-direction:column;gap:24px">
+<h2 style="font-size:60px;font-weight:700;line-height:1.1">Open problems found while checking the code</h2>
+<table style="font-size:27px">
+<tr><th style="width:27%">Problem</th><th style="width:40%">What the code does today</th><th style="width:33%">Proposed resolution</th></tr>
+<tr><td>What “static” means</td><td>The static condition sends one walker stream from one entry; the game’s baseline is a 12-wave cycle of squads</td><td>Keep the cycle in both, or variety is what differs</td></tr>
+<tr><td>Raids touch income (I11)</td><td>Raiders destroy collectors; siege enemies switch towers off. The static version does neither</td><td>Price them, or send them alike in both; decide with the advisor</td></tr>
+<tr><td>Restarts in the metric</td><td>A restarted wave adds a second row, and its placements count too</td><td>No restarts in the study, or count last attempts only</td></tr>
+<tr><td>Maze breach rarely fires</td><td>Stretch takes the minimum over every entry, so one easy side hides a maze</td><td>Measure over the entries in use</td></tr>
+<tr><td>A tower lowers a strong wall</td><td>A tower sets its tile to cost 20 and 8 s of chewing: a fort wall (45, 36 s) gets weaker</td><td>Keep the higher of the two costs</td></tr>
+</table>
+<p style="font-size:30px;line-height:1.3">All five are decisions for the game or the study, not determinism bugs. The first two must be settled before the pilot.</p>
+<p style="position:absolute;right:88px;bottom:48px;width:100px;text-align:right;font-size:24px">36</p>
+<aside>ทั้งหมดนี้มาจากการอ่านโค้ดเพื่อเตรียมการนำเสนอนี้ ไม่ใช่จากเอกสารออกแบบ สองข้อแรกสำคัญที่สุดต่อความตรงของการทดลอง StaticEscalation ของ DirectorHost ใช้ EscalationPlanner อย่างเดียว: กลุ่ม basic กลุ่มเดียวจาก spawn 0 ส่วนรอบของ RaidPlanner คือสิ่งที่เกมส่งจริง ถ้าการทดลองเทียบสองอย่างนี้ ความแตกต่างอาจมาจากความหลากหลาย ไม่ใช่การปรับตัว ข้อที่สี่: RoughDirector.Read เก็บค่า stretch ต่ำสุดจากทุก spawn ของแผนที่ ข้อที่ห้า: SimGrid.SetTower เขียนทับ TerrainCost ด้วยค่า 20 ของ tower</aside>
+</section>

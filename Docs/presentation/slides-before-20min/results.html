@@ -1,0 +1,15 @@
+<section id="results" style="background:#ffffff;color:#000000;font-family:Arial, sans-serif;padding:72px 88px 120px;display:flex;flex-direction:column;gap:28px">
+<h2 style="font-size:60px;font-weight:700;line-height:1.1">Results: same bits on both runtimes</h2>
+<table style="font-size:30px">
+<tr><th style="width:50%">Check, run on 31 Oct 2026</th><th style="width:50%">Result</th></tr>
+<tr><td>A session played in Unity today (Mono), replayed by .NET 9</td><td><b>14,807 of 14,807 tick hashes match;</b> 54 commands, a game over and a restart</td></tr>
+<tr><td>Telemetry of that session, remade from its replay</td><td><b>7 of 7 rows, byte for byte</b></td></tr>
+<tr><td>Pinned episodes: 10 scripted episodes recorded on each runtime</td><td>20 replays and their telemetry re-run on every test run</td></tr>
+<tr><td>Test suite, dotnet test</td><td><b>661 of 661 passed</b></td></tr>
+<tr><td>Same test files, Unity EditMode</td><td><b>661 passed,</b> 2 skipped (explicit diagnostics)</td></tr>
+</table>
+<p style="font-size:32px;line-height:1.3"><b>Not yet proven:</b> a session recorded by a <b>built player</b>. Today’s evidence is the Unity editor against .NET. The study build is Windows, Mono, no stripping, and BuildGuard refuses anything else. This must be replayed headless before the pilot.</p>
+<p style="position:absolute;left:88px;bottom:48px;width:1500px;font-size:24px">Final hash of today’s session: 0eb84b0ee6408a6f, seed 27590234.</p>
+<p style="position:absolute;right:88px;bottom:48px;width:100px;text-align:right;font-size:24px">17</p>
+<aside>ผมรันทั้งหมดนี้ใหม่สำหรับการนำเสนอนี้ แทนที่จะอ้างเอกสารจากวันที่ 2 ตุลาคม session นี้เล่นผ่าน frame loop จริง มีการเปลี่ยน speed ระหว่าง x1 ถึง x6 มี wave ที่แพ้ และมีการเริ่มใหม่ พูดบรรทัดสุดท้ายอย่างตรงไปตรงมา: ตรวจ Mono ของ editor แล้ว แต่ built player ยังไม่ได้ตรวจ ถ้าถูกถาม: ผลก่อนหน้าเมื่อวันที่ 2 ตุลาคมคือ 111,861 tick ทั้งสองทิศทาง บนกฎเวอร์ชันเก่า</aside>
+</section>

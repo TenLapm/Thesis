@@ -1,0 +1,18 @@
+<section id="budget" style="background:#ffffff;color:#000000;font-family:Arial, sans-serif;padding:72px 88px 120px;display:flex;flex-direction:column;gap:28px">
+<p style="position:absolute;left:88px;top:30px;width:1000px;font-family:Arial, sans-serif;font-size:24px;color:#000000">2. Methodology</p>
+<h2 style="font-size:60px;font-weight:700;line-height:1.1">Equal strength: hook built, cost table not</h2>
+<div style="display:flex;gap:40px">
+<div style="flex:1;display:flex;flex-direction:column;gap:20px">
+<p style="font-size:32px;line-height:1.3"><b>The rule (I2).</b> Every strategy spends the same threat budget at a given wave number. Otherwise “the adaptive condition was harder” explains the whole result.</p>
+<p style="font-size:32px;line-height:1.3"><b>The design.</b> Budget for wave w = the price of the static wave w on one shared cost table. Only that table is ever tuned, never one strategy.</p>
+<p style="font-size:32px;line-height:1.3"><b>Today.</b> The check below exists and runs, but no IThreatPricer is passed in, so it is skipped. Every row shows threatSpent 0.</p>
+</div>
+<div style="width:900px;display:flex;flex-direction:column;gap:16px">
+<h3 style="font-size:34px;font-weight:700">PlanValidator.Check</h3>
+<p style="font-family:'Courier New', monospace;font-size:26px;line-height:1.3;white-space:nowrap;border:1px solid #000000;padding:20px">if (pricer != null) {<br>&#160;&#160;float budget = pricer.BudgetForWave(wave);<br>&#160;&#160;float price = pricer.Price(plan);<br>&#160;&#160;if (Abs(plan.ThreatSpent - budget) &gt; epsilon)<br>&#160;&#160;&#160;&#160;return "over or under budget (I2)";<br>&#160;&#160;if (Abs(price - plan.ThreatSpent) &gt; epsilon)<br>&#160;&#160;&#160;&#160;return "claims a price the table denies";<br>}</p>
+<p style="font-size:32px;line-height:1.3"><b>Hard part:</b> pricing a raider or siege enemy by what it can destroy, not only by its hit points.</p>
+</div>
+</div>
+<p style="position:absolute;right:88px;bottom:48px;width:100px;text-align:right;font-size:24px">15</p>
+<aside>(0:45 นาที) ทุก strategy ต้องใช้งบเท่ากันที่ wave เดียวกัน ไม่อย่างนั้นความยากจะอธิบายผลได้หมด โค้ดตรวจมีอยู่จริงแล้ว แต่ยังไม่มีตาราง cost จึงถูกข้ามไปอยู่ ขอพูดเองดีกว่ารอให้ถูกถาม ส่วนที่ยากคือการตีราคา raider และ siege</aside>
+</section>

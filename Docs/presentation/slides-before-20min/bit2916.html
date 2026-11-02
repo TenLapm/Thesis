@@ -1,0 +1,13 @@
+<section id="bit2916" style="background:#ffffff;color:#000000;font-family:Arial, sans-serif;padding:72px 88px 120px;display:flex;flex-direction:column;gap:28px">
+<h2 style="font-size:60px;font-weight:700;line-height:1.1">One bit at tick 2916: why every float is cast</h2>
+<p style="font-size:34px;line-height:1.3">C# lets a runtime keep float intermediates at higher precision. .NET rounded after every operation. Unity’s Mono evaluated the whole chain in double and rounded once.</p>
+<p style="font-family:'Courier New', monospace;font-size:30px;line-height:1.4;white-space:nowrap;border:1px solid #000000;padding:24px">// before: runtimes disagree on rare steps<br>x + dx / d * step<br><br>// after: each cast forces a rounding, so every runtime gets the same bits<br>(float)(x + (float)((float)(dx / d) * step))</p>
+<table style="font-size:30px">
+<tr><th style="width:44%">One agent’s y position, tick 2915 to 2916</th><th style="width:28%">Bits</th><th style="width:28%">Value</th></tr>
+<tr><td>Cast, both runtimes</td><td>c0a36c3c</td><td>Correct, pinned by a test</td></tr>
+<tr><td>Mono, no casts</td><td>c0a36c3d</td><td>One bit off</td></tr>
+</table>
+<p style="font-size:34px;line-height:1.3">Found by bisecting per-tick hashes between the two runtimes. Without per-tick hashing, this shows up as an unexplained change many waves later.</p>
+<p style="position:absolute;right:88px;bottom:48px;width:100px;text-align:right;font-size:24px">15</p>
+<aside>เรื่องนี้เล่าให้กรรมการฟังได้ดี จุดเริ่มต้นคือการปัดเศษที่เสมอกันพอดี: speed 1.25 คูณ 0.02 วินาที test ชื่อ TheStepThatDivergedAtTick2916GivesTheSameBitsEverywhere ล็อกกรณีนี้ไว้ และรันทั้งสอง test runner ดังนั้นถ้าลืม cast การรันบน Unity จะ fail แม้ .NET จะผ่าน นิพจน์บนสไลด์แสดงรูปแบบของการแก้ ตามที่เขียนไว้ใน rule 3 ของโปรเจกต์</aside>
+</section>

@@ -1,0 +1,19 @@
+<section id="frameloop" style="background:#ffffff;color:#000000;font-family:Arial, sans-serif;padding:72px 88px 120px;display:flex;flex-direction:column;gap:28px">
+<h2 style="font-size:60px;font-weight:700;line-height:1.1">Why the rules left Unity’s frame loop</h2>
+<div style="display:flex;gap:40px">
+<div style="width:620px;display:flex;flex-direction:column;gap:18px">
+<h3 style="font-size:34px;font-weight:700">The original prototype</h3>
+<p style="font-size:30px;line-height:1.3">Movement used <b>Time.deltaTime</b>: results changed with frame rate and game speed.</p>
+<p style="font-size:30px;line-height:1.3">Agents acted in Unity’s <b>Update order</b>, which Unity does not define.</p>
+<p style="font-size:30px;line-height:1.3">Spawns used <b>WaitForSeconds</b>, so they snapped to frames.</p>
+<p style="font-size:30px;line-height:1.3">State lived on scene objects: no test without a scene.</p>
+</div>
+<div style="flex:1;display:flex;flex-direction:column;gap:18px">
+<h3 style="font-size:34px;font-weight:700">SimHost.Update today</h3>
+<p style="font-family:'Courier New', monospace;font-size:26px;line-height:1.3;white-space:nowrap;border:1px solid #000000;padding:20px">accumulator += Time.deltaTime; // scaled: x1, x3, x6<br>int ticks = 0;<br>while (accumulator &gt;= dt &amp;&amp; ticks &lt; maxTicksPerFrame) {<br>&#160;&#160;&#160;&#160;sim.Tick();<br>&#160;&#160;&#160;&#160;accumulator -= dt;<br>&#160;&#160;&#160;&#160;ticks++;<br>&#160;&#160;&#160;&#160;bool wave = recorder.AfterTick();<br>&#160;&#160;&#160;&#160;...<br>}<br>// drop backlog beyond one tick: slower, never desynced<br>if (accumulator &gt; dt) accumulator = dt;<br>TickAlpha = Mathf.Clamp01(accumulator / dt);</p>
+<p style="font-size:30px;line-height:1.3">dt = 0.02 s, at most 40 ticks a frame. Speed buttons change how many ticks run, never what a tick does. Views interpolate with TickAlpha.</p>
+</div>
+</div>
+<p style="position:absolute;right:88px;bottom:48px;width:100px;text-align:right;font-size:24px">12</p>
+<aside>คอลัมน์ซ้ายตรวจจาก commit แรก ๆ ใน git ไม่ใช่แค่จากเอกสาร ด้านขวาคือ host loop จริงที่ตัดให้สั้นลง ถ้าเฟรมกระตุก เกมจะช้าลงชั่วขณะ แต่ไม่มีทางทำให้สองรอบการเล่นต่างกัน เพราะ simulation เห็นแต่ tick เต็ม ๆ เท่านั้น</aside>
+</section>

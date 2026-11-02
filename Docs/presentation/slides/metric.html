@@ -1,0 +1,13 @@
+<section id="metric" style="background:#ffffff;color:#000000;font-family:Arial, sans-serif;padding:72px 88px 120px;display:flex;flex-direction:column;gap:24px">
+<p style="position:absolute;left:88px;top:30px;width:1000px;font-family:Arial, sans-serif;font-size:24px;color:#000000">2. Methodology</p>
+<h2 style="font-size:60px;font-weight:700;line-height:1.1">How we measure it: entropy, within each player</h2>
+<div style="display:flex;gap:44px"><div style="flex:1;display:flex;flex-direction:column;gap:18px"><p style="font-family:'Courier New', monospace;font-size:34px;line-height:1.3;border:1px solid #000000;padding:18px">H = −Σ p(r) ln p(r) / ln K</p>
+<p style="font-size:30px;line-height:1.3"><b>The measure:</b> Shannon (1948) entropy of where the player builds, over 6 × 6 regions. 0 is one region; 1 is an even spread.</p>
+<p style="font-size:30px;line-height:1.3"><b>The comparison:</b> about 24 players each play both versions, on two fixed seed sets, in balanced order. Wilcoxon signed-rank test (Wilcoxon, 1945), p &lt; .05 and dz ≥ 0.5 (Lakens, 2013).</p>
+<p style="font-size:30px;line-height:1.3"><b>Pass and fail are fixed in advance.</b> Gates G1 to G7 cover the learner, its cost, data per bin, rebuilding, fairness, and whether players notice. A failure names the action to take.</p>
+<p style="font-size:30px;line-height:1.3"><b>Before any player:</b> offline, random &lt; static &lt; heuristic &lt; full director.</p></div>
+<div style="width:600px;display:flex;flex-direction:column;gap:12px"><img src="/_blob/7ecdaf159759790445311e22c850813f" alt="A six by six grid of counts of built tiles for one tester’s 77 waves; building is concentrated in the middle regions" style="width:600px;height:600px;object-fit:contain">
+<p style="font-size:26px;line-height:1.3">One tester’s 77 waves: 555 tiles, H = 0.62.</p></div></div>
+<p style="position:absolute;right:88px;bottom:48px;width:100px;text-align:right;font-size:24px">21</p>
+<aside>(1:00 นาที) ตัวเลขนี้คือสิ่งที่วิทยานิพนธ์ตั้งอยู่ โค้ดนับทั้งกำแพง tower การย้าย การอัปเกรด และ collector จุดอ่อนคือมันวัดว่าสร้างที่ไหน ไม่ได้วัดตรง ๆ ว่าโครงสร้างเปลี่ยนแค่ไหน จึงยังเป็นค่าชั่วคราวจนกว่าจะ freeze ก่อน pilot Gate มีเกณฑ์ล้มเหลวกำหนดไว้ล่วงหน้า จึงไม่มีการขยับเป้า</aside>
+</section>

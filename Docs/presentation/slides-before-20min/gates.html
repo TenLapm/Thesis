@@ -1,0 +1,16 @@
+<section id="gates" style="background:#ffffff;color:#000000;font-family:Arial, sans-serif;padding:72px 88px 120px;display:flex;flex-direction:column;gap:20px">
+<h2 style="font-size:60px;font-weight:700;line-height:1.1">Gates: pass and fail numbers fixed in advance</h2>
+<table style="font-size:26px">
+<tr><th style="width:20%">Gate</th><th style="width:44%">Pass</th><th style="width:36%">Fail, and what happens</th></tr>
+<tr><td>G1 learner works</td><td>≥ 85% best strategy within 300 episodes; beats random and round-robin</td><td>&lt; 70%: a bug, or the context carries no information</td></tr>
+<tr><td>G2 no visible cost</td><td>Director ≤ 16 ms per wave boundary</td><td>&gt; 33 ms spike: make it incremental</td></tr>
+<tr><td>G3 graded vs binary</td><td>Reaches G1 in fewer episodes, 20 seeded runs</td><td>No difference: ship binary, report it</td></tr>
+<tr><td>G4 data per bin</td><td>Pilot n = 5: median ≥ 8 per visited bin per session</td><td>&lt; 4: use 3 bins, document it</td></tr>
+<tr><td>G5 rebuild more (primary)</td><td>n ≈ 24, Wilcoxon p &lt; .05 and dz ≥ 0.5</td><td>p &gt; .05 or dz &lt; 0.2: report the negative result</td></tr>
+<tr><td>G6 not unfair</td><td>Fairness no worse by &gt; 0.5 on a 7-point scale</td><td>Worse: reward or wording at fault</td></tr>
+<tr><td>G7 players notice</td><td>≥ 70% say unprompted that enemies adapted</td><td>&lt; 50%: G5 cannot be interpreted until fixed</td></tr>
+</table>
+<p style="font-size:30px;line-height:1.3"><b>Offline ladder, before any participant:</b> random &lt; static &lt; authored heuristic &lt; full director, against scripted players. <b>None of these has been run yet.</b></p>
+<p style="position:absolute;right:88px;bottom:48px;width:100px;text-align:right;font-size:24px">34</p>
+<aside>หัวใจคือคอลัมน์ fail: เมื่อล้มเหลวจะได้การตัดสินใจ ไม่ใช่การขยับเป้า การผ่าน G1 ไม่ได้แปลว่าอ้าง G5 ได้: ตัวเรียนรู้อาจ converge แบบ offline แต่ไม่เปลี่ยนวิธีเล่นของคนเลย และนั่นก็จะเป็นผลการวิจัย สำหรับ offline ladder เรื่องสเกลสำคัญ: episode แบบ headless 25 wave ใช้ 176 ms ดังนั้นหนึ่งล้าน episode จะใช้ประมาณ 49 core-hour บนเครื่องนี้ด้วยกฎปัจจุบัน G1 และ G3 จึงออกแบบให้รันบน synthetic threshold environment แทน ซึ่งเร็วกว่ามาก</aside>
+</section>

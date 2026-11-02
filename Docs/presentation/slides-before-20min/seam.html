@@ -1,0 +1,13 @@
+<section id="seam" style="background:#ffffff;color:#000000;font-family:Arial, sans-serif;padding:72px 88px 120px;display:flex;flex-direction:column;gap:24px">
+<h2 style="font-size:60px;font-weight:700;line-height:1.1">The planner seam: one interface, failure contained</h2>
+<div style="display:flex;gap:36px">
+<img src="/_blob/49acd6704f165bbe566ae5600f5a5f01" alt="Simulation asks SafePlanner, which runs EscalationPlanner, RoughDirector or the future WaveDirector. A throw or a bad plan falls back to EscalationPlanner. The state hash taken before the call must equal the one after." style="width:1160px;height:508px;object-fit:contain">
+<div style="flex:1;display:flex;flex-direction:column;gap:18px">
+<p style="font-size:30px;line-height:1.3"><b>Read-only by check:</b> the state is hashed before and after every PlanWave. Any change throws.</p>
+<p style="font-size:30px;line-height:1.3"><b>Bad plan:</b> wrong wave, unknown entry, HP or speed not positive. An enemy that cannot move would never let a wave end.</p>
+</div>
+</div>
+<p style="font-family:'Courier New', monospace;font-size:26px;line-height:1.3;white-space:nowrap;border:1px solid #000000;padding:20px">public interface IWavePlanner {<br>&#160;&#160;string Name { get; }                       // saved in replay and telemetry as the condition<br>&#160;&#160;WavePlan PlanWave(WaveContext context);    // may only read context.State<br>&#160;&#160;void OnWaveResolved(WaveOutcome outcome);  // receives a copy<br>}</p>
+<p style="position:absolute;right:88px;bottom:48px;width:100px;text-align:right;font-size:24px">24</p>
+<aside>study condition ทุกแบบคือ implementation หนึ่งของ interface นี้ การสลับ condition จึงไม่เปลี่ยนอย่างอื่นเลย session ของผู้เข้าร่วมจะไม่ crash เพราะ director: SafePlanner จับ exception และแผนที่ไม่ถูกต้อง แล้วใช้แผน static สำหรับ wave นั้น พร้อมบันทึกเหตุผลใน telemetry ของ wave นั้น สิ่งที่มันกู้ไม่ได้คือ planner ที่เขียนลง state: กรณีนี้ตัวคุมจะ throw โดยตั้งใจ เพราะการรันนั้นใช้ไม่ได้แล้ว</aside>
+</section>

@@ -1,0 +1,21 @@
+{
+"environment":{"runtime":".NET 9.0.10","os":"Microsoft Windows 10.0.26200","cores":12,"mode":"headless dotnet (Thesis.Cli bench)","seed":1},
+"rebuildSweep":[
+ {"size":25,"density":0,"meanMs":0.0651,"minMs":0.0606,"maxMs":0.0751,"bothFieldsMeanMs":0.1504},
+ {"size":25,"density":0.1,"meanMs":0.1377,"minMs":0.0847,"maxMs":0.6344,"bothFieldsMeanMs":0.2537},
+ {"size":25,"density":0.25,"meanMs":0.1531,"minMs":0.1048,"maxMs":0.1772,"bothFieldsMeanMs":0.3542},
+ {"size":38,"density":0,"meanMs":0.1861,"minMs":0.107,"maxMs":2.1708,"bothFieldsMeanMs":0.3047},
+ {"size":38,"density":0.1,"meanMs":0.1518,"minMs":0.1477,"maxMs":0.174,"bothFieldsMeanMs":0.3929},
+ {"size":38,"density":0.25,"meanMs":0.3707,"minMs":0.36,"maxMs":0.4146,"bothFieldsMeanMs":0.8583},
+ {"size":50,"density":0,"meanMs":0.243,"minMs":0.1755,"maxMs":0.5898,"bothFieldsMeanMs":0.5155},
+ {"size":50,"density":0.1,"meanMs":0.3231,"minMs":0.2844,"maxMs":0.5212,"bothFieldsMeanMs":0.8058},
+ {"size":50,"density":0.25,"meanMs":0.6266,"minMs":0.5171,"maxMs":0.8961,"bothFieldsMeanMs":1.3997},
+ {"size":75,"density":0,"meanMs":0.443,"minMs":0.4111,"maxMs":0.5792,"bothFieldsMeanMs":1.0006},
+ {"size":75,"density":0.1,"meanMs":0.6598,"minMs":0.5924,"maxMs":1.0321,"bothFieldsMeanMs":1.5608},
+ {"size":75,"density":0.25,"meanMs":1.4609,"minMs":1.3461,"maxMs":2.0888,"bothFieldsMeanMs":3.2673},
+ {"size":100,"density":0,"meanMs":0.8058,"minMs":0.7417,"maxMs":1.0631,"bothFieldsMeanMs":1.8306},
+ {"size":100,"density":0.1,"meanMs":1.2657,"minMs":1.0677,"maxMs":1.787,"bothFieldsMeanMs":2.9852},
+ {"size":100,"density":0.25,"meanMs":1.8341,"minMs":1.7343,"maxMs":2.2237,"bothFieldsMeanMs":4.2252}],
+"astarComparison":{"gridSize":38,"wallDensity":0.10,"fieldRebuildMs":0.142,"runs":[{"agents":100,"totalMs":9.2359,"perAgentMs":0.0924},{"agents":500,"totalMs":18.1688,"perAgentMs":0.0363},{"agents":1000,"totalMs":32.1045,"perAgentMs":0.0321}]},
+"done":true
+}

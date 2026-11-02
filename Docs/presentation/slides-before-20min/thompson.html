@@ -1,0 +1,17 @@
+<section id="thompson" style="background:#ffffff;color:#000000;font-family:Arial, sans-serif;padding:72px 88px 120px;display:flex;flex-direction:column;gap:24px">
+<h2 style="font-size:60px;font-weight:700;line-height:1.1">Thompson sampling as a bounded correction</h2>
+<div style="display:flex;gap:40px">
+<div style="width:720px;display:flex;flex-direction:column;gap:12px">
+<img src="/_blob/604ac420d5d5ffa945a526f741b0e5fe" alt="Three Beta curves: flat for no data, wide around 0.6 for 2 of 3 successes, narrow around 0.7 for 14 of 20" style="width:720px;height:527px;object-fit:contain">
+<p style="font-size:30px;line-height:1.3">Draw once from each cell’s curve (Thompson, 1933). A strategy it is unsure about sometimes draws high, so it explores with no ε to tune (Russo et al., 2018).</p>
+</div>
+<div style="flex:1;display:flex;flex-direction:column;gap:16px">
+<p style="font-family:'Courier New', monospace;font-size:26px;line-height:1.3;white-space:nowrap;border:1px solid #000000;padding:20px">foreach (var a in surviving) {<br>&#160;&#160;float theta = SampleBeta(alpha[bin,a], beta[bin,a]);<br>&#160;&#160;float corr = IsCold(a) ? 0f : 2f*(theta-0.5f);<br>&#160;&#160;score[a] = Heuristic(a, profile) + corr;<br>}<br>Play(ArgMax(score));</p>
+<p style="font-family:'Courier New', monospace;font-size:26px;line-height:1.3;white-space:nowrap;border:1px solid #000000;padding:20px">int r = Bernoulli(reward);<br>alpha[bin,a] = 1f + G*(alpha[bin,a]-1f) + r;<br>beta [bin,a] = 1f + G*(beta [bin,a]-1f) + (1-r);<br>// G = 0.95</p>
+<p style="font-size:28px;line-height:1.3"><b>Bernoulli</b> keeps the update conjugate for rewards in [0, 1]. <b>Decay toward Beta(1, 1)</b>, not zero, keeps α, β ≥ 1, so the Gamma sampler (Marsaglia &amp; Tsang, 2000) needs no boost branch. <b>Discount:</b> the player changes too (Garivier &amp; Moulines, 2011).</p>
+</div>
+</div>
+<p style="position:absolute;left:88px;bottom:48px;width:1500px;font-size:24px">Design, not yet code. Empirical support: Chapelle &amp; Li (2011). Contextual bounds: Agrawal &amp; Goyal (2013).</p>
+<p style="position:absolute;right:88px;bottom:48px;width:100px;text-align:right;font-size:24px">31</p>
+<aside>มีสองอย่างที่ทำให้ปลอดภัยพอจะให้ผู้เข้าร่วมเล่น: correction ถูกจำกัดไว้ที่บวกลบหนึ่ง และเป็นศูนย์ตราบใดที่ cell ยัง cold ดังนั้นถ้าไม่มีข้อมูล director ก็คือ heuristic ที่เขียนไว้ตรง ๆ ทั้งหมดใช้คณิตศาสตร์ที่ deterministic: DetMath สำหรับ log และ exp และ random stream ชื่อ Thompson กับ RewardBernoulli ที่จองไว้ session ที่มีการเรียนรู้จึงยัง replay ได้ตรงทุกอย่าง WP7 มี acceptance test เขียนไว้แล้ว รวมถึงลายนิ้วมือข้าม runtime ที่ pin ไว้จากการเรียก 100,000 ครั้ง</aside>
+</section>

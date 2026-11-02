@@ -1,0 +1,19 @@
+<section id="replay" style="background:#ffffff;color:#000000;font-family:Arial, sans-serif;padding:72px 88px 120px;display:flex;flex-direction:column;gap:28px">
+<h2 style="font-size:60px;font-weight:700;line-height:1.1">Replay: proving two runs were the same game</h2>
+<img src="/_blob/9434e35c130c56ff23676016080f5d0b" alt="A Unity session writes replay.json with commands and a hash per tick. The .NET tool thesis replay runs it again and compares 64 bits on every tick, reports OK or the first divergent tick, and remakes telemetry byte for byte." style="width:1744px;height:336px;object-fit:contain">
+<div style="display:flex;gap:40px">
+<div style="flex:1;display:flex;flex-direction:column;gap:14px">
+<h3 style="font-size:34px;font-weight:700">StateHasher: 64-bit FNV-1a (Noll et al., 2026)</h3>
+<p style="font-size:30px;line-height:1.3">Every grid node, live agent, tower, RNG state, plan, build log and queued command. Floats by <b>bit pattern</b>, so −0.0 and 0.0 differ. Cost: 0.19 ms per hash on the full board.</p>
+<p style="font-size:30px;line-height:1.3"><b>Setup hash:</b> config, map and roster. A session whose config was edited mid-run is refused.</p>
+</div>
+<div style="flex:1;display:flex;flex-direction:column;gap:14px">
+<h3 style="font-size:34px;font-weight:700">Left out on purpose</h3>
+<p style="font-size:30px;line-height:1.3"><b>Dead agents:</b> frozen, and their death already shows in the counts. Hashing them would grow with the session.</p>
+<p style="font-size:30px;line-height:1.3"><b>Raid and lure fields:</b> derived from hashed tiles. A difference would show one tick later in agent positions.</p>
+</div>
+</div>
+<p style="position:absolute;left:88px;bottom:48px;width:1500px;font-size:24px">0.19 ms: mean of 4,000 hashes on 20 generated 48 × 48 boards, .NET 9, 31 Oct 2026.</p>
+<p style="position:absolute;right:88px;bottom:48px;width:100px;text-align:right;font-size:24px">16</p>
+<aside>replay เก็บ input ไม่ได้เก็บผลลัพธ์ เวลาตรวจก็รันกฎอีกครั้งแล้วเทียบลายนิ้วมือทุก tick ถ้าต่างกัน เครื่องมือจะบอก tick แรกที่ต่าง และเอา state dump ของ tick นั้นมา diff ได้ hash ตัวเดียวกันนี้ยังใช้เป็นตัวคุมรอบการเรียก planner ทุกครั้ง ซึ่งจะพูดถึงทีหลัง การที่ raid field และ lure field อยู่นอก hash เป็นสิ่งที่ผมพบตอนตรวจโค้ดเพื่อเตรียมการนำเสนอนี้</aside>
+</section>

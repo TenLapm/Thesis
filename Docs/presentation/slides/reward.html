@@ -1,0 +1,14 @@
+<section id="reward" style="background:#ffffff;color:#000000;font-family:Arial, sans-serif;padding:72px 88px 120px;display:flex;flex-direction:column;gap:30px">
+<p style="position:absolute;left:88px;top:30px;width:1000px;font-family:Arial, sans-serif;font-size:24px;color:#000000">2. Methodology</p>
+<h2 style="font-size:60px;font-weight:700;line-height:1.1">Reward: behaviour change, credited backwards</h2>
+<img src="/_blob/0a1f05a9e07e205c8bca7fd3810f57f9" alt="Timeline: plan wave N, wave N plays, player rebuilds, plan wave N+1, restructure is known only now, update the cells of waves N, N-1 and N-2 with weight one half to the lag" style="width:1744px;height:134px;object-fit:contain">
+<p style="font-family:'Courier New', monospace;font-size:36px;line-height:1.3;border:1px solid #000000;padding:18px">r = 0.45·restructure + 0.25·survived + 0.20·pressure + 0.10·novelty</p>
+<div style="display:flex;gap:44px"><div style="flex:1;display:flex;flex-direction:column;gap:20px"><p style="font-size:32px;line-height:1.3"><b>Restructure:</b> how much the build changed. This is the behaviour the thesis wants.</p>
+<p style="font-size:32px;line-height:1.3"><b>Survived:</b> a defeated player builds nothing more, so ending the run must not pay.</p></div>
+<div style="flex:1;display:flex;flex-direction:column;gap:20px"><p style="font-size:32px;line-height:1.3"><b>Pressure:</b> the share of the wave that came close to the core. A wave nobody feels asks no question.</p>
+<p style="font-size:32px;line-height:1.3"><b>Novelty:</b> distance from the last wave, so the same wave is not sent again.</p></div></div>
+<p style="font-size:32px;line-height:1.3"><b>Timing:</b> the reward for wave N is known only when wave N+1 is planned, and credit goes back to earlier waves at half weight per wave.</p>
+<p style="position:absolute;left:88px;bottom:48px;width:1500px;font-size:24px">Design, not yet code. The game already records pressure, and telemetry has a reward field waiting.</p>
+<p style="position:absolute;right:88px;bottom:48px;width:100px;text-align:right;font-size:24px">14</p>
+<aside>(1:00 นาที) reward เน้นการเปลี่ยนพฤติกรรม ไม่ใช่ชัยชนะ น้ำหนักมากสุดคือ restructure ส่วน survived กันไม่ให้ได้คะแนนจากการจบเกมผู้เล่น จุดละเอียดคือเวลา: reward ของ wave N รู้ตอนวางแผน wave N+1 และแบ่ง credit ย้อนหลังครึ่งหนึ่งต่อ wave</aside>
+</section>

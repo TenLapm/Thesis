@@ -1,0 +1,11 @@
+<section id="seam" style="background:#ffffff;color:#000000;font-family:Arial, sans-serif;padding:72px 88px 120px;display:flex;flex-direction:column;gap:28px">
+<p style="position:absolute;left:88px;top:30px;width:1000px;font-family:Arial, sans-serif;font-size:24px;color:#000000">2. Methodology</p>
+<h2 style="font-size:60px;font-weight:700;line-height:1.1">Supporting system: planner interface and telemetry</h2>
+<div style="display:flex;gap:36px"><img src="/_blob/49acd6704f165bbe566ae5600f5a5f01" alt="Simulation asks SafePlanner, which runs EscalationPlanner, RoughDirector or the future WaveDirector. A throw or a bad plan falls back to EscalationPlanner. The state hash taken before the call must equal the one after." style="width:1000px;height:438px;object-fit:contain">
+<div style="flex:1;display:flex;flex-direction:column;gap:20px"><p style="font-size:32px;line-height:1.3"><b>One interface.</b> Every study condition is one planner, so swapping one changes nothing else.</p>
+<p style="font-size:32px;line-height:1.3"><b>Failure contained.</b> A planner that fails is replaced for that wave, and the session goes on.</p>
+<p style="font-size:32px;line-height:1.3"><b>Telemetry:</b> one row per wave, made from the rules alone, so it can be rebuilt from the replay. The director’s fields wait there, empty for now.</p></div></div>
+<p style="font-family:'Courier New', monospace;font-size:26px;line-height:1.3;border:1px solid #000000;padding:18px;white-space:nowrap">public interface IWavePlanner {<br>&#160;&#160;string Name { get; }<br>&#160;&#160;WavePlan PlanWave(WaveContext context);    // may only read context.State<br>&#160;&#160;void OnWaveResolved(WaveOutcome outcome);<br>}</p>
+<p style="position:absolute;right:88px;bottom:48px;width:100px;text-align:right;font-size:24px">18</p>
+<aside>(0:45 นาที) director จะเสียบเข้ามาผ่าน interface เดียว เงื่อนไขการทดลองทุกแบบเป็น planner หนึ่งตัว ถ้า planner พัง จะใช้แผน static สำหรับ wave นั้น เกมของผู้เข้าร่วมจึงไม่ล่ม telemetry สร้างใหม่จาก replay ได้เสมอ</aside>
+</section>

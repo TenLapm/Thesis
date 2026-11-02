@@ -1,0 +1,18 @@
+<section id="rough" style="background:#ffffff;color:#000000;font-family:Arial, sans-serif;padding:72px 88px 120px;display:flex;flex-direction:column;gap:24px">
+<p style="position:absolute;left:88px;top:30px;width:1000px;font-family:Arial, sans-serif;font-size:24px;color:#000000">3. Current work</p>
+<h2 style="font-size:60px;font-weight:700;line-height:1.1">Running today: RoughDirector</h2>
+<p style="font-family:'Courier New', monospace;font-size:26px;line-height:1.35;white-space:nowrap;border:1px solid #000000;padding:20px">raid&#160;&#160;&#160;= wave&gt;=4 &amp;&amp; collectors&gt;0 ? bareShare * min(1, collectors/2)&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;: -inf;<br>siege&#160;&#160;= wave&gt;=8 &amp;&amp; towers&gt;=4&#160;&#160;&#160;? stackLean&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;: -inf;<br>resist = wave&gt;=5 &amp;&amp; towers&gt;=4 &amp;&amp; dominant!=Frost ? clamp01((domShare-.6)/.4)&#160;&#160;&#160;: -inf;<br>air&#160;&#160;&#160;&#160;= wave&gt;=5 &amp;&amp; towers&gt;=4 &amp;&amp; 0&lt;airShare&lt;.25 ? clamp01((.25-airShare)/.25)&#160;&#160;&#160;&#160;: -inf;<br>breach = wave&gt;=6 &amp;&amp; walls&gt;=10 &amp;&amp; stretch&gt;1.4 ? min(1, stretch-1.4)&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;&#160;: -inf;<br>baseline = 0.3;&#160;&#160;// last wave's strategy: -0.15. Highest score is sent.</p>
+<div style="display:flex;gap:40px">
+<div style="flex:1;display:flex;flex-direction:column;gap:16px">
+<p style="font-size:30px;line-height:1.3"><b>Reads the board:</b> damage of the densest tower cluster, collectors under 10% damage cover, damage type shares, anti-air share, route stretch.</p>
+<p style="font-size:30px;line-height:1.3"><b>Keeps nothing:</b> a retried wave gets the same plan. At least half of every wave still goes for the core.</p>
+<p style="font-size:30px;line-height:1.3"><b>Cost:</b> 0.007 ms to plan, plus two state hashes: well inside the 16 ms budget.</p>
+</div>
+<div style="width:640px;display:flex;flex-direction:column;gap:12px">
+<img src="/_blob/4d93c387a8dc9ec370a1ea371321639f" alt="The game with the raid warning banner and raider route line" style="width:640px;height:360px;object-fit:contain">
+</div>
+</div>
+<p style="font-size:30px;line-height:1.3"><b>Not a study condition:</b> no learning, no build profile, no cost table. Its role is to test the idea on real players early.</p>
+<p style="position:absolute;right:88px;bottom:48px;width:100px;text-align:right;font-size:24px">23</p>
+<aside>(0:45 นาที) director ที่รันอยู่วันนี้ใช้คะแนนที่เขียนเอง ไม่เรียนรู้ ไม่มี build profile และไม่มีตาราง cost จึงไม่ใช่เงื่อนไขการทดลอง มีไว้ทดสอบแนวคิดกับผู้เล่นจริงตั้งแต่ต้น</aside>
+</section>

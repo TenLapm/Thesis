@@ -1,0 +1,38 @@
+digraph architecture {
+  graph [rankdir=TB, fontname="Arial", fontsize=12, nodesep=0.35, ranksep=0.45, bgcolor="white", pad=0.2, compound=true];
+  node  [shape=box, style="rounded,filled", fontname="Arial", fontsize=11, color="#475569", fillcolor="#F1F5F9", penwidth=1.2, margin="0.18,0.08"];
+  edge  [color="#475569", arrowsize=0.7, fontname="Arial", fontsize=9];
+
+  subgraph cluster_unity {
+    label="Unity host  (Assets/Scripts, MonoBehaviours: input and views only)"; labeljust=l;
+    style="rounded,dashed"; color="#94A3B8"; fontcolor="#334155";
+    SimHost [label="SimHost\nfixed 0.02 s ticks, input to commands,\nevents out, records replay + telemetry", fillcolor="#E0F2FE", color="#0369A1"];
+    Views   [label="Views\nFlowAgent, TowerView, HudOverlay,\nDeckBar, route lines, flow-field overlay"];
+    Director [label="DirectorHost\npicks the study condition,\nwraps it in SafePlanner"];
+  }
+
+  subgraph cluster_pure {
+    label="Pure C# simulation core  (Assets/Thesis, no UnityEngine, invariant I3)"; labeljust=l;
+    style="rounded"; color="#0F766E"; fontcolor="#0F766E";
+    Core     [label="Thesis.Core\nPCG32 streams, FNV-1a hashing,\nDetMath, deterministic JSON"];
+    Sim      [label="Thesis.Sim\ntick loop, flow fields (SPFA), agents,\ncombat, economy, wave planners", fillcolor="#CCFBF1", color="#0F766E"];
+    Learning [label="Thesis.Learning\nBinnedPosterior, KernelEstimator,\nBeta sampler  (WP7)", style="rounded,filled,dashed"];
+    DirectorA [label="Thesis.Director\nBuildProfiler, strategies, layers,\nreward, telemetry", style="rounded,filled,dashed"];
+    Harness  [label="Thesis.Harness\nscripted players, replay runner,\noffline ladder, gates"];
+  }
+
+  subgraph cluster_headless {
+    label="Headless (.NET 9)"; labeljust=l; style="rounded,dashed"; color="#94A3B8"; fontcolor="#334155";
+    Cli   [label="Thesis.Cli\nrun, replay, pin, telemetry,\nentropy, balance, bench"];
+    Tests [label="NUnit tests\n661 tests, run by Unity\nand by dotnet test"];
+  }
+
+  SimHost -> Sim [label=" commands"];
+  Sim -> SimHost [label=" events, state", style=dashed];
+  SimHost -> Views;
+  Director -> SimHost [label=" IWavePlanner"];
+  Sim -> Core; Learning -> Core;
+  DirectorA -> Sim; DirectorA -> Learning;
+  Harness -> DirectorA; Harness -> Sim;
+  Cli -> Harness; Tests -> Harness;
+}

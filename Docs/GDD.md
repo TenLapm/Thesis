@@ -1,23 +1,20 @@
 # GDD.md — game design document
 
-**Written 2026-10-12, after WP-C3. Revised the same day** after your first read, and again
-after WP-C4, which built the four things you decided then: the board is seen from straight
-above, during a wave too (§3.1); walls are single tiles and no longer tetromino pieces
-(§4.1); the map has rocks (§3.2); and the board draws a route line for every kind of enemy
-you have met (§5.3, which also says where enemies walk). The board is 24 × 24 for now (§3.3).
-WP-C5 then built the five towers and four enemy types this file proposed, with new wave
-numbers (§4.2, §5.4, §6.1). After you played that, a trial of cards, tower levels and gear
-was built the same day (§4.4). No name has been chosen for the game yet (§12,
+**Rewritten 2026-10-28** for the game as it plays today in `ArknightsTest`. The first version
+(2026-10-12) described a 24 × 24 board with a random tower shop; since then the game has been
+reworked in rounds after play tests (cards, tower levels and gear; a generated map with several
+entries; towers on walls; the ore economy and the build menu; power; upgrade paths; wall tiers
+and breakable mountains; a development director). Each round is an entry in `DEVLOG.md`, and
+the first version is in git (`132d8ca`). No name has been chosen for the game yet (§12,
 question 12).
 
-This file describes the game from the player's side: what is on the screen, what the
-player does, and what the finished game is meant to be. The other documents answer other
-questions: `CLAUDE.md` says what the thesis claims and what must never be broken,
-`ARCHITECTURE.md` how the code is built, `WORKPLAN.md` in what order. Where this file and
-`CLAUDE.md` disagree, `CLAUDE.md` wins.
+This file describes the game from the player's side: what is on the screen, what the player
+does, and what the finished game is meant to be. The other documents answer other questions:
+`CLAUDE.md` says what the thesis claims and what must never be broken, `ARCHITECTURE.md` how
+the code is built, `WORKPLAN.md` in what order, and `Docs/proposal/` is the thesis proposal.
+Where this file and `CLAUDE.md` disagree, `CLAUDE.md` wins.
 
-Much of the finished game is not decided yet. So every part of this file carries one of
-four marks:
+Every part of this file carries one of four marks:
 
 | Mark | Meaning |
 |---|---|
@@ -26,492 +23,357 @@ four marks:
 | **Proposed** | A suggestion made in this file, so that there is something concrete to look at. Not decided. Accept it, change it or drop it. |
 | **Open** | Nobody has decided. §12 lists every open question, with who must answer it and by when. |
 
+**Every number in this file is a first guess** checked by the next tester session, not a
+balanced value. The game's numbers live in `Assets/Scripts/Config/SimConfig.asset` (exported to
+`Maps/SimConfig.json`) and the towers in `Maps/Towers.json`.
+
 ---
 
 ## 1. The game in short
 
-A single-player maze tower defense on one square board, seen from straight above. Enemies
-come out of a spawn in one corner and head for your core in the opposite corner. You have
-one budget and spend it on two things:
+A single-player maze tower defense on a map generated from a seed. You place your core, claim
+ore deposits with collectors, draw walls to bend the enemies' route, and put towers on your
+walls and on the rocks to shoot them. Enemies come in from the edges of the map, one to three
+entry points a wave, and head for your core, or for your collectors.
 
-- **walls** (single tiles that you draw onto the board), which bend the enemies' route;
-- **towers** (bought from a shop that offers four at random), which shoot them.
+The unusual rule: **nothing you build blocks the path.** Every wall, tower, collector and even
+the mountains can be chewed through. An enemy takes the cheapest way to its goal, and "chew
+through this" is priced into that choice like any detour. So you never close a route; you make
+it long and expensive, and you put towers along it.
 
-The unusual rule: **nothing you build blocks the path.** Every wall and every tower can
-be chewed through. An enemy takes the cheapest way to the core, and "chew through this"
-is priced into that choice like any detour. So you never close a route; you make it long
-and expensive, and you put towers along it.
+Waves come one after another, each stronger than the last. Before each wave you build, upgrade,
+move and sell; the wave starts when you press Start. The session ends when the core has lost
+its ten hit points.
 
-Waves come one after another, each stronger than the last. Between waves you build, buy
-and sell. The session ends when ten enemies have reached the core.
-
-
-**What the thesis adds.** The game exists in two versions that differ in one thing only.
-In the *static* version every wave is the same kind of enemy, just more and tougher. In
-the *adaptive* version a wave director looks at what you built, picks the kind of wave
-that presses on that build's weak point, and tells you so in one line. Both versions
-send waves of the same total strength. The claim to be tested is that the adaptive
-version keeps a player rebuilding, where the static one lets them find one good maze and
-repeat it.
+**What the thesis adds.** The game exists in two versions that differ in one thing only. In the
+*static* version the waves follow a fixed plan by wave number. In the *adaptive* version a wave
+director looks at what you built, picks the kind of wave that presses on that build's weak
+point, and tells you so before the wave. Both versions send waves of the same total strength.
+The claim to be tested is that the adaptive version keeps a player rebuilding, where the static
+one lets them find one good layout and repeat it.
 
 ### Design pillars
 
 1. **You bend the path, you never close it.** A path to the core always exists.
-2. **Two levers, one budget.** Towers are damage. Walls are time under fire. Walls alone
-   kill nothing.
+2. **Three levers, one resource.** Towers are damage. Walls are time under fire. Collectors are
+   income, and they stand where the ore is, away from the core. Walls alone kill nothing.
 3. **Every wave asks a question about your build**, and says the question out loud.
-4. **Fair.** Whatever the director sends, it has the same strength as the static wave of
-   that number, and the director never touches your shop, your prices or your money.
-5. **Readable.** The routes are drawn (§5.3). A tower shows its range before you pay for the tile.
-   An enemy shows its health. Nothing important is hidden in a number.
+4. **Fair.** Whatever the director sends has the same strength as the static wave of that
+   number, and the director never touches your prices, your towers or your ore (§7.4).
+5. **Readable.** The routes are drawn (§6.4), the next wave is shown before you start it, a
+   tower shows the tiles it reaches before you pay, and an enemy shows its health.
 
 ---
 
-## 2. One wave, from start to finish
+## 2. One session, one wave
 
 ```
- BUILD PHASE      45 seconds before wave 1, 10 seconds after every wave
-   │              draw walls · buy towers and place them · sell what did not work
-   │              Start Wave skips the rest of the clock
+ BEFORE WAVE 1    place the core anywhere inside the gold frame (Done: the core stays here)
    ▼
- THE WAVE STARTS  the banner says what is coming
-   │              enemies leave the spawn one after another
+ BUILD PHASE      no clock: it lasts until you press Start
+   │              the next wave is already planned and shown: its enemies, its route lines,
+   │              and (adaptive version) the director's line in the banner
+   │              build · upgrade · move towers · sell · research · undo and redo
+   ▼
+ THE WAVE         enemies come in at one to three edge points
    │              towers fire · enemies walk the route, or chew through what is in the way
-   │              you may still place walls and buy towers; you may not sell
+   │              you may still build; you may not sell or move towers
    ▼
- THE WAVE ENDS    when the last enemy has been killed or has reached the core
-                  +20 budget · four new shop offers · the next build phase begins
+ THE WAVE ENDS    when the last enemy has been killed or has reached its goal
+                  income is paid · the next wave is planned · a new build phase begins
 ```
 
-All of this is **Built**, except the banner (**Planned**, WP14).
+**Built**, all of it. A wave can be restarted from its start at any time after it began, with
+everything you built for it still standing (RESTART WAVE n, or PLAY WAVE n AGAIN in the build
+phase after it).
 
 ---
 
-## 3. The board
+## 3. The map
 
-**Built** (WP-C4). One map, 24 × 24 tiles, with rocks on it (§3.2). The spawn is near one
-corner (tile 2, 2) and the core near the opposite one (tile 21, 21). With nothing built the
-enemies' way is about 30 tiles long, which takes about three quarters of a minute at
-wave-1 speed. Any tile that is not a rock can be built on, except the spawn's and the core's.
+### 3.1 Generated from the seed
 
-### 3.1 Seen from straight above
+**Built** (2026-10-13, enlarged 2026-10-20). Every session starts from a seed, and the map is
+made from it (`MapGenerator`):
 
-**Built** (WP-C4; your decisions of 2026-10-12). The board lies flat
-on the screen and all of it is visible at once, as in the pictures of §5.3 and §9. There
-is no camera to turn or move, so four controls go away (§10).
+- **48 × 48 tiles.** A two-tile ring at the edge is the enemies' ground: nothing is built on it.
+- **22 ridges of rock** (mountains, §3.3), so the board is never empty and never the same.
+- **28 ore deposits** in clusters of four, at least one cluster near the middle.
+- **Entry points** all round the edge. A wave uses one in the first waves, two from wave 4 and
+  three from wave 8, each with a walk of at least 12 tiles to the core and at least 10 tiles
+  apart.
 
-The wave is watched in the same view as the build phase. One view to learn is less than
-two, and a participant has a single sitting to learn the game in. **Proposed**, not built:
-a flyer gets a shadow under it, so that "above the walls" can still be read from above.
+Today every session gets a new random seed. **Planned:** the study uses two fixed seed sets,
+crossed with the condition and the order (decision D9), so both versions are played on the
+same maps.
 
-### 3.2 Rocks
+### 3.2 The view
 
-**Built** (WP-C4; your decision of 2026-10-12). An empty board of
-equal tiles gives a new player nothing
-to start from. So the map gets **rocks**: fixed tiles that belong to the map and not to
-the player.
+**Built.** An orthographic camera tilted 52° from the horizon, so towers read as figures
+standing on the board; the board keeps one tile size from the near edge to the far one. The
+mouse wheel zooms toward the mouse, WASD or the arrow keys move the view.
 
-- Nothing can be built on a rock. A rock cannot be sold and cannot be chewed.
-- Enemies on foot cannot cross a rock. Flyers pass over it.
-- The rocks are the same in every session, for every participant, in both versions of the
-  game. They are drawn by hand and not rolled from the seed: the shop is one source of
-  luck already, and the study has no use for a second.
+### 3.3 Mountains
 
-**Why rocks, and not walls that are already standing.** A wall belongs to the player. It
-can be sold for budget, and it pays when it is chewed through, so a board that starts
-with walls starts with money lying on it. A rock is only ground.
+**Built** (breakable since 2026-10-28). The rocks are mountains: very tough terrain.
 
-**What the rocks must not do is decide the maze.** The study measures how a player's
-building changes from wave to wave. If the rocks leave one sensible line, every
-participant builds that line in both versions and there is nothing left to measure. So:
-
-1. Few: about a tenth of the board. (The game's board has 68 rock tiles, 11.8 %.)
-2. In separate groups, with more gaps between them than a player can afford to close.
-   Which gaps to close is then the player's decision, and the waves give a reason to
-   change it.
-3. None close to the spawn or the core.
-4. Always a way through on foot. The game checks this when it loads a map, and refuses a
-   map whose rocks cut the spawn off (**Built**).
-
-The game has a first layout, drawn by these four rules and checked with the path rule: on
-the empty board the walkers' way is about a tenth longer than the straight line. It is a
-first layout only. It is text in the scene (one line per row, `.` and `X`), so you can
-change it by playing; it is checked again in WP-C5. The pictures in §5.3 and §9.2 were
-drawn before it, on a larger example board.
-
-Rocks take the place of the "seeded maze" that the schedule named for the second
-semester (question 11).
-
-### 3.3 Size
-
-**Built** as 24 × 24, which you chose "for now" on 2026-10-12 (question 19 stays open in
-that sense). The board was 38 × 38 before: a tile was small on the screen, one wall tile
-changed little, and the walk alone took over a minute a wave. Whether 24 is right is a
-thing to judge by playing and in the balance check (WP-C5); it also bears on how long a
-session is (question 1).
-
-### 3.4 Spawn points
-
-**Planned (WP9):** more than one spawn point, because one of the director's four wave
-types sends groups from different sides. Where the extra spawns go is **Open** (question 10).
+- A tower may stand on a mountain (§5.2). Nothing else is built on one.
+- To an enemy on foot a mountain counts like 60 tiles of walking and takes 60 seconds to chew,
+  ten times a plain wall. It goes round unless going round is longer still. A sapper pays the
+  full price too, so sappers do not tunnel the same mountain every time.
+- A broken mountain is gone for the rest of the session. It cannot be sold and pays nothing.
+  A tower standing on it is destroyed when it is chewed through; the mountain under it stays.
+- Flyers pass over mountains.
 
 ---
 
-## 4. What you build
+## 4. Ore
 
-### 4.1 Walls
+**Built** (the ore economy, 2026-10-20). There is one resource, ore. You start with 80.
 
-**Built** (WP-C4; your decisions of 2026-10-12): **walls are no longer tetromino
-pieces.** They are single tiles:
+| | Ore |
+|---|---|
+| At the start | 80 |
+| After every wave, from the core | +4 |
+| After every wave, from each standing collector | +2 near the middle, up to +4 near the edge |
+| A collector | −6 |
+| Kills, chewed walls, destroyed towers | nothing |
+| Selling something bought in this build phase | all of it back |
+| Selling something older | half back |
+| A collector destroyed by enemies | half its price back at once |
+| Repairing the core | −10 for 3 hit points |
 
-- **A wall is one tile.** With the Wall tool, a click builds one tile; holding the button
-  and dragging draws a line of them. Each tile is paid for as it appears, and the line
-  stops when the budget runs out.
-- **Every tile costs the same:** 1 budget (a placeholder, like every number here).
-- A wall goes on any free tile: not on a rock, a tower, another wall, the spawn or the
-  core. The tile under the mouse shows whether the spot is legal before you click. That
-  preview and the click use one rule, so they can never disagree.
-- **A wall is expensive ground, not an obstacle.** To an enemy, stepping onto a wall
-  tile counts like walking 15 tiles. If the way round is longer than that, the enemy
-  goes through: it stands on the tile and chews it (one enemy needs 6 seconds), the tile
-  disappears, and every enemy's route is worked out again. You are paid 1 budget for a
-  tile that is chewed through. With a tile priced at 1 that is the whole price back,
-  which makes the balance question about it sharper (question 9).
-- **Thickness is the first thing to watch.** A wall one tile thick costs a walker 15
-  tiles' worth to cross, and a sapper only 3. Two tiles thick costs 30 and 6.
-- **Length is the second.** Walkers go round a wall only while going round is cheaper
-  than chewing. Stretch the detour too far and they chew through the thinnest spot
-  instead. (This happened while the picture in §5.3 was being made: with one baffle
-  three tiles longer, the walkers went through the thin wall marked 1.)
-- **Selling.** Between waves, with the Sell tool, a click sells a wall tile for half its
-  price, and a drag sells every wall tile it passes over.
-- There is no bag, no queue of next pieces, no rotation and no hold slot.
+- **A deposit holds 30 ore**, then it runs dry. A collector on an empty deposit earns nothing,
+  and an empty deposit takes no new collector. The deposit shows what is left.
+- **A collector is terrain**, like a wall: it counts like 20 tiles of walking and takes 8
+  seconds to chew. A destroyed collector pays nothing for that wave.
+- **Power.** A tower fires only while it is powered. The core powers up to 4 towers within 4
+  tiles, each collector up to 2 within 3, a pylon up to 2 within 3 (§5.5). As many towers as
+  possible get power. Selecting a source shows the tiles it reaches and lines to the towers it
+  powers; clicking a tower in its reach ties the tower to it. When raiders destroy a collector,
+  the towers it powered go dark at once.
 
-What the change does:
+What it is for: the stack of towers round the core, which beat everything in the first play
+tests, now has a cost. Income stands where the ore is, spread over the map, and has to be
+defended or lost.
 
-- **Less to learn.** Two controls and a row of the screen go away. Building is "draw
-  where you want a wall".
-- **For the study, one source of luck fewer.** Which piece came next nudged where a
-  player built, in both versions. The measure of rebuilding counts built tiles by region
-  of the board (`ARCHITECTURE.md` §5.9), so its definition does not change.
-- **Smaller answers become possible.** A player can now meet a wave by adding two tiles,
-  where a whole piece was the least before. The measure will see a small patch as a
-  small change. Whether it still tells sessions apart is something to look at in the
-  pilot, before the measure is frozen.
-- **What is lost:** the small puzzle of fitting the piece you were dealt.
-- **In the code** the rules did not change: a wall "piece" could already have any
-  shape, one tile included. What changed is the list of shapes, the input, the screen,
-  and every recorded session (they were recorded again).
+---
 
-**Until WP-C4** the game had the tetromino version:
+## 5. What you build
 
-- Seven shapes of four tiles each (I, O, T, S, Z, J, L) from a shuffled bag. The current
-  piece and the next three are shown. R rotates the piece; Shift swaps it with a hold slot.
-- A piece costs 3 to 7 budget (I 4, O 7, T 5, S 3, Z 3, J 3, L 3) and goes anywhere its
-  four tiles are free.
-- A whole piece is sold at once for half its cost, or in proportion less if part of it
-  has been chewed away.
+Everything is bought from the **build menu** in the bottom bar, by category: TOWERS, ECONOMY
+(collector, pylon, research, repair), GEAR and ORDERS (walls, sell, move, upgrade, target).
+Hovering a button shows its card. **There is no random shop** since 2026-10-20: every price is
+fixed and everything is on offer from the start, except what research unlocks.
 
-### 4.2 Towers
+### 5.1 Walls
 
-**Built**, with a placeholder roster.
+**Built.** A wall is one tile, drawn with a click, or a line of them with a drag (Q).
 
-- A tower stands on one tile. It is expensive ground too (it counts like 20 tiles of
-  walking), and an enemy that chews through it destroys it. That pays nothing.
-- **The shop.** At the start of the game, and each time a wave ends, the shop shows four
-  towers picked at random. Each offer can be bought once. Offers you did not buy stay
-  through the next wave's fight and are replaced when that wave ends. The shop is open
-  during a wave.
-- **The shop is the same for everyone on the same seed.** What it offers depends on the
-  seed and the wave number and on nothing else: not on what you built, not on what you
-  bought, not on which version of the game is running.
-- **How a tower fights.** Every tower fires on its own. It picks the enemy in range that
-  is nearest to the core (measured along that enemy's own way there), hits it at once,
-  and waits for its next shot. A splash tower also hits everything close to its target.
-  A slowing tower makes its target walk slower for a moment.
-- Between waves you can **sell** a tower for half of what you paid.
+| Wall | Price | To an enemy on foot it counts like | Seconds to chew |
+|---|---|---|---|
+| Wall | 1 | 15 tiles of walking | 6 |
+| Stone wall | 3 | 30 | 18 |
+| Fort wall | 5 | 45 | 36 |
 
-**Built** (WP-C5): the five towers this file proposed (question 2 is still yours). The
-numbers passed a sanity check and are not balanced:
+A wall goes on any free tile that is not a mountain, a deposit, the core or the edge ring. The
+tile under the mouse shows whether the spot is legal before you click; the preview and the click
+use one rule, so they can never disagree. A sapper pays a fifth of a wall's price (a plain wall
+counts like 3 tiles to it).
 
-| Tower | Price | Damage type | What it does | Range | Hits flyers |
-|---|---|---|---|---|---|
-| Archer | 10 | physical | 4 damage every 0.5 s to one enemy | 3.5 tiles | yes |
-| Ballista | 16 | physical | 22 damage every 2 s to one enemy | 5.5 tiles | yes |
-| Cannon | 18 | fire | 3 damage every 1.2 s to its target and everything within 0.75 tile | 2.5 tiles | no |
-| Brazier | 12 | fire | 1.2 damage every 0.1 s to one enemy | 1.5 tiles | no |
-| Frost | 12 | frost | 2 damage every 0.6 s; the target moves at half speed for 1.5 s | 2.5 tiles | no |
+- **Thickness is the first thing to watch.** One plain wall tile costs a walker 15 tiles' worth
+  to cross; two cost 30.
+- **Length is the second.** Walkers go round only while going round is cheaper than chewing.
+  Stretch the detour too far and they chew through the thinnest spot instead.
 
-What each is for:
+### 5.2 Towers
 
-| Tower | Strong against | Weak against |
+**Built.** A tower stands **only on a wall or a mountain**: build the wall first, then the tower
+on it. It fires only while powered (§4). It picks its target by its target order (first, strongest,
+weakest, nearest, raiders first; T), hits at once, and waits for its next shot.
+
+| Tower | Price | Damage type | Damage | Every | Range | Also | Hits flyers |
+|---|---|---|---|---|---|---|---|
+| Archer | 10 | physical | 6 | 0.5 s | 4 | | yes |
+| Ballista | 14 | physical | 32 | 2 s | 5 | | no |
+| Cannon | 12 | fire | 6 | 1.2 s | 3 | splash 0.75 | no |
+| Brazier | 10 | fire | 0.8 | 0.1 s | 2 | splash 0.5 | no |
+| Frost | 10 | frost | 0.5 | 0.6 s | 2.5 | splash 1; slows to 40 % for 1.5 s | no |
+| Sniper | 18 | physical | 40 | 3.2 s | 8 | | no |
+| Shard | 14 | frost | 5 | 0.6 s | 3.5 | three targets | no |
+| Flak | 14 | fire | 2.5 | 0.8 s | 4.5 | splash 0.75 | yes |
+
+Every tower can be built from the start. Towers can be **moved** freely in a build phase (M),
+and **sold** (X).
+
+### 5.3 Upgrades and research
+
+**Built** (2026-10-27). Every tower has **three upgrade paths of two steps**. The first upgrade
+picks a path; the second can only be that path's next step. A tower with one upgrade is rare,
+with two epic. The first upgrade costs 12 ore, the second 20.
+
+**Research** opens upgrades: at tier 1 no tower can be upgraded, tier 2 (15 ore) allows a
+tower's first upgrade, tier 3 (30 ore) its second.
+
+| Tower | Paths (first step / second step) |
+|---|---|
+| Archer | Ranger: shoots 2 / 3 enemies · Hawkeye: ×2 / ×3 damage to flyers · Marksman: every 3rd shot ×3 / ×5 |
+| Ballista | Breaker: ignores armour / pierces 3 · Executioner: finishes under 20 % / 35 % · Skyward: hits flyers / fires 40 % faster |
+| Cannon | Mortar: +2 range / bigger blast · Incendiary: sets burning · Concussion: slows |
+| Brazier | Inferno: more damage, burning · Bonfire: pulls enemies within 4 tiles (lure) · Smoke: slows, then exposes |
+| Frost | Deep freeze: slows to 25 % · Brittle: enemies take +25 % / +50 % · Ice spikes: flat damage |
+| Sniper | Assassin: every 2nd shot ×2, execute · Anti-air: hits flyers · Spotter: ignores armour, exposes |
+| Shard | Splinter: more shards · Frostbite: slows, then brittle · Lance: one big shard |
+| Flak | Barrage: faster, two targets · Skybreaker: ×2 / ×4 damage to flyers · Fire shells: burning, heavier |
+| Pylon | Grid: powers 1 / 1 more · Relay: reaches 1 / 1 tile further · Beacon: collectors nearby pay +1 ore |
+
+### 5.4 Gear
+
+**Built** (flat gear since 2026-10-27). A tower has gear slots; gear is crafted from the GEAR
+tab at half its list price and dragged onto a tower.
+
+| Gear | Does | Ore |
 |---|---|---|
-| Archer | flyers, stragglers | a dense swarm |
-| Ballista | tough enemies, diggers stuck at a wall | a dense swarm (its one heavy shot is wasted on a weak enemy) |
-| Cannon | a swarm on a narrow route | flyers, enemies spread out |
-| Brazier | a route that runs right past it | anything that goes round it or over it |
-| Frost | makes every tower near it better | being alone |
+| Scope | +1 range | 4 |
+| Far scope | +2 range | 9 |
+| Edge | +1 damage a second | 4 |
+| Keen edge | +3 damage a second | 10 |
+| Extractor | takes a tower's gear off | 2 |
 
-In the sanity check the four damage towers gave about the same damage for their price
-(within a fifth of each other). Frost cannot be judged that way, since what it does is
-slow. The numbers are tuned in the balance pass.
+Damage gear adds damage *a second*, once a shot to the first target and never multiplied by a
+crit or a volley, so it is worth the same on every tower.
 
-### 4.4 Cards, levels and gear
+### 5.5 The pylon
 
-**Built** (2026-10-12), as a trial after your first play: the game was too rich after wave
-3, one stacked chokepoint won it, and the random towers did not matter. Nothing here is
-balanced, and whether it stays is **Open** (question 20).
+**Built.** 18 ore. It does not shoot: it powers up to 2 towers within 3 tiles, and has power
+itself. It may not stand within 5 tiles of the core (cheap power for outposts, not for a stack
+round the core). Its upgrades add one tower or one tile each (at most 4 towers, as the core).
 
-- **The build phase has no clock.** A wave starts when you press Start.
-- **Money is tighter and no longer depends on kills.** You start with 50 and get 16 for
-  every wave cleared. A kill pays nothing, and neither does a chewed wall. (This also
-  closes question 6: income no longer depends on what a wave is made of.)
-- **A shop slot holds a card,** and a card is one of three things:
+### 5.6 Changing your mind
 
-  | Card | What it is |
-  |---|---|
-  | Tower | as before; about one in five is **rare** or **epic** and costs what the tower and its upgrades would |
-  | Coin | 8 budget, free: click it to take it |
-  | Gear | a piece a tower wears, 8 budget: click the card, then a tower |
-
-- **A tower has three levels:** common, rare, epic. The Upgrade tool raises a tower one
-  level for its card's price (half as much again for the second). A level changes what
-  the tower does:
-
-  | Tower | Rare | Epic |
-  |---|---|---|
-  | Archer | faster shots | hits two enemies |
-  | Ballista | two bolts | three bolts, +1 range |
-  | Cannon | bigger blast | +60% damage |
-  | Brazier | wider ring | burns the neighbours too |
-  | Frost | longer slow | slows an area |
-
-- **Gear.** A common tower has one gear slot, a rare or epic one has two.
-
-  | Gear | What it does |
-  |---|---|
-  | Scope | +1 range |
-  | Whetstone | +35% damage |
-  | Sky-sight | the tower can hit flyers |
-  | Powder | +0.5 splash |
-  | Chill | slows what it hits |
-
-  Between waves the Move Gear tool takes a piece from one tower to another for nothing,
-  so gear rewards re-arranging a defence. Selling a tower returns half of everything
-  paid into it, its upgrades and the gear it wears included.
-- **On the board** a rare tower stands on a blue plate and an epic one on a purple plate;
-  each piece of gear is a small coloured dot on the tower.
-
-**Second round, the same day** (also **Built**, also a trial):
-
-- **You are told what comes next.** The next wave is decided when a build phase begins,
-  from the board as it stood when the last wave ended. The top of the screen names it
-  ("Next, wave 2: 22 sapper") and the route lines show where it will walk, so you build
-  against it before you press Start. This settles question 7: the announcement comes at
-  the start of the build phase, not as the wave starts.
-- **Cards are a free pick.** After each wave three cards are shown (towers, sometimes
-  rare or epic, and coins) and you take one. Before the first wave you take two. Towers
-  come from nowhere else, so a defence grows by at most one tower a wave.
-- **Gear is bought in a gear shop:** three pieces on sale for 8 budget each, a new stock
-  every five waves. Gear is no longer a card.
-- **Money** is 30 at the start and 10 a wave, and it goes on walls, upgrades and gear.
-
-Known problem: the first cards decide too much. A start that offers two Frost towers and
-a coin cannot kill the first wave (two of ten seeds in the scripted runs).
-
-**Third round, 2026-10-13** (also **Built**, also a trial; borrowed from Teamfight Tactics):
-
-- **Reroll.** A button under the cards buys a new set: 2 budget, then 3, then 4, back to 2
-  when the next wave's cards come. A pick you have not used carries over.
-- **Three of a kind combine.** Three towers of one type and one level become one tower of
-  the next level (three commons a rare, three rares an epic). The one you placed first
-  stays where it is; the other two tiles become empty. Their gear moves onto it, and a
-  piece that finds no slot is paid back. A card that would complete a set says so.
-- **The Upgrade tool is gone.** Levels come from combining and from rare and epic cards.
-- **A tower limit.** Four towers at the start, one more every three waves, shown as
-  "towers 3 / 4". A tower that completes a set may always be placed.
-- **Move.** Between waves a tower can be picked up and put on another free tile for
-  nothing, with its level and its gear.
-- **Gear is a card again** as well as being in the gear shop, and a roll shows four cards.
-- **Three more towers,** eight in all: Sniper (physical, range 8, one heavy shot, ground
-  only), Shard (frost, hits three enemies at once, ground only) and Flak (fire, splash,
-  range 4.5, hits flyers). Their numbers are first guesses; Flak is at least as good as the
-  Cannon on the ground and also hits flyers, which the next balance check has to settle.
-
-**Fourth round, 2026-10-13: few, heavy actions** (also **Built**, also a trial). The idea
-is yours: the game should feel like chess, every act weighing something, both sides seeing
-everything, and the enemy coming from where you are weak, as a raid does in RimWorld.
-
-- **The map is made new every run** from the seed: 32 x 32, ridges of rock, and a ring two
-  tiles deep along the edge on which nothing is built.
-- **You place the core** before the first wave (at least six tiles from the edge), then
-  say it stays.
-- **Enemies come in where the wave decides:** one place in the first waves, two from wave
-  4, three from wave 8. The places and the routes from them are shown when the build
-  phase begins; nothing is drawn on the edge before that. An entry is never close to the
-  core, and two entries of a wave are apart. The game takes turns: the wave is shown, you
-  answer, it runs.
-- **Walls are a stock**, not a purchase: 12 tiles at the start, 2 more after every wave,
-  3 on a wall card. A wall laid in this build phase comes up again freely; of older walls
-  you may take up 4 a wave. A wall that is chewed through is gone.
-- **Two moves a wave.** Anything done to a tower on the board costs one: moving it,
-  selling it, taking it to the bench, bringing one from the bench, or changing two over
-  (one move for the pair). Placing the wave's card, gear, and the order of the bench are free.
-- **A bench** of four slots for towers you own and have not put down.
-- **A duplicate card can be merged** into a tower of its type, which gains a level (or
-  takes the card's level if that is higher). You choose; nothing merges by itself. The
-  automatic three-of-a-kind merge of the third round is switched off. Levels come from
-  merging and from luck with rare and epic cards, never from budget.
-- **Budget** is small (10 at the start, 5 a wave) and buys room to do more: an extra move
-  (10, then 20), a reroll, a piece of gear, three wall tiles (5).
-
-Open, to be judged in play: every route ends at the core, so gathering the towers round
-it answers an attack from any side. If that turns out to be the one good layout, the
-entries change nothing and the design needs another lever (a core that is weak to being
-crowded, or enemies that avoid towers as RimWorld's sappers do).
-
-**What this risks for the study** (to raise with your supervisor): the measure of how much
-a player rebuilds counts tiles built. With two moves and a wall stock everyone has about
-the same number of actions, so the measure has to look at WHERE they go and whether moves
-are left unused or bought, not at how many there are. The map being new every run adds
-noise between participants; the study should use a few checked seeds. Also: a free move is a change
-to the layout that the primary measure does not count today (it counts tiles built), and a
-merge empties two tiles the player did not choose to empty. Both are written to telemetry
-(`moveTower`, `combine`), so the measure can be defined either way before it is frozen. Also: money put into levels
-is money not spent on placing or moving anything, and a tower with levels and gear is one
-a player is slower to sell. Both work against the rebuilding the study measures, in both
-versions. Upgrades and gear moves are in the build log and the telemetry, so they can be
-counted; the placement measure of §5.9 of the architecture does not see them.
-
-### 4.3 How the two work together
-
-A tower only earns its price while enemies are in its range. A wall puts no damage
-on anyone, but a route bent past the same towers twice doubles what those towers do. So
-the strong builds are mazes with towers at the bends, and every such build has a weak
-point somewhere: a wall one tile thick, a single spot that does all the killing, nothing
-that can shoot upward. Those weak points are what the adaptive version goes looking for.
+**Built.** Undo and redo (Ctrl+Z, Ctrl+Y) go back up to 30 steps within the build phase.
+Anything sold in the build phase it was bought in gives all its ore back.
 
 ---
 
-## 5. Enemies
+## 6. Enemies
 
-### 5.1 What an enemy is
+### 6.1 What an enemy is
 
-**Built.** An enemy has hit points, a walking speed, a digging speed, and one resistance
-per damage type (a resistance of 0.5 halves the damage of that type). It ends in one of
-two ways: **killed** (you are paid 0.2 budget) or **through** to the core (the core
-loses 1).
+**Built.** An enemy has hit points, a walking speed, a digging speed, and one resistance per
+damage type. It ends in one of two ways: **killed** (nothing is paid) or **through** to the core
+(the core loses 1).
 
-### 5.2 Three ways of moving
+### 6.2 Three ways of moving
 
 **Built** (WP-C2). This is what the director's wave types are made of.
 
-| Class | How it gets to the core | Digs | Which towers can hit it |
+| Class | How it gets to its goal | Digs | Which towers can hit it |
 |---|---|---|---|
-| **Walker** (ground) | Takes the cheapest way, counting a wall as 15 tiles of walking. Usually goes round. | Only when going round costs more. | All |
-| **Sapper** | The same, but a wall counts as 3 tiles. Goes through walls that walkers go round. | Often, and its group digs faster. | All |
+| **Walker** (ground) | The cheapest way, counting a plain wall as 15 tiles of walking. Usually goes round. | Only when going round costs more. | All |
+| **Sapper** | The same, but your walls count a fifth (mountains full price). Goes through walls that walkers go round. | Often, and faster. | All |
 | **Flyer** | A straight line to the core, over everything. | Never. | Only towers that hit flyers |
 
-On the screen a walker is a small square, a sapper an orange disc and a flyer a blue
-diamond (WP-C4). Plain shapes: models are art, and art is the second semester's.
+Two behaviours come on top of a class:
 
-### 5.3 Where enemies walk
+- **Raiders** go for your collectors, the nearest first, then the next, then the core.
+- **Siege enemies** stop as soon as a tower is within 4.5 tiles, set up for 2 seconds, then every
+  1.5 seconds shell the tower with the most towers round it, and the towers next to it. A tower
+  that has taken 10 is knocked out until the next build phase, never destroyed. Towers that
+  outrange them (ballista, sniper, range upgrades), slows and spreading out are the answers.
 
-![Where the three kinds of enemy walk on one board](gdd/routes.png)
+A tower with the lure ability (the brazier's Bonfire path) pulls enemies on foot within 4 tiles.
 
-**Built.** The pink and the orange route in the picture were not drawn by hand: they are
-what the game's own path rule gives for that board (an example board, larger than the
-game's).
+### 6.3 Enemy types
 
-**Nobody assigns a path to an enemy.** There is one rule, and every enemy follows it on
-its own: *at every step, go to the neighbouring tile from which the rest of the way to
-the core is cheapest for my kind.* The way is priced in tiles of walking, and a built tile
-is priced as extra walking: 15 tiles for a walker, 3 for a sapper. A flyer does not use
-the rule at all. It flies a straight line.
-
-What follows from that:
-
-- **Same kind, same entrance, same route.** All the walkers of a wave come out of the
-  same spawn and walk the same line, one behind the other. They do not spread out, and
-  they do not pick different gaps.
-- **Different kinds, different routes, on the same board.** On the board of the picture:
-
-  | Kind | Its way | Length | Towers it passes |
-  |---|---|---|---|
-  | Walker | round every wall | about 71 tiles | all 9 |
-  | Sapper | through the two walls that are one tile thick | about 50 tiles | 5 |
-  | Flyer | a straight line over everything | 44 tiles | 1 (of the 4 that can hit flyers) |
-
-  So one maze is three different problems, depending on what arrives. That is what the
-  director works with.
-- **The director chooses the kind, never the path.** It decides what a wave is made of
-  and, once there is more than one spawn (WP9), from which side it comes. After that each
-  enemy finds its own way by the rule. The director cannot send an enemy to a particular
-  tile, and no enemy is given a path of its own. Wherever an enemy goes, you could have
-  read it off your own board.
-- **A route can change in the middle of a wave.** When a wall or a tower is chewed
-  through, or when you build, every route is worked out again and every enemy carries on
-  from the tile it stands on.
-- **A route is never closed.** Wall off every gap, and the wave chews through the
-  cheapest spot.
-
-<!-- pdf: figures here -->
-
-**What the screen shows.** **Built** (WP-C4; your decision of 2026-10-12): in a build phase, one line for every kind of enemy you have met so far in
-this session; during a wave, the lines of the kinds in that wave. The lines are worked
-out again each time you build. Drawing all three from the first wave would be simpler,
-but in the static version it would warn of enemies that never come. With "the kinds you
-have met", the rule is the same in both versions and the static version keeps the one
-line it has today. Your supervisor should still see this before the pilot, because it is
-one of the things the screens of the two versions differ by.
-
-### 5.4 Enemy types
-
-**Built** (WP-C5), as this file proposed (question 3 is still yours): four named types,
-each a fixed set of numbers on top of a movement class.
+**Built.** Each type is a set of numbers on top of the plain walker of that wave.
 
 | Type | Class | Compared with the plain walker |
 |---|---|---|
-| Basic (the walker) | ground | the baseline |
-| Swarm | ground | twice as many, four tenths of the hit points, 1.3 times as fast, half as far apart |
-| Sapper | sapper | half as many, 1.5 times the hit points, 0.8 times as fast, digs four times as fast |
-| Flyer | flying | half as many, half the hit points, 1.2 times as fast |
+| Basic | walker | the baseline |
+| Swarm | walker | twice as many, 0.4 the hit points, 1.3 times as fast, closer together |
+| Runner | walker | 0.8 as many, 0.6 the hit points, 1.7 times as fast |
+| Brute | walker | a quarter as many, 4 times the hit points, 0.7 as fast |
+| Armored | walker | takes 35 % of physical damage; 1.2 times the hit points |
+| Ember | walker | takes 25 % of fire damage |
+| Sapper | sapper | half as many, 1.5 times the hit points, digs 4 times as fast |
+| Flyer | flyer | half as many, 0.35 the hit points |
+| Bats | flyer | many, 0.15 the hit points, 1.2 times as fast |
+| Raider | walker, raids | half as many, 1.2 times as fast, digs 1.5 times as fast |
+| Siege | walker, siege | 6 times the hit points (3 times at first, §7.2), 0.6 as fast |
+| Frostborn | walker | immune to frost; kept for the tests, no longer sent (too strong) |
 
-Only the development planner sends anything but the basic type today. Which waves use
-resistances is **Open** (question 4).
+### 6.4 Where enemies walk
+
+![Where the three kinds of enemy walk on one board](gdd/routes.png)
+
+**Built.** The picture is an example board from the first version of this file; the rule it
+shows is unchanged. The pink and the orange route were not drawn by hand: they are what the
+game's own path rule gives for that board.
+
+**Nobody assigns a path to an enemy.** There is one rule, and every enemy follows it on its own:
+*at every step, go to the neighbouring tile from which the rest of the way to my goal is
+cheapest for my kind.* A flyer does not use the rule at all; it flies a straight line.
+
+- **Same kind, same entrance, same route.** The walkers of one entry walk one line.
+- **Different kinds, different routes, on the same board.** In the picture the walkers go round
+  every wall (about 71 tiles, past 9 towers), the sappers through the two thin walls (about 50
+  tiles, past 5), the flyers straight over (44 tiles, past 1). One layout is several different
+  problems, depending on what arrives. That is what the director works with.
+- **The director chooses the kind and the entries, never the path.** Wherever an enemy goes, you
+  could have read it off your own board.
+- **A route can change in the middle of a wave**, when something is chewed through or you build.
+- **A route is never closed.** Wall off every gap, and the wave chews through the cheapest spot.
+
+<!-- pdf: figures here -->
+
+**What the screen shows.** **Built:** in a build phase, one line for each kind of enemy in the
+next wave, from its entry; raiders' lines go to the collector they reach first. During a wave,
+the lines of the kinds in that wave. The lines follow the enemies' own step rule, so they bend
+to a lure as the enemies do.
 
 ---
 
-## 6. Waves
+## 7. Waves
 
-### 6.1 The static version
+### 7.1 The static version
 
-**Built.** This is the baseline condition of the study. Every wave is one stream of
-walkers from the one spawn, and every wave is a little worse than the one before:
+**Built** as the baseline the director starts from. The plain walker of wave *n*: 12 enemies in
+wave 1 and one more every two waves; hit points 30 + 4.5 a wave, then 4 % more a wave on top;
+speed 1.25 tiles a second, 0.0375 more a wave, at most 2.25.
 
-| Wave | Enemies | Hit points each | Speed (tiles per second) | Gap between enemies |
-|---|---|---|---|---|
-| 1 | 40 | 8 | 0.63 | 0.40 s |
-| 5 | 60 | 22 | 0.70 | 0.36 s |
-| 10 | 85 | 39.5 | 0.79 | 0.31 s |
-| 15 | 110 | 57 | 0.89 | 0.26 s |
-| 20 | 135 | 74.5 | 0.98 | 0.21 s |
-| 25 | 160 | 92 | 1.08 | 0.20 s |
+Each wave is made of one to three types in a fixed twelve-wave cycle (basic; runners; sappers;
+armored; flyers; swarm; brutes and basic; ember and sappers; bats; swarm and runners; armored
+and flyers; brutes, swarm and bats). On the ore map raiders come too, from wave 4, every few
+waves. **Open (question 21):** whether the study's static version keeps this cycle, or sends
+plain walkers only.
 
-(+5 enemies, +3.5 hit points, a little more speed and a slightly shorter gap each wave.)
-These numbers are from the sanity check of WP-C5 (`Results/2026-10-12_balance-v1`), where
-a scripted player that only buys towers loses around wave 11. Until then every wave was
-100 or more enemies a fifth of a second apart, and a run ended in wave 1 or not at all.
-They are not balanced: that is the second semester's pass, against people.
+### 7.2 The development director
 
-### 6.2 The adaptive version
+**Built** (2026-10-26, rewritten 2026-10-28). What the game runs today. It is **not** a study
+condition and **not** the thesis director: it has no learning, no build profile and no price
+list that keeps every wave type equally strong.
 
-**Planned** (WP8 to WP11). Nothing of the director is built yet. What exists is a
-development planner that sends walkers, sappers, flyers and a mix in a fixed cycle, so
-that the three classes can be played.
+At the start of each build phase it reads the board and gives each kind of wave a score; the
+highest is sent, and a kind sent last wave loses a little:
 
-**What the director looks at.** Once per wave, at the moment the build phase ends, it
-measures five things about your build:
+| Wave | What arrives | Sent when |
+|---|---|---|
+| Baseline | the wave of §7.1 | nothing below scores higher |
+| Outpost raid | raiders, 15 to 40 % of the wave | collectors that no tower covers (from wave 4) |
+| Siege stack | one to three siege enemies | most of the damage comes from one cluster of towers (from wave 8; one alone for the first three siege waves) |
+| Resist mix | armored or ember enemies, 40 % | one damage type is over 60 % of your damage |
+| Air raid | flyers, 40 % | less than a quarter of your damage can hit flyers (never when none can) |
+| Maze breach | sappers, 30 % | a long wall maze: 10 or more walls, and the route 1.4 times the straight line (the only time sappers come) |
+
+At least half of every wave still goes for the core. The banner shows one written line for the
+chosen kind, e.g. "Raiders are coming for your undefended outposts."
+
+### 7.3 The adaptive version
+
+**Planned** (WP8 to WP11).
+
+**What the director looks at.** At the start of each build phase it measures five things:
 
 | Measure | In plain words |
 |---|---|
@@ -523,113 +385,52 @@ measures five things about your build:
 
 Their exact formulas are **Open** (question 5).
 
-**What it can send.** One of four wave types. The third column is what each is *meant*
-to press on. Which builds each one really moves a player to change is not a rule of the
+**What it can send.** One of a small set of wave types, each meant to press on one weakness:
+the proposal's four (breach the thin wall, swarm the chokepoint, split groups, flying bypass)
+and the development director's kinds (§7.2) are the candidates. The final set is **Open**
+(question 4). Which builds each type really moves a player to change is not a rule of the
 game: it is what the study measures.
 
-| Wave type | What arrives | Meant to press on |
-|---|---|---|
-| Breach the thin wall | sappers | a long maze held by thin walls |
-| Swarm the chokepoint | many weak, fast enemies packed together | all the damage being done in one spot |
-| Split groups | groups from more than one spawn | towers standing together in one place |
-| Flying bypass | flyers | relying on the maze, with nothing that shoots upward |
+**How it chooses.** It starts from written scores, as the development director does. On top of
+them it learns, during your session, which wave types actually made *you* rebuild, and nudges
+close calls that way, by at most one point. It is rewarded for a rebuild, not for beating you:
+a wave that ends your session scores badly, because a player who is out builds nothing more.
 
-How many enemies of which type each wave type contains is **Open** (question 4).
+### 7.4 What keeps it fair
 
-**What keeps it fair.** These are fixed rules of the project (`CLAUDE.md` §4):
+Fixed rules of the project (`CLAUDE.md` §4):
 
-- **Same strength.** Every wave type costs exactly what the static wave of that number
-  costs, on one shared price list for enemies. The director chooses the shape of a wave,
-  never its size.
-- **Nothing it cannot be answered with.** Flyers are not sent while you own no tower
-  that can hit them and the shop is not offering one.
+- **Same strength.** Every wave type costs exactly what the static wave of that number costs, on
+  one shared price list. The director chooses the shape of a wave, never its size.
+- **Nothing that cannot be answered.** Flyers are not sent while no tower can hit them.
 - **No repeats in disguise.** A wave too similar to the previous one is ruled out.
-- **Hands off your side.** The director never changes the shop, a price, a tower or your
-  budget. (Today one thing leaks through: you are paid per kill, so a wave of fewer,
-  tougher enemies pays less. That has to be closed before the wave types are priced,
-  question 6.)
+- **Hands off your side.** The director never changes a price, a tower or your ore. **Open
+  (question 6):** raiders destroy collectors and siege enemies knock towers out, so a wave type
+  that sends them changes your income and firepower, which the static version does not.
 
-**How it chooses.** It starts from written rules: each wave type gets a score for the
-build in front of it. On top of that it learns, during your session, which wave types
-actually made *you* rebuild, and nudges close calls that way. The nudge is small by
-construction: it can re-rank wave types that scored about the same, never overrule a
-clear one. The player sees none of these numbers.
+### 7.5 What is the same in both versions
 
-**What it is rewarded for** is not beating you. It scores a wave highly when you
-changed your build afterwards, when your core was still standing, when the wave got
-close to the core, and when the wave was different from the last one. A wave that ends
-your session scores badly, because a player who is out builds nothing more.
-
-**The banner.** As each wave starts, one line of text says what is coming and what in
-your build it is aimed at. The lines are written by hand, 20 of them (four wave types ×
-five situations), and never generated. Sample wording, **Proposed**:
-
-| Wave type | Sample line |
-|---|---|
-| Breach the thin wall | "Sappers. They dig where your wall is one tile thick." |
-| Swarm the chokepoint | "A swarm. Too many for one kill zone." |
-| Split groups | "Two groups, two directions. Your towers are all in one place." |
-| Flying bypass | "Flyers. Your maze does not reach the sky." |
-
-**When the banner appears.** The director has to see your finished build, so it chooses
-at the moment the build phase ends. The line therefore appears as the wave starts, not
-while you are building. You answer it during the wave (walls and towers can be placed in
-mid-wave) and in the next build phase. Whether that is enough warning to feel fair should
-be playtested (question 7). The route lines of §5.3 help here: from the moment the wave
-starts, the banner names a line that is drawn on the board, not something you have to
-imagine.
-
-### 6.3 What is the same in both versions
-
-The board and its rocks, the shop's offers (on the same seed), every price and reward,
-the strength of every wave, and the screen. Only the shape of the waves differs, and with
-it the text of the banner (question 7) and which route lines there are to draw (§5.3).
+The map and its seed, every price, the strength of every wave, and the screen. Only the shape of
+the waves differs, and with it the banner's line and which route lines are drawn.
 
 ---
 
-## 7. Money
+## 8. Losing, restarting, a session
 
-**Built.** One budget pays for walls and towers. All numbers are placeholders.
+**Built.** The core has 10 hit points and loses one for every enemy that reaches it. At zero the
+game is over: "You reached Wave N", and Restart. There is no way to win today.
 
-| | Amount |
-|---|---|
-| At the start | 30 |
-| After every wave | +10 |
-| An enemy killed | nothing (it was +0.2 until 2026-10-12) |
-| A wall tile chewed through | nothing (it was +1) |
-| A coin card | +8 |
-| An upgrade | the tower's price; half as much again for the second |
-| A piece of gear | −8 |
-| A tower chewed through | nothing |
-| A wall | today −3 to −7 for a piece of four tiles; planned −1 a tile |
-| A tower | −10 to −18 (§4.2) |
-| Selling a tower | half its price back |
-| Selling a wall | half its cost back (today a whole piece at once, in proportion to the tiles still standing; planned tile by tile) |
-| Rerolling the shop | not in the game (the rule exists and is switched off) |
+**Built:** a wave can be restarted any number of times (§2). **Open (question 22):** whether a
+participant may restart waves in the study, since a restart replays the director's choice and
+changes how many waves count.
 
-Towers are free picks now; thirty at the start is two upgrades, or an upgrade, a piece of gear and some walls.
+**Open (question 1): how long is a session?** The study compares the waves a player completed in
+each of their two sessions, cut to the shorter one, so it needs a stated length (about 25 waves
+is assumed) and a game in which an ordinary player gets most of the way there.
 
----
-
-## 8. Losing, winning, and a session
-
-**Built.** The core has 10 hit points and loses one for every enemy that reaches it. At
-zero the game is over and the screen shows "You reached Wave N" and a Restart button.
-There is no way to win: the waves go on until the core falls.
-
-**Open (question 1): how long is a session?** This is the most important open question
-in this file. The study compares how a player builds over the waves they *completed* in
-each of their two sessions, cut to the shorter one. A participant who falls in wave 4 of
-one session leaves three waves to compare. So the study needs a stated length (the
-project's notes assume about 25 waves) and a game balanced so that an ordinary player
-gets most of the way there.
-
-**Planned (WP14): a study session.** The participant types a code on a start screen. The
-code decides their two sessions: one static, one adaptive, on two different seeds, in an
-order that differs between four groups of participants. Nobody plays the same seed
-twice, so nobody can remember the shop.
-
-**Open (question 8):** how a participant learns the game before their first session.
+**Planned (WP14): a study session.** The participant types a code on a start screen; the code
+decides their two sessions (one static, one adaptive, two different seeds, in a counterbalanced
+order).
 
 ---
 
@@ -637,165 +438,162 @@ twice, so nobody can remember the shop.
 
 ### 9.1 Today
 
-![The game on 2026-10-12, after WP-C4](gdd/today-2026-10-12.png)
+**Built.** The pictures are from the game on 2026-10-28.
 
-**Built** (WP-C4). The board from straight above, early in wave 1. Dark blocks: rocks.
-Light tiles: two walls drawn by drag. The two rings with a barrel: towers. The pink line:
-the walkers' route; the yellow streak at its start is the wave coming out of the spawn.
-A cannon from the shop is in the hand: its card is lit, and over the board it shows as a
-green tile with its range ring and a tooltip. Right: the shop's four cards, the two tools
-(Sell is greyed while a wave runs), and the key to the route lines. Top: the core's
-health and the wave. Bottom: Start, speed and Pause. It is functional, not styled: the
-text font, the colours and the size of the enemies are whatever came first.
+### Placing the core
 
-### 9.2 The target: a build phase
+![Session start: the player places the core inside the gold frame](gdd/today-core.png)
 
-![Mockup of a build phase](gdd/screen-build.png)
+Brown discs are ore deposits, dark tiles mountains; the pink line is the first wave's route.
 
-A mockup, on the board of the picture in §5.3. What in it is decided and what is not:
+### A build phase
 
-| On the screen | Status |
-|---|---|
-| The board seen from straight above | **Built** |
-| Walls as single tiles, drawn with the Wall tool | **Built** (§4.1) |
-| Rocks | **Built** (§3.2); the layout in this picture is only an example |
-| A route line for each kind of enemy you have met, with a key | **Built** (§5.3) |
-| The shop as four cards; a tower picked from its card follows the mouse with its range ring | **Built** |
-| Sell as a tool that shows what would be sold, and the refund | **Built** |
-| Where things are on the screen, and how it all looks | **Proposed**; today's screen (§9.1) has the tools in the right-hand panel |
+![A build phase](gdd/today-build.png)
 
-- **The shop.** Click a card, and the tower follows the mouse with its **range ring**;
-  click a tile to place it. Esc puts it down.
-- **Wall and Sell are tools**, and one is on at a time. With Sell on, pointing at a tower
-  or a wall tile shows the refund, and a click sells it.
+Top left: the core's health and the wave. Top centre: the banner. Top right: ore and income,
+powered towers, research tier; under them the route key, the next wave's enemies as chips, and
+the damage panel. Bottom: the build menu by category, the gear slots, undo and redo; bottom
+right pause, speed (x1, x3, x6) and the wave button.
 
-### 9.3 The target: a wave, in the adaptive version
+### The director's warning
 
-![Mockup of a wave that has just started](gdd/screen-wave.png)
+![A planned raid: the banner, the enemy chips and two route lines](gdd/today-raid.png)
 
-- The **banner** (**Planned**, WP14).
-- Only the route of what is coming is drawn: here the sappers' (**Built**, §5.3). One
-  of the two thin walls is already chewed through, and the first sappers are at the second.
-- Towers that turn towards their target and fire a visible shot (**Built**: a line for a moment).
-  The shot is only drawn; the damage is done the instant the tower fires.
-- An enemy model per type. **Built** as plain shapes: a walker is a small square, a sapper an orange disc, a flyer a blue diamond. Models are art, and art is the second semester's.
-- The Sell tool is visibly off until the wave is over (**Built**).
+Unguarded collectors drew a raid: the banner says so, the chips show 7 armored and 2 raiders,
+and the raiders' route (green) runs to the collectors.
 
-### 9.4 Other screens and overlays
+### A wave
+
+![A wave in progress](gdd/today-wave.png)
+
+### After a wave
+
+![After a wave: the damage panel and the next wave from another side](gdd/today-after-wave.png)
+
+The damage panel shows each tower's share; the three best are named at the top for a few seconds when a wave ends.
+
+### The flow-field view (V)
+
+![The flow-field view](gdd/today-flow-field.png)
+
+For development: the cost to the core of every tile, as colour, and the way out of it, as an
+arrow.
+
+### 9.2 Still to come
 
 | Screen | Status |
 |---|---|
-| Game over: "You reached Wave N", Restart | **Built** |
-| Flow-field view (key V): arrows, a heat map, or both, showing which way every tile leads | **Built** |
 | Session start: participant code | **Planned** (WP14) |
-| Director overlay (F9): why the director chose what it chose. For development; not in a participant's build | **Planned** (WP14) |
-| Preview of how the routes would change, before a wall is paid for | **Planned** (second-semester UX pass) |
+| Director overlay (F9): why the director chose what it chose; development only | **Planned** (WP14) |
+| Preview of how the routes would change before a wall is paid for | **Planned** (second-semester UX pass) |
+| Art: models for towers and enemies, sound | **Open** (question 13) |
 
 ---
 
 ## 10. Controls
 
-**Built** (WP-C4).
+**Built.**
 
 | Action | How |
 |---|---|
-| Build a wall | Wall tool (it is in the hand when the game starts): click a tile, or hold and drag to draw a line |
-| Buy a tower | click its card, then click a tile; clicking the card again puts it back |
-| Sell a tower or a wall | Sell tool, between waves: click it; drag to sell every wall tile the mouse passes over |
+| Build | pick it in the bottom bar, then click a tile; walls by click or drag |
+| Build-menu tabs | click, or 1 to 4 |
+| Wall tool | Q |
+| Collector | C |
+| Sell | X, then click (drag over walls) |
+| Move a tower | M, or drag the tower |
+| Upgrade | U, or the inspect pane |
+| Target order | T, or the inspect pane |
 | Put the hand down | Esc, or the right mouse button |
-| Start the wave early | Start button |
-| Game speed | 1, 2, 3 |
-| Pause (building is off while paused) | Space |
+| Undo, redo | Ctrl+Z, Ctrl+Y |
+| Select a tower, collector, pylon or the core | click it |
+| Start the wave | the wave button |
+| Game speed | x1, x3, x6 buttons, or 1, 2, 3 |
+| Pause (during a wave only) | Space |
+| Damage panel: this wave, the whole game, folded | Tab |
+| Move the view, zoom | WASD or arrows, mouse wheel |
 | Flow-field view | V, for development |
 
-For a participant that is seven controls where there were twelve. Gone with WP-C4: the
-keys that bought and sold (Z X C B, Delete), rotating and holding a piece (R, Shift), and
-everything that moved the camera.
+**A clash to fix:** the keys 1 to 3 change the game speed *and* the build-menu tab at the same
+time (question 23).
 
 ---
 
 ## 11. Look and sound
 
-**Look.** **Built**, as a placeholder: a dark board with a glowing edge, and everything on
-it a glowing cube. It is cheap, it reads well from above, and it is what the first
-pictures of the game look like. Rocks should look like ground and not like something
-built: darker and duller than a wall.
+**Look.** **Built**, as a placeholder: a dark board with a glowing edge; towers as figures with a
+colour each (white archer, brown ballista, red cannon, orange brazier, blue frost, violet sniper,
+teal shard, pink flak, lime pylon); walls coloured by tier; the interface drawn in code, with no
+art files. Enemies are coloured shapes.
 
-**Planned for the study build:** simple distinct shapes, so that a tower type and an
-enemy type can be told apart without reading (WP-C4), and then a pass over the whole
-screen in the second semester. Art beyond that is out of scope.
-
-**Sound.** **Open** (question 13). There is none today and none in the plan.
+**Sound.** **Open** (question 13). There is none.
 
 ---
 
 ## 12. Open questions
 
-Each of these changes what the finished game is. "Suggestion" is this file's proposal,
-not a decision. Questions 15 to 19 came out of your first read on 2026-10-12. You answered
-15 to 18 the same day; they are under the table.
+Each of these changes what the finished game is. "Suggestion" is this file's proposal, not a
+decision.
 
 | # | Question | Suggestion | Who decides | Needed by |
 |---|---|---|---|---|
-| 1 | **How long is a session, and what ends it?** | A fixed length of 25 waves; the session still ends early if the core falls; balance so that an ordinary player gets past wave 15. Reaching the last wave is the win. | you and your supervisor | the balance check (WP-C5), firmly before the pilot |
-| 2 | **Which towers?** (spec gap S12) | The five in §4.2 are built, because WP-C5 needed a roster. Still yours to change. | you | the balance pass |
-| 3 | **Which enemy types?** (S12) | The four in §5.4 are built. Still yours to change. | you | WP9 |
-| 4 | **What exactly is in each of the four wave types,** and do they use resistances? (S10) | Take it from the proposal's §6.3, which is not in the repository yet. | you (add the proposal to `Docs/`) | WP9 |
-| 5 | **The exact formulas of the five measures.** (S9) | Take them from the proposal's §6.2. Starting definitions are in `ARCHITECTURE.md` §5.3. | you (add the proposal to `Docs/`) | WP8 |
-| 6 | **Income must not depend on the wave's shape.** (S14) | Closed in the trial of §4.4: a kill pays nothing and every cleared wave pays the same. If kill rewards come back, they must be priced by the shared list. | delegated | WP9 |
-| 7 | **The banner.** Does the static version show one? Is "as the wave starts" enough warning? | Both versions show a banner. The static one states the wave plainly ("Wave 7. 130 walkers."); the adaptive one also says why. Give every wave a few seconds between the banner and the first enemy, and playtest it. | you and your supervisor (it is part of the study design) | WP14 |
+| 1 | **How long is a session, and what ends it?** | A fixed length of 25 waves; the session still ends early if the core falls; balance so that an ordinary player gets past wave 15. Reaching the last wave is the win. | you and your supervisor | the balance pass, firmly before the pilot |
+| 4 | **Which wave types,** and what exactly is in each? (S10) | Pick four to six from the proposal's four and the development director's kinds (§7.3), one per weakness the profile can see. | you | WP9 |
+| 5 | **The exact formulas of the five measures.** (S9) | Start from `ARCHITECTURE.md` §5.3 and the proposal's Table 7. | you | WP8 |
+| 6 | **Raids and sieges change the player's income and firepower** (I11, S14). | Count raiders and siege enemies in the shared price list at the value of what they can destroy, or send the same raids in both versions. | you and your supervisor | WP9, before the pilot |
+| 7 | **The banner in the static version.** | Both versions show one: the static one states the wave plainly ("Wave 7: armored and flyers"), the adaptive one also says why. | you and your supervisor | WP14 |
 | 8 | **How does a participant learn the game?** | A short practice run of three waves on a third seed, static, not analysed. | you and your supervisor | the pilot |
-| 9 | **Balance questions:** does a chewed wall keep paying +1; the refund of a sale; rerolls. | Leave as they are until the balance check has numbers. | delegated | WP-C5, then the second-semester balance pass |
-| 10 | **Where do the extra spawn points go?** (S8) | The two corners the spawn and the core do not use, to be checked against the price list (from there the walk to the core is shorter). | delegated | WP9 |
-| 11 | **Is the "seeded maze" still wanted?** | No. The rocks of §3.2 do its job (the player does not start from an empty board), and they are fixed, so nothing new is random. | you | any time (the rocks are decided) |
-| 12 | **A name for the game,** and the company and product name in the build settings (still `DefaultCompany/InternProj`). They decide where a build writes its data. | — | you | the first build that records data |
-| 13 | **Sound.** | A handful of effects (place, shot, enemy through, wave start) in the UX pass, only if there is time. Not needed for the study. | you | the second-semester UX pass |
-| 14 | **May a participant pause and change speed?** They can today. | Yes to both: pause is for thinking, and building is off while paused. | you and your supervisor | the pilot |
-| 20 | **Do cards, levels and gear stay?** They were built as a trial (§4.4) and work against rebuilding in one way and for it in another. | Play it; then decide with the supervisor, since it bears on the measure. | you and your supervisor | before the pilot |
-| 19 | **How big is the board?** It is 24 × 24 "for now" (your word, 2026-10-12). | Play on it; settle it with the balance check. | you | WP-C5 |
+| 12 | **A name for the game,** and the company and product name in the build settings. | — | you | the first build that records data |
+| 13 | **Art and sound.** | Distinct shapes for enemy types and a handful of sounds in the UX pass, if there is time. | you | the second-semester UX pass |
+| 14 | **May a participant pause and change speed?** | Yes to both. | you and your supervisor | the pilot |
+| 20 | **Do research, upgrades and gear stay?** A tester called research the worst feature and gear a waste of ore (2026-10-23). | Keep upgrades (they are the towers' identity); decide research and gear after the next tests. | you | the balance pass |
+| 21 | **What does the static version send?** The fixed cycle of types (§7.1), or plain walkers? | The cycle: otherwise the two versions differ in variety, not in adaptation. | you and your supervisor | WP9 |
+| 22 | **Restarting waves in the study.** | Off in the study build, or counted and reported. | you and your supervisor | the pilot |
+| 23 | **Keys 1 to 3** change the speed and the build-menu tab together. | Give the tabs other keys or none (they lost their labels on 2026-10-28). | delegated | the next round |
 
 ### Answered
 
-| # | Question | Your answer | When |
+| # | Question | Answer | When |
 |---|---|---|---|
-| 15 | The walls, in detail | Yes, as in §4.1: single tiles drawn by click and drag, one price a tile, sold tile by tile. | 2026-10-12 |
-| 16 | Rocks: yes or no, and where? | Yes, by the four rules of §3.2. A first layout is drawn in WP-C4 and you change it by playing. | 2026-10-12 |
-| 17 | Is the wave watched from above too? | Yes: one view for the whole game. | 2026-10-12 |
-| 18 | Which route lines are drawn? | One for each kind of enemy met so far in the session (§5.3). Still to be shown to your supervisor before the pilot, because the screens of the two versions differ by it. | 2026-10-12 |
+| 2 | Which towers? | Eight towers and the pylon (§5.2, §5.5). | 2026-10-24 |
+| 3 | Which enemy types? | The eleven sent today (§6.3). | 2026-10-14 to -26 |
+| 9 | Balance of chewed walls, refunds, rerolls | Chewed walls pay nothing; a sale gives half back, all of it in the build phase of the purchase; no shop, so no rerolls. | 2026-10-20 to -28 |
+| 10 | Where do extra spawn points go? | All round the edge of the generated map; one to three a wave (§3.1). | 2026-10-13 |
+| 11 | Is the "seeded maze" still wanted? | The map is generated from the seed (§3.1); the study's fixed seed sets keep both versions on the same maps. | 2026-10-13 |
+| 15 | The walls | Single tiles by click and drag; three tiers since 2026-10-28. | 2026-10-12 |
+| 16 | Rocks | Yes; generated, and breakable since 2026-10-28 (§3.3). | 2026-10-12 |
+| 17 | One view for building and the wave? | Yes. The board is now seen at a tilt (§3.2). | 2026-10-14 |
+| 18 | Which route lines are drawn? | One for each kind in the next wave in a build phase, the wave's kinds during it (§6.4). | 2026-10-12 |
+| 19 | How big is the board? | 48 × 48 (§3.1). | 2026-10-20 |
+| — | Is the warning enough? | The wave is planned and shown as the build phase begins, so the player answers it before Start. | 2026-10-12 |
+| — | Cards, levels and gear | Replaced by the build menu, upgrade paths and flat gear. | 2026-10-20 to -27 |
 
 ---
 
 ## 13. From today to the finished game
 
-What each coming package changes for the person playing.
-
 | Package | What the player will notice |
 |---|---|
-| **WP-C4** towers and shop on screen (**done**) | The board from above, with rocks on it; walls drawn tile by tile; a route line for every kind of enemy you have met. The shop as cards, a range ring before placing, a Sell tool with a preview, towers that turn and fire, a shape per enemy class. |
-| **WP-C5** roster and balance check (**done**) | Five towers and four enemy types; waves that start smaller and grow tougher. |
+| Gameplay rounds (**ongoing**, to the end of October) | Whatever the next tester sessions call for. |
 | **WP7** the learner | Nothing. It runs without the game. |
 | **WP8** build profile | Nothing. |
-| **WP9** wave types | The four wave types exist; more than one spawn. |
-| **WP10, WP11** the director | Waves that answer the build. |
-| **WP14** director on screen, session start | The banner; the participant-code screen. |
+| **WP9** wave types and the price list | The final wave types; every wave of one number equally strong. |
+| **WP10, WP11** the director | Waves that answer the build, learned per player. |
+| **WP14** director on screen, session start | The participant-code screen; the director overlay for development. |
 | **WP12, WP13** harness and gates | Nothing. |
 | Second semester: UX pass, balance pass | Route previews, a clearer screen, a game that is fair to an ordinary player. |
 | Build freeze | Nothing changes after this, except crash fixes. |
-
-**The changes of 2026-10-12 were built with WP-C4**, on the day they were decided. Nobody
-has played the result by hand yet: that is the next thing to do, before WP-C5 sets numbers
-on top of it.
 
 ---
 
 ## 14. What this game is not
 
-- **Not a game that gets easier or harder to suit you.** Difficulty is held equal on
-  purpose; only the shape of the waves changes.
-- **Not a game where walls block.** That was the original design and was removed; it is
-  what makes "a path always exists" true.
-- **Not a puzzle of fitting shapes.** That was the tetromino version of the walls (§4.1).
-- **No generated text or behaviour.** Every banner line is written by hand, and every
-  run can be replayed exactly.
-- **Not in the plan:** more than one map, anything carried over from one session to the
-  next, more than one player. (Tower upgrades were on this list until 2026-10-12.)
+- **Not a game that gets easier or harder to suit you.** Difficulty is held equal on purpose;
+  only the shape of the waves changes.
+- **Not a game where walls block.** That was the original design and was removed; it is what
+  makes "a path always exists" true.
+- **Not a game of luck in what you can buy.** The random shop is gone; everything has a fixed
+  price.
+- **No generated text or behaviour.** Every banner line is written by hand, and every run can be
+  replayed exactly.
+- **Not in the plan:** anything carried over from one session to the next, more than one player.

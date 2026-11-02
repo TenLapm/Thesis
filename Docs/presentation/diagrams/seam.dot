@@ -1,0 +1,17 @@
+digraph seam {
+  graph [rankdir=LR, fontname="Arial", fontsize=16, nodesep=0.3, ranksep=0.5, bgcolor="white", pad=0.1];
+  node  [shape=box, fontname="Arial", fontsize=16, color="black", penwidth=1.3, margin="0.15,0.09"];
+  edge  [color="black", arrowsize=0.8, penwidth=1.2, fontname="Arial", fontsize=14];
+
+  Sim  [label="Simulation\nPlanNextWave()"];
+  Safe [label="SafePlanner\ntry / catch, PlanValidator", penwidth=2.2];
+  P1   [label="EscalationPlanner\nstatic baseline"];
+  P2   [label="RoughDirector\ndevelopment"];
+  P3   [label="WaveDirector\nWP10-11, not built", style=dashed];
+  Fb   [label="fallback:\nEscalationPlanner"];
+  Plan [label="WavePlan copied\ninto SimState"];
+  Sim -> Safe [label=" hash before"];
+  Safe -> P1; Safe -> P2; Safe -> P3 [style=dashed];
+  Safe -> Fb [label=" throw or bad plan"];
+  Safe -> Plan [label=" hash after: must be equal"];
+}

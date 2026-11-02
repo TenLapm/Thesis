@@ -1,0 +1,18 @@
+<section id="metric" style="background:#ffffff;color:#000000;font-family:Arial, sans-serif;padding:72px 88px 120px;display:flex;flex-direction:column;gap:24px">
+<h2 style="font-size:60px;font-weight:700;line-height:1.1">The primary metric, as the code computes it</h2>
+<div style="display:flex;gap:44px">
+<div style="flex:1;display:flex;flex-direction:column;gap:18px">
+<p style="font-family:'Courier New', monospace;font-size:34px;line-height:1.3;border:1px solid #000000;padding:20px">H = −Σ p(r) ln p(r) / ln K</p>
+<p style="font-size:30px;line-height:1.3">Shannon (1948) entropy of built tiles over a 6 × 6 partition. p(r) is region r’s share; K is the number of regions with a buildable tile. <b>0:</b> one region. <b>1:</b> an even spread.</p>
+<p style="font-size:30px;line-height:1.3"><b>Counted</b> (PlacementEntropy.Counts): walls, towers, tower moves (destination only), upgrades, collectors. A tile later sold or destroyed still counts.</p>
+<p style="font-size:30px;line-height:1.3"><b>Not counted:</b> sales, the core, anything before wave 1, when no wave has been seen.</p>
+<p style="font-size:30px;line-height:1.3"><b>Compared:</b> each player’s two sessions, cut to the shorter one’s completed waves. Computed afterwards from telemetry with DetMath.Log, so nothing in the game reads it.</p>
+</div>
+<div style="width:600px;display:flex;flex-direction:column;gap:12px">
+<img src="/_blob/7ecdaf159759790445311e22c850813f" alt="A six by six grid of counts of built tiles for one tester’s 77 waves; building is concentrated in the middle regions, with the largest counts 110, 109 and 92" style="width:600px;height:600px;object-fit:contain">
+<p style="font-size:26px;line-height:1.3">The 77-wave tester session: 555 tiles, <b>H = 0.62</b> (K = 36).</p>
+</div>
+</div>
+<p style="position:absolute;right:88px;bottom:48px;width:100px;text-align:right;font-size:24px">28</p>
+<aside>ตรงนี้ต้องพูดให้แม่นยำ เพราะตัวเลขนี้คือสิ่งที่วิทยานิพนธ์ทั้งเล่มตั้งอยู่ เอกสารเก่าบอกว่านับแค่กำแพงกับ tower แต่โค้ดนับการย้าย tower, การอัปเกรด และ collector ด้วย ซึ่งเปลี่ยนเมื่อวันที่ 14 ตุลาคม เพราะเกมกลายเป็นเรื่องการจัดวาง tower ใหม่เป็นหลัก จุดอ่อนที่รู้แล้ว: มันวัดว่าสร้างที่ไหน ไม่ได้วัดตรง ๆ ว่าโครงสร้างเปลี่ยนไปแค่ไหน ผู้เล่นที่ค่อย ๆ ต่อเขาวงกตเดียวข้ามแผนที่ก็ได้คะแนนสูงเช่นกัน restructure term และจำนวนการขายคือตัวตรวจไขว้ ค่านี้ยังเป็นค่าชั่วคราวจนกว่าจะ freeze ก่อน pilot</aside>
+</section>

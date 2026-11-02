@@ -1,0 +1,15 @@
+<section id="telemetry" style="background:#ffffff;color:#000000;font-family:Arial, sans-serif;padding:72px 88px 120px;display:flex;flex-direction:column;gap:24px">
+<h2 style="font-size:60px;font-weight:700;line-height:1.1">Telemetry: one line per wave, from the rules alone</h2>
+<div style="display:flex;gap:36px">
+<p style="font-family:'Courier New', monospace;font-size:24px;line-height:1.3;white-space:nowrap;border:1px solid #000000;padding:20px;width:950px">{ "schema":9, "condition":"rough-director",<br>&#160;&#160;"player":"human", "rngSeed":27590234,<br>&#160;&#160;"wave":1, "tickStart":3424,<br>&#160;&#160;"tickResolved":4781, "tickEnd":6219,<br>&#160;&#160;"plan":{ "strategy":"baseline", "threatSpent":0,<br>&#160;&#160;&#160;&#160;"groups":[{ "spawn":69, "archetype":"basic",<br>&#160;&#160;&#160;&#160;&#160;&#160;"count":12, "hp":30, "moveSpeed":1.25 }] },<br>&#160;&#160;"outcome":{ "spawned":12, "killed":12, "leaked":0,<br>&#160;&#160;&#160;&#160;"coreHpAfter":10, "pressure":0.75,<br>&#160;&#160;&#160;&#160;"damageByType":{ "physical":360, "fire":0, "frost":0 } },<br>&#160;&#160;"placements":[{ "tick":6219, "kind":"tower",<br>&#160;&#160;&#160;&#160;"name":"cannon", "x":31, "y":24, "cost":12 }],<br>&#160;&#160;"profile":null, "bin":null, "reward":null,<br>&#160;&#160;"stateHash":"2c1a1a49e007aa6b" }</p>
+<div style="flex:1;display:flex;flex-direction:column;gap:20px">
+<p style="font-size:30px;line-height:1.3"><b>A row’s window:</b> the fight and the build phase after it, because that is when the player answers the wave.</p>
+<p style="font-size:30px;line-height:1.3"><b>Nothing outside the rules:</b> no wall-clock time, and numbers written the same way on every runtime. So thesis telemetry remakes the file exactly.</p>
+<p style="font-size:30px;line-height:1.3"><b>Director fields are already there,</b> null until the director exists. All conditions write one row format.</p>
+<p style="font-size:30px;line-height:1.3"><b>Schema version 9;</b> replay schema 15.</p>
+</div>
+</div>
+<p style="position:absolute;left:88px;bottom:48px;width:1500px;font-size:24px">A real row from today’s session, with some fields left out.</p>
+<p style="position:absolute;right:88px;bottom:48px;width:100px;text-align:right;font-size:24px">26</p>
+<aside>ประเด็นในการออกแบบ: telemetry เป็น pure function ของ replay มี test ที่สร้าง telemetry ของแต่ละ recording ที่ pin ไว้ใหม่แล้วเทียบทีละ byte จึงหมายความว่าการวิเคราะห์จะไม่มีทางผิดเรื่องสิ่งที่เกิดขึ้นใน session เพราะสร้างไฟล์ใหม่ได้เสมอ ชี้ให้เห็น threatSpent 0: ตาราง cost ร่วมยังไม่มี และ profile, bin กับ reward ยังเป็น null: นี่คือส่วนที่ยังต้องสร้าง</aside>
+</section>

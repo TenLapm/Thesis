@@ -1,0 +1,12 @@
+<section id="arch" style="background:#ffffff;color:#000000;font-family:Arial, sans-serif;padding:72px 88px 120px;display:flex;flex-direction:column;gap:28px">
+<p style="position:absolute;left:88px;top:30px;width:1000px;font-family:Arial, sans-serif;font-size:24px;color:#000000">2. Methodology</p>
+<h2 style="font-size:60px;font-weight:700;line-height:1.1">Supporting system: rules with no Unity in them</h2>
+<div style="display:flex;gap:44px"><div style="width:1040px;display:flex;flex-direction:column;gap:12px"><img src="/_blob/d08d2f0bdd0a15a11704b4b0b692a435" alt="Assembly diagram. Unity host and headless tools depend on Thesis.Harness, Director, Sim, Learning and Core. The Thesis assemblies have no engine references. Learning is dashed because it is empty." style="width:1040px;height:500px;object-fit:contain">
+<p style="font-size:26px;line-height:1.3">Arrows are the assembly references in the repository. Dashed box: empty today.</p></div>
+<div style="flex:1;display:flex;flex-direction:column;gap:20px"><p style="font-size:32px;line-height:1.3"><b>Headless:</b> a 25-wave game takes 176 ms without Unity, so the learner can be tested offline.</p>
+<p style="font-size:32px;line-height:1.3"><b>Fixed ticks</b> of 0.02 s, so frame rate never reaches the rules.</p>
+<p style="font-size:32px;line-height:1.3"><b>Own random numbers:</b> PCG32 (O’Neill, 2014), one stream per subsystem.</p>
+<p style="font-size:32px;line-height:1.3"><b>Own maths,</b> and a cast on every float step: one missing rounding split Mono from .NET by one bit at tick 2916.</p></div></div>
+<p style="position:absolute;right:88px;bottom:48px;width:100px;text-align:right;font-size:24px">16</p>
+<aside>(0:45 นาที) ระบบที่รองรับ director กฎของเกมไม่มี Unity อยู่เลย ถ้าไปแตะ UnityEngine จะ compile ไม่ผ่าน จึงรันแบบ headless ได้ 176 ms ต่อ 25 wave ทุกอย่างคงที่: tick, random, คณิตศาสตร์ ตัวอย่างเช่น float ต่างกันหนึ่ง bit ที่ tick 2916 ระหว่าง Mono กับ .NET</aside>
+</section>

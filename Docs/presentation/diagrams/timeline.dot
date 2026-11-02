@@ -1,0 +1,13 @@
+digraph timeline {
+  graph [rankdir=LR, fontname="Arial", fontsize=16, nodesep=0.3, ranksep=0.42, bgcolor="white", pad=0.1];
+  node  [shape=box, fontname="Arial", fontsize=16, color="black", penwidth=1.3, margin="0.13,0.09"];
+  edge  [color="black", arrowsize=0.8, penwidth=1.2];
+
+  A [label="Plan wave N\nprofile N, bin, choice"];
+  B [label="Wave N plays\nsurvived, pressure"];
+  C [label="Player rebuilds\nbuild phase, no clock"];
+  D [label="Plan wave N+1\nprofile N+1", penwidth=2.2];
+  E [label="restructure =\n|profile N+1 - profile N|\nreward known only now"];
+  F [label="Update cells of\nN, N-1, N-2\nweight 0.5^lag"];
+  A -> B -> C -> D -> E -> F;
+}

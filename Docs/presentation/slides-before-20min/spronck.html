@@ -1,0 +1,24 @@
+<section id="spronck" style="background:#ffffff">
+  <p id="e1-e1izez" style="position:absolute; right:88px; bottom:48px; width:100px; font-family:Arial, sans-serif; font-size:24px; text-align:right; color:#000000">3</p>
+  <h2 id="p2f6a222ccb35r0-c1443b1c" style="position:absolute; top:72px; left:88px; width:1744px; font-family:Arial, sans-serif; font-size:60px; font-weight:700; line-height:1.1; color:#000000">Dynamic Scripting (Spronck et al., 2006)</h2>
+  <div id="p2f6a222ccb35r1-c1443b1c" style="position:absolute; top:160px; left:88px; width:1744px; height:271px; display:flex; flex-direction:row; gap:40px">
+    <div style="display:flex; flex-direction:column; gap:12px; flex:1">
+      <p style="font-family:Arial, sans-serif; font-size:32px; line-height:1.28; color:#000000"><b>Nearest neighbour.</b> Each agent class has a rulebase of hand-written rules, each with a weight.</p>
+      <p style="font-family:Arial, sans-serif; font-size:32px; line-height:1.28; color:#000000"><b>Before a fight:</b> rules are drawn into a script, with probability linear in weight.</p>
+      <p style="font-family:Arial, sans-serif; font-size:32px; line-height:1.28; color:#000000"><b>After a fight:</b> rules that ran gain or lose weight by fitness; all others shift so that the total stays constant.</p>
+    </div>
+    <div style="width:800px; display:flex; flex-direction:column; gap:12px">
+      <p style="padding:16px; font-family:'Courier New', monospace; font-size:28px; line-height:1.3; white-space:nowrap; color:#000000; border:1px solid #000000">F &lt; b: ΔW = −Pmax × (b − F) / b<br>F ≥ b: ΔW = +Rmax × (F − b) / (1 − b)<br>b = 0.3, Pmax = 70, Rmax = 100, Winit = 100</p>
+      <p style="font-family:Arial, sans-serif; font-size:30px; line-height:1.28; color:#000000"><b>Results:</b> ahead of static tactics after 13 to 53 fights on average. Top culling in Neverwinter Nights: 79.4 → 49.8 wins of 100.</p>
+    </div>
+  </div>
+  <table id="p2f6a222ccb35r2-c1443b1c" style="position:absolute; top:452px; left:88px; width:1744px; font-family:Arial, sans-serif; font-size:30px; color:#000000">
+    <tr><td style="width:18%"></td><td style="width:41%">Dynamic Scripting</td><td style="width:41%">This project (planned)</td></tr>
+    <tr><td>Decides</td><td>The rules in each opponent’s script</td><td>One strategy for each wave</td></tr>
+    <tr><td>Player context</td><td>None: one rulebase per agent class</td><td>Build profile, 5 bins, a posterior per (bin, strategy)</td></tr>
+    <tr><td>Learns from</td><td>Fight fitness: health, survival, damage</td><td>A reward led by how much the build changed</td></tr>
+    <tr><td>Tested on</td><td>Scripted tactics; humans left as future work</td><td>People, within subject, n ≈ 24</td></tr>
+  </table>
+  <p id="p2f6a222ccb35r3-c1443b1c" style="position:absolute; top:801px; left:88px; width:1744px; font-family:Arial, sans-serif; font-size:32px; line-height:1.28; color:#000000"><b>The gap:</b> they argue it could “force the human player to seek continuously new tactics” (p. 226), but test that only against scripts. This project measures it on people.</p>
+  <aside>ยกงานนี้ขึ้นมาพูดก่อนเป็นอันดับแรก ก่อนที่ใครจะถาม แนวคิดของเขาเรียบง่ายและใช้ทรัพยากรน้อย: เลือก rule ตาม weight แล้วให้รางวัลหรือลงโทษหลังจบการต่อสู้แต่ละครั้ง F คือ fitness ของ agent ซึ่งคิดจากผลของทีม การรอดชีวิต health และ damage ผลลัพธ์มาจาก Table 2: ค่าเฉลี่ยของ turning point จาก 100 การทดสอบต่อหนึ่ง tactic โดยได้ 13 เมื่อเจอ disabling tactic ที่ง่าย และ 53 เมื่อเจอ offensive tactic turning point คือการต่อสู้ครั้งที่หลังจากนั้นตัวเรียนรู้นำหน้าทีม static ตลอด top culling จะตัด rule ที่ weight สูงเกินเพดานซึ่งขยับได้ออกไป เพื่อให้เกมสูสี: ใน Neverwinter Nights จำนวนครั้งที่ชนะลดจาก 79.4 เหลือ 49.8 จาก 100 ครั้ง ดังนั้นความยากของเขาเป็นเป้าหมายที่ไล่ตาม ไม่ได้ถูกคุมให้คงที่ ความต่างของงานผมคือ ใช้ Bayesian posterior แทน weight มี context ชัดเจน และมีเป้าหมายคือการเปลี่ยนพฤติกรรม ต้องพูดให้ชัดว่าคอลัมน์ของผมคือสิ่งที่ออกแบบไว้ ตัวเรียนรู้ยังไม่ได้สร้าง</aside>
+</section>

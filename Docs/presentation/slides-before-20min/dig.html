@@ -1,0 +1,15 @@
+<section id="dig" style="background:#ffffff;color:#000000;font-family:Arial, sans-serif;padding:72px 88px 120px;display:flex;flex-direction:column;gap:24px">
+<h2 style="font-size:60px;font-weight:700;line-height:1.1">Walk round or dig: no scripted choice</h2>
+<div style="display:flex;gap:32px">
+<img src="/_blob/31449a239d40447cf7fa05de20ba254d" alt="Four small boards computed by the game’s flow field. Nothing built: walker 18 tiles. Short wall: walker goes round at 20.4, sapper through at 20. Long wall with a gap: walker round at 21.2, sapper through at 20. Sealed wall: walker digs at 32, sapper at 20." style="width:1300px;height:628px;object-fit:contain">
+<div style="flex:1;display:flex;flex-direction:column;gap:20px">
+<p style="font-size:30px;line-height:1.3">Leaving a plain wall tile costs 15 × 10 = 150, against 10 on open ground: <b>14 extra tiles.</b></p>
+<p style="font-size:30px;line-height:1.3">Sealed: 18 + 14 = <b>32</b>.</p>
+<p style="font-size:30px;line-height:1.3">A sapper pays 15 × 0.2 = 3, so 18 + 2 = <b>20</b>. It digs whenever the detour costs more than 2.</p>
+</div>
+</div>
+<p style="font-size:30px;line-height:1.3">An enemy standing on a built tile chews it. When the tile falls, all fields rebuild and every enemy carries on from where it stands.</p>
+<p style="position:absolute;left:88px;bottom:48px;width:1500px;font-size:24px">Not hand-drawn: routes and costs come from FlowFieldSet on 21 × 11 test boards.</p>
+<p style="position:absolute;right:88px;bottom:48px;width:100px;text-align:right;font-size:24px">19</p>
+<aside>นี่คือแนวคิดหลักของ pathfinding cost model ตัวเดียวทำให้เกิดพฤติกรรมทั้งสองแบบ ไม่มีโค้ดส่วนไหนตัดสินใจว่าจะเดินอ้อมหรือขุด แต่ละภาพคำนวณจาก flood ตัวจริงบนกระดานทดสอบแล้วนำมาพล็อต ภาพบนขวาและล่างซ้ายน่าสนใจที่สุด: กระดานเดียวกัน movement class ต่างกัน เส้นทางจึงต่างกัน นี่คือสิ่งที่ทำให้ director มีช่องทางทำงาน: layout เดียวกลายเป็นโจทย์หลายแบบ ขึ้นกับว่าอะไรเดินเข้ามา</aside>
+</section>

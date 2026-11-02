@@ -1,0 +1,23 @@
+<section id="hunicke" style="background:#ffffff;color:#000000;font-family:Arial, sans-serif;padding:72px 88px 120px;display:flex;flex-direction:column;gap:24px">
+<h2 style="font-size:60px;font-weight:700;line-height:1.1">Dynamic difficulty: Hamlet (Hunicke, 2005)</h2>
+<div style="display:flex;gap:40px">
+<div style="flex:1;display:flex;flex-direction:column;gap:16px">
+<p style="font-size:30px;line-height:1.3"><b>Built on</b> the Half-Life engine. It treats health and ammunition as an economy of supply and demand.</p>
+<p style="font-size:30px;line-height:1.3"><b>Estimates:</b> records damage per enemy class, then uses a Gaussian model to give the chance of death over the next 300 ticks (about 10 s).</p>
+<p style="font-size:30px;line-height:1.3"><b>Policy tested:</b> above a 40% chance of death, add health in 15-point steps every 100 ticks, aiming for a mean of 60.</p>
+<p style="font-size:30px;line-height:1.3"><b>Cost:</b> about 69 µs per tick.</p>
+</div>
+<div style="width:860px;display:flex;flex-direction:column;gap:14px">
+<table style="font-size:28px">
+<tr><th style="width:48%">Study: n = 20, single-blind</th><th style="width:52%">Result</th></tr>
+<tr><td>Deaths in the first 15 min</td><td>6.4 unadjusted, 4.0 adjusted; t = 2.09, p = .051</td></tr>
+<tr><td>Noticing the adjustment</td><td>Small correlation with actual adjustment (0.3)</td></tr>
+<tr><td>Enjoyment</td><td>Novices: no significant link. Experts: slight upward trend</td></tr>
+</table>
+</div>
+</div>
+<p style="font-size:32px;line-height:1.3"><b>What I take from it:</b> players are poor judges of whether a game is adapting. So the director announces every strategy, and gate G7 tests whether players notice.</p>
+<p style="font-size:32px;line-height:1.3"><b>Where this differs:</b> for Hamlet, difficulty is the variable, and the adjustment is disguised. Here, difficulty is held equal on purpose, and the change is in wave shape, out in the open.</p>
+<p style="position:absolute;right:88px;bottom:48px;width:100px;text-align:right;font-size:24px">4</p>
+<aside>Hamlet เป็น rule ที่เขียนด้วยมือ ไม่ได้เรียนรู้จากผู้เล่น นอกจากเก็บสถิติ damage ไปเรื่อย ๆ ตัวเปเปอร์เองเรียกผลนี้ว่าผลเบื้องต้น จากกลุ่มตัวอย่างเชิงสำรวจที่มีฝีมือหลากหลาย จึงไม่ควรพูดเกินจริง สังเกตว่าการตายที่ลดลงอยู่เหนือ .05 นิดเดียว: t = 2.09, p = .0508 เกมครึ่งหนึ่งถูกปรับและอีกครึ่งเป็นกลุ่มควบคุม เกมที่ใช้คือ Case Closed ซึ่งเป็นเกมที่สร้างบน Half-Life เล่นอย่างน้อย 15 นาที ผู้ทดลองมักรู้สึกว่าเกมถูกปรับทั้งที่ไม่ได้ปรับ และหลายคนไม่รู้ตัวเลยทั้งที่ถูกปรับอยู่ นี่คือเหตุผลที่ผมไม่หวังให้ผู้เล่นสังเกตเอง: ทุก strategy จะถูกประกาศ และมี G7 คอยตรวจ</aside>
+</section>

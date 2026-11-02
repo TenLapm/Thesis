@@ -1,0 +1,19 @@
+<section id="bins" style="background:#ffffff;color:#000000;font-family:Arial, sans-serif;padding:72px 88px 120px;display:flex;flex-direction:column;gap:24px">
+<p style="position:absolute;left:88px;top:30px;width:1000px;font-family:Arial, sans-serif;font-size:24px;color:#000000">2. Methodology</p>
+<h2 style="font-size:60px;font-weight:700;line-height:1.1">Learning: bins, because rewards jump</h2>
+<div style="display:flex;gap:44px">
+<div style="width:820px;display:flex;flex-direction:column;gap:12px">
+<img src="/_blob/aeead55d68cc6492b2ab00705ac6c73b" alt="Illustration: a step function for true reward, the best straight line through it, and five bin averages that follow the step closely" style="width:820px;height:600px;object-fit:contain">
+<p style="font-size:26px;line-height:1.3">Illustration of the idea, not measured data.</p>
+</div>
+<div style="flex:1;display:flex;flex-direction:column;gap:20px">
+<p style="font-size:30px;line-height:1.3"><b>LinUCB</b> (Li et al., 2010) assumes each arm’s reward is linear in the context. Sappers pay off only once a maze is long enough: a jump, which no straight line can show.</p>
+<p style="font-size:30px;line-height:1.3"><b>BinnedPosterior:</b> one feature cut into 5 bins, 4 strategies, so 20 Beta(α, β) cells.</p>
+<p style="font-size:30px;line-height:1.3"><b>KernelEstimator</b> for cells with little data: a Nadaraya–Watson average (Nadaraya, 1964; Watson, 1964) over the last 128 results, Gaussian with σ = 0.15, gives an estimate Q, used as the prior:</p>
+<p style="font-family:'Courier New', monospace;font-size:28px;line-height:1.35;border:1px solid #000000;padding:16px">prior α = 1 + k·Q<br>prior β = 1 + k·(1 − Q)</p>
+<p style="font-size:30px;line-height:1.3">Deep RL is ruled out: about 25 decisions per session cannot train one (Sutton &amp; Barto, 2018).</p>
+</div>
+</div>
+<p style="position:absolute;right:88px;bottom:48px;width:100px;text-align:right;font-size:24px">12</p>
+<aside>(1:00 นาที) ทำไมไม่ใช้ linear model: ผลตอบแทนกระโดดที่ threshold เช่น sapper คุ้มเมื่อเขาวงกตยาวพอ เส้นตรงแสดงไม่ได้ จึงแบ่งเป็น 5 bin คูณ 4 strategy รวม 20 cell โดยแต่ละ cell เก็บ Beta posterior และ cell ที่ข้อมูลน้อยได้ค่าเริ่มต้นจาก kernel estimator Deep RL ใช้ไม่ได้เพราะมีแค่ประมาณ 25 การตัดสินใจต่อ session</aside>
+</section>

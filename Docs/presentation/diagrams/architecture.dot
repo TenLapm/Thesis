@@ -1,0 +1,28 @@
+digraph architecture {
+  graph [rankdir=TB, fontname="Arial", fontsize=16, nodesep=0.28, ranksep=0.42, bgcolor="white", pad=0.1, compound=true];
+  node  [shape=box, fontname="Arial", fontsize=15, color="black", fontcolor="black", penwidth=1.3, margin="0.14,0.07"];
+  edge  [color="black", arrowsize=0.75, penwidth=1.1, fontname="Arial", fontsize=13];
+
+  subgraph cluster_host {
+    label="Unity host: Assembly-CSharp (Assets/Scripts), 9,960 lines"; labeljust=l; color="black"; style=dashed;
+    Host [label="SimHost, DirectorHost, PlayerBuilder, HudOverlay, DeckBar, views\ninput to commands, state to pixels, no rules"];
+  }
+  subgraph cluster_pure {
+    label="noEngineReferences: true (the compiler rejects UnityEngine here)"; labeljust=l; color="black"; penwidth=2;
+    Harness  [label="Thesis.Harness  2,249 lines\nscripted players, replay runner\nEditor and headless only"];
+    Director [label="Thesis.Director  857 lines\ntelemetry and metric only today"];
+    Learning [label="Thesis.Learning  empty\nWP7, not started", style=dashed];
+    Sim      [label="Thesis.Sim  9,696 lines\ntick, flow fields, agents, combat,\neconomy, planners"];
+    Core     [label="Thesis.Core  886 lines\nPcg32, Fnv1a64, DetMath, Json"];
+  }
+  subgraph cluster_dotnet {
+    label="Headless (.NET 9)"; labeljust=l; color="black"; style=dashed;
+    Cli   [label="Thesis.Cli\nrun, replay, pin, entropy, bench ..."];
+    Tests [label="661 NUnit tests (15,138 lines)\nsame files in dotnet test and Unity"];
+  }
+  Host -> Sim; Host -> Director;
+  Cli -> Harness; Tests -> Harness;
+  Harness -> Director; Harness -> Sim;
+  Director -> Sim; Director -> Learning;
+  Sim -> Core; Learning -> Core;
+}

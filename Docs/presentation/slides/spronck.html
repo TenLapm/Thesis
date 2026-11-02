@@ -1,0 +1,13 @@
+<section id="spronck" style="background:#ffffff;color:#000000;font-family:Arial, sans-serif;padding:72px 88px 120px;display:flex;flex-direction:column;gap:36px">
+<p style="position:absolute;left:88px;top:30px;width:1000px;font-family:Arial, sans-serif;font-size:24px;color:#000000">1. Introduction</p>
+<h2 style="font-size:60px;font-weight:700;line-height:1.1">Dynamic Scripting (Spronck et al., 2006)</h2>
+<div style="display:flex;gap:44px"><div style="flex:1;display:flex;flex-direction:column;gap:20px"><p style="font-size:32px;line-height:1.3"><b>Nearest neighbour.</b> Each agent class has a rulebase of hand-written rules, each with a weight.</p>
+<p style="font-size:32px;line-height:1.3"><b>Before a fight:</b> rules are drawn into a script, with probability linear in weight.</p>
+<p style="font-size:32px;line-height:1.3"><b>After a fight:</b> rules that ran gain or lose weight by fitness.</p></div>
+<div style="width:800px;display:flex;flex-direction:column;gap:20px"><p style="font-family:'Courier New', monospace;font-size:28px;line-height:1.3;border:1px solid #000000;padding:18px;white-space:nowrap">F &lt; b: ΔW = −Pmax × (b − F) / b<br>F ≥ b: ΔW = +Rmax × (F − b) / (1 − b)</p>
+<p style="font-size:32px;line-height:1.3"><b>Results:</b> ahead of static tactics after 13 to 53 fights on average.</p></div></div>
+<p style="font-size:32px;line-height:1.3"><b>How this project differs:</b> it picks one strategy per wave, not the rules of each opponent. It keeps a separate estimate for each type of build, where Dynamic Scripting has no player context. It learns from how much the build changed, not from winning.</p>
+<p style="font-size:32px;line-height:1.3"><b>The gap:</b> they argue it could “force the human player to seek continuously new tactics” (p. 226), but test that only against scripts. This project measures it on people.</p>
+<p style="position:absolute;right:88px;bottom:48px;width:100px;text-align:right;font-size:24px">5</p>
+<aside>(0:45 นาที) ยกงานนี้ขึ้นมาก่อนเพราะใกล้ที่สุด เลือก rule ตาม weight แล้วปรับ weight หลังการต่อสู้ F คือ fitness และ b คือจุดคุ้มทุน 0.3 ความต่างมีสามข้อ และจุดสำคัญคือเขาบอกว่าวิธีนี้น่าจะบังคับให้ผู้เล่นหา tactic ใหม่ แต่ทดสอบกับสคริปต์เท่านั้น การทดสอบกับคนเขาเขียนไว้เป็นงานในอนาคต</aside>
+</section>

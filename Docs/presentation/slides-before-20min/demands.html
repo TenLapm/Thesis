@@ -1,0 +1,14 @@
+<section id="demands" style="display:flex; flex-direction:column; gap:28px; padding:72px 88px 120px; background:#ffffff">
+  <h2 style="font-family:Arial, sans-serif; font-size:60px; font-weight:700; line-height:1.1; color:#000000">What the study demands from the code</h2>
+  <table style="font-family:Arial, sans-serif; font-size:30px; color:#000000">
+    <tr><th style="width:29%">Demand</th><th style="width:33%">Why</th><th style="width:38%">Engineering consequence</th></tr>
+    <tr><td>About 25 decisions per player</td><td>A session is about 25 waves</td><td>A small bounded learner on authored scores, not a trained model</td></tr>
+    <tr><td>Fair comparison</td><td>“It was harder” would explain any result</td><td>Same seeds in both conditions; every strategy spends one threat budget</td></tr>
+    <tr><td>Same input, same game</td><td>A replay must be evidence, not a video</td><td>Fixed ticks, own random numbers, no Unity in the rules</td></tr>
+    <tr><td>Test before any human plays</td><td>A learner bug must surface offline</td><td>The rules run headless: 176 ms for a 25-wave episode</td></tr>
+    <tr><td>A failure must not cost a participant</td><td>Sessions cannot be repeated cheaply</td><td>A planner that fails is replaced for that wave, and the session goes on</td></tr>
+  </table>
+  <p style="position:absolute; bottom:48px; left:88px; width:1500px; font-family:Arial, sans-serif; font-size:24px; color:#000000">176 ms: mean of 8 episodes, RoughDirector and a scripted player, .NET 9, no per-tick hashes, measured 31 Oct 2026.</p>
+  <p style="position:absolute; right:88px; bottom:48px; width:100px; font-family:Arial, sans-serif; font-size:24px; text-align:right; color:#000000">10</p>
+  <aside>สไลด์นี้เป็นสะพานเชื่อม เรื่องเทคนิคทุกอย่างในการนำเสนอนี้มีอยู่เพราะหนึ่งในห้าแถวนี้ ตัวเลข 176 มิลลิวินาทีวัดจริง: 25 wave ประมาณ 54,000 tick ในการวัดนี้ core ของผู้เล่นสคริปต์ถูกเพิ่ม hit point เพื่อให้เล่นไปถึง wave 25</aside>
+</section>

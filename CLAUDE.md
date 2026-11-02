@@ -3,147 +3,138 @@
 Unity / C# / URP. Maze tower-defense with a flow-field pathfinder. The thesis
 work is an adaptive wave director driven by a contextual bandit.
 
-**Status (2026-10-12).** The game runs on a deterministic, headless simulation core
-(`Assets/Thesis`), with Unity as a thin host around it (`Docs/WORKPLAN.md` WP0–WP5,
-the hardening pass WP-H, the combat core WP-C1, the movement classes WP-C2, the
-shop, selling and telemetry package WP-C3, the board and tower UI package WP-C4 and
-the first roster with its balance check WP-C5 are done). Enemies have hit points, towers shoot them, an enemy can be a ground
-walker, a sapper or a flyer, towers are bought from a random shop, towers and walls
-can be sold, and every session writes one telemetry row per wave. The board is 24 × 24
-with rocks on it, seen from straight above, and a wall is one tile. There are five
-towers and four enemy types, sanity-checked and not balanced. **Since the student's
-first play (2026-10-12) the game also has a trial of cards, tower levels and gear**
-(GDD §4.4): shop slots hold tower, coin or gear cards; a tower has three levels and gear
-slots; the build phase waits for Start; income is a flat 10 a wave; a roll of cards
-is a free pick of one; gear is sold in a gear shop restocked every five waves; and the
-next wave is planned as the build phase begins and shown to the player (`PlanAhead`). **A third
-round (2026-10-13)** added a paid reroll of the cards, three towers of a kind combining into the
-next level (`TowerCombine`; the paid Upgrade tool is off in the game), a cap on standing towers,
-free moving of towers between waves (`MoveTower`), gear among the cards again, and three more
-towers (sniper, shard, flak: eight in all). **A fourth round (2026-10-13, "few, heavy actions")**
-is what SampleScene plays now: a 32 x 32 map generated from the seed (`MapGenerator`) with a
-two-tile ring nothing is built on, the core placed by the player (`PlaceCore`), waves entering at
-one to three entry points chosen wave by wave (`RaidPlanner`, a development planner), walls from a
-stock, two moves a wave, a bench (`TowerBench`), and duplicate cards merged into towers by choice
-(the automatic merge is off). **Since 2026-10-14** (DEVLOG, the last two entries) the game plays
-in the tilted scene `ArknightsTest`: merging is replaced by up to two chosen upgrades, which are
-also what makes a tower rare or epic; towers stand only on a wall or a rock (`TowersOnWalls`);
-moves are unlimited; ten enemy types; a heal card; gear is sky-sight, chill and the extractor;
-lost waves can be retried; and the towers were rebalanced with `thesis towers --gauntlet`
-(`Results/2026-10-14_tower-balance`). The student finishes the gameplay before WP7 starts. **Since 2026-10-20** the economy is ore (DEVLOG, last entry): deposits on a 48 x 48 map, collectors that
-pay after each wave they survive, raiders that go for them, towers and gear built from a menu with
-research tiers (`BuildMenu`; no cards, cap or bench), and squads of fewer, stronger enemies.
-The simulation keeps its own copy of the map (`Simulation.Map`;
-`InitialMap` is what a replay stores). All of it is
-switched by `SimConfig` and off in the C# defaults. SampleScene is set to
-`DevClassCycle` for play-testing, not to a study condition. **Not built yet:** the
-learner (WP7, not started), the build profile (WP8) and the director itself. Next:
-WP7, which nothing else is waiting for but which WP11 needs; then WP8.
+**Status (2026-10-28).** The game runs on a deterministic, headless simulation core
+(`Assets/Thesis`), with Unity as a thin host around it (`Docs/WORKPLAN.md`: WP0–WP5, the
+hardening pass WP-H, and the combat, movement, shop/telemetry, UI and roster packages WP-C1 to
+WP-C5 are done). Since the student's first play (2026-10-12) the gameplay has been reworked in
+rounds driven by testers, one `Docs/DEVLOG.md` entry per round. §1 describes the game as it plays
+**today**, in `ArknightsTest`, the only game scene (SampleScene was removed on 2026-10-24; its map
+file stays as a test fixture). Every round's rules are switched by `SimConfig` and off in the C#
+defaults, so the tests and the pinned replays still exercise the older rules as well.
+ArknightsTest runs the development planner `RoughDirector`
+(`DirectorHost.Condition.DevRoughDirector`), which is not a study condition. **Not built yet:**
+the learner (WP7, not started), the build profile (WP8), the strategies and the threat cost table
+(WP9) and the director itself (WP10, WP11). The student finishes the gameplay before WP7 starts.
+A course proposal describing the whole project is in `Docs/proposal/` (2026-10-28).
 
 Read §1 and §2 before writing any code.
 
-- What the player sees and does, the target screens, and every design question
-  that is still open: `Docs/GDD.md` (written 2026-10-12). The four decisions the student
-  made on reading it are built since WP-C4: the board seen from straight above, walls
-  of one tile drawn by click and drag, rocks on the map, and one route line for each
-  kind of enemy the player has met (GDD §3.1, §3.2, §4.1, §5.3).
+- What the player sees and does, the screens, and every design question still open:
+  `Docs/GDD.md` (rewritten 2026-10-28 for the game of §1; the first version, 24 × 24 with a
+  random shop, is in git at `132d8ca`).
 - Code structure: `Docs/ARCHITECTURE.md` (decisions D1–D9 are in its §0).
 - Work packages and their order: `Docs/WORKPLAN.md` (re-planned 2026-10-02).
-- What was done and found, package by package: `Docs/DEVLOG.md`.
+- What was done and found, package by package and round by round: `Docs/DEVLOG.md`.
 - The review after WP5 and what became of each finding: `Docs/REVIEW-2026-10-02.md`.
 
 ---
 
 ## 1. What the game actually is today
 
-A maze tower defense with one unusual rule: **nothing the player builds blocks the
-path.**
+A maze tower defense with one unusual rule: **nothing the player builds blocks the path.**
+This section is the game in `ArknightsTest` with the numbers of `SimConfig.asset`, as of
+2026-10-28. Every number below is a first guess checked by the next tester session, not a
+balanced value.
 
-- The board is **24 × 24 tiles, seen from straight above**, with **rocks** on it: fixed
-  tiles of the map (`RockLayout`, the `X` of the map file) that nothing is built on,
-  that enemies on foot go round and flyers pass over. The board size is the student's
-  "for now" (GDD question 19).
-- **A wall is one tile** since WP-C4, drawn by click or drag, 1 budget a tile. The
-  simulation still deals "pieces" from a bag with a hold slot and rotation; SampleScene's
-  shape library simply holds one shape of one tile, so every piece is that tile and the
-  bag, the hold and the rotation do nothing a player can see. What follows describes
-  that machinery, which the tests still exercise with tetrominoes on the old open
-  38 × 38 board (`Maps/Fixture_Open38.map.json`).
-- The player builds two things from one budget: **walls** (in the rules: shapes from a 7-bag
-  randomiser with a hold slot and rotation; SampleScene's library is I, O, T, S, Z,
-  J, L in that order) and, since WP-C1, **towers** (one tile each).
-- Towers come from a **shop** (WP-C3): four random offers at the start of the game and
-  four new ones each time a wave resolves. Each offer can be bought once and stays
-  until the next wave resolves. Between waves the player can **sell** a tower for half
-  its price, or a whole wall piece for half its cost (less if part of it was chewed away).
-- Neither is an obstacle. Both are expensive, destructible *terrain*:
-  `SimNode.TerrainCost` (a shape's `DigCost`, default 15; a tower's, default 20) plus
-  `SimNode.WallHealth` (seconds of chewing). A path to the core therefore **always
-  exists**.
-- Enemies follow the flow field. When standing on a built tile they **chew through
-  it** instead of walking. The field's cost model means enemies automatically trade
-  "walk around" against "dig through" — nobody scripts that choice. Chewing through a
-  tower's tile destroys the tower.
-- Enemies have **hit points**. Every tower in range shoots; an enemy at 0 HP is
-  killed.
-  - Killed → the player gains `KillReward` = 0.2 build budget.
-  - Enemy reaches the core → core HP − 1; the core has 10 HP.
-  - Enemy fully breaches a wall tile → the player gains `WallBreakReward` = 1.0 (yes,
-    the player is *paid* when a wall is destroyed). A destroyed tower pays nothing.
+**The board and the session**
+- **The map is generated from the session's seed** (`MapGenerator`): 48 × 48 tiles, 22 ridges of
+  rock, 28 ore deposits in clusters of four (at least one cluster near the middle), and a two-tile
+  ring at the edge on which nothing is built. `SimHost.randomSeed` is on, so every session gets a
+  new seed; the study must use fixed seed sets instead (D9).
+- The camera is orthographic and tilted 52° (`TiltCamera`); towers are figures standing on the board.
+- **The player places the core** before wave 1 (`PlaceCore`, at least 6 tiles from the edge). It
+  has 10 HP; a repair gives 3 back for 10 ore.
+- **Waves wait for Start** (`WaitForStart`). The next wave is planned as the build phase begins and
+  shown to the player (`PlanAhead`): enemy chips, one route line per kind of enemy, and the
+  director's line in the top banner. Enemies enter at one to three edge points chosen wave by wave
+  (`RaidPlanner`). A wave, running or lost, can be restarted from its start with the build kept
+  (`RetryKeepsBuild`). Speed buttons are x1, x3 and x6; pause works only during a wave.
 
-So the player has two levers: **damage** (towers) and **time under fire** (walls,
-which bend and lengthen the route past the towers). Walls alone win nothing: the
-lifetime clock that made a long route lethal in the original game was removed in
-WP-C1 (§2). The static baseline escalates every wave: more enemies, faster, closer
-together, with more hit points.
+**The economy: one resource, ore**
+- 80 ore at the start. After each wave the core pays 4 and every standing collector pays its
+  deposit's yield (2 near the middle, up to 4 near the edge). Kills, breaches and destroyed towers
+  pay nothing (`KillReward`, `WallBreakReward`, `TowerBreachReward` are 0).
+- A **collector** (6 ore) stands on a deposit. A deposit holds 30 ore and then runs dry; a
+  collector on an empty deposit earns nothing. A destroyed collector pays half its price back.
+- **Building is from a menu** in the bottom bar (`BuildMenu`): walls in three tiers (wall 1 ore,
+  stone 3, fort 5), collectors, eight towers and a pylon, gear, research and repair. **There is no
+  random shop any more** (since 2026-10-20); see §2.
+- Every tower can be built from the start. Research tier 2 (15 ore) allows a tower's first upgrade,
+  tier 3 (30 ore) its second (`ResearchUnlocksUpgrades`). Each tower has three upgrade paths of two
+  steps (`TowerLevelMod.Path`). Gear is flat: range, damage a second, and the extractor (`FlatGear`).
+- Anything sold in the build phase it was bought in gives all its ore back; older things give half
+  (`FreshSellFullRefund`).
 
-Since WP-C2 an enemy has a **movement class** (`MovementClass`), which is what the
-director's strategies will vary:
+**Towers, walls and power**
+- **Towers stand only on a wall or a rock** (`TowersOnWalls`) and can be moved freely in a build
+  phase. Each has one of five target orders.
+- **Towers fire only while powered** (`PowerRule`): the core powers up to 4 towers within 4 tiles,
+  each collector 2 within 3, a pylon 2 within 3 (a pylon may not stand within 5 tiles of the core).
+  Which source powers which tower can be swapped by the player.
+- Walls, towers, collectors and rocks are **destructible terrain, not obstacles**: each has a
+  `SimNode.TerrainCost` (wall 15, stone 30, fort 45, collector 20, rock 60) and a `SimNode.WallHealth`
+  (seconds of chewing: 6, 18, 36, 8 and 60). Rocks are breakable mountains (`RockHealth`) that cannot
+  be sold and pay nothing when broken. A path to the core therefore **always exists**.
+- Enemies follow the flow field. When standing on a built tile they **chew through it** instead of
+  walking. The field's cost model means enemies trade "walk round" against "dig through" by
+  themselves; nobody scripts that choice. Chewing through a tower's tile destroys the tower (a rock
+  under it stays).
+- An enemy at 0 HP dies. An enemy that reaches the core costs it 1 HP.
 
-- **Ground**: the above. Every enemy of the static baseline is this.
-- **Sapper**: follows a second flow field in which built tiles are cheap
-  (`SimConfig.SapperDigCostFactor`, 0.2), so it digs through walls that everyone
-  else walks round.
-- **Flying**: no field. A straight line to the core over everything; never digs;
-  only a tower with `CanHitFlying` can shoot it.
+**Enemies**
+- The static baseline (`EscalationPlanner`, composed by `RaidPlanner`) escalates every wave: 12
+  enemies in wave 1 and one more every two waves; hit points 30 + 4.5 a wave, then +4 % compounded;
+  speed up 0.0375 a wave to 2.25. Waves are squads of a few types.
+- Twelve enemy types (`EnemyArchetypes`): basic, swarm, runner, brute, armored (resists physical),
+  ember (resists fire), flyer, bats, sapper, raider, siege, and frostborn (kept for the tests, no
+  longer sent).
+- **Movement classes** (`MovementClass`), which is what the director's strategies vary:
+  - **Ground**: the above.
+  - **Sapper**: follows its own flow field in which player-built tiles are cheap
+    (`SapperDigCostFactor`, 0.2) and rocks keep full price, so it digs through walls but does not
+    tunnel the same mountain every time.
+  - **Flying**: no field; a straight line to the core over everything; never digs; only a tower
+    with `CanHitFlying` can shoot it.
+- Two behaviours are set per group rather than per class:
+  - **Raiders** (`TargetsCollectors`) follow the raid field to the nearest collector, then the next,
+    then the core.
+  - **Siege enemies** (`Siege`) stop when a tower is within 4.5 tiles, set up, then shell the tower
+    with the most towers round it. A tower that has taken 10 is knocked out until the next build
+    phase, never destroyed.
+- A tower with the lure ability pulls enemies on foot within 4 tiles to it (the lure field).
 
-No study condition sends sappers or flyers yet: the strategies that will are WP9.
-To play them now, set `DirectorHost.condition` to `DevClassCycle` in SampleScene
-(headless: `--planner class-cycle`). That planner is a development aid, not a condition.
+**The development director.** `RoughDirector` (DEVLOG 2026-10-26 and 2026-10-28) reads the board
+as the build phase begins and picks one strategy by authored scores with a repeat penalty:
+`baseline`, `outpost_raid` (bare collectors, from wave 4), `siege_stack` (one dense tower cluster,
+from wave 8, one engine alone for the first three siege waves), `resist_mix` (one damage type over
+60 %), `air_raid` (little anti-air; vetoed when nothing can hit flyers) or `maze_breach` (a long
+wall maze; the only time sappers come). At least half of every wave goes for the core. It is a
+rough cut of layer 2 (§5) for play-testing: no learning, no build profile and no threat cost table,
+so it breaks I2, and its raids touch the player's income (I11). It is **not** a study condition.
 
-The roster (WP-C5): five towers (archer, ballista, cannon, brazier, frost; the first
-two can hit flyers), as `TowerDefAsset`s listed in `SimHost.towerRoster` and exported to
-`Maps/Towers.json`; four enemy types (`EnemyArchetypes`: basic, swarm, sapper, flyer).
-**The game's numbers are `SimConfig.asset`, exported to `Maps/SimConfig.json`;
-`SimConfig`'s C# defaults are the older numbers the tests are written against.**
-`thesis run` and `thesis balance` read the file. The numbers passed a sanity check
-(`Results/2026-10-12_balance-v1`) and are not balanced.
-
-What is still a placeholder: the shop's numbers (four offers, half back on a sale, no rerolls);
-the sapper and flyer numbers; and how the classes look (a tint, and height for
-flyers: a square, an orange disc and a blue diamond). The screen is functional, not
-styled (WP-C4): the shop is a panel of cards (click a card, then a tile; the tower
-shows its range ring first), Wall and Sell are two tools, and Esc puts the hand down.
-The route lines follow the rule of GDD §5.3: in a build phase one line for each kind of
-enemy met so far, during a wave the kinds in that wave.
+**Where the numbers live.** The roster is eight towers (archer, ballista, cannon, brazier, frost,
+sniper, shard, flak) and the pylon, as `TowerDefAsset`s listed in `SimHost.towerRoster` and exported
+to `Maps/Towers.json`. **The game's numbers are `SimConfig.asset`, exported to
+`Maps/SimConfig.json`; `SimConfig`'s C# defaults are the older numbers the tests are written
+against.** `thesis run` and `thesis balance` read the file. The interface is drawn in code
+(`HudArt`, `HudOverlay`, `DeckBar`): there are no art files.
 
 ### Where the rules live
 
-All of the above is `Thesis.Sim`: plain C# with no `UnityEngine`, advancing in fixed
-ticks of 0.02 s. The MonoBehaviours in `Assets/Scripts` are a **host and views**:
-`SimHost` runs the simulation, passes player input in as commands and hands events
-out; `FlowAgent`, `PlayerBuilder`, `WaveSpawner` and the rest only draw state and
-forward clicks. **A game rule never goes into a MonoBehaviour.** The same simulation
-runs headless under `dotnet` (`Tools/dotnet`), which is how tests, replays and the
-offline harness work.
+All of the above is `Thesis.Sim`: plain C# with no `UnityEngine`, advancing in fixed ticks of
+0.02 s. The MonoBehaviours in `Assets/Scripts` are a **host and views**: `SimHost` runs the
+simulation, passes player input in as commands and hands events out; `FlowAgent`, `PlayerBuilder`,
+`HudOverlay`, `DeckBar` and the rest only draw state and forward clicks. **A game rule never goes
+into a MonoBehaviour.** The same simulation runs headless under `dotnet` (`Tools/dotnet`), which is
+how tests, replays and the offline harness work.
 
-**What a session leaves behind (WP5, WP-C3):** `replay.json` (the seed, every command with
-its tick, and state hashes) and `telemetry.jsonl` (one row per wave: what was sent, how it
-went, and what the player built, bought and sold around it). Unity writes both under
+**What a session leaves behind (WP5, WP-C3):** `replay.json` (the seed, every command with its
+tick, and state hashes) and `telemetry.jsonl` (one row per wave: what was sent, how it went, and
+what the player built, bought and sold around it). Unity writes both under
 `Runs/Sessions/<session>/`; a headless run under `--out`. The replay is the exact record.
-Telemetry is made from the simulation alone, so `thesis telemetry <replay>` gives back the
-same file, byte for byte, on either runtime. The primary metric (§3) is computed from
-telemetry rows, after the fact (`thesis entropy`).
+Telemetry is made from the simulation alone, so `thesis telemetry <replay>` gives back the same
+file, byte for byte, on either runtime. The primary metric (§3) is computed from telemetry rows,
+after the fact (`thesis entropy`).
 
 ### Flow field — read this before touching pathfinding
 
@@ -155,12 +146,17 @@ The previous chunked/background-threaded version, along with
 together: 0.3 to 0.6 ms under .NET, 0.8 to 1.1 ms in the Unity editor). Do not
 reintroduce chunking, threading or incremental invalidation without a measured reason.
 
-Since WP-C2 there are **two fields**, built by the same flood: the ground field
-(`SimNode.BestCost` / `NextIndex`, exactly the field described below) and the sapper
-field (`SapperCost` / `SapperNextIndex`), which differs only in what a built tile
-costs. The simulation rebuilds both together through `FlowFieldSet` and never one
-without the other. `FlowField.Generate()` on its own builds the ground field only;
-that is for a caller with a grid of its own (a policy's scratch copy).
+There are **four fields**, built by the same flood code: the ground field
+(`SimNode.BestCost` / `NextIndex`, exactly the field described below); the sapper
+field (`SapperCost` / `SapperNextIndex`, WP-C2), which differs only in what a built tile
+costs (rocks keep full price); the raid field (`RaidCost`, 2026-10-20), flooded out from
+every standing collector; and the lure field (`LureCost`), flooded out from every tower
+with the lure ability. The simulation rebuilds all four together through `FlowFieldSet`
+and never one without the others. `SimGrid.NextStep` is the one step rule (raid field,
+own field, or a lure within reach) that the agent pass and the route lines both use.
+`FlowField.Generate()` on its own builds the ground field only; that is for a caller
+with a grid of its own (a policy's scratch copy). The timing above was measured with two
+fields on 38 × 38; four fields on the 48 × 48 board have not been measured again.
 
 - Costs are **integers ×10**: `CardinalCost = 10`, `DiagonalCost = 14`, multiplied
   by the `TerrainCost` of the tile being **left** (the flood runs outward from the
@@ -174,8 +170,10 @@ that is for a caller with a grid of its own (a policy's scratch copy).
   slip diagonally between two solid tiles. Its iteration order decides ties, so it
   is part of the rules.
 - `SimNode.IsWalkable` is **static geometry only**: the map's `X` tiles, scanned
-  once from `unwalkableMask` by `SceneMapBuilder`. Player walls never touch it.
-  (No current map has a single static blocker.)
+  once from `unwalkableMask` by `SceneMapBuilder` or placed by `MapGenerator`. Player
+  walls never touch it. With `SimConfig.RockHealth` above 0 (the game) every rock is
+  instead a wall tile of piece `SimNode.RockPiece`, so it is diggable terrain like any
+  wall; with it at 0, rocks are impassable as before.
 
 ### File map
 
@@ -185,22 +183,28 @@ Assets/Thesis/                pure C#, no UnityEngine; each folder is one assemb
               telemetry lines), NamedValues, DetMath
   Sim/        the game rules
     Simulation.cs SimState.cs SimConfig.cs   tick loop, all mutable state, all tunables
-    Grid/     SimGrid (GetNeighbors, corner-cut rule), SimNode, FlowField, Route
-    Agents/   AgentState, AgentSystem          hit points, movement by class, digging, slow
-    Movement/ MovementClass (Ground, Sapper, Flying), FlowFieldSet (both fields,
+    Map/      MapData, MapGenerator (the seeded map: rocks, deposits, entries), WorldPoint
+    Grid/     SimGrid (GetNeighbors, corner-cut rule, NextStep), SimNode, FlowField (ground,
+              sapper, raid and lure floods), Route (the route lines' walk), Occupant
+    Agents/   AgentState, AgentSystem          hit points, movement by class, digging, slow,
+                                               raiders, siege (Besiege)
+    Movement/ MovementClass (Ground, Sapper, Flying), FlowFieldSet (all four fields,
               rebuilt together), FlyingMovement, RouteCost (way left, per class)
-    Combat/   TowerDef, TowerState, TowerSystem (the tower pass), Targeting,
-              DamageMap, DamageType, TowerLibraryFile (the roster file, Maps/Towers.json)
-    Build/    ShapeDef, ShapeBag (7-bag, hold, rotate), Placement (CanPlace = I9; building
-              and selling), PlacementRecord (a row of the build log: built, sold, rerolled)
-    Shop/     ShopState, TowerOffer, ShopRoller (offers from seed, wave, reroll count = I10)
-    Waves/    IWavePlanner, EscalationPlanner (static baseline), SafePlanner,
-              PlanValidator, WavePlan, WaveOutcome, EnemyArchetype (the four enemy
-              types), ClassCyclePlanner (development only: sends every enemy type
-              in a five-wave cycle until the strategies exist)
+    Combat/   TowerDef, TowerState (power, gear, upgrades), TowerSystem (the tower pass),
+              Targeting, TargetingMode, TowerUpgradeChoices (paths), GearDef, DamageMap,
+              DamageType, TowerLibraryFile (the roster file, Maps/Towers.json)
+    Build/    Placement (CanPlace = I9; building, moving and selling), PlacementRecord (a row of
+              the build log), ShapeDef, ShapeBag (7-bag, hold, rotate: the tests' tetrominoes),
+              TowerUpgrades; TowerBench, TowerCombine, TowerMerge (earlier rounds, off in the game)
+    Shop/     ShopState, TowerOffer, ShopRoller (offers from seed, wave, reroll count = I10;
+              the game has no random shop since 2026-10-20)
+    Waves/    IWavePlanner, EscalationPlanner (static baseline), RaidPlanner (composes the
+              baseline's squads and picks the entries), SafePlanner, PlanValidator, WavePlan,
+              WaveOutcome, EnemyArchetype, RoughDirector (development director, ArknightsTest),
+              ClassCyclePlanner (development only)
     Replay/   ReplayFile, ReplayRecorder, ReplaySetup
     Debug/    StateHasher, StateDump, AsciiMap, AsciiState, BenchScenarios
-    Map/ Commands/ Events/ Stats/
+    Commands/ Events/ Stats/
   Learning/   empty until WP7
   Director/   Telemetry/ only, until WP8: WaveRecord (the row), TelemetryRecorder,
               TelemetryWriter, PlacementEntropy (the primary metric)
@@ -208,39 +212,43 @@ Assets/Thesis/                pure C#, no UnityEngine; each folder is one assemb
               GreedyDetour, Sentry, Seller, Sequence), ReplayRunner, PinnedEpisodes, PathfindingBench
 Assets/Scripts/               Unity host and views
   SimHost.cs               runs the Simulation: fixed ticks, input in, events out, records the
-                           replay and the telemetry
+                           replay and the telemetry; generates the map from the seed
   DirectorHost.cs          picks the planner (the study condition), wraps it in SafePlanner
-  SceneMapBuilder.cs       scene → MapData
+  SceneMapBuilder.cs RockLayout.cs   scene or generated map → MapData; the rocks on the board
   WaveSpawner.cs BlockManager.cs PlayerCore.cs
                            thin adapters that keep the member names the HUD reads
-  PlayerBuilder.cs         the hand (Wall, Sell, a tower from the shop): clicks and drags to
-                           commands; draws walls and towers from the build
-                           log; the temporary shop keys and panel
+  PlayerBuilder.cs         the hand (walls, towers, collectors, sell, move, upgrade): clicks and
+                           drags to commands; selection; power links
+  HudOverlay.cs HudArt.cs  the HUD: core and wave bars, the director's banner, ore, power and
+                           research badges, enemy chips, speed and wave buttons; art drawn in code
+  DeckBar.cs DamagePanel.cs  the bottom bar (build menu by category, cards, inspect pane, gear);
+                           the damage panel
+  TowerShopPanel.cs        the right panel and the hover tip (once the shop's cards)
   FlowAgent.cs             view only: interpolates one AgentState, shows its HP bar and its class
+  TowerView.cs             one tower or pylon: its figure, colour, range and shots
   GridManager.cs Node.cs FlowFieldManager.cs   view data and bindings, no rules
   FlowFieldVisualizer.cs PathPreviewer.cs GhostPreviewer.cs CanvasDashboard.cs
-  GameSpeedController.cs   pause / speed; pause blocks building
-  TowerShopPanel.cs        the shop's cards, the two tools, the key to the routes, the tooltip
-  TowerView.cs             one tower: a ring in its damage type's colour, a barrel, a drawn shot
-  RockLayout.cs            the map's rocks as text; SceneMapBuilder turns them into 'X' tiles
-  TopDownCamera.cs         the fixed view from above (SampleScene); CameraMovement.cs is the
-                           free camera of the benchmark scenes
-  Billboard.cs WallSpawnAnimator.cs BlockShape.cs
+  GameSpeedController.cs   pause / speed (x1, x3, x6); pause only during a wave
+  TiltCamera.cs            the game's camera (orthographic, tilted 52°); TopDownCamera.cs and
+                           CameraMovement.cs serve the benchmark scenes
+  BenchPanel.cs DragCard.cs Billboard.cs WallSpawnAnimator.cs BlockShape.cs
   Config/SimConfigAsset.cs inspector home of SimConfig; Config/TowerDefAsset.cs of one tower
-  Towers/                  the five tower assets
+  Towers/                  the nine tower assets (eight towers and the pylon)
   Benchmark/ScenarioBenchmark.cs   the Unity-only frame-time scenarios
   Editor/                  MapExporter, ShapeExporter, TowerExporter, ConfigExporter, ReplayMenu, BuildGuard
 Assets/Tests/EditMode/        one set of tests, run by Unity and by `dotnet test`
 Tools/dotnet/                 headless build of Assets/Thesis, and Thesis.Cli
-                              (run, replay, ascii, pin, bench, telemetry, trace, entropy, balance)
+                              (run, replay, ascii, pin, bench, telemetry, trace, entropy, balance, towers)
 Tools/gdd/                    makes Docs/GDD.pdf and the pictures in Docs/gdd from Docs/GDD.md
+Docs/proposal/                the course proposal (Proposal.docx and .pdf), its figures, the
+                              Graphviz sources and the script that builds it (build-proposal.js)
 Maps/                         exported maps, Shapes.json, Towers.json and SimConfig.json (the game's
-                              numbers); Fixture_Open38 is a test fixture
+                              numbers); Fixture_Open38 and SampleScene are test fixtures
 Results/                      committed results; Results/pinned-replays (recordings and their
                               telemetry) is re-run by tests
 Runs/                         (gitignored) raw output and Unity sessions (replay and telemetry)
 Assets/Scenes/                ArknightsTest (the game) + Bench_Open / Bench_Maze / Bench_Choke / Bench_Stress
-                              (SampleScene, the old top-down scene, was removed 2026-10-24; its map file stays as a fixture)
+                              (SampleScene, the old top-down scene, was removed 2026-10-24)
 Assets/Scripts/BlockS/        the wall shape assets: Wall (one tile, the game's) and the tetrominoes
 ```
 
@@ -266,10 +274,18 @@ in §8, and its feature and strategy tables are in git history.
 | Persistence | **Towers persist and can be sold** for a partial refund. |
 | Walls | **Walls can be sold too** *(student, 2026-10-02)*. A whole placed piece is sold at once for a partial refund, in build phases. Before this a wall could only leave the board by being breached. |
 
+**Since 2026-10-20 the shop is gone** (the student, with the ore economy, DEVLOG
+2026-10-20): towers and gear are built from a menu at fixed prices, and research tiers
+unlock upgrades. The decisions above still hold for damage, placement (now on a wall or a
+rock), persistence and selling. What changes for the study: the shop confound below no
+longer exists, so I10 is dormant; the remaining luck is the map, its deposits and the
+entries, all from the seed, which D9's shared seed sets control. The consequences below
+are kept as they were written, because the shop's code, tests and pinned replays remain.
+
 Consequences to keep in mind:
 
-- Walls stay as they are: tetromino bag, diggable terrain, and a path always
-  exists. Everything in §8 about the flow field still applies. The one addition is
+- Walls stay as they are: diggable terrain, and a path always exists (one tile in
+  three tiers in the game; the tetromino bag remains for the tests). Everything in §8 about the flow field still applies. The one addition is
   that the player can sell them (`Docs/ARCHITECTURE.md` §4.6).
 - The proposal's five features now describe the game: `maze_length`,
   `breach_vulnerability`, `chokepoint_reliance` (entropy of damage per path tile),
@@ -283,13 +299,15 @@ Consequences to keep in mind:
 - The proposal's strategy pool applies: `breach_thin_wall`, `swarm_chokepoint`,
   `split_groups` and `flying_bypass`. The movement classes they need exist since
   WP-C2 (sappers for the first, flyers for the last). `flying_bypass` must be vetoed
-  in layer 1 whenever the player has no way to hit flyers. `split_groups` probably
-  needs multi-spawn support; `WaveSpawner` currently has a single `spawnPoint`.
-- **Income must not depend on the strategy** (I11). Today it does: the kill reward
-  is paid per enemy, so a wave of fewer, stronger enemies pays less. Spec gap S14 in
+  in layer 1 whenever the player has no way to hit flyers. `split_groups` has the
+  multi-spawn support it needs since 2026-10-13 (`RaidPlanner`: one to three entries
+  a wave). The development director's strategies (raid, siege, resist, air, breach,
+  §1) are further candidates; the final pool is spec gap S10 (WP9).
+- **Income must not depend on the strategy** (I11). The kill reward is 0 since the
+  ore economy (2026-10-20), so the number of enemies no longer changes income; but
+  raiders destroy collectors, so a raid does. Spec gap S14 in
   `Docs/ARCHITECTURE.md` §10; to be closed with the threat cost table (WP9).
-- A wall breach currently pays the player +1.0 budget. Whether that stays under
-  the tower economy is a balance question, not a given.
+- A wall breach pays nothing in the game (`WallBreakReward` 0 since 2026-10-20).
 
 The combat core exists since WP-C1 and the shop log since WP-C3 (the build log, and each
 telemetry row's `shop` block), so `BuildProfiler` is blocked only by the feature
@@ -336,8 +354,8 @@ wave number.
 | I7 | After the build freeze, no code changes except crash fixes. | Otherwise the participants did not play the same game. |
 | I8 | No director logic on the per-frame path. | The simulation ticks 50 to 150 times a second. The director runs once per wave boundary and has 16 ms there (G2). |
 | I9 | `Thesis.Sim.Placement.CanPlace` is the single source of truth for placement legality, for walls and towers. `PlayerBuilder.AreTilesPlaceable` only wraps it, and `GhostPreviewer` keeps calling that wrapper. *(Reworded 2026-09-15, D3.)* | The preview can never disagree with a real click, and the harness uses the same rule. |
-| I10 | Shop offers are a pure function of `(rngSeed, waveIndex, rerollCount)`. They never depend on the study condition, the director, or the player's board. *(Added 2026-09-15.)* | Both conditions must see the same tower offers, or shop luck could explain the result. **Satisfied since WP-C3:** `ShopRoller.Roll` is given those three numbers, the roster and a count, and nothing else; a test plays five scripted players against both planners for 30 waves and reads the same offers from every session's telemetry. |
-| I11 | The director shapes enemy waves only. It never touches the shop, tower stats, prices, or the player's budget. *(Added 2026-09-15.)* | Otherwise the director changes the player's power, and difficulty is no longer held constant (§3). |
+| I10 | Shop offers are a pure function of `(rngSeed, waveIndex, rerollCount)`. They never depend on the study condition, the director, or the player's board. *(Added 2026-09-15.)* | Both conditions must see the same tower offers, or shop luck could explain the result. **Satisfied since WP-C3:** `ShopRoller.Roll` is given those three numbers, the roster and a count, and nothing else; a test plays five scripted players against both planners for 30 waves and reads the same offers from every session's telemetry. **Dormant since 2026-10-20:** the game has no random offers (build menu, §2); the rule stands for any random offer that comes back. |
+| I11 | The director shapes enemy waves only. It never touches the shop, tower stats, prices, or the player's budget. *(Added 2026-09-15.)* | Otherwise the director changes the player's power, and difficulty is no longer held constant (§3). **Open (spec gap S14):** raiders destroy collectors and siege enemies knock towers out, so a strategy that sends them changes the player's income and firepower, which the static baseline does not. Before the pilot this needs a rule (counted in the threat budget, or sent the same way in both conditions) and the supervisor's agreement. |
 | I12 | Tower attacks resolve inside the simulation in whole ticks (an instant hit, or a delay fixed at the moment of firing). Projectile motion exists only in the Unity view. *(Added 2026-09-15.)* | Projectile physics would put frame-rate-dependent flight time back into the rules (I1). |
 
 If a task seems to require breaking one of these, stop and say so.

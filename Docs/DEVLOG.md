@@ -2261,3 +2261,65 @@ both runners (8 new). Not committed.
   replays still pass). A new test walks an enemy past a lure: every tile of its line, in order, and
   it ends where the line ends; the only extra tiles are the side tiles a diagonal step brushes.
   656 tests pass in both runners.
+
+---
+
+## 2026-10-28 — A review of the round, then speed, ore, the banner, the pylon and early sieges
+
+**Status:** committed (`b9b82f4`, `4944e1d`). 661 tests pass in .NET; Unity EditMode 661 passed,
+2 skipped (explicit diagnostics). Pinned replays re-recorded on both runtimes (the roster's copy
+only; the play did not change).
+
+**The review of `fe6eec8`** (`/code-review high`, ten findings, all fixed at the student's word):
+- **Sappers pay full price for a mountain** (`FlowField.SapperTerrainCost`), the student: sappers
+  dig walls, "but it should not have a clear pattern" of always tunnelling the same mountain.
+- **Damage gear is weaker and no longer multiplies**: edge +1 a second, keen edge +3 (were 2 and
+  6). Kept apart from the hit (`TowerState.GearDps`) and added once a shot to the first target,
+  after the crit, so a volley, splash or crit does not multiply it.
+- The rough director ignores collectors on emptied deposits.
+- A restarted wave gets a whole build phase when the game does not wait for Start.
+- Tiered walls follow the bag's shape and rotation; a wall's tier colour comes from its build
+  record (`PlayerBuilder.WallColorOf`), not its health.
+- Dead code removed (`GridManager`, `SimGrid`); `Route.CollectSteps` no longer allocates.
+
+**After a tester's session** (the student's five points):
+- **Speed x1, x3, x6** (was 1, 2, 3; `GameSpeedController.speedLevels`), and `SimHost` may run 40
+  ticks a frame. No enemy or balance number changed: "we can not just bump up the enemy speed".
+- **30 ore a deposit** (`DepositOre`, was 50).
+- **The director's banner fits its line** (`HudOverlay.FitBanner`): as wide as the text up to
+  760 px, wrapped and taller beyond it; the hover tip has no narrower cap.
+- **The pylon powers 2** (was 3) and its four power upgrades add 1 each (were 2): at most 4
+  towers, as the core. No pylon was in the session the student sent; the nerf is from its numbers.
+- **Later, lighter first sieges** (two engines of 337 HP at wave 5 beat seven towers twice):
+  sieges from wave 8 (was 5), alone for their first three waves, at 3× a plain enemy's hit points
+  growing 0.5 a wave to the archetype's 6× (`RoughDirector.FirstSiegeWave`, `LoneSiegeWaves`,
+  `SiegeHpFirst`, `SiegeHpStep`). New test.
+
+**Docs.** The course proposal is in `Docs/proposal/` (Proposal.docx and .pdf, figures captured in
+ArknightsTest, Graphviz sources, `build-proposal.js`). `CLAUDE.md` §1 was rewritten for the game as
+it plays now (the ore economy and build menu, not the 24 × 24 board and random shop); §2 and I10
+note that the shop is gone and I10 dormant, and I11 that raiders and siege engines touch the
+player's income and firepower (S14, open).
+
+**Later the same day: the GDD rewritten, the proposal's references in APA.**
+- `Docs/GDD.md` rewritten for the game of `CLAUDE.md` §1 (the generated map, ore and power, the
+  build menu, wall tiers, mountains, upgrade paths, gear, twelve enemy types, the development
+  director), with screenshots of 2026-10-28 in `Docs/gdd/today-*.png`; the open questions brought
+  up to date (new: 21 what the static version sends, 22 restarts in the study, 23 keys 1 to 3
+  clash). The first version is in git at `132d8ca`. `Tools/gdd/pdf.py` gives Edge a profile of its
+  own: with Edge open, the headless print did nothing and the old PDF stayed.
+- **Found, not fixed:** keys 1 to 3 set the game speed (`GameSpeedController`) and the build-menu
+  tab (`DeckBar.UpdateBuild`) at once.
+- The proposal (`Docs/proposal/Proposal-updated.docx`) follows the advisor's comments on the
+  earlier proposal: APA 7 references checked against their sources (34, alphabetical), every
+  method named in the text cited where it is named, author-year citations in the text, no lumped
+  references. The cover carries the programme (CT, Department of Computer Engineering / DDCT,
+  KMUTT).
+
+## 2026-11-02 — Hint text out of the bottom bar and the routes panel
+
+The student's request: the player does not need these lines on screen. Removed, with their labels:
+the build section's title and hint (`DeckBar.buildTitle`), the gear title (`DeckBar.gearTitle`), the
+wall price note in the build menu, and the note beside ROUTES (`TowerShopPanel.legendNote`). The hover
+tips stay. No rule changed. Checked in play mode in ArknightsTest: the lines are gone and the console
+has no errors.

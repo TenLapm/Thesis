@@ -236,7 +236,10 @@ open(OUT, 'w', encoding='utf-8', newline='\n').write(page)
 print('html written:', len(page), 'chars;', len(toc), 'sections;', body.count('<table'), 'tables;', body.count('figpage'), 'figure pages')
 
 if edge():
-    subprocess.run([edge(), '--headless', '--disable-gpu', '--no-pdf-header-footer', '--print-to-pdf=' + PDF, 'file:///' + OUT.replace(os.sep, '/')],
+    # A profile of its own: with Edge already open, a headless run on the default profile
+    # hands the job to the open window and prints nothing (2026-10-28).
+    profile = os.path.join(os.path.dirname(OUT), 'edge-profile')
+    subprocess.run([edge(), '--headless', '--disable-gpu', '--no-pdf-header-footer', '--user-data-dir=' + profile, '--print-to-pdf=' + PDF, 'file:///' + OUT.replace(os.sep, '/')],
                    stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
     print('pdf written:', PDF, os.path.getsize(PDF), 'bytes')
 else:

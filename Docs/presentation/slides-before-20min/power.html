@@ -1,0 +1,17 @@
+<section id="power" style="background:#ffffff;color:#000000;font-family:Arial, sans-serif;padding:72px 88px 120px;display:flex;flex-direction:column;gap:28px">
+<h2 style="font-size:60px;font-weight:700;line-height:1.1">Power is a bipartite matching</h2>
+<div style="display:flex;gap:40px">
+<div style="width:820px;display:flex;flex-direction:column;gap:12px">
+<img src="/_blob/57408d2b2df7c7c006281b1f923605d0" alt="The core selected in the game: gold outlined tiles show its reach, and lines run from the core to the three towers it powers" style="width:820px;height:499px;object-fit:contain">
+<p style="font-size:26px;line-height:1.3">From today’s session: the core’s reach in gold, with a line to each tower it powers.</p>
+<p style="font-size:30px;line-height:1.3"><b>Capacity and radius:</b> core 4 towers within 4 tiles; collector 2 within 3; pylon 2 within 3.</p>
+</div>
+<div style="flex:1;display:flex;flex-direction:column;gap:18px">
+<p style="font-size:30px;line-height:1.3">Towers on one side, source slots on the other. Augmenting paths give as many powered towers as possible.</p>
+<p style="font-family:'Courier New', monospace;font-size:26px;line-height:1.3;white-space:nowrap;border:1px solid #000000;padding:20px">bool Augment(int t, ...) {<br>&#160;&#160;for (int k = 0; k &lt; slots; k++) {<br>&#160;&#160;&#160;&#160;if (slotSeen[k]) continue;<br>&#160;&#160;&#160;&#160;if (!InReach(k, t)) continue;<br>&#160;&#160;&#160;&#160;slotSeen[k] = true;<br>&#160;&#160;&#160;&#160;if (slotTower[k] &lt; 0<br>&#160;&#160;&#160;&#160;&#160;&#160;|| Augment(slotTower[k], ...)) {<br>&#160;&#160;&#160;&#160;&#160;&#160;slotTower[k] = t;<br>&#160;&#160;&#160;&#160;&#160;&#160;return true;<br>&#160;&#160;&#160;&#160;}<br>&#160;&#160;}<br>&#160;&#160;return false;<br>}</p>
+<p style="font-size:30px;line-height:1.3">Player ties are placed first and stay fixed. Recomputed after commands and breaches: 0.007 ms.</p>
+</div>
+</div>
+<p style="position:absolute;right:88px;bottom:48px;width:100px;text-align:right;font-size:24px">23</p>
+<aside>เหตุผลที่เรื่องนี้สำคัญกับวิทยานิพนธ์: power ทำให้การกอง tower ไว้ที่ core ไม่ฟรีอีกต่อไป เมื่อ raider ทำลาย collector tower ที่มันจ่ายไฟให้จะดับ raid จึงส่งผลมากกว่าแค่เสีย ore การจับคู่แบบ greedy อาจทำให้ tower บางตัวดับทั้งที่มีวิธีจับคู่ที่ถูกต้องอยู่ จึงใช้ matching จริงตามรูปแบบ Kuhn’s algorithm การวนลูปเรียงตาม id จากน้อยไปมาก ผลจึงแน่นอน โค้ดคือ Simulation.Augment ที่ย่อส่วนตรวจระยะให้สั้นลง</aside>
+</section>

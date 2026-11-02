@@ -1,0 +1,26 @@
+digraph director {
+  graph [rankdir=LR, newrank=true, fontname="Arial", fontsize=12, nodesep=0.35, ranksep=0.6, bgcolor="white", pad=0.2];
+  node  [shape=box, style="rounded,filled", fontname="Arial", fontsize=11, color="#475569", fillcolor="#F1F5F9", penwidth=1.2, margin="0.15,0.08"];
+  edge  [color="#475569", arrowsize=0.7, fontname="Arial", fontsize=9];
+
+  Board   [label="Board state\nat the start of\nthe build phase", shape=note, fillcolor="#FFFFFF"];
+  Profile [label="BuildProfiler\n5 features:\nmaze_length\nbreach_vulnerability\nchokepoint_reliance\ntower_concentration\ndamage_type_mix"];
+  Bin     [label="ContextBucketizer\nfeature -> bin 0..4"];
+  Veto    [label="Layer 1: constraints\nover budget, repeat streak,\nuncounterable unit\n-> score = -inf", fillcolor="#FEE2E2", color="#B91C1C"];
+  Heur    [label="Layer 2: authored heuristic\nscore(strategy | profile)", fillcolor="#E0F2FE", color="#0369A1"];
+  Learn   [label="Layer 3: learned correction\n2(theta - 0.5),  theta ~ Beta(a, b)\nbounded to [-1, +1]", fillcolor="#FEF3C7", color="#B45309"];
+  Argmax  [label="argmax over strategies\nbreach_thin_wall, swarm_chokepoint,\nsplit_groups, flying_bypass"];
+  Plan    [label="WavePlan\nsame threat budget\nfor every strategy (I2)", fillcolor="#CCFBF1", color="#0F766E"];
+  Reward  [label="RewardEvaluator\n0.45 restructure + 0.25 survived\n+ 0.20 pressure + 0.10 novelty", fillcolor="#FEF3C7", color="#B45309"];
+  Update  [label="Discounted Beta update\nG = 0.95, credit 0.5^lag"];
+
+  {rank=same; Board; Profile; Bin;}
+  {rank=same; Veto; Heur; Learn;}
+  {rank=same; Argmax; Plan;}
+  {rank=same; Reward; Update;}
+  Board -> Profile -> Bin;
+  Bin -> Veto -> Heur -> Learn -> Argmax -> Plan;
+  Plan -> Reward [label=" after the player\n rebuilds (wave N+1)", style=dashed];
+  Reward -> Update -> Learn [style=dashed];
+  Bin -> Learn [style=dotted, label=" cell (bin, strategy)"];
+}

@@ -1,0 +1,29 @@
+digraph director {
+  graph [rankdir=TB, newrank=true, fontname="Arial", fontsize=16, nodesep=0.5, ranksep=0.7, bgcolor="white", pad=0.1];
+  node  [shape=box, fontname="Arial", fontsize=16, color="black", penwidth=1.3, style=dashed, margin="0.15,0.09"];
+  edge  [color="black", arrowsize=0.8, penwidth=1.2, fontname="Arial", fontsize=14];
+
+  Board   [label="Board and last\nwave's damage", style=solid];
+  Profile [label="BuildProfiler\n5 features"];
+  Bin     [label="ContextBucketizer\nfeature to bin 0..4"];
+  Veto    [label="Layer 1: constraints\nover budget, repeat streak,\nno counter: score = -inf"];
+  Heur    [label="Layer 2: authored heuristic\na complete director alone"];
+  Learn   [label="Layer 3: correction\n2(theta - 0.5) in [-1, +1]\ntheta ~ Beta(a, b) of the cell"];
+  Arg     [label="argmax of\nheuristic + correction"];
+  Plan    [label="WavePlan\nequal threat budget"];
+  Reward  [label="RewardEvaluator\nafter the rebuild"];
+  Update  [label="Discounted update\nG = 0.95, credit 0.5^lag"];
+  {rank=same; Board; Profile; Bin;}
+  {rank=same; Veto; Heur; Learn;}
+  {rank=same; Arg; Plan; Reward; Update;}
+  Board -> Profile -> Bin;
+  Veto -> Heur -> Learn;
+  Arg -> Plan;
+  Plan -> Reward [label=" player rebuilds"];
+  Reward -> Update;
+  Bin -> Veto [constraint=false];
+  Board -> Veto [style=invis];
+  Veto -> Arg [style=invis];
+  Learn -> Arg [constraint=false];
+  Update -> Learn [constraint=false, style=dashed];
+}

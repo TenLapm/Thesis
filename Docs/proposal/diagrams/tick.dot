@@ -1,0 +1,31 @@
+digraph tick {
+  graph [rankdir=TB, newrank=true, fontname="Arial", fontsize=12, nodesep=0.6, ranksep=0.3, bgcolor="white", pad=0.2];
+  node  [shape=box, style="rounded,filled", fontname="Arial", fontsize=11, color="#475569", fillcolor="#F1F5F9", penwidth=1.2, margin="0.14,0.07"];
+  edge  [color="#475569", arrowsize=0.7, fontname="Arial", fontsize=9];
+
+  Input  [label="Mouse / keyboard\n(Unity frame)", shape=note, fillcolor="#FFFFFF"];
+  Cmd    [label="SimCommand queue\n(stamped with its tick)"];
+  subgraph cluster_tick {
+    label="Simulation.Tick()  -  one fixed step of 0.02 s"; labeljust=l; style="rounded"; color="#0F766E"; fontcolor="#0F766E";
+    A [label="1. apply commands\n(Placement.CanPlace, I9)"];
+    B [label="2. phase machine\nplan / start wave"];
+    C [label="3. towers fire\n(whole-tick hits, I12)"];
+    D [label="4. agents move,\ndig, leak"];
+    E [label="5. rebuild both flow\nfields once if breached"];
+    F [label="6. wave boundary,\ngame over, Tick++"];
+    A -> B -> C -> D -> E -> F;
+  }
+  Events [label="SimEvents\n-> views, sound, HUD"];
+  Hash   [label="state hash per tick\n(FNV-1a 64, floats by bits)"];
+  Replay [label="replay.json\nseed + commands + hashes", fillcolor="#CCFBF1", color="#0F766E"];
+  Tele   [label="telemetry.jsonl\none row per wave", fillcolor="#CCFBF1", color="#0F766E"];
+
+  {rank=same; Input; Cmd;}
+  {rank=same; Events; Hash;}
+  Input -> Cmd -> A;
+  F -> Events;
+  F -> Hash;
+  Cmd -> Replay [style=dashed];
+  Hash -> Replay [style=dashed];
+  F -> Tele [style=dashed, label=" wave resolved"];
+}

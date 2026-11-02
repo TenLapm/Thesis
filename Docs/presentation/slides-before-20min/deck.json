@@ -1,0 +1,82 @@
+{
+  "v": 4,
+  "attachments": {},
+  "cover": "cover",
+  "createdOnFiles": {
+    "at": "2026-10-31T07:50:00Z",
+    "v": 1
+  },
+  "designSystems": [],
+  "faces": {},
+  "lists": "css",
+  "order": [
+    "cover",
+    "claim",
+    "spronck",
+    "hunicke",
+    "booth",
+    "sutoyo",
+    "enezi",
+    "related",
+    "game",
+    "demands",
+    "arch",
+    "frameloop",
+    "tick",
+    "divergence",
+    "bit2916",
+    "replay",
+    "results",
+    "flood",
+    "dig",
+    "fields",
+    "astar",
+    "combat",
+    "power",
+    "seam",
+    "rough",
+    "telemetry",
+    "data77",
+    "metric",
+    "layers",
+    "bins",
+    "thompson",
+    "reward",
+    "budget",
+    "gates",
+    "study",
+    "open",
+    "status"
+  ],
+  "sections": {
+    "s1": {
+      "description": "The claim, related work, and what the study demands from the code.",
+      "start": "cover"
+    },
+    "s2": {
+      "description": "A deterministic core: architecture, tick order, floats, replay proof.",
+      "start": "arch"
+    },
+    "s3": {
+      "description": "Pathfinding on diggable terrain, combat and power.",
+      "start": "flood"
+    },
+    "s4": {
+      "description": "The planner seam and the director that runs today.",
+      "start": "seam"
+    },
+    "s5": {
+      "description": "Telemetry and the primary metric.",
+      "start": "telemetry"
+    },
+    "s6": {
+      "description": "The learner that is designed but not yet built.",
+      "start": "layers"
+    },
+    "s7": {
+      "description": "Evaluation, open problems and schedule.",
+      "start": "gates"
+    }
+  },
+  "title": "An Adaptive Wave Director for a Maze Tower Defense"
+}

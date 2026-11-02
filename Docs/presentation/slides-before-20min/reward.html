@@ -1,0 +1,16 @@
+<section id="reward" style="background:#ffffff;color:#000000;font-family:Arial, sans-serif;padding:72px 88px 120px;display:flex;flex-direction:column;gap:28px">
+<h2 style="font-size:60px;font-weight:700;line-height:1.1">Reward: behaviour change, credited backwards</h2>
+<img src="/_blob/0a1f05a9e07e205c8bca7fd3810f57f9" alt="Timeline: plan wave N, wave N plays, player rebuilds, plan wave N+1, restructure is known only now, update the cells of waves N, N-1 and N-2 with weight one half to the lag" style="width:1744px;height:134px;object-fit:contain">
+<p style="font-family:'Courier New', monospace;font-size:34px;line-height:1.3;border:1px solid #000000;padding:20px">r = 0.45·restructure + 0.25·survived + 0.20·pressure + 0.10·novelty</p>
+<table style="font-size:30px">
+<tr><th style="width:20%">Term</th><th style="width:40%">Meaning</th><th style="width:40%">Why</th></tr>
+<tr><td>restructure</td><td>L1 change in the normalised profile, capped</td><td>This is the behaviour the thesis wants</td></tr>
+<tr><td>survived</td><td>Core still standing after the wave</td><td>A defeated player builds nothing more</td></tr>
+<tr><td>pressure</td><td>Share of the wave that came close to the core</td><td>A wave nobody feels asks no question</td></tr>
+<tr><td>novelty</td><td>Distance from last wave’s composition</td><td>Avoids sending the same wave again</td></tr>
+</table>
+<p style="font-size:30px;line-height:1.3"><b>Control for G3:</b> a binary reward, (restructure ≥ τ) and survived, is also implemented, to test whether graded rewards learn faster.</p>
+<p style="position:absolute;left:88px;bottom:48px;width:1500px;font-size:24px">Design, not yet code. WaveOutcome already records pressure, and telemetry has a reward field waiting.</p>
+<p style="position:absolute;right:88px;bottom:48px;width:100px;text-align:right;font-size:24px">32</p>
+<aside>ส่วนที่ละเอียดอ่อนคือเรื่องเวลา reward ของ wave N ยังรู้ไม่ได้ตอน wave N จบ เพราะผู้เล่นยังไม่ได้สร้างใหม่ แต่จะรู้ตอนวางแผน wave N+1 และผู้เล่นอาจกำลังตอบสนองต่อสองสาม wave ล่าสุด จึงแบ่ง credit ย้อนหลังด้วย weight ครึ่งหนึ่งต่อ wave เทอม survived ป้องกันไม่ให้ strategy ได้คะแนนดีจากการจบเกมของผู้เล่น ส่วน pressure นั้น simulation คำนวณอยู่แล้ววันนี้</aside>
+</section>
