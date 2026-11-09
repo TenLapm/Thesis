@@ -2323,3 +2323,12 @@ the build section's title and hint (`DeckBar.buildTitle`), the gear title (`Deck
 wall price note in the build menu, and the note beside ROUTES (`TowerShopPanel.legendNote`). The hover
 tips stay. No rule changed. Checked in play mode in ArknightsTest: the lines are gone and the console
 has no errors.
+
+## 2026-11-02 — A weight map in the flow field view
+
+The student's request. `FlowFieldVisualizer` has a fifth mode, `Weights`, after Arrows+Heatmap on the V
+key: each tile coloured by its `TerrainCost`, what a walker pays to leave it, where the heatmap shows
+the cost of the whole way to the core. A legend lists the weights on the board now and what holds each.
+Tiles that cost more are drawn on top of what stands on them (`PlayerBuilder.SurfaceHeight`), because a
+tile on the ground is hidden by the wall or rock. View only: no rule changed, and sappers' cheaper walls
+are not shown. Checked in play mode with walls of three tiers, a collector and rocks; no tower was placed.

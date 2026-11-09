@@ -9,7 +9,11 @@ using UnityEngine.InputSystem;
 // game view and standalone builds - i.e. during a presentation with no editor.
 //
 // Press the toggle key (default V) to cycle:
-//   Off -> Arrows -> Heatmap -> Arrows+Heatmap -> Off
+//   Off -> Arrows -> Heatmap -> Arrows+Heatmap -> Weights -> Off
+//
+// The heatmap is the cost of the whole way to the core (BestCost). The weight map
+// is what one tile costs a walker to leave (TerrainCost), the number the flood
+// reads; the legend lists the weights on the board now.
 //
 // Geometry is rebuilt only when the field actually changes
 // (FlowFieldManager.FieldVersion) or the mode changes, so the steady-state
@@ -19,7 +23,8 @@ using UnityEngine.InputSystem;
 // Arrow directions are derived from each tile's next-tile pointer.
 public class FlowFieldVisualizer : MonoBehaviour
 {
-    public enum Mode { Off = 0, Arrows = 1, Heatmap = 2, ArrowsAndHeatmap = 3 }
+    public enum Mode { Off = 0, Arrows = 1, Heatmap = 2, ArrowsAndHeatmap = 3, Weights = 4 }
+    private const int ModeCount = 5;
 
     [Header("References (auto-found when empty)")]
     public FlowFieldManager flowManager;
@@ -47,6 +52,10 @@ public class FlowFieldVisualizer : MonoBehaviour
     private readonly List<Vector3> verts = new List<Vector3>(8192);
     private readonly List<Color32> cols = new List<Color32>(8192);
     private readonly List<int> tris = new List<int>(16384);
+
+    // The weights on the board at the last rebuild, lowest first, with what holds each.
+    private readonly SortedDictionary<int, string> weightLegend = new SortedDictionary<int, string>();
+    private int maxWeight = 1;
 
     void Awake()
     {
@@ -92,13 +101,13 @@ public class FlowFieldVisualizer : MonoBehaviour
         if (builtVersion != flowManager.FieldVersion || builtMode != CurrentMode) Rebuild();
     }
 
-    public void CycleMode() { SetMode((Mode)(((int)CurrentMode + 1) % 4)); }
+    public void CycleMode() { SetMode((Mode)(((int)CurrentMode + 1) % ModeCount)); }
 
     public void SetMode(Mode mode)
     {
         CurrentMode = mode;
         bool arrows = mode == Mode.Arrows || mode == Mode.ArrowsAndHeatmap;
-        bool heat = mode == Mode.Heatmap || mode == Mode.ArrowsAndHeatmap;
+        bool heat = mode == Mode.Heatmap || mode == Mode.ArrowsAndHeatmap || mode == Mode.Weights; // the weight map draws on the heatmap's layer
         if (arrowGO != null) arrowGO.SetActive(arrows);
         if (heatGO != null) heatGO.SetActive(heat);
     }
@@ -112,7 +121,9 @@ public class FlowFieldVisualizer : MonoBehaviour
         bool wantArrows = CurrentMode == Mode.Arrows || CurrentMode == Mode.ArrowsAndHeatmap;
         bool wantHeat = CurrentMode == Mode.Heatmap || CurrentMode == Mode.ArrowsAndHeatmap;
 
-        if (wantHeat) BuildHeatmap(grid); else heatMesh.Clear();
+        if (CurrentMode == Mode.Weights) BuildWeights(grid);
+        else if (wantHeat) BuildHeatmap(grid);
+        else heatMesh.Clear();
         if (wantArrows) BuildArrows(grid); else arrowMesh.Clear();
     }
 
@@ -233,6 +244,84 @@ public class FlowFieldVisualizer : MonoBehaviour
         ApplyMesh(heatMesh);
     }
 
+    void BuildWeights(SimGrid grid)
+    {
+        verts.Clear(); cols.Clear(); tris.Clear();
+        weightLegend.Clear();
+        GridManager gridManager = flowManager.gridManager;
+        PlayerBuilder builder = FindFirstObjectByType<PlayerBuilder>();
+        float half = gridManager.nodeRadius * 0.92f;
+        float y = groundOffset;
+
+        maxWeight = 1;
+        for (int i = 0; i < grid.NodeCount; i++)
+        {
+            SimNode n = grid.ByIndex(i);
+            if (n.IsWalkable && n.TerrainCost > maxWeight) maxWeight = n.TerrainCost;
+        }
+
+        for (int i = 0; i < grid.NodeCount; i++)
+        {
+            SimNode n = grid.ByIndex(i);
+            if (n.IsWalkable && !weightLegend.ContainsKey(n.TerrainCost)) weightLegend.Add(n.TerrainCost, WeightName(n));
+
+            Color32 c = n.IsWalkable ? (Color32)WeightColor(n.TerrainCost) : new Color32(25, 25, 25, 215);
+            // A tile that costs more is one with something standing on it, and that would
+            // hide a tile drawn on the ground: draw it on top. No builder in the bench scenes.
+            float top = builder != null && n.TerrainCost > 1 ? builder.SurfaceHeight(gridManager.grid[n.X, n.Y]) : 0f;
+            Vector3 p = SceneMapBuilder.ToWorld(n.Position, PlaneY) + Vector3.up * (y + top);
+            int v0 = verts.Count;
+            verts.Add(p + new Vector3(-half, 0, -half));
+            verts.Add(p + new Vector3(-half, 0, half));
+            verts.Add(p + new Vector3(half, 0, half));
+            verts.Add(p + new Vector3(half, 0, -half));
+            cols.Add(c); cols.Add(c); cols.Add(c); cols.Add(c);
+            tris.Add(v0); tris.Add(v0 + 1); tris.Add(v0 + 2);
+            tris.Add(v0); tris.Add(v0 + 2); tris.Add(v0 + 3);
+        }
+
+        ApplyMesh(heatMesh);
+    }
+
+    // Open ground stays faint so that what costs more stands out; above it, green to red.
+    private Color WeightColor(int weight)
+    {
+        if (weight <= 1) return new Color(0.75f, 0.8f, 0.9f, 0.1f);
+        float t = maxWeight > 1 ? Mathf.Clamp01((float)(weight - 1) / (maxWeight - 1)) : 1f;
+        Color rgb = Color.HSVToRGB(Mathf.Lerp(0.42f, 0f, t), 0.9f, 0.95f);
+        rgb.a = 0.85f;
+        return rgb;
+    }
+
+    private static string WeightName(SimNode n)
+    {
+        switch (n.Occupant)
+        {
+            case Occupant.Tower: return "tower";
+            case Occupant.Collector: return "collector";
+            case Occupant.Wall: return n.PieceId == SimNode.RockPiece ? "rock" : "wall";
+            default: return "open ground";
+        }
+    }
+
+    void DrawWeightLegend()
+    {
+        float x = 10f, y = 72f;
+        GUI.color = Color.white;
+        GUI.Label(new Rect(x, y, 170f, 22f), "Weight of a tile");
+        y += 22f;
+        foreach (KeyValuePair<int, string> row in weightLegend)
+        {
+            Color c = WeightColor(row.Key);
+            c.a = 1f;
+            GUI.color = c;
+            GUI.DrawTexture(new Rect(x, y + 4f, 14f, 14f), Texture2D.whiteTexture);
+            GUI.color = Color.white;
+            GUI.Label(new Rect(x + 20f, y, 150f, 22f), row.Key + "  " + row.Value);
+            y += 22f;
+        }
+    }
+
     void ApplyMesh(Mesh mesh)
     {
         mesh.Clear();
@@ -244,6 +333,7 @@ public class FlowFieldVisualizer : MonoBehaviour
 
     void OnGUI()
     {
+        if (CurrentMode == Mode.Weights) DrawWeightLegend();
         if (!showHint) return;
         string label = "[" + toggleKey + "] Flow field view: " + CurrentMode;
         GUI.color = new Color(0f, 0f, 0f, 0.6f);
