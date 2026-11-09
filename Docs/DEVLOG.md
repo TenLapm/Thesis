@@ -2332,3 +2332,46 @@ the cost of the whole way to the core. A legend lists the weights on the board n
 Tiles that cost more are drawn on top of what stands on them (`PlayerBuilder.SurfaceHeight`), because a
 tile on the ground is hidden by the wall or rock. View only: no rule changed, and sappers' cheaper walls
 are not shown. Checked in play mode with walls of three tiers, a collector and rocks; no tower was placed.
+
+## 2026-11-10 — WP7 Learning assembly
+
+**Changed**
+- `Assets/Thesis/Learning/`: `BetaSampler` (Marsaglia–Tsang, polar normals, only `DetMath.Log` and
+  `Math.Sqrt`; throws on a shape below 1), `BinnedPosterior` (the 5 × 4 Beta cells, Thompson draw,
+  discounted Bernoulli update, `Export` / `Import`), `KernelEstimator` (128-entry ring buffer,
+  Nadaraya–Watson query, σ = 0.15, its own `KernelState`), `CalibrationReport` (Brier, 10-bin ECE,
+  `Merge`), `IStrategyEstimator`, `DecisionContext`, `Correction`, `EstimatorState`.
+- `Learning/Synthetic/`: `ThresholdBanditEnv` and `SyntheticRun` (one policy against the problem, three
+  named streams per seed: contexts, pay-outs, learner).
+- CLI `synth` (`Tools/dotnet/Thesis.Cli/SynthCmd.cs`): writes `Results/<date>_g1-synth/` with
+  `results.json` and a README (hypothesis, problem, table, calibration, probe, speed).
+
+**Tests added** (`Assets/Tests/EditMode/Learning/`, 47): every must-pass of WP7, including the pinned
+fingerprint `0x64a19c09794b6873` over 10⁵ `SampleCorrection` and `Update` calls. Green under .NET
+(708 of 708 in the whole suite) and in the Unity editor (47 of 47 in the Learning group), so the
+fingerprint is the same on Mono.
+
+**Result** (`Results/2026-11-10_g1-synth/`): G1-synthetic **passes, narrowly**: 0.851 against the pass
+number 0.85 (lowest seed 0.740); random 0.256, round-robin 0.250. ECE 0.040, Brier 0.207. Review probe:
+after the best arms swap, G = 0.95 reaches 0.213 in the first 100 episodes and 0.713 by episodes
+501–600; G = 1 reaches 0.091 and 0.397, so the discount does its job. 10⁶ episodes take 0.5 s.
+
+**Deviations and decisions**
+- The problem's numbers are not given by any spec. Fixed before the first run and not tuned: 4 arms,
+  5 bins, threshold 0.6 (a bin edge), best arm pays 0.8, the others 0.4.
+- "Within 300 episodes" is read as the best-arm share over episodes 251–300. The spec does not say
+  which episodes count; a rolling or cumulative reading would give other numbers.
+- G1 uses plain Thompson sampling (the largest θ). The director's rule, where a cold cell's correction
+  is exactly 0, is reported beside it as `DirectorCorrection` (0.848, lowest seed 0.540): its wider
+  spread is spec gap S2 showing, a cold arm losing to any warm arm with θ > 0.5.
+- "Cold" means a cell that has never been updated. Whether a thin cell also counts is S2 (WP11).
+- `Update` refuses a credit weight other than 1 (`NotSupportedException`) until S3 is closed in WP11.
+- θ is drawn for a cold cell too, so the number of draws never depends on which cells are cold.
+- Only the updated cell decays, as in `CLAUDE.md` §5. This is also why adaptation after the flip is
+  slow: an arm that stops being picked keeps its old belief.
+
+**Commands**
+```
+dotnet test Tools/dotnet/Thesis.Tests
+dotnet run --project Tools/dotnet/Thesis.Cli -c Release -- synth --seeds 20 --speed-episodes 1000000
+```

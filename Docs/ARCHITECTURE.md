@@ -168,7 +168,7 @@ Assets/
     Learning/    Thesis.Learning.asmdef
       IStrategyEstimator.cs DecisionContext.cs Correction.cs BetaSampler.cs
       BinnedPosterior.cs KernelEstimator.cs EstimatorState.cs CalibrationReport.cs
-      Synthetic/   ThresholdBanditEnv.cs
+      Synthetic/   ThresholdBanditEnv.cs SyntheticRun.cs
     Director/    Thesis.Director.asmdef
       Profile/     BuildProfile.cs IBuildFeature.cs ProfileInput.cs BuildProfiler.cs   [after WP-C1]
         Features/  MazeLength.cs BreachVulnerability.cs ChokepointReliance.cs TowerConcentration.cs DamageTypeMix.cs

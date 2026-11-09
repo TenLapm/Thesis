@@ -99,7 +99,7 @@ Three changes:
 | done | **WP-C1** combat core | W7 | 2026-10-02; includes "every wave must end" (§4.6) |
 | done | **WP-C2** movement classes | W7 | 2026-10-02; Ground, Sapper, Flying |
 | done | **WP-C3** shop, telemetry, wall selling | W8 | 2026-10-11, the last day of W8 |
-| 1, parallel | **WP7** learning | W8–W9 | separate session; **not started** |
+| done | **WP7** learning | W8–W9 | 2026-11-10 (S1 W13); G1-synthetic 0.851 |
 | done | **WP-C4** board, towers and shop UI | W9 | 2026-10-12, with the four decisions of the GDD review |
 | done | **WP-C5** roster and balance check | W9 | 2026-10-12; two of six hypotheses fail, reported |
 | 5 | **WP8** profile | W11 | needs the proposal's §6.2 in the repo |
@@ -625,7 +625,7 @@ This is a sanity check only. The real balancing happens in the S2 W4 balance pas
 
 ---
 
-## WP7 — Learning assembly (independent: can run in a parallel session)
+## WP7 — Learning assembly ✅ done 2026-11-10 (G1-synthetic 0.851, a narrow pass; DEVLOG 2026-11-10)
 
 **Reads:** §5.6, `CLAUDE.md` §5 · **Depends:** WP0 only
 

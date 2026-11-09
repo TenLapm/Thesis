@@ -12,8 +12,9 @@ rounds driven by testers, one `Docs/DEVLOG.md` entry per round. §1 describes th
 file stays as a test fixture). Every round's rules are switched by `SimConfig` and off in the C#
 defaults, so the tests and the pinned replays still exercise the older rules as well.
 ArknightsTest runs the development planner `RoughDirector`
-(`DirectorHost.Condition.DevRoughDirector`), which is not a study condition. **Not built yet:**
-the learner (WP7, not started), the build profile (WP8), the strategies and the threat cost table
+(`DirectorHost.Condition.DevRoughDirector`), which is not a study condition. The learner (WP7) is built
+(2026-11-10; G1-synthetic passes narrowly, `Results/2026-11-10_g1-synth/`). **Not built yet:**
+the build profile (WP8), the strategies and the threat cost table
 (WP9) and the director itself (WP10, WP11). The student finishes the gameplay before WP7 starts.
 A course proposal describing the whole project is in `Docs/proposal/` (2026-10-28).
 
@@ -205,7 +206,8 @@ Assets/Thesis/                pure C#, no UnityEngine; each folder is one assemb
     Replay/   ReplayFile, ReplayRecorder, ReplaySetup
     Debug/    StateHasher, StateDump, AsciiMap, AsciiState, BenchScenarios
     Commands/ Events/ Stats/
-  Learning/   empty until WP7
+  Learning/   BetaSampler, BinnedPosterior, KernelEstimator, CalibrationReport, IStrategyEstimator
+              (WP7); Synthetic/ ThresholdBanditEnv, SyntheticRun (G1-synthetic, `thesis synth`)
   Director/   Telemetry/ only, until WP8: WaveRecord (the row), TelemetryRecorder,
               TelemetryWriter, PlacementEntropy (the primary metric)
   Harness/    editor and headless only: EpisodeRunner, scripted policies (Idle,
@@ -567,7 +569,7 @@ semester-2 rows above still apply.
 Flying is cut if WP-C3 is not finished by the end of W9. The order and the reason
 are in `Docs/WORKPLAN.md`. If W5 began on 14 September the plan is one week behind,
 which is the W15 reserve. **WP-C3 was finished on 2026-10-11, the last day of W8, so
-Flying is not cut.** WP7, which was to run beside it, has not been started.
+Flying is not cut.** WP7, which was to run beside it, was done on 2026-11-10 (S1 W13).
 
 Cut order: (1) generated-strategies stretch goal, (2) the transfer condition,
 (3) the second pilot, (4) n from 24 to 18. **Never cut** determinism, the balance

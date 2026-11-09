@@ -30,6 +30,7 @@ namespace Thesis.Cli
                     case "entropy": return EntropyCmd.Run(args);
                     case "balance": return BalanceCmd.Run(args);
                     case "towers": return TowersCmd.Run(args);
+                    case "synth": return SynthCmd.Run(args);
                     default:
                         Console.Error.WriteLine("Unknown command: " + args[0]);
                         PrintUsage();
@@ -107,9 +108,10 @@ namespace Thesis.Cli
             Console.WriteLine("             [--seeds 10] [--waves 25] [--policies sentry,mixed,restless,idle] [--out dir] [--map f] [--shapes f] [--towers f] [--config f]");
             Console.WriteLine("             [--out dir] [--map f] [--shapes f]");
             Console.WriteLine("  bench    flow-field rebuild sweep + A* comparison   [--out f] [--iterations n] [--seed s]");
+            Console.WriteLine("  synth    G1-synthetic: the learner on the threshold bandit, calibration, the discount probe, a timed long run");
+            Console.WriteLine("             [--seeds 20] [--speed-episodes 1000000] [--estimator binned] [--out dir]   (default Results/<today>_g1-synth)");
             Console.WriteLine();
             Console.WriteLine("planned (see Docs/WORKPLAN.md):");
-            Console.WriteLine("  synth    synthetic bandit runs       (WP7)");
             Console.WriteLine("  balance  tower roster sanity sweep   (WP-C5)");
             Console.WriteLine("  ladder   offline ladder              (WP12)");
             Console.WriteLine("  gate     G1 | G2 | G3                (WP13)");
