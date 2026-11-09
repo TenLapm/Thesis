@@ -62,6 +62,8 @@ dotnet Tools/dotnet/Thesis.Cli/bin/Release/net9.0/thesis.dll bench --iterations 
 python Docs/presentation/make_figures.py
 ```
 
+The deck and `make_figures.py` were removed after the presentation (2026-11-10); they are in git at `11b99bb`.
+
 ## Deviations
 
 - **Mono not measured.** Three attempts to run the timing inside the Unity editor through the MCP bridge timed out.
