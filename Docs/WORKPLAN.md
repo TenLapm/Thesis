@@ -42,8 +42,8 @@ WP-C2 + WP-C3 ──────── WP9 strategies ── WP10 layers ── 
 
 WP6 (telemetry) no longer exists as its own package: it is part of WP-C3 (D8).
 
-**Where things stand (2026-10-11):** WP0 to WP5, WP-H, WP-C1, WP-C2 and WP-C3 are done.
-Next is **WP7** (not started; WP11 waits for it), then **WP8**.
+**Where things stand (2026-11-10):** WP0 to WP5, WP-H, WP-C1 to WP-C5, WP7 and WP8a are done.
+Next is **WP8b** (`breach_vulnerability`, `chokepoint_reliance`), then **WP9**.
 
 ### Revised semester-1 schedule (approved 2026-09-15)
 
@@ -102,7 +102,7 @@ Three changes:
 | done | **WP7** learning | W8–W9 | 2026-11-10 (S1 W13); G1-synthetic 0.851 |
 | done | **WP-C4** board, towers and shop UI | W9 | 2026-10-12, with the four decisions of the GDD review |
 | done | **WP-C5** roster and balance check | W9 | 2026-10-12; two of six hypotheses fail, reported |
-| 5 | **WP8** profile | W11 | needs the proposal's §6.2 in the repo |
+| 5 | **WP8** profile | W11 | S9 closed 2026-11-10; WP8a done 2026-11-10, WP8b next |
 | 6 | **WP9** strategies | W11 | needs the proposal's §6.3 in the repo; S14 (income per wave shape) |
 | 7 | **WP10** layers, recorded plans in the replay | W12 | |
 | 8 | **WP14** director UX and session setup | W12 | needed before the pilot |
@@ -658,9 +658,9 @@ and `Math.Sqrt` only). Compute in `double`, round to `float` once at the end.
 
 ## WP8 — Build profile
 
-**Reads:** §5.3, `CLAUDE.md` §2 · **Depends:** WP-C1, WP-C3 (shop log, telemetry), **S9** (needs the proposal in the repo)
+**Reads:** §5.3, `CLAUDE.md` §2 · **Depends:** WP-C1, WP-C3 (shop log, telemetry), S9 (closed 2026-11-10, ARCHITECTURE §5.3)
 
-- **WP8a (W9):** `IBuildFeature`, `ProfileInput`, `BuildProfile`, `BuildProfiler`, `MazeLength`, `TowerConcentration`, `DamageTypeMix`
+- **WP8a (W9):** `IBuildFeature`, `ProfileInput`, `BuildProfile`, `BuildProfiler`, `MazeLength`, `TowerConcentration`, `DamageTypeMix` ✅ done 2026-11-10 (DEVLOG 2026-11-10)
 - **WP8b (W10):** `BreachVulnerability`, `ChokepointReliance` (uses the `DamageMap` from WP-C1)
 
 **Must pass (ASCII fixtures for each feature)**

@@ -2375,3 +2375,43 @@ after the best arms swap, G = 0.95 reaches 0.213 in the first 100 episodes and 0
 dotnet test Tools/dotnet/Thesis.Tests
 dotnet run --project Tools/dotnet/Thesis.Cli -c Release -- synth --seeds 20 --speed-episodes 1000000
 ```
+
+## 2026-11-10 — WP8a Build profile, the cheap features
+
+**Decided first** (the student, this session; ARCHITECTURE §5.3, S9 closed): the formulas of the five
+features. `maze_length` averages over every candidate entry, not this wave's; rocks count as the
+player's base when they can be dug; only the Ground route counts; `chokepoint_reliance` is about how
+much damage a few towers deal, not about route tiles; `tower_concentration` is measured against the
+area the player built in; damage types stay as they are (three). The student also noted that nothing
+on screen tells the player about resistances (GDD open question 24).
+
+**Changed**
+- `Assets/Thesis/Director/Profile/`: `IBuildFeature`, `FeatureValue` (a value and a has-data flag),
+  `ProfileInput` (grid, entries, empty board, towers, last wave's damage by type; **no shop**, so offers
+  cannot leak in), `EmptyBoard` (ground cost per entry with nothing built, once per map and core),
+  `BuildProfile` (schema 1, fixed-order names, values, flags), `BuildProfiler` (duplicate names refused),
+  `MazeLength`, `TowerConcentration`, `DamageTypeMix`.
+
+**Tests added** (`Assets/Tests/EditMode/Director/BuildProfileTests.cs`, 20): the WP8a must-passes
+(open board 1.0, detour > 1, adjacent towers above opposite corners, one type 0 and an equal mix 1),
+the divide-by-10 guard (checked by removing the division: the test goes red), the shop confound
+rule, rocks counted only when breakable, every entry counted, pylons and wrecks left out, knocked-out
+towers kept, and a played wave read back. Green under .NET (728 of 728) and in the Unity editor (the
+whole EditMode suite, 728 passed, 2 explicit diagnostics skipped).
+
+**Deviations and decisions**
+- `IBuildFeature.Compute` returns `FeatureValue`, not a bare float, to carry the "no data" flag.
+- No data reads 0.5 for every feature that has nothing to read, `tower_concentration` with no towers
+  included (the student's rule was stated for the damage features; the same reason applies).
+- The empty board for breakable rocks is the map with every rock open, so a rock on the way raises
+  `maze_length`. With `RockHealth` 0 rocks are geometry on both boards and change nothing.
+- `maze_length` is a ratio of field costs: digging is priced as distance, as the enemies price it.
+- The built area's box counts whole tiles (one tile is 1 × 1), so the diagonal is never 0.
+- The profile is not in telemetry yet: that bumps the row's schema and re-pins the recorded
+  telemetry, so it goes in with the director (WP10).
+
+**Commands**
+```
+dotnet test Tools/dotnet/Thesis.Tests --filter FullyQualifiedName~BuildProfileTests
+dotnet test Tools/dotnet/Thesis.Tests
+```

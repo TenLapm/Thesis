@@ -539,7 +539,6 @@ decision.
 |---|---|---|---|---|
 | 1 | **How long is a session, and what ends it?** | A fixed length of 25 waves; the session still ends early if the core falls; balance so that an ordinary player gets past wave 15. Reaching the last wave is the win. | you and your supervisor | the balance pass, firmly before the pilot |
 | 4 | **Which wave types,** and what exactly is in each? (S10) | Pick four to six from the proposal's four and the development director's kinds (§7.3), one per weakness the profile can see. | you | WP9 |
-| 5 | **The exact formulas of the five measures.** (S9) | Start from `ARCHITECTURE.md` §5.3 and the proposal's Table 7. | you | WP8 |
 | 6 | **Raids and sieges change the player's income and firepower** (I11, S14). | Count raiders and siege enemies in the shared price list at the value of what they can destroy, or send the same raids in both versions. | you and your supervisor | WP9, before the pilot |
 | 7 | **The banner in the static version.** | Both versions show one: the static one states the wave plainly ("Wave 7: armored and flyers"), the adaptive one also says why. | you and your supervisor | WP14 |
 | 8 | **How does a participant learn the game?** | A short practice run of three waves on a third seed, static, not analysed. | you and your supervisor | the pilot |
@@ -550,11 +549,13 @@ decision.
 | 21 | **What does the static version send?** The fixed cycle of types (§7.1), or plain walkers? | The cycle: otherwise the two versions differ in variety, not in adaptation. | you and your supervisor | WP9 |
 | 22 | **Restarting waves in the study.** | Off in the study build, or counted and reported. | you and your supervisor | the pilot |
 | 23 | **Keys 1 to 3** change the speed and the build-menu tab together. | Give the tabs other keys or none (they lost their labels on 2026-10-28). | delegated | the next round |
+| 24 | **Nothing tells the player that damage types matter** (noted 2026-11-10). A tower's card names its type and the damage panel shows the mix, but no screen says that armored enemies shrug off physical damage or ember enemies fire (only an upgrade tag, "ignores armour", hints at it); they differ from the rest only in colour and size. The development director's `resist_mix` and the `damage_type_mix` measure assume the player can see this. | Show each enemy chip's resistance (an icon or "resists fire") and the type on the route-line legend. | you | the UX pass, before the pilot |
 
 ### Answered
 
 | # | Question | Answer | When |
 |---|---|---|---|
+| 5 | The exact formulas of the five measures (S9) | `ARCHITECTURE.md` §5.3. Damage types stay as they are. | 2026-11-10 |
 | 2 | Which towers? | Eight towers and the pylon (§5.2, §5.5). | 2026-10-24 |
 | 3 | Which enemy types? | The eleven sent today (§6.3). | 2026-10-14 to -26 |
 | 9 | Balance of chewed walls, refunds, rerolls | Chewed walls pay nothing; a sale gives half back, all of it in the build phase of the purchase; no shop, so no rerolls. | 2026-10-20 to -28 |

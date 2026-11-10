@@ -170,7 +170,7 @@ Assets/
       BinnedPosterior.cs KernelEstimator.cs EstimatorState.cs CalibrationReport.cs
       Synthetic/   ThresholdBanditEnv.cs SyntheticRun.cs
     Director/    Thesis.Director.asmdef
-      Profile/     BuildProfile.cs IBuildFeature.cs ProfileInput.cs BuildProfiler.cs   [after WP-C1]
+      Profile/     BuildProfile.cs IBuildFeature.cs FeatureValue.cs ProfileInput.cs EmptyBoard.cs BuildProfiler.cs   [WP8a, built]
         Features/  MazeLength.cs BreachVulnerability.cs ChokepointReliance.cs TowerConcentration.cs DamageTypeMix.cs
       Context/     ContextBucketizer.cs
       Strategies/  IWaveStrategy.cs ThreatCostTable.cs BreachThinWall.cs SwarmChokepoint.cs SplitGroups.cs FlyingBypass.cs
@@ -735,13 +735,20 @@ public interface IBuildFeature { string Name { get; } float Compute(ProfileInput
 `BuildProfile` is a named, fixed-order `float[]`, and its schema version goes into
 telemetry. There is one `IBuildFeature` per proposal feature:
 
-| Feature | Starting definition (confirm in S9) |
+| Feature | Definition (S9, decided by the student 2026-11-10) |
 |---|---|
-| `maze_length` | `bestCost[spawn] / 10` ÷ the same value on an empty board |
-| `breach_vulnerability` | Share of the Ground route's cost that runs through diggable tiles. High means the route depends on walls or towers holding. |
-| `chokepoint_reliance` | 1 − normalised Shannon entropy of `DamageMap` over tiles on the route. High means damage is concentrated on a few tiles. |
-| `tower_concentration` | 1 − (mean tower distance from the tower centroid ÷ map diagonal) |
-| `damage_type_mix` | Normalised entropy of damage dealt per `DamageType` last wave |
+| `maze_length` | Mean over **every** candidate entry in `MapData.Spawns` of `bestCost[spawn] / 10` ÷ the same value on an empty board. Not only the entries this wave uses: those change wave by wave, and the number would move while the player built nothing. |
+| `breach_vulnerability` | Share of the Ground route's cost that runs through diggable tiles, **rocks included**: the player chose where the core stands, so the rocks round it are part of the base. High means the route depends on walls, towers or rocks holding. |
+| `chokepoint_reliance` | **About the towers, not the route:** 1 − normalised Shannon entropy of the damage each tower dealt last wave (`TowerState.DamageDealt`, this wave's increase). 1 means one tower did all the damage; 0 means every tower did an equal share. Different from `tower_concentration`: close towers can share the work, spread ones can leave it to one. |
+| `tower_concentration` | 1 − (mean tower distance from the tower centroid ÷ the diagonal of the **area the player has built in**: the bounding box of their walls, towers and collectors). Building further out widens that box, which is a real change in the base. Towers knocked out by siege count; pylons and collectors do not. |
+| `damage_type_mix` | Normalised entropy of damage dealt per `DamageType` last wave, over the **three** types (physical, fire, frost). Damage types stay as they are (the student, 2026-11-10); frost is a damage type (shard deals 5 a hit), though no enemy sent today resists it. |
+
+All path-based features use the **Ground** route only: flyers ignore the path, and sappers
+and raiders come only with some strategies, so counting their paths would make the profile
+depend on what the director sent. Before wave 1, or after a wave in which nothing was hit,
+the damage-based features (`chokepoint_reliance`, `damage_type_mix`) read **0.5** with a
+"no data" flag set beside the profile. Which feature is binned (S1) is decided after WP8,
+from how the scripted players' values spread.
 
 **Shop confound rule:** a feature describes the board the player chose to build.
 Telemetry also keeps the offers, so the analysis can separate choices the player
@@ -1113,7 +1120,7 @@ Log prefixes: `[Sim]`, `[Director]`, `[Telemetry]`, `[Harness]`, `[Replay]`.
 | S6 | The formula of the threat cost table: price as a function of count, HP, speed, resistances, digRate, and flying | WP9 |
 | S7 | G5 entropy: what the placement distribution is taken over, walls or towers, wave or session, shop-forced changes. **Decided provisionally in §5.9 (D7). Freeze it before the pilot; confirm with the supervisor.** | Before the pilot |
 | S8 | Where the extra spawn points for `split_groups` go on SampleScene | WP9 |
-| S9 | The exact formulas of the five proposal features. §5.3 gives starting definitions, which must be checked against the proposal's §6.2. **The proposal is not in the repository: the student must add it, or those sections, to `Docs/` before WP8.** | WP8 |
+| S9 | The exact formulas of the five proposal features. **Closed 2026-11-10:** the proposal is in `Docs/proposal/` (since `fd56f5f`) and describes the features in words only; the student decided the formulas, which are in §5.3. | Done |
 | S10 | The strategy definitions from the proposal's §6.3 (composition and levers). Also: is damage-type resistance part of each strategy, or a fifth arm? A fifth arm means 5×5 = 25 cells and raises the data G4 needs. | WP9 |
 | S11 | Shop rules: offers per roll, single-use slots, rerolls and their cost, sell refund for towers and for walls (D6), whether selling is allowed during a wave, and whether the shop stays open during waves. **Built in WP-C3 with the values in the §4.6 table** (4 offers, single use, no rerolls, half back on a sale, selling between waves only, shop open during waves). They are `SimConfig` numbers and stay open to the balance pass; changing one after the pilot means re-recording, not re-coding. | Balance (WP-C5, S2 W4) |
 | S12 | Tower roster v1 (types, damage types, range, fire rate, splash, slow, anti-air); enemy archetypes and the HP escalation formula; `SapperDigCostFactor`; whether wall and tower breaches pay the player under the tower economy | WP-C5 |
