@@ -42,8 +42,9 @@ WP-C2 + WP-C3 ──────── WP9 strategies ── WP10 layers ── 
 
 WP6 (telemetry) no longer exists as its own package: it is part of WP-C3 (D8).
 
-**Where things stand (2026-11-10):** WP0 to WP5, WP-H, WP-C1 to WP-C5, WP7 and WP8a are done.
-Next is **WP8b** (`breach_vulnerability`, `chokepoint_reliance`), then **WP9**.
+**Where things stand (2026-11-16):** WP0 to WP5, WP-H, WP-C1 to WP-C5, WP7 and WP8 are done.
+Next is **WP9**, which waits on spec gaps S6 (the cost table's formula), S10 (the strategy pool) and
+S14 (raids and income). S8 is out of date: the generated map has entries all round its edge.
 
 ### Revised semester-1 schedule (approved 2026-09-15)
 
@@ -102,7 +103,7 @@ Three changes:
 | done | **WP7** learning | W8–W9 | 2026-11-10 (S1 W13); G1-synthetic 0.851 |
 | done | **WP-C4** board, towers and shop UI | W9 | 2026-10-12, with the four decisions of the GDD review |
 | done | **WP-C5** roster and balance check | W9 | 2026-10-12; two of six hypotheses fail, reported |
-| 5 | **WP8** profile | W11 | S9 closed 2026-11-10; WP8a done 2026-11-10, WP8b next |
+| done | **WP8** profile | W11 | S9 closed 2026-11-10; WP8a done 2026-11-10, WP8b 2026-11-16 |
 | 6 | **WP9** strategies | W11 | needs the proposal's §6.3 in the repo; S14 (income per wave shape) |
 | 7 | **WP10** layers, recorded plans in the replay | W12 | |
 | 8 | **WP14** director UX and session setup | W12 | needed before the pilot |
@@ -656,19 +657,19 @@ and `Math.Sqrt` only). Compute in `double`, round to `float` once at the end.
 
 ---
 
-## WP8 — Build profile
+## WP8 — Build profile ✅ done 2026-11-16 (DEVLOG 2026-11-10 and 2026-11-16)
 
 **Reads:** §5.3, `CLAUDE.md` §2 · **Depends:** WP-C1, WP-C3 (shop log, telemetry), S9 (closed 2026-11-10, ARCHITECTURE §5.3)
 
 - **WP8a (W9):** `IBuildFeature`, `ProfileInput`, `BuildProfile`, `BuildProfiler`, `MazeLength`, `TowerConcentration`, `DamageTypeMix` ✅ done 2026-11-10 (DEVLOG 2026-11-10)
-- **WP8b (W10):** `BreachVulnerability`, `ChokepointReliance` (uses the `DamageMap` from WP-C1)
+- **WP8b (W10):** `BreachVulnerability`, `ChokepointReliance` ✅ done 2026-11-16. Since the student's S9 answer, `chokepoint_reliance` reads each tower's damage last wave (`TowerState.WaveDamage`), not the `DamageMap`.
 
 **Must pass (ASCII fixtures for each feature)**
 - On an open board, `maze_length` = 1.0 and `breach_vulnerability` = 0.
 - A wall across the only corridor gives `breach_vulnerability` > 0. A detour around a wall gives `breach_vulnerability` = 0 and `maze_length` > 1.
 - Adjacent towers have higher `tower_concentration` than towers at opposite corners.
 - `damage_type_mix`: all damage of one type gives 0, and equal damage across all types gives 1.
-- `chokepoint_reliance`: damage spread evenly over the route gives 0, and all damage on one tile gives 1.
+- `chokepoint_reliance`: damage shared equally by every tower gives 0, and all damage from one tower gives 1. *(Reworded 2026-11-16 for the student's S9 answer; it first said route tiles.)*
 - Every feature that uses cost divides by 10 (a regression test fails if that division is removed).
 - **Shop confound rule:** on the same board, every feature is identical no matter which unbought offers were rolled.
 

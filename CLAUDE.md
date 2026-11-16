@@ -13,10 +13,9 @@ file stays as a test fixture). Every round's rules are switched by `SimConfig` a
 defaults, so the tests and the pinned replays still exercise the older rules as well.
 ArknightsTest runs the development planner `RoughDirector`
 (`DirectorHost.Condition.DevRoughDirector`), which is not a study condition. The learner (WP7) is built
-(2026-11-10; G1-synthetic passes narrowly, `Results/2026-11-10_g1-synth/`), and so is the first half
-of the build profile (WP8a: `maze_length`, `tower_concentration`, `damage_type_mix`; the formulas the
-student decided are in `Docs/ARCHITECTURE.md` §5.3). **Not built yet:** the rest of the build profile
-(WP8b), the strategies and the threat cost table
+(2026-11-10; G1-synthetic passes narrowly, `Results/2026-11-10_g1-synth/`), and so is the build
+profile (WP8, 2026-11-16: the proposal's five features, with the formulas the student decided in
+`Docs/ARCHITECTURE.md` §5.3). **Not built yet:** the strategies and the threat cost table
 (WP9) and the director itself (WP10, WP11). The student finishes the gameplay before WP7 starts.
 A course proposal describing the whole project is in `Docs/proposal/` (2026-10-28).
 
@@ -213,7 +212,7 @@ Assets/Thesis/                pure C#, no UnityEngine; each folder is one assemb
   Director/   Telemetry/: WaveRecord (the row), TelemetryRecorder, TelemetryWriter,
               PlacementEntropy (the primary metric); Profile/ (WP8a): BuildProfiler, BuildProfile,
               ProfileInput, EmptyBoard, IBuildFeature, FeatureValue; Features/ MazeLength,
-              TowerConcentration, DamageTypeMix
+              BreachVulnerability, ChokepointReliance, TowerConcentration, DamageTypeMix (WP8b)
   Harness/    editor and headless only: EpisodeRunner, scripted policies (Idle,
               GreedyDetour, Sentry, Seller, Sequence), ReplayRunner, PinnedEpisodes, PathfindingBench
 Assets/Scripts/               Unity host and views
@@ -294,9 +293,9 @@ Consequences to keep in mind:
   three tiers in the game; the tetromino bag remains for the tests). Everything in §8 about the flow field still applies. The one addition is
   that the player can sell them (`Docs/ARCHITECTURE.md` §4.6).
 - The proposal's five features now describe the game: `maze_length`,
-  `breach_vulnerability`, `chokepoint_reliance` (entropy of damage per path tile),
-  `tower_concentration` and `damage_type_mix`. Their exact formulas are spec gaps
-  in `Docs/ARCHITECTURE.md` §10.
+  `breach_vulnerability`, `chokepoint_reliance` (how much of last wave's damage a few
+  towers dealt), `tower_concentration` and `damage_type_mix`. Their formulas were decided
+  by the student on 2026-11-10 (`Docs/ARCHITECTURE.md` §5.3, S9) and built in WP8.
 - **Shop randomness is a confound for the primary metric.** Random offers push
   players to rebuild in *both* conditions. Therefore offers are a pure function of
   `(rngSeed, waveIndex, rerollCount)` (I10), telemetry records what was offered,
@@ -316,8 +315,8 @@ Consequences to keep in mind:
 - A wall breach pays nothing in the game (`WallBreakReward` 0 since 2026-10-20).
 
 The combat core exists since WP-C1 and the shop log since WP-C3 (the build log, and each
-telemetry row's `shop` block), so `BuildProfiler` is blocked only by the feature
-formulas (spec gap S9: the proposal's §6.2 is not in the repository yet).
+telemetry row's `shop` block). `BuildProfiler` and the five features are built (WP8,
+2026-11-16); the profile goes into telemetry with the director (WP10).
 
 ---
 

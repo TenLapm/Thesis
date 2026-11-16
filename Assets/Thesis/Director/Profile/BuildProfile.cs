@@ -8,7 +8,9 @@ namespace Thesis.Director
     public sealed class BuildProfile
     {
         // 1: WP8a, maze_length, tower_concentration, damage_type_mix (2026-11-10).
-        public const int SchemaVersion = 1;
+        // 2: WP8b, the proposal's five: breach_vulnerability and chokepoint_reliance added in
+        //    the proposal's order (2026-11-16). Schema 1 was never written to a file.
+        public const int SchemaVersion = 2;
 
         public readonly int Schema;
         public readonly string[] Names;

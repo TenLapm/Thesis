@@ -2415,3 +2415,41 @@ whole EditMode suite, 728 passed, 2 explicit diagnostics skipped).
 dotnet test Tools/dotnet/Thesis.Tests --filter FullyQualifiedName~BuildProfileTests
 dotnet test Tools/dotnet/Thesis.Tests
 ```
+
+## 2026-11-16 — WP8b The last two features; the build profile is complete
+
+**Changed**
+- `Director/Profile/Features/BreachVulnerability.cs`: for every candidate entry, walk the Ground
+  field to the core and take the share of the route's cost that comes from steps leaving a
+  diggable tile (`SimNode.HasWall`: wall, tower, collector, breakable rock). A step's cost is
+  `BestCost` here minus `BestCost` at the next tile, exactly what the flood charged. Mean over
+  entries, as `maze_length`.
+- `Director/Profile/Features/ChokepointReliance.cs`: 1 − the normalised entropy of each tower's
+  damage last wave (`TowerState.WaveDamage`), over the towers that count (`CountsAsTower`).
+- `BuildProfiler.Default()` holds the proposal's five in its order; `BuildProfile.SchemaVersion` is
+  2 (schema 1 was never written to a file).
+
+**Tests added** (`Assets/Tests/EditMode/Director/BreachAndChokepointTests.cs`, 15): the WP8b
+must-passes (open board 0; a wall across the only corridor exactly 150/200; a detour 0 with a longer
+maze; one tower doing all the damage 1; equal shares 0), plus every entry counted, a share of cost
+not of tiles, breakable rocks counted and solid ones not, two of four towers 0.5, position not
+mattering, pylons and wrecks left out, and no data before a wave, without towers or without hits.
+Removing the "is it diggable" check on purpose turns five of them red. Green under .NET (743 of
+743) and in the Unity editor (the whole EditMode suite: 743 passed, 2 explicit diagnostics skipped).
+
+**Deviations and decisions**
+- The WP8b must-pass for `chokepoint_reliance` was written for the old route-tile definition;
+  reworded in WORKPLAN for the student's S9 answer (towers, not tiles).
+- A tower that dealt nothing last wave still counts (it is part of the spread). A tower destroyed
+  during the wave is gone, and its damage with it: the profile describes the base that is left.
+- The profile is read as the build phase begins. A tower built after that has a `WaveDamage` of 0;
+  the director never reads the profile then, so it does not matter, but a caller that does must know.
+- A first rock fixture failed for a geometry reason, not a code one: passing one rock tile
+  diagonally (28) is cheaper than digging it (30), so the walkers really do go round. The fixture
+  uses a column of three rocks.
+
+**Commands**
+```
+dotnet test Tools/dotnet/Thesis.Tests --filter FullyQualifiedName~Thesis.Tests.Director
+dotnet test Tools/dotnet/Thesis.Tests
+```

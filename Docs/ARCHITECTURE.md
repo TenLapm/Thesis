@@ -170,7 +170,7 @@ Assets/
       BinnedPosterior.cs KernelEstimator.cs EstimatorState.cs CalibrationReport.cs
       Synthetic/   ThresholdBanditEnv.cs SyntheticRun.cs
     Director/    Thesis.Director.asmdef
-      Profile/     BuildProfile.cs IBuildFeature.cs FeatureValue.cs ProfileInput.cs EmptyBoard.cs BuildProfiler.cs   [WP8a, built]
+      Profile/     BuildProfile.cs IBuildFeature.cs FeatureValue.cs ProfileInput.cs EmptyBoard.cs BuildProfiler.cs   [WP8, built]
         Features/  MazeLength.cs BreachVulnerability.cs ChokepointReliance.cs TowerConcentration.cs DamageTypeMix.cs
       Context/     ContextBucketizer.cs
       Strategies/  IWaveStrategy.cs ThreatCostTable.cs BreachThinWall.cs SwarmChokepoint.cs SplitGroups.cs FlyingBypass.cs
@@ -738,8 +738,8 @@ telemetry. There is one `IBuildFeature` per proposal feature:
 | Feature | Definition (S9, decided by the student 2026-11-10) |
 |---|---|
 | `maze_length` | Mean over **every** candidate entry in `MapData.Spawns` of `bestCost[spawn] / 10` ÷ the same value on an empty board. Not only the entries this wave uses: those change wave by wave, and the number would move while the player built nothing. |
-| `breach_vulnerability` | Share of the Ground route's cost that runs through diggable tiles, **rocks included**: the player chose where the core stands, so the rocks round it are part of the base. High means the route depends on walls, towers or rocks holding. |
-| `chokepoint_reliance` | **About the towers, not the route:** 1 − normalised Shannon entropy of the damage each tower dealt last wave (`TowerState.DamageDealt`, this wave's increase). 1 means one tower did all the damage; 0 means every tower did an equal share. Different from `tower_concentration`: close towers can share the work, spread ones can leave it to one. |
+| `breach_vulnerability` | Share of the Ground route's cost that runs through diggable tiles, **rocks included**: the player chose where the core stands, so the rocks round it are part of the base. High means the route depends on walls, towers or rocks holding. A step's cost is read off the field (`BestCost` here minus `BestCost` at the next tile), and a step counts as dug when it leaves a tile with `HasWall`. Mean over every candidate entry, as `maze_length`. |
+| `chokepoint_reliance` | **About the towers, not the route:** 1 − normalised Shannon entropy of the damage each tower dealt last wave (`TowerState.WaveDamage`, which holds last wave's damage until the next wave starts). 1 means one tower did all the damage; 0 means every tower did an equal share. Different from `tower_concentration`: close towers can share the work, spread ones can leave it to one. |
 | `tower_concentration` | 1 − (mean tower distance from the tower centroid ÷ the diagonal of the **area the player has built in**: the bounding box of their walls, towers and collectors). Building further out widens that box, which is a real change in the base. Towers knocked out by siege count; pylons and collectors do not. |
 | `damage_type_mix` | Normalised entropy of damage dealt per `DamageType` last wave, over the **three** types (physical, fire, frost). Damage types stay as they are (the student, 2026-11-10); frost is a damage type (shard deals 5 a hit), though no enemy sent today resists it. |
 

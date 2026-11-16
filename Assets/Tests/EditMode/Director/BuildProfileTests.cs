@@ -238,7 +238,7 @@ namespace Thesis.Tests.Director
             BuildProfile p = BuildProfiler.Default().Profile(Input(Area, new[] { Tower(1, 3, 2) }));
 
             Assert.AreEqual(BuildProfile.SchemaVersion, p.Schema);
-            CollectionAssert.AreEqual(new[] { "maze_length", "tower_concentration", "damage_type_mix" }, p.Names);
+            CollectionAssert.AreEqual(new[] { "maze_length", "breach_vulnerability", "chokepoint_reliance", "tower_concentration", "damage_type_mix" }, p.Names);
             Assert.AreEqual(p.Names.Length, p.Values.Length);
             Assert.AreEqual(p.Names.Length, p.HasData.Length);
 

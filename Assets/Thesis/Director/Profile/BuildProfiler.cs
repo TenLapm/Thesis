@@ -24,11 +24,13 @@ namespace Thesis.Director
             this.features = (IBuildFeature[])features.Clone();
         }
 
-        // The proposal's order, with the WP8b features (breach_vulnerability after
-        // maze_length, chokepoint_reliance before tower_concentration) still to come.
+        // The proposal's five, in its order.
         public static BuildProfiler Default()
         {
-            return new BuildProfiler(new IBuildFeature[] { new MazeLength(), new TowerConcentration(), new DamageTypeMix() });
+            return new BuildProfiler(new IBuildFeature[]
+            {
+                new MazeLength(), new BreachVulnerability(), new ChokepointReliance(), new TowerConcentration(), new DamageTypeMix(),
+            });
         }
 
         public IReadOnlyList<string> Names => names;
