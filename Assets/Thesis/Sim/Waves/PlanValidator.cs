@@ -48,10 +48,16 @@ namespace Thesis.Sim
             if (pricer != null)
             {
                 float budget = pricer.BudgetForWave(wave);
-                float price = pricer.Price(plan);
-                if (Math.Abs(plan.ThreatSpent - budget) > config.ThreatEpsilon)
+                float price;
+                // A table may refuse a group it has no price for (ThreatCostTable: resistances,
+                // raiders, siege). That is a bad plan, not a crash in the middle of a tick.
+                try { price = pricer.Price(plan); }
+                catch (ArgumentException e) { return "cannot be priced by the cost table: " + e.Message; }
+                // Relative to the budget (SimConfig.ThreatEpsilon).
+                float tolerance = (float)(config.ThreatEpsilon * Math.Max(1f, Math.Abs(budget)));
+                if (Math.Abs(plan.ThreatSpent - budget) > tolerance)
                     return "spends " + plan.ThreatSpent + " but the wave's threat budget is " + budget + " (I2).";
-                if (Math.Abs(price - plan.ThreatSpent) > config.ThreatEpsilon)
+                if (Math.Abs(price - plan.ThreatSpent) > tolerance)
                     return "claims ThreatSpent " + plan.ThreatSpent + " but the cost table prices it at " + price + ".";
             }
 

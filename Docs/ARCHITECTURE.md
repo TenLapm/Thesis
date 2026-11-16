@@ -173,7 +173,7 @@ Assets/
       Profile/     BuildProfile.cs IBuildFeature.cs FeatureValue.cs ProfileInput.cs EmptyBoard.cs BuildProfiler.cs   [WP8, built]
         Features/  MazeLength.cs BreachVulnerability.cs ChokepointReliance.cs TowerConcentration.cs DamageTypeMix.cs
       Context/     ContextBucketizer.cs
-      Strategies/  IWaveStrategy.cs ThreatCostTable.cs BreachThinWall.cs SwarmChokepoint.cs SplitGroups.cs FlyingBypass.cs
+      Strategies/  IWaveStrategy.cs ThreatCostTable.cs StrategyKit.cs StrategyPool.cs BreachThinWall.cs SwarmChokepoint.cs SplitGroups.cs FlyingBypass.cs   [WP9, built]
       Layers/      IConstraint.cs VetoReason.cs IHeuristic.cs AuthoredHeuristic.cs
         Constraints/ OverBudget.cs RepeatStreak.cs Uncounterable.cs TooSimilarToPrevious.cs
       Decision/    WaveDirector.cs DirectorMode.cs DirectorTrace.cs StrategyRow.cs DecisionHistory.cs
@@ -764,8 +764,16 @@ public interface IWaveStrategy { int Id { get; } string Name { get; }
 I2 is anchored to the static baseline: **`BudgetForWave(w) =
 ThreatCostTable.Price(EscalationPlanner.Plan(w))`**. Every strategy spends
 exactly that amount, and `Simulation.ValidatePlan` throws if
-`|plan.ThreatSpent − budget| > config.ThreatEpsilon`. As `CLAUDE.md` I2 requires,
-only the cost table gets tuned.
+`|plan.ThreatSpent − budget| > config.ThreatEpsilon × budget` (relative since WP9: at wave 40 a
+budget is in the thousands, where a float's last bit alone is above an absolute 1e-3). As
+`CLAUDE.md` I2 requires, only the cost table gets tuned.
+
+**As built (WP9, 2026-11-16).** A strategy shapes its groups from the baseline's walker with an
+`EnemyArchetype`, then `StrategyKit.Fit` chooses each group's count as the nearest whole number its
+share of the budget buys and scales every group's hit points by one common factor for the remainder.
+So the type keeps its character (a swarm is many weak enemies) and the budget is spent exactly.
+`IWaveStrategy.BuildPlan(threatBudget, context, rng)`; `Id` is the arm in the learner, in the
+order of `StrategyPool.Study`.
 
 ### 5.5 Layers
 
@@ -1117,12 +1125,12 @@ Log prefixes: `[Sim]`, `[Director]`, `[Telemetry]`, `[Harness]`, `[Replay]`.
 | S3 | How the `0.5^lag` credit weight combines with the Bernoulli update: scale `r` before the draw, or apply a fractional update? | WP11 |
 | S4 | τ for `restructure`, and the normalisation centres for the L1 distance on profiles | WP11 |
 | S5 | What counts as "got close to the core" for `pressure` (a radius in tile units) | WP3 (field) / WP11 (reward) |
-| S6 | The formula of the threat cost table: price as a function of count, HP, speed, resistances, digRate, and flying | WP9 |
+| S6 | The formula of the threat cost table. **Decided 2026-11-16 (the student):** an enemy's price is its hit points × its speed × a factor for its movement class (Ground 1; Flying and Sapper each their own). A group costs its count times that; a plan costs the sum. Only relative prices matter, because the budget is the price of the static baseline's wave. The two class factors are **measured** with the scripted players (how much harder each class is to stop), not guessed; until that measurement they are 1. Resistances, raiders and siege enemies are not priced: the table refuses a group that has them. | WP9 |
 | S7 | G5 entropy: what the placement distribution is taken over, walls or towers, wave or session, shop-forced changes. **Decided provisionally in §5.9 (D7). Freeze it before the pilot; confirm with the supervisor.** | Before the pilot |
-| S8 | Where the extra spawn points for `split_groups` go on SampleScene | WP9 |
+| S8 | Where the extra spawn points for `split_groups` go. **Closed 2026-11-16:** out of date. SampleScene is gone; the generated map has entries all round its edge (`MapGenerator`). | Done |
 | S9 | The exact formulas of the five proposal features. **Closed 2026-11-10:** the proposal is in `Docs/proposal/` (since `fd56f5f`) and describes the features in words only; the student decided the formulas, which are in §5.3. | Done |
-| S10 | The strategy definitions from the proposal's §6.3 (composition and levers). Also: is damage-type resistance part of each strategy, or a fifth arm? A fifth arm means 5×5 = 25 cells and raises the data G4 needs. | WP9 |
+| S10 | The strategy pool. **Decided 2026-11-16 (the student):** the proposal's four, `breach_thin_wall` (sappers at the thinnest wall), `swarm_chokepoint` (many weak enemies through the gap the player relies on most), `split_groups` (from several entries at once: always the most the game uses, three, or fewer if the map has fewer) and `flying_bypass` (flyers over the maze). 5 bins × 4 strategies, as the learner is built. Resistance is not an arm. The development director's other strategies stay in `RoughDirector` only. | WP9 |
 | S11 | Shop rules: offers per roll, single-use slots, rerolls and their cost, sell refund for towers and for walls (D6), whether selling is allowed during a wave, and whether the shop stays open during waves. **Built in WP-C3 with the values in the §4.6 table** (4 offers, single use, no rerolls, half back on a sale, selling between waves only, shop open during waves). They are `SimConfig` numbers and stay open to the balance pass; changing one after the pilot means re-recording, not re-coding. | Balance (WP-C5, S2 W4) |
 | S12 | Tower roster v1 (types, damage types, range, fire rate, splash, slow, anti-air); enemy archetypes and the HP escalation formula; `SapperDigCostFactor`; whether wall and tower breaches pay the player under the tower economy | WP-C5 |
 | S13 | Study design with a shop: a participant who plays both conditions on the same seed sees the same offers twice and may remember them. **Decided (D9, §6): two seed sets crossed with condition and order.** | Done |
-| S14 | **Income depends on the wave's shape.** `KillReward` is paid per enemy. A strategy that spends the same threat budget on fewer, stronger enemies therefore pays the player less, and flyers the player cannot hit pay nothing; so the director's choice changes the player's budget, which I11 forbids. *(Found in WP-C2: against the development planner's half-size sapper and flyer waves the tower bot runs out of money and loses in wave 5; against the escalation it lasts to wave 10.)* Options: pay a kill in proportion to the enemy's price in the threat table, so a wave that is wiped out pays the same whatever its shape; or pay per wave, not per kill. | WP9 |
+| S14 | **Income depends on the wave's shape.** `KillReward` is paid per enemy. A strategy that spends the same threat budget on fewer, stronger enemies therefore pays the player less, and flyers the player cannot hit pay nothing; so the director's choice changes the player's budget, which I11 forbids. *(Found in WP-C2: against the development planner's half-size sapper and flyer waves the tower bot runs out of money and loses in wave 5; against the escalation it lasts to wave 10.)* Options: pay a kill in proportion to the enemy's price in the threat table, so a wave that is wiped out pays the same whatever its shape; or pay per wave, not per kill. **Closed for the study 2026-11-16 (the student):** the study pool sends no raiders and no siege enemies, and the cost table refuses them, so a strategy cannot touch income or firepower beyond what the baseline does. Raids and sieges stay in the development director. The kill reward is 0 since 2026-10-20. | Done |

@@ -15,8 +15,9 @@ ArknightsTest runs the development planner `RoughDirector`
 (`DirectorHost.Condition.DevRoughDirector`), which is not a study condition. The learner (WP7) is built
 (2026-11-10; G1-synthetic passes narrowly, `Results/2026-11-10_g1-synth/`), and so is the build
 profile (WP8, 2026-11-16: the proposal's five features, with the formulas the student decided in
-`Docs/ARCHITECTURE.md` §5.3). **Not built yet:** the strategies and the threat cost table
-(WP9) and the director itself (WP10, WP11). The student finishes the gameplay before WP7 starts.
+`Docs/ARCHITECTURE.md` §5.3), and so are the study's four strategies and the threat cost table
+(WP9, 2026-11-16; the table's flyer and sapper factors are still 1 until they are measured). **Not
+built yet:** the director itself (WP10, WP11). The student finishes the gameplay before WP7 starts.
 A course proposal describing the whole project is in `Docs/proposal/` (2026-10-28).
 
 Read §1 and §2 before writing any code.
@@ -212,7 +213,9 @@ Assets/Thesis/                pure C#, no UnityEngine; each folder is one assemb
   Director/   Telemetry/: WaveRecord (the row), TelemetryRecorder, TelemetryWriter,
               PlacementEntropy (the primary metric); Profile/ (WP8a): BuildProfiler, BuildProfile,
               ProfileInput, EmptyBoard, IBuildFeature, FeatureValue; Features/ MazeLength,
-              BreachVulnerability, ChokepointReliance, TowerConcentration, DamageTypeMix (WP8b)
+              BreachVulnerability, ChokepointReliance, TowerConcentration, DamageTypeMix (WP8b);
+              Strategies/ (WP9): ThreatCostTable (I2), IWaveStrategy, StrategyKit, StrategyPool,
+              BreachThinWall, SwarmChokepoint, SplitGroups, FlyingBypass, FixedStrategyPlanner
   Harness/    editor and headless only: EpisodeRunner, scripted policies (Idle,
               GreedyDetour, Sentry, Seller, Sequence), ReplayRunner, PinnedEpisodes, PathfindingBench
 Assets/Scripts/               Unity host and views

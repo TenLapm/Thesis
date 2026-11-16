@@ -2453,3 +2453,58 @@ Removing the "is it diggable" check on purpose turns five of them red. Green und
 dotnet test Tools/dotnet/Thesis.Tests --filter FullyQualifiedName~Thesis.Tests.Director
 dotnet test Tools/dotnet/Thesis.Tests
 ```
+
+## 2026-11-16 — WP9 The study's four strategies and the threat cost table
+
+**Decided first** (the student, this session; `ARCHITECTURE.md` §10): S10, the pool is the
+proposal's four; S6, an enemy costs hit points × speed × a factor for its movement class, the
+factors to be measured rather than guessed; S14, closed for the study by keeping raiders and siege
+enemies out of the pool; `split_groups` always uses the most entries the game uses (three); S8
+closed as out of date.
+
+**Changed**
+- `Director/Strategies/ThreatCostTable.cs` (`IThreatPricer`): the price, and the budget as the
+  price of `EscalationPlanner.PlanFor(w)`. It refuses (ArgumentException) resistances, raiders and
+  siege enemies, which have no price.
+- `StrategyKit` (the baseline's walker of a wave, the candidate entries, and `Fit`),
+  `IWaveStrategy`, `StrategyPool.Study` (breach 0, swarm 1, split 2, flying 3: the learner's arms),
+  and the four strategies:
+  - `breach_thin_wall`: all sappers, from the entry with the cheapest sapper route (the least of the
+    player's wall in the way).
+  - `swarm_chokepoint`: all swarm, from the entry whose route passes the most of last wave's damage
+    (the towers that reach it); before any damage, the most towers.
+  - `split_groups`: plain walkers shared over three entries at least `MinEntrySpacingTiles` apart,
+    all at once, the entries drawn from the strategy's stream.
+  - `flying_bypass`: all flyers, from the entry whose straight line passes the fewest towers that
+    hit flyers.
+- `FixedStrategyPlanner`: one strategy every wave at the table's budget, for tests and the coming
+  measurement. Not a study condition.
+- `Sim/Waves/PlanValidator.cs`: the I2 tolerance is now `ThreatEpsilon × budget`, and a plan the
+  table refuses becomes a rejected plan instead of an exception in the middle of a tick.
+
+**Tests added** (`Assets/Tests/EditMode/Director/StrategyTests.cs`, 21): every WP9 must-pass. I2 for
+waves 1 to 40, every strategy, two configs, made-up class factors; the budget is the baseline's
+price; plans repeat for a seed; split uses three spaced entries (two on a two-entry map); flyers,
+sappers, swarm; no raiders, siege or resistances; each strategy's choice of entry on an ASCII board;
+five real waves per strategy with the simulation enforcing the table; planning leaves the config,
+the tower definitions, the budget and the state hash untouched (I11); nothing can be built on an
+entry. Removing the hit-point fit on purpose turns the I2 test and the live run red. Green under
+.NET (764 of 764) and in the Unity editor (764 passed, 2 explicit diagnostics skipped).
+
+**Deviations and decisions**
+- The I2 tolerance became relative. At wave 40 the budget is in the thousands, where one float step is
+  above the old absolute 1e-3, so no plan could pass it.
+- The fit chooses counts first and scales hit points by one factor (within half an enemy of 1), so a
+  type keeps its character. Hit points, not counts, absorb the remainder because counts are whole.
+- The class factors are 1 until measured, so today a flyer costs what a walker of the same hit
+  points and speed costs. That makes flyers stronger than the table says until the measurement.
+- The live test first failed because the core fell in wave 1 (no towers, default core). The test
+  gives the core 100000 hit points, so five waves are really played.
+- Not done: the measurement; `Config/ThreatCostTableAsset.cs` (waits for the host wiring, WP10); the
+  `ClassCyclePlanner` clean-up and its pinned episode.
+
+**Commands**
+```
+dotnet test Tools/dotnet/Thesis.Tests --filter FullyQualifiedName~StrategyTests
+dotnet test Tools/dotnet/Thesis.Tests
+```

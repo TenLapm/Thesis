@@ -538,8 +538,6 @@ decision.
 | # | Question | Suggestion | Who decides | Needed by |
 |---|---|---|---|---|
 | 1 | **How long is a session, and what ends it?** | A fixed length of 25 waves; the session still ends early if the core falls; balance so that an ordinary player gets past wave 15. Reaching the last wave is the win. | you and your supervisor | the balance pass, firmly before the pilot |
-| 4 | **Which wave types,** and what exactly is in each? (S10) | Pick four to six from the proposal's four and the development director's kinds (§7.3), one per weakness the profile can see. | you | WP9 |
-| 6 | **Raids and sieges change the player's income and firepower** (I11, S14). | Count raiders and siege enemies in the shared price list at the value of what they can destroy, or send the same raids in both versions. | you and your supervisor | WP9, before the pilot |
 | 7 | **The banner in the static version.** | Both versions show one: the static one states the wave plainly ("Wave 7: armored and flyers"), the adaptive one also says why. | you and your supervisor | WP14 |
 | 8 | **How does a participant learn the game?** | A short practice run of three waves on a third seed, static, not analysed. | you and your supervisor | the pilot |
 | 12 | **A name for the game,** and the company and product name in the build settings. | — | you | the first build that records data |
@@ -555,6 +553,8 @@ decision.
 
 | # | Question | Answer | When |
 |---|---|---|---|
+| 4 | Which wave types? (S10) | The proposal's four: breach, swarm, split, flying (`ARCHITECTURE.md` §10). | 2026-11-16 |
+| 6 | Raids and sieges change income and firepower (I11, S14) | Not in the study's pool; they stay in the development director. | 2026-11-16 |
 | 5 | The exact formulas of the five measures (S9) | `ARCHITECTURE.md` §5.3. Damage types stay as they are. | 2026-11-10 |
 | 2 | Which towers? | Eight towers and the pylon (§5.2, §5.5). | 2026-10-24 |
 | 3 | Which enemy types? | The eleven sent today (§6.3). | 2026-10-14 to -26 |

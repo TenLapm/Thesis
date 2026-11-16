@@ -366,7 +366,9 @@ namespace Thesis.Sim
         // is closed; it only feeds WaveOutcome.PressureShare, which nothing reads yet.
         public float PressureRadiusTiles = 5f;
 
-        // Allowed |ThreatSpent - budget| when an IThreatPricer is present (I2).
+        // Allowed |ThreatSpent - budget| when an IThreatPricer is present (I2), as a share of
+        // the budget (WP9, 2026-11-16). It was absolute until a cost table existed; at wave 40
+        // a budget is in the thousands, where a float's last bit alone is above 1e-3.
         public float ThreatEpsilon = 1e-3f;
 
         public int Ticks(float seconds)
