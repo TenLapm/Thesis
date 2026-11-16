@@ -47,11 +47,13 @@ namespace Thesis.Tests.Director
         }
 
         [Test]
-        public void TheClassFactorsAreOneUntilTheyAreMeasured()
+        public void TheTableUsesTheMeasuredClassFactorsUnlessToldOtherwise()
         {
+            // Results/2026-11-16_threat-factors: flyers 2.35, sappers 1.30.
             var table = new ThreatCostTable(new SimConfig(), Generated());
-            Assert.AreEqual(1f, table.FlyingFactor);
-            Assert.AreEqual(1f, table.SapperFactor);
+            Assert.AreEqual(2.35f, table.FlyingFactor);
+            Assert.AreEqual(1.30f, table.SapperFactor);
+            Assert.Greater(table.FlyingFactor, table.SapperFactor, "flyers are the harder to stop");
         }
 
         [Test]

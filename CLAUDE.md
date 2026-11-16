@@ -16,8 +16,10 @@ ArknightsTest runs the development planner `RoughDirector`
 (2026-11-10; G1-synthetic passes narrowly, `Results/2026-11-10_g1-synth/`), and so is the build
 profile (WP8, 2026-11-16: the proposal's five features, with the formulas the student decided in
 `Docs/ARCHITECTURE.md` §5.3), and so are the study's four strategies and the threat cost table
-(WP9, 2026-11-16; the table's flyer and sapper factors are still 1 until they are measured). **Not
-built yet:** the director itself (WP10, WP11). The student finishes the gameplay before WP7 starts.
+(WP9, 2026-11-16; its flyer and sapper factors, 2.35 and 1.30, were measured with the new scripted
+player `BuilderPolicy`, `Results/2026-11-16_threat-factors/`). **Not built yet:** the director itself
+(WP10, WP11). The older scripted players were written for the random shop and lose wave 1 under
+today's rules; `builder` is the one that plays the game (7 to 16 waves against the baseline). The student finishes the gameplay before WP7 starts.
 A course proposal describing the whole project is in `Docs/proposal/` (2026-10-28).
 
 Read §1 and §2 before writing any code.
@@ -217,7 +219,9 @@ Assets/Thesis/                pure C#, no UnityEngine; each folder is one assemb
               Strategies/ (WP9): ThreatCostTable (I2), IWaveStrategy, StrategyKit, StrategyPool,
               BreachThinWall, SwarmChokepoint, SplitGroups, FlyingBypass, FixedStrategyPlanner
   Harness/    editor and headless only: EpisodeRunner, scripted policies (Idle,
-              GreedyDetour, Sentry, Seller, Sequence), ReplayRunner, PinnedEpisodes, PathfindingBench
+              GreedyDetour, Sentry, Seller, Sequence, Raid; Builder, the only one for today's
+              rules), GameMaps (the game's 48 x 48 map), ReplayRunner, PinnedEpisodes,
+              PathfindingBench, ThreatCalibration (`thesis threat`)
 Assets/Scripts/               Unity host and views
   SimHost.cs               runs the Simulation: fixed ticks, input in, events out, records the
                            replay and the telemetry; generates the map from the seed
@@ -246,7 +250,8 @@ Assets/Scripts/               Unity host and views
   Editor/                  MapExporter, ShapeExporter, TowerExporter, ConfigExporter, ReplayMenu, BuildGuard
 Assets/Tests/EditMode/        one set of tests, run by Unity and by `dotnet test`
 Tools/dotnet/                 headless build of Assets/Thesis, and Thesis.Cli
-                              (run, replay, ascii, pin, bench, telemetry, trace, entropy, balance, towers)
+                              (run, replay, ascii, pin, bench, telemetry, trace, entropy, balance, towers,
+                              synth, threat)
 Tools/gdd/                    makes Docs/GDD.pdf and the pictures in Docs/gdd from Docs/GDD.md
 Docs/proposal/                the course proposal (Proposal.docx and .pdf), its figures, the
                               Graphviz sources and the script that builds it (build-proposal.js)

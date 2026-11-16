@@ -11,8 +11,10 @@ namespace Thesis.Director
     //
     // Only relative prices matter: the budget is itself a price, so every strategy spends what
     // the baseline's wave would cost. Ground's factor is 1. The Flying and Sapper factors are
-    // MEASURED with the scripted players (how much harder each class is to stop), not guessed;
-    // until that measurement they are 1 (WP9). Only this table gets tuned (I2).
+    // MEASURED, not guessed (Results/2026-11-16_threat-factors, `thesis threat`): with the
+    // builder player on 20 game maps, flyers get half a wave through on 1/2.35 of the budget
+    // walkers need, sappers on 1/1.30. Only this table gets tuned (I2); the balance pass
+    // measures again on the final game.
     //
     // Not priced, and refused with an ArgumentException: resistances, raiders and siege enemies.
     // The study's pool sends none of them (S10, S14), so a strategy cannot change the player's
@@ -20,12 +22,16 @@ namespace Thesis.Director
     // into a rejected plan.
     public sealed class ThreatCostTable : IThreatPricer
     {
+        // Results/2026-11-16_threat-factors (20 seeds; 40 seeds gave 2.18 and 1.25).
+        public const float MeasuredFlyingFactor = 2.35f;
+        public const float MeasuredSapperFactor = 1.30f;
+
         public readonly float FlyingFactor;
         public readonly float SapperFactor;
 
         private readonly EscalationPlanner baseline;
 
-        public ThreatCostTable(SimConfig config, MapData map, float flyingFactor = 1f, float sapperFactor = 1f)
+        public ThreatCostTable(SimConfig config, MapData map, float flyingFactor = MeasuredFlyingFactor, float sapperFactor = MeasuredSapperFactor)
         {
             if (config == null) throw new ArgumentNullException(nameof(config));
             if (map == null) throw new ArgumentNullException(nameof(map));

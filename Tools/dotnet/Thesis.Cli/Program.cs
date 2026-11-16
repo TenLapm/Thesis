@@ -31,6 +31,7 @@ namespace Thesis.Cli
                     case "balance": return BalanceCmd.Run(args);
                     case "towers": return TowersCmd.Run(args);
                     case "synth": return SynthCmd.Run(args);
+                case "threat": return ThreatCmd.Run(args);
                     default:
                         Console.Error.WriteLine("Unknown command: " + args[0]);
                         PrintUsage();
@@ -110,6 +111,8 @@ namespace Thesis.Cli
             Console.WriteLine("  bench    flow-field rebuild sweep + A* comparison   [--out f] [--iterations n] [--seed s]");
             Console.WriteLine("  synth    G1-synthetic: the learner on the threshold bandit, calibration, the discount probe, a timed long run");
             Console.WriteLine("             [--seeds 20] [--speed-episodes 1000000] [--estimator binned] [--out dir]   (default Results/<today>_g1-synth)");
+            Console.WriteLine("  threat   the cost table's flyer and sapper factors, measured with the builder player on game maps");
+            Console.WriteLine("             [--seeds 20] [--waves 3,5,7] [--iterations 14] [--config file] [--out dir]   (default Results/<today>_threat-factors)");
             Console.WriteLine();
             Console.WriteLine("planned (see Docs/WORKPLAN.md):");
             Console.WriteLine("  balance  tower roster sanity sweep   (WP-C5)");

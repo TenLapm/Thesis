@@ -25,7 +25,7 @@ namespace Thesis.Cli
         public static int Run(string[] argv)
         {
             var args = new Args(argv,
-                new[] { "--map", "--gen-map", "--towers", "--shapes", "--config", "--planner", "--policy", "--seed", "--waves", "--out" },
+                new[] { "--map", "--gen-map", "--game-map", "--towers", "--shapes", "--config", "--planner", "--policy", "--seed", "--waves", "--out" },
                 new[] { "--per-tick", "--wait" });
             args.NoMorePositionals(0);
 
@@ -37,7 +37,9 @@ namespace Thesis.Cli
             {
                 Config = LoadConfig(args.Get("--config", null)),
                 // --gen-map <seed>: a generated 32 x 32 map (MapGenerator) instead of a map file.
-                Map = args.Get("--gen-map", null) != null ? MapGenerator.Generate(args.GetULong("--gen-map", 1))
+                // --game-map <seed>: the map the game itself generates from that seed (GameMaps: 48 x 48).
+                Map = args.Get("--game-map", null) != null ? GameMaps.Generate(args.GetULong("--game-map", 1))
+                    : args.Get("--gen-map", null) != null ? MapGenerator.Generate(args.GetULong("--gen-map", 1))
                                                            : MapData.Load(args.Get("--map", Path.Combine("Maps", "SampleScene.map.json"))),
                 Shapes = ShapeLibraryFile.Load(args.Get("--shapes", Path.Combine("Maps", "Shapes.json"))),
                 Towers = TowerLibraryFile.Load(args.Get("--towers", Path.Combine("Maps", "Towers.json"))),

@@ -43,9 +43,8 @@ WP-C2 + WP-C3 ──────── WP9 strategies ── WP10 layers ── 
 WP6 (telemetry) no longer exists as its own package: it is part of WP-C3 (D8).
 
 **Where things stand (2026-11-16):** WP0 to WP5, WP-H, WP-C1 to WP-C5, WP7 and WP8 are done.
-**WP9** is built apart from one measurement (2026-11-16: S6, S8, S10 and S14 closed by the student):
-the cost table's flyer and sapper factors are 1 until they are measured with the scripted players.
-After that, **WP10**.
+**WP9** is built (2026-11-16: S6, S8, S10 and S14 closed by the student; the cost table's factors
+measured, flyer 2.35 and sapper 1.30, with the new `BuilderPolicy`). Next is **WP10**.
 
 ### Revised semester-1 schedule (approved 2026-09-15)
 
@@ -105,7 +104,7 @@ Three changes:
 | done | **WP-C4** board, towers and shop UI | W9 | 2026-10-12, with the four decisions of the GDD review |
 | done | **WP-C5** roster and balance check | W9 | 2026-10-12; two of six hypotheses fail, reported |
 | done | **WP8** profile | W11 | S9 closed 2026-11-10; WP8a done 2026-11-10, WP8b 2026-11-16 |
-| 6 | **WP9** strategies | W11 | built 2026-11-16; the cost table's class factors still to be measured |
+| done | **WP9** strategies | W11 | 2026-11-16; factors measured (`Results/2026-11-16_threat-factors`) |
 | 7 | **WP10** layers, recorded plans in the replay | W12 | |
 | 8 | **WP14** director UX and session setup | W12 | needed before the pilot |
 | 9 | **WP11** full director | W13 | |
@@ -681,9 +680,10 @@ and `Math.Sqrt` only). Compute in `double`, round to `float` once at the end.
 **As built (2026-11-16).** The student closed S6, S8, S10 and S14 first (`ARCHITECTURE.md` §10). Built:
 `Director/Strategies/` (`ThreatCostTable`, `IWaveStrategy`, `StrategyKit`, `StrategyPool`, the four
 strategies, `FixedStrategyPlanner`), the I2 check made relative to the budget, and 21 tests covering
-every must-pass below. **Not done yet:** measuring the flyer and sapper factors with the scripted players
-(they are 1 until then); `Config/ThreatCostTableAsset.cs`, which waits for the director to be wired into
-the host (WP10); and the `ClassCyclePlanner` clean-up. "Multi-spawn support" and "the extra spawn
+every must-pass below. The flyer and sapper factors were then measured (flyer 2.35, sapper 1.30;
+`Results/2026-11-16_threat-factors`), which first needed a scripted player for today's rules
+(`BuilderPolicy`: the older ones lose wave 1). **Moved to WP10:** `Config/ThreatCostTableAsset.cs`, which
+waits for the director to be wired into the host, and the `ClassCyclePlanner` clean-up. "Multi-spawn support" and "the extra spawn
 points in SampleScene" were done by the generated map (2026-10-13) and are no longer needed.
 
 

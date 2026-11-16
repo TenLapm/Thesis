@@ -2508,3 +2508,52 @@ entry. Removing the hit-point fit on purpose turns the I2 test and the live run 
 dotnet test Tools/dotnet/Thesis.Tests --filter FullyQualifiedName~StrategyTests
 dotnet test Tools/dotnet/Thesis.Tests
 ```
+
+## 2026-11-16 — A scripted player for today's rules, and the cost table's factors measured
+
+**Found first.** The measurement of the flyer and sapper factors was to use the scripted players. Run
+under the game's own rules (`Maps/SimConfig.json`, a generated map), all four main ones (`raider`,
+`sentry`, `mixed`, `turtle`) lose wave 1: they were written for the random shop, three of them place no
+tower, and `raider`'s three towers stand out of power reach and kill nothing. The student chose to build
+a player for today's rules first, since the offline ladder and gates G1 to G3 need one as well.
+
+**Changed**
+- `Harness/Policies/BuilderPolicy.cs` (`builder`): confirms the core, repairs it at half, keeps
+  1 + wave/2 collectors on the free deposits nearest the core, and puts towers into free places of a
+  power source, on the tile that sees the most of the announced route (a wall laid first on open
+  ground), with at least a third able to hit flyers. No selling, research or mazing. Against the
+  static baseline on game maps 1 to 8 it lasts 7 to 16 waves (median about 10) with 8 to 17 towers.
+- `Harness/GameMaps.cs`: the map the game generates from a seed (48 x 48, 22 ridges, 28 deposits in
+  fours, as in the ArknightsTest scene). `thesis run --game-map <seed>` uses it.
+- `Harness/Bench/ThreatCalibration.cs` and CLI `threat`: boards from `builder` against the baseline,
+  copied at waves 3, 5 and 7; on each copy one wave of a single type from the baseline's entry at the
+  budget × a strength, with a core that cannot fall; bisection for the strength at which half the
+  wave gets through.
+- `ThreatCostTable`: the measured factors are the defaults (flyer 2.35, sapper 1.30).
+
+**Result** (`Results/2026-11-16_threat-factors/`, hypothesis written before the run): 59 boards
+from 20 seeds. Walkers get half a wave through at 3.45 x the budget, sappers at 2.64 x, flyers at
+1.47 x: **sapper factor 1.30, flyer factor 2.35**. Both hypotheses held (flyers above 1; sappers
+between 0.67 and 1.5). A check on 40 seeds gave 1.25 and 2.18, within 4 % and 8 %.
+
+**Tests added** (10): `BuilderPolicyTests` (the game map; six waves of the baseline survived on three
+of three seeds; every tower powered, a third anti-air, a collector; the same seed plays the same
+game) and `ThreatCalibrationTests` (a board at the asked wave; leak grows with strength; a probe is
+repeatable and leaves the board untouched; the search finds the half-leak strength). Green under
+.NET (774 of 774) and in the Unity editor.
+
+**Deviations and decisions**
+- The factors are compared where half a wave gets through, not at the normal budget: a player still
+  alive at waves 3 to 7 lets almost nothing through at strength 1 (a first board leaked 0), and a
+  share near 0 says little. Decided after that first look, before the 20-seed run.
+- One scripted player, one entry, three wave numbers. `builder` mazes little, so sappers have little
+  to dig through; against a human who mazes more the sapper factor may be higher.
+- The table takes the planned 20-seed numbers; the 40-seed check is reported beside them.
+- `Config/ThreatCostTableAsset.cs` and the `ClassCyclePlanner` clean-up move to WP10.
+
+**Commands**
+```
+dotnet run --project Tools/dotnet/Thesis.Cli -c Release -- threat --seeds 20 --waves 3,5,7 --iterations 14
+dotnet run --project Tools/dotnet/Thesis.Cli -c Release -- run --game-map 1 --policy builder --seed 1 --waves 30
+dotnet test Tools/dotnet/Thesis.Tests
+```
