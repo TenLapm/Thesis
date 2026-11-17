@@ -165,7 +165,7 @@ public class HudOverlay : MonoBehaviour
 
         // The director's line; in a build phase without one, what to do.
         WavePlan plan = build ? s.NextPlan : s.CurrentPlan;
-        string line = plan != null ? RoughDirector.Line(plan.AnnouncementId) : null;
+        string line = plan != null ? (Thesis.Director.AnnouncementTable.Line(plan.AnnouncementId) ?? RoughDirector.Line(plan.AnnouncementId)) : null;
         if (line == null && build && !builder.ChoosingCore) line = "Build, then start the wave.";
         banner.gameObject.SetActive(line != null && !builder.ChoosingCore);
         if (line != null && line != bannerText.text) { Set(bannerText, line); FitBanner(); }

@@ -18,7 +18,10 @@ profile (WP8, 2026-11-16: the proposal's five features, with the formulas the st
 `Docs/ARCHITECTURE.md` §5.3), and so are the study's four strategies and the threat cost table
 (WP9, 2026-11-16; its flyer and sapper factors, 2.35 and 1.30, were measured with the new scripted
 player `BuilderPolicy`, `Results/2026-11-16_threat-factors/`). **Not built yet:** the director itself
-(WP10, WP11). The older scripted players were written for the random shop and lose wave 1 under
+(WP10 is built apart from the replay of recorded plans, 2026-11-18: the heuristic director with its
+constraints, a selectable condition `DirectorHost.Condition.HeuristicDirector`; WP11, the learning and
+the reward, is not). Its numbers are the student's provisional choices (`DirectorConfig.Provisional()`,
+S1 in `Docs/ARCHITECTURE.md` §10), to be revisited at the threshold freeze. The older scripted players were written for the random shop and lose wave 1 under
 today's rules; `builder` is the one that plays the game (7 to 16 waves against the baseline). The student finishes the gameplay before WP7 starts.
 A course proposal describing the whole project is in `Docs/proposal/` (2026-10-28).
 
@@ -217,7 +220,10 @@ Assets/Thesis/                pure C#, no UnityEngine; each folder is one assemb
               ProfileInput, EmptyBoard, IBuildFeature, FeatureValue; Features/ MazeLength,
               BreachVulnerability, ChokepointReliance, TowerConcentration, DamageTypeMix (WP8b);
               Strategies/ (WP9): ThreatCostTable (I2), IWaveStrategy, StrategyKit, StrategyPool,
-              BreachThinWall, SwarmChokepoint, SplitGroups, FlyingBypass, FixedStrategyPlanner
+              BreachThinWall, SwarmChokepoint, SplitGroups, FlyingBypass, FixedStrategyPlanner;
+              (WP10) Layers/ Constraints, AuthoredHeuristic; Context/ ContextBucketizer;
+              Decision/ WaveDirector, DirectorTrace, DirectorConfig; Baselines/ RandomPlanner,
+              RoundRobinPlanner; Announce/ AnnouncementTable; PlannerFactory (every planner by name)
   Harness/    editor and headless only: EpisodeRunner, scripted policies (Idle,
               GreedyDetour, Sentry, Seller, Sequence, Raid; Builder, the only one for today's
               rules), GameMaps (the game's 48 x 48 map), ReplayRunner, PinnedEpisodes,
@@ -251,7 +257,7 @@ Assets/Scripts/               Unity host and views
 Assets/Tests/EditMode/        one set of tests, run by Unity and by `dotnet test`
 Tools/dotnet/                 headless build of Assets/Thesis, and Thesis.Cli
                               (run, replay, ascii, pin, bench, telemetry, trace, entropy, balance, towers,
-                              synth, threat)
+                              synth, threat, profile)
 Tools/gdd/                    makes Docs/GDD.pdf and the pictures in Docs/gdd from Docs/GDD.md
 Docs/proposal/                the course proposal (Proposal.docx and .pdf), its figures, the
                               Graphviz sources and the script that builds it (build-proposal.js)

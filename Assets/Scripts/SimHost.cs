@@ -269,7 +269,7 @@ public class SimHost : MonoBehaviour
         runConfig = (configAsset != null ? configAsset.config : new SimConfig()).Clone();
         // The gear inventory needs the bottom bar to be seen and used: a scene without it plays without one.
         if (FindFirstObjectByType<DeckBar>() == null) runConfig.GearInventorySlots = 0;
-        IWavePlanner planner = directorHost != null ? directorHost.CreatePlanner(runConfig, map) : new EscalationPlanner(runConfig, map);
+        IWavePlanner planner = directorHost != null ? directorHost.CreatePlanner(runConfig, map, Seed) : new EscalationPlanner(runConfig, map);
         sim = new Simulation(runConfig, map, blockManager.BuildShapeLibrary(), BuildTowerRoster(), Seed, planner);
         flowManager.Bind(sim.State.Grid);
         if (generateMap) ShowCore();

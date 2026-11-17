@@ -16,7 +16,7 @@ namespace Thesis.Harness
         public static Simulation NewSimulation(ReplayFile file)
         {
             if (file == null) throw new ArgumentNullException(nameof(file));
-            IWavePlanner planner = Registry.CreatePlanner(file.Planner, file.Config, file.MapData);
+            IWavePlanner planner = Registry.CreatePlanner(file.Planner, file.Config, file.MapData, file.RngSeed);
             return new Simulation(file.Config, file.MapData, file.Shapes, file.Towers, file.RngSeed, planner);
         }
 

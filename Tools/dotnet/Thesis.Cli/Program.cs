@@ -32,6 +32,7 @@ namespace Thesis.Cli
                     case "towers": return TowersCmd.Run(args);
                     case "synth": return SynthCmd.Run(args);
                 case "threat": return ThreatCmd.Run(args);
+                case "profile": return ProfileCmd.Run(args);
                     default:
                         Console.Error.WriteLine("Unknown command: " + args[0]);
                         PrintUsage();
@@ -113,6 +114,8 @@ namespace Thesis.Cli
             Console.WriteLine("             [--seeds 20] [--speed-episodes 1000000] [--estimator binned] [--out dir]   (default Results/<today>_g1-synth)");
             Console.WriteLine("  threat   the cost table's flyer and sapper factors, measured with the builder player on game maps");
             Console.WriteLine("             [--seeds 20] [--waves 3,5,7] [--iterations 14] [--config file] [--out dir]   (default Results/<today>_threat-factors)");
+            Console.WriteLine("  profile  how the build profile's features spread over the builder player's boards on game maps (S1)");
+            Console.WriteLine("             [--seeds 20] [--waves 20] [--config file]");
             Console.WriteLine();
             Console.WriteLine("planned (see Docs/WORKPLAN.md):");
             Console.WriteLine("  balance  tower roster sanity sweep   (WP-C5)");

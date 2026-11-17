@@ -35,6 +35,7 @@ namespace Thesis.Director
         private int tickStart;
         private int tickResolved = -1;
         private WaveRecord.PlanRow plan;
+        private DirectorTrace decision; // the director's account of this wave, or null (WP10)
         private WaveRecord.OutcomeRow outcome;
         private string[] offered;
         private string stateHash;
@@ -155,11 +156,52 @@ namespace Thesis.Director
             tickStart = s.CurrentOutcome != null ? s.CurrentOutcome.TickStarted : s.Tick - 1;
             tickResolved = -1;
             plan = PlanRow(s.CurrentPlan);
+            decision = Decision(waveIndex);
             outcome = null;
             offered = null;
             stateHash = null;
             fallback = null;
             NoteFallback(waveIndex);
+        }
+
+        // The planner's account of how it chose this wave, when it keeps one (IDecisionSource), and
+        // only if it is the plan that was actually sent: a SafePlanner fallback sent another.
+        private DirectorTrace Decision(int waveIndex)
+        {
+            IWavePlanner p = sim.Planner;
+            var safe = p as SafePlanner;
+            if (safe != null) p = safe.Inner;
+            var source = p as IDecisionSource;
+            DirectorTrace t = source == null ? null : source.TraceFor(waveIndex);
+            if (t == null || plan == null || t.Chosen != plan.Strategy) return null;
+            return t;
+        }
+
+        private static NamedValues ProfileRow(BuildProfile p)
+        {
+            var v = new NamedValues();
+            for (int i = 0; i < p.Names.Length; i++) v.Add(p.Names[i], p.Values[i]);
+            return v;
+        }
+
+        private static WaveRecord.StrategyScore[] Scores(DirectorTrace t)
+        {
+            var rows = new WaveRecord.StrategyScore[t.Rows.Count];
+            for (int i = 0; i < rows.Length; i++)
+            {
+                StrategyRow r = t.Rows[i];
+                rows[i] = new WaveRecord.StrategyScore
+                {
+                    Id = r.Name,
+                    Veto = r.Veto,
+                    Heuristic = r.Heuristic,
+                    Theta = r.Correction.HasValue ? (float?)r.Correction.Value.Theta : null,
+                    Cold = r.Correction.HasValue ? (bool?)r.Correction.Value.Cold : null,
+                    Correction = r.Correction.HasValue ? (float?)r.Correction.Value.Value : null,
+                    Score = r.Score,
+                };
+            }
+            return rows;
         }
 
         // SafePlanner reports the last wave it had to rescue; pick it up if it is ours.
@@ -209,7 +251,15 @@ namespace Thesis.Director
                 TickStart = tickStart,
                 TickResolved = tickResolved,
                 TickEnd = tickEnd,
-                Fallback = fallback,
+                Fallback = fallback ?? (decision != null ? decision.Fallback : null),
+                Profile = decision != null ? ProfileRow(decision.Profile) : null,
+                Bin = decision != null ? (int?)decision.Bin : null,
+                ThreatBudget = decision != null ? (float?)decision.ThreatBudget : null,
+                Strategies = decision != null ? Scores(decision) : null,
+                Chosen = decision != null ? decision.Chosen : null,
+                Announcement = decision != null ? decision.Announcement : null,
+                // DirectorMicros stays null: wall-clock time never goes into a row (CLAUDE.md §7);
+                // the director keeps it on its trace for gate G2.
                 Plan = plan,
                 Outcome = outcome,
                 Placements = placements.ToArray(),

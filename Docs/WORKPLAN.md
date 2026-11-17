@@ -44,7 +44,8 @@ WP6 (telemetry) no longer exists as its own package: it is part of WP-C3 (D8).
 
 **Where things stand (2026-11-16):** WP0 to WP5, WP-H, WP-C1 to WP-C5, WP7 and WP8 are done.
 **WP9** is built (2026-11-16: S6, S8, S10 and S14 closed by the student; the cost table's factors
-measured, flyer 2.35 and sapper 1.30, with the new `BuilderPolicy`). Next is **WP10**.
+measured, flyer 2.35 and sapper 1.30, with the new `BuilderPolicy`). **WP10** is built apart from the
+replay of recorded plans (2026-11-18); that part, then **WP11**.
 
 ### Revised semester-1 schedule (approved 2026-09-15)
 
@@ -105,7 +106,7 @@ Three changes:
 | done | **WP-C5** roster and balance check | W9 | 2026-10-12; two of six hypotheses fail, reported |
 | done | **WP8** profile | W11 | S9 closed 2026-11-10; WP8a done 2026-11-10, WP8b 2026-11-16 |
 | done | **WP9** strategies | W11 | 2026-11-16; factors measured (`Results/2026-11-16_threat-factors`) |
-| 7 | **WP10** layers, recorded plans in the replay | W12 | |
+| 7 | **WP10** layers, recorded plans in the replay | W12 | layers and director built 2026-11-18; recorded plans not yet |
 | 8 | **WP14** director UX and session setup | W12 | needed before the pilot |
 | 9 | **WP11** full director | W13 | |
 | 10 | **WP12** harness and ladder | W14 | |
@@ -706,7 +707,16 @@ threat budget pay the player less (measured in WP-C2). The cost table and the ki
 
 ---
 
-## WP10 — Constraints, heuristic, bucketizer, heuristic-only director
+## WP10 — Constraints, heuristic, bucketizer, heuristic-only director — built 2026-11-18, apart from the recorded plans
+
+**As built (2026-11-18, DEVLOG).** The student accepted provisional answers on 2026-11-16 (S1 and the
+director's numbers, `DirectorConfig.Provisional()`; ARCHITECTURE §10 S1). Built: the four constraints, the
+authored heuristic, the bucketizer, `WaveDirector` (HeuristicOnly, and Full reading an estimator without
+updating it), `RandomPlanner` and `RoundRobinPlanner`, `AnnouncementTable`, `DirectorConfig` and
+`PlannerFactory` (used by `Harness.Registry` and `DirectorHost`). The director's decision goes into each
+telemetry row. Every must-pass below has a test **except the last**: the replay does not yet store each
+wave's plan (`RecordedPlanner`, `replay --rerun-director`); that is the next step. Telemetry made again
+from a replay matches byte for byte, because the director is rebuilt from its name and the seed.
 
 **Reads:** §5.2, §5.5 · **Depends:** WP8a, WP9, **S1**
 

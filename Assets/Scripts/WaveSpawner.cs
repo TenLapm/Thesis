@@ -86,7 +86,7 @@ public class WaveSpawner : MonoBehaviour
         get
         {
             WavePlan plan = Host.State.NextPlan;
-            return plan == null ? "" : RoughDirector.Line(plan.AnnouncementId) ?? "";
+            return plan == null ? "" : Thesis.Director.AnnouncementTable.Line(plan.AnnouncementId) ?? RoughDirector.Line(plan.AnnouncementId) ?? "";
         }
     }
 

@@ -1,4 +1,5 @@
 using System;
+using Thesis.Director;
 using Thesis.Sim;
 
 namespace Thesis.Harness
@@ -10,22 +11,16 @@ namespace Thesis.Harness
     {
         // class-cycle is a development planner, not a study condition: it sends
         // sappers and flyers until the director's strategies exist (WP9).
-        public static readonly string[] PlannerNames = { EscalationPlanner.Id, ClassCyclePlanner.Id, RaidPlanner.Id, RoughDirector.Id };
+        public static readonly string[] PlannerNames = PlannerFactory.Names;
 
         public static readonly string[] PolicyNames = { IdlePolicy.Id, GreedyDetourPolicy.Id, SentryPolicy.Id, SentryPolicy.UpgraderId, SequencePolicy.MixedId, SequencePolicy.RestlessId, RaidPolicy.Id, SentryPolicy.TurtleId, BuilderPolicy.Id };
 
-        // The director's planners register here as they are built (WP7 baselines,
-        // WP10 heuristic, WP11 full director).
-        public static IWavePlanner CreatePlanner(string name, SimConfig config, MapData map)
+        // One factory for every planner (Thesis.Director.PlannerFactory, WP10), shared with the
+        // Unity host. The seed is the run's rngSeed: the director and the ladder planners draw
+        // their own streams from it.
+        public static IWavePlanner CreatePlanner(string name, SimConfig config, MapData map, ulong seed = 1)
         {
-            switch (name)
-            {
-                case EscalationPlanner.Id: return new EscalationPlanner(config, map);
-                case ClassCyclePlanner.Id: return new ClassCyclePlanner(config, map);
-                case RaidPlanner.Id: return new RaidPlanner(config, map);
-                case RoughDirector.Id: return new RoughDirector(config, map);
-                default: throw new ArgumentException("Unknown planner '" + name + "'. Known: " + string.Join(", ", PlannerNames) + ".");
-            }
+            return PlannerFactory.Create(name, config, map, seed);
         }
 
         public static IPlayerPolicy CreatePolicy(string name)

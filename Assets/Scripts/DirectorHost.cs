@@ -1,3 +1,4 @@
+using Thesis.Director;
 using Thesis.Sim;
 using UnityEngine;
 
@@ -11,6 +12,15 @@ public class DirectorHost : MonoBehaviour
     {
         // The game as it exists today: WaveSpawner's escalation, ported verbatim.
         StaticEscalation = 0,
+
+        // The director without learning (WP10): layers 1 and 2 over the study's four strategies.
+        // The ablation condition. The student plays it before it replaces the development director.
+        HeuristicDirector = 1,
+
+        // The bottom rungs of the offline ladder, playable for a look: a strategy at random, or
+        // the four in turn. Not study conditions.
+        LadderRandom = 200,
+        LadderRoundRobin = 201,
 
         // NOT a study condition. A development planner that sends sappers and
         // flyers in a fixed four-wave cycle (ground, sappers, flyers, all three), so
@@ -26,11 +36,22 @@ public class DirectorHost : MonoBehaviour
 
     public Condition condition = Condition.StaticEscalation;
 
-    public IWavePlanner CreatePlanner(SimConfig config, MapData map)
+    // seed: the session's rngSeed; the director and the ladder planners draw their streams from it.
+    public IWavePlanner CreatePlanner(SimConfig config, MapData map, ulong seed)
     {
         IWavePlanner planner;
         switch (condition)
         {
+            case Condition.HeuristicDirector:
+                planner = PlannerFactory.Create(WaveDirector.HeuristicId, config, map, seed);
+                Debug.Log("[Director] the heuristic director (WP10): the study's four strategies, chosen by authored scores. No learning yet.");
+                break;
+            case Condition.LadderRandom:
+                planner = PlannerFactory.Create(RandomPlanner.Id, config, map, seed);
+                break;
+            case Condition.LadderRoundRobin:
+                planner = PlannerFactory.Create(RoundRobinPlanner.Id, config, map, seed);
+                break;
             case Condition.DevClassCycle:
                 planner = new ClassCyclePlanner(config, map);
                 Debug.Log("[Director] DEVELOPMENT planner 'class-cycle': waves cycle ground, sappers (orange, dig through walls), flyers (blue, fly over everything; "

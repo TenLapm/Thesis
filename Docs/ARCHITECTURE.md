@@ -174,10 +174,10 @@ Assets/
         Features/  MazeLength.cs BreachVulnerability.cs ChokepointReliance.cs TowerConcentration.cs DamageTypeMix.cs
       Context/     ContextBucketizer.cs
       Strategies/  IWaveStrategy.cs ThreatCostTable.cs StrategyKit.cs StrategyPool.cs BreachThinWall.cs SwarmChokepoint.cs SplitGroups.cs FlyingBypass.cs   [WP9, built]
-      Layers/      IConstraint.cs VetoReason.cs IHeuristic.cs AuthoredHeuristic.cs
-        Constraints/ OverBudget.cs RepeatStreak.cs Uncounterable.cs TooSimilarToPrevious.cs
-      Decision/    WaveDirector.cs DirectorMode.cs DirectorTrace.cs StrategyRow.cs DecisionHistory.cs
-        Baselines/ RandomPlanner.cs RoundRobinPlanner.cs
+      Layers/      Constraints.cs (OverBudget, RepeatStreak, Uncounterable, TooSimilarToPrevious) AuthoredHeuristic.cs   [WP10, built]
+      Decision/    WaveDirector.cs DirectorTrace.cs (DirectorMode, StrategyRow, IDecisionSource) DirectorConfig.cs   [WP10, built]
+      Baselines/   LadderPlanners.cs (RandomPlanner, RoundRobinPlanner)   [WP10, built]
+      PlannerFactory.cs   every planner by name; Harness.Registry and DirectorHost call it   [WP10, built]
       Reward/      RewardEvaluator.cs RewardBreakdown.cs CreditAssigner.cs
       Announce/    AnnouncementTable.cs
       Telemetry/   WaveRecord.cs TelemetryRecorder.cs TelemetryWriter.cs
@@ -1120,7 +1120,7 @@ Log prefixes: `[Sim]`, `[Director]`, `[Telemetry]`, `[Harness]`, `[Replay]`.
 
 | # | Gap | Needed by |
 |---|---|---|
-| S1 | Which single feature is binned into 5 bins, and which two features form the kernel's 2-D subspace | WP10 |
+| S1 | Which single feature is binned into 5 bins, and which two features form the kernel's 2-D subspace. **Decided provisionally 2026-11-16 (the student, "for now"):** `chokepoint_reliance`, cut at 0.06 / 0.10 / 0.14 / 0.22 (its 20/40/60/80 % points over the builder player's boards, `thesis profile`); a profile without its data goes in bin 2; the kernel's coordinates are `tower_concentration` and `maze_length`, normalised over their 5 to 95 % range. Rests on a scripted player, not humans: **revisit at the threshold freeze (I6) with the pilot's data.** `DirectorConfig.Provisional()`. | Threshold freeze |
 | S2 | How the kernel prior combines with a cell's own counts (add `k·Q̂` on top of α/β, or replace them?), the value of `k`, and the definition of a "thin" or "cold" cell | WP11 |
 | S3 | How the `0.5^lag` credit weight combines with the Bernoulli update: scale `r` before the draw, or apply a fractional update? | WP11 |
 | S4 | τ for `restructure`, and the normalisation centres for the L1 distance on profiles | WP11 |

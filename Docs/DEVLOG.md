@@ -2557,3 +2557,61 @@ dotnet run --project Tools/dotnet/Thesis.Cli -c Release -- threat --seeds 20 --w
 dotnet run --project Tools/dotnet/Thesis.Cli -c Release -- run --game-map 1 --policy builder --seed 1 --waves 30
 dotnet test Tools/dotnet/Thesis.Tests
 ```
+
+## 2026-11-18 — WP10 The heuristic director (layers 1 and 2), without the recorded-plan replay
+
+**Decided first** (2026-11-16, the student: "do as you suggest for now but remember the impact"). With
+the builder player now able to play, `thesis profile` (new) measured how the features spread over 227
+build phases on 20 game maps. The student then accepted, provisionally: S1 = `chokepoint_reliance`
+cut at its 20/40/60/80 % points (0.06 / 0.10 / 0.14 / 0.22), kernel = `tower_concentration` and
+`maze_length`; the heuristic mapping breach ← breach_vulnerability, swarm ← chokepoint_reliance,
+split ← tower_concentration, flying ← maze_length, each over its 5 to 95 % range × 4 (0 to 4); a plan
+within L2 0.1 of last wave's (shares per enemy type, entries / 3) vetoed, at most 2 in a row as a
+backstop; flyers vetoed without a powered anti-air tower; one plain banner line per strategy; the game
+keeps the development director. Each choice and what it affects is in memory
+(`wp10-provisional-decisions`). Found on the way: this player almost never makes enemies dig
+(`breach_vulnerability` 0 on 95 % of its boards), so breach rarely wins on the heuristic alone.
+
+**Changed**
+- `Director/Layers/`: `OverBudget`, `RepeatStreak`, `Uncounterable`, `TooSimilarToPrevious`; `AuthoredHeuristic`.
+- `Director/Context/ContextBucketizer.cs`; `Director/Decision/`: `DirectorConfig` (every number,
+  `Provisional()`), `DirectorTrace` (with `StrategyRow`, `DirectorMode`, `IDecisionSource`), `WaveDirector`.
+- `Director/Baselines/LadderPlanners.cs` (`random`, `round-robin`), `Director/Announce/AnnouncementTable.cs`,
+  `Director/PlannerFactory.cs`. `Harness.Registry` now hands every name to the factory, with the run's seed;
+  `EpisodeRunner` and `ReplayRunner` pass it.
+- `TelemetryRecorder` fills the row's profile, bin, threat budget, one score row per strategy, the choice,
+  the fallback and the banner line from the director's trace. `directorMicros` stays null.
+- Unity: `DirectorHost` gains `HeuristicDirector`, `LadderRandom`, `LadderRoundRobin` and takes the seed;
+  the banner reads `AnnouncementTable` before `RoughDirector`. ArknightsTest still runs the rough director.
+- CLI `profile`.
+
+**Tests added** (`WaveDirectorTests`, 16): a vetoed strategy is -Infinity and a spy estimator that throws
+is never asked about it (I5); everything vetoed falls back to the priced baseline with "AllVetoed"; one
+trace row per strategy in id order, ties to the lowest id; the similarity veto; flyers vetoed until a
+powered anti-air tower stands; the streak; the budget guard; each strategy scores its own weakness 0 to 4;
+no data scores the middle; the bin edges and the no-data bin; the kernel coordinates; every banner line;
+the random and round-robin planners; the factory; the heuristic director playing 8 waves of the game with
+the builder player and writing its decision to telemetry; that telemetry made again from the replay byte
+for byte. Making ties go to the later strategy on purpose turns the tie test red. Green under .NET (790 of
+790) and in the Unity editor (790 passed, 2 explicit diagnostics skipped; the host scripts compile).
+
+**Deviations and decisions**
+- A feature with no data scores the middle (2) and goes in the middle bin: the placeholder 0.5 would
+  otherwise read as a very high `chokepoint_reliance`.
+- The director keeps what it chose by wave number, so a wave planned again overwrites its entry.
+- No wall-clock time in a row (CLAUDE.md §7): `directorMicros` stays null; the trace keeps the time for G2.
+- The profile in a row holds values only; a feature without data shows its 0.5.
+- `Uncounterable` reads "no powered anti-air tower", because there is no shop to offer one.
+- The static version's banner line exists (`AnnouncementTable.StaticLine`) but is not shown: GDD
+  question 7 is still the supervisor's.
+- **Not done:** the replay storing each wave's plan (`RecordedPlanner`, `replay --rerun-director`), the
+  last WP10 must-pass. Today a director session replays by rebuilding the director from its name and the
+  seed, which works (the byte-for-byte telemetry test) but needs the planner's code unchanged.
+- Moved from WP9 and still open: `Config/ThreatCostTableAsset.cs`, the `ClassCyclePlanner` clean-up.
+
+**Commands**
+```
+dotnet run --project Tools/dotnet/Thesis.Cli -c Release -- profile --seeds 20 --waves 20
+dotnet run --project Tools/dotnet/Thesis.Cli -c Release -- run --game-map 3 --policy builder --planner heuristic --seed 3 --waves 20
+dotnet test Tools/dotnet/Thesis.Tests --filter FullyQualifiedName~WaveDirectorTests
+```
