@@ -1,5 +1,5 @@
 {
-  "Schema": 15,
+  "Schema": 16,
   "Build": "Unity 6000.4.10f1 editor (Mono)",
   "Session": "mono-economy-10waves",
   "Policy": "raider",
@@ -7,6 +7,7 @@
   "MapSeed": 0,
   "RngSeed": 11,
   "Planner": "raid",
+  "PlannerSetup": null,
   "Config": {
     "TickSeconds": 0.02,
     "StartBudget": 40.0,
@@ -4261,6 +4262,741 @@
       "Wave": 10,
       "Tick": 21113,
       "Hash": "18bb3cb81029a0b6"
+    }
+  ],
+  "Plans": [
+    {
+      "Wave": 1,
+      "Plan": {
+        "WaveIndex": 1,
+        "StrategyId": "raid",
+        "Groups": [
+          {
+            "SpawnIndex": 70,
+            "Count": 12,
+            "Archetype": "basic",
+            "Movement": "Ground",
+            "TargetsCollectors": false,
+            "Siege": false,
+            "MoveSpeed": 1.25,
+            "Hp": 20.0,
+            "DigRate": 1.0,
+            "Resist": [
+              1.0,
+              1.0,
+              1.0
+            ],
+            "SpawnIntervalTicks": 10,
+            "StartDelayTicks": 0
+          }
+        ],
+        "ThreatSpent": 0.0,
+        "AnnouncementId": null
+      }
+    },
+    {
+      "Wave": 1,
+      "Plan": {
+        "WaveIndex": 1,
+        "StrategyId": "raid",
+        "Groups": [
+          {
+            "SpawnIndex": 70,
+            "Count": 12,
+            "Archetype": "basic",
+            "Movement": "Ground",
+            "TargetsCollectors": false,
+            "Siege": false,
+            "MoveSpeed": 1.25,
+            "Hp": 20.0,
+            "DigRate": 1.0,
+            "Resist": [
+              1.0,
+              1.0,
+              1.0
+            ],
+            "SpawnIntervalTicks": 10,
+            "StartDelayTicks": 0
+          }
+        ],
+        "ThreatSpent": 0.0,
+        "AnnouncementId": null
+      }
+    },
+    {
+      "Wave": 2,
+      "Plan": {
+        "WaveIndex": 2,
+        "StrategyId": "raid",
+        "Groups": [
+          {
+            "SpawnIndex": 61,
+            "Count": 9,
+            "Archetype": "runner",
+            "Movement": "Ground",
+            "TargetsCollectors": false,
+            "Siege": false,
+            "MoveSpeed": 2.18875,
+            "Hp": 12.960001,
+            "DigRate": 1.0,
+            "Resist": [
+              1.0,
+              1.0,
+              1.0
+            ],
+            "SpawnIntervalTicks": 9,
+            "StartDelayTicks": 0
+          }
+        ],
+        "ThreatSpent": 0.0,
+        "AnnouncementId": null
+      }
+    },
+    {
+      "Wave": 3,
+      "Plan": {
+        "WaveIndex": 3,
+        "StrategyId": "raid",
+        "Groups": [
+          {
+            "SpawnIndex": 52,
+            "Count": 6,
+            "Archetype": "sapper",
+            "Movement": "Sapper",
+            "TargetsCollectors": false,
+            "Siege": false,
+            "MoveSpeed": 1.06000006,
+            "Hp": 34.992,
+            "DigRate": 4.0,
+            "Resist": [
+              1.0,
+              1.0,
+              1.0
+            ],
+            "SpawnIntervalTicks": 8,
+            "StartDelayTicks": 0
+          }
+        ],
+        "ThreatSpent": 0.0,
+        "AnnouncementId": null
+      }
+    },
+    {
+      "Wave": 4,
+      "Plan": {
+        "WaveIndex": 4,
+        "StrategyId": "raid",
+        "Groups": [
+          {
+            "SpawnIndex": 83,
+            "Count": 5,
+            "Archetype": "armored",
+            "Movement": "Ground",
+            "TargetsCollectors": false,
+            "Siege": false,
+            "MoveSpeed": 1.22624993,
+            "Hp": 30.2330914,
+            "DigRate": 1.0,
+            "Resist": [
+              0.35,
+              1.0,
+              1.0
+            ],
+            "SpawnIntervalTicks": 8,
+            "StartDelayTicks": 0
+          },
+          {
+            "SpawnIndex": 90,
+            "Count": 4,
+            "Archetype": "armored",
+            "Movement": "Ground",
+            "TargetsCollectors": false,
+            "Siege": false,
+            "MoveSpeed": 1.22624993,
+            "Hp": 30.2330914,
+            "DigRate": 1.0,
+            "Resist": [
+              0.35,
+              1.0,
+              1.0
+            ],
+            "SpawnIntervalTicks": 8,
+            "StartDelayTicks": 0
+          }
+        ],
+        "ThreatSpent": 0.0,
+        "AnnouncementId": null
+      }
+    },
+    {
+      "Wave": 5,
+      "Plan": {
+        "WaveIndex": 5,
+        "StrategyId": "raid",
+        "Groups": [
+          {
+            "SpawnIndex": 10,
+            "Count": 4,
+            "Archetype": "flyer",
+            "Movement": "Flying",
+            "TargetsCollectors": false,
+            "Siege": false,
+            "MoveSpeed": 1.4,
+            "Hp": 9.523424,
+            "DigRate": 0.0,
+            "Resist": [
+              1.0,
+              1.0,
+              1.0
+            ],
+            "SpawnIntervalTicks": 8,
+            "StartDelayTicks": 0
+          },
+          {
+            "SpawnIndex": 24,
+            "Count": 3,
+            "Archetype": "flyer",
+            "Movement": "Flying",
+            "TargetsCollectors": false,
+            "Siege": false,
+            "MoveSpeed": 1.4,
+            "Hp": 9.523424,
+            "DigRate": 0.0,
+            "Resist": [
+              1.0,
+              1.0,
+              1.0
+            ],
+            "SpawnIntervalTicks": 8,
+            "StartDelayTicks": 0
+          }
+        ],
+        "ThreatSpent": 0.0,
+        "AnnouncementId": null
+      }
+    },
+    {
+      "Wave": 6,
+      "Plan": {
+        "WaveIndex": 6,
+        "StrategyId": "raid",
+        "Groups": [
+          {
+            "SpawnIndex": 13,
+            "Count": 14,
+            "Archetype": "swarm",
+            "Movement": "Ground",
+            "TargetsCollectors": false,
+            "Siege": false,
+            "MoveSpeed": 1.86875,
+            "Hp": 11.7546272,
+            "DigRate": 1.0,
+            "Resist": [
+              1.0,
+              1.0,
+              1.0
+            ],
+            "SpawnIntervalTicks": 4,
+            "StartDelayTicks": 0
+          },
+          {
+            "SpawnIndex": 20,
+            "Count": 14,
+            "Archetype": "swarm",
+            "Movement": "Ground",
+            "TargetsCollectors": false,
+            "Siege": false,
+            "MoveSpeed": 1.86875,
+            "Hp": 11.7546272,
+            "DigRate": 1.0,
+            "Resist": [
+              1.0,
+              1.0,
+              1.0
+            ],
+            "SpawnIntervalTicks": 4,
+            "StartDelayTicks": 0
+          },
+          {
+            "SpawnIndex": 13,
+            "Count": 1,
+            "Archetype": "raider",
+            "Movement": "Ground",
+            "TargetsCollectors": true,
+            "Siege": false,
+            "MoveSpeed": 1.725,
+            "Hp": 29.3865681,
+            "DigRate": 1.5,
+            "Resist": [
+              1.0,
+              1.0,
+              1.0
+            ],
+            "SpawnIntervalTicks": 8,
+            "StartDelayTicks": 0
+          },
+          {
+            "SpawnIndex": 20,
+            "Count": 1,
+            "Archetype": "raider",
+            "Movement": "Ground",
+            "TargetsCollectors": true,
+            "Siege": false,
+            "MoveSpeed": 1.725,
+            "Hp": 29.3865681,
+            "DigRate": 1.5,
+            "Resist": [
+              1.0,
+              1.0,
+              1.0
+            ],
+            "SpawnIntervalTicks": 8,
+            "StartDelayTicks": 0
+          }
+        ],
+        "ThreatSpent": 0.0,
+        "AnnouncementId": null
+      }
+    },
+    {
+      "Wave": 7,
+      "Plan": {
+        "WaveIndex": 7,
+        "StrategyId": "raid",
+        "Groups": [
+          {
+            "SpawnIndex": 60,
+            "Count": 2,
+            "Archetype": "brute",
+            "Movement": "Ground",
+            "TargetsCollectors": false,
+            "Siege": false,
+            "MoveSpeed": 1.0325,
+            "Hp": 126.949982,
+            "DigRate": 1.0,
+            "Resist": [
+              1.0,
+              1.0,
+              1.0
+            ],
+            "SpawnIntervalTicks": 24,
+            "StartDelayTicks": 0
+          },
+          {
+            "SpawnIndex": 50,
+            "Count": 1,
+            "Archetype": "brute",
+            "Movement": "Ground",
+            "TargetsCollectors": false,
+            "Siege": false,
+            "MoveSpeed": 1.0325,
+            "Hp": 126.949982,
+            "DigRate": 1.0,
+            "Resist": [
+              1.0,
+              1.0,
+              1.0
+            ],
+            "SpawnIntervalTicks": 24,
+            "StartDelayTicks": 0
+          },
+          {
+            "SpawnIndex": 60,
+            "Count": 4,
+            "Archetype": "basic",
+            "Movement": "Ground",
+            "TargetsCollectors": false,
+            "Siege": false,
+            "MoveSpeed": 1.475,
+            "Hp": 31.7374954,
+            "DigRate": 1.0,
+            "Resist": [
+              1.0,
+              1.0,
+              1.0
+            ],
+            "SpawnIntervalTicks": 8,
+            "StartDelayTicks": 0
+          },
+          {
+            "SpawnIndex": 50,
+            "Count": 3,
+            "Archetype": "basic",
+            "Movement": "Ground",
+            "TargetsCollectors": false,
+            "Siege": false,
+            "MoveSpeed": 1.475,
+            "Hp": 31.7374954,
+            "DigRate": 1.0,
+            "Resist": [
+              1.0,
+              1.0,
+              1.0
+            ],
+            "SpawnIntervalTicks": 8,
+            "StartDelayTicks": 0
+          }
+        ],
+        "ThreatSpent": 0.0,
+        "AnnouncementId": null
+      }
+    },
+    {
+      "Wave": 8,
+      "Plan": {
+        "WaveIndex": 8,
+        "StrategyId": "raid",
+        "Groups": [
+          {
+            "SpawnIndex": 83,
+            "Count": 3,
+            "Archetype": "ember",
+            "Movement": "Ground",
+            "TargetsCollectors": false,
+            "Siege": false,
+            "MoveSpeed": 1.66375,
+            "Hp": 34.2764969,
+            "DigRate": 1.0,
+            "Resist": [
+              1.0,
+              0.25,
+              1.0
+            ],
+            "SpawnIntervalTicks": 8,
+            "StartDelayTicks": 0
+          },
+          {
+            "SpawnIndex": 90,
+            "Count": 2,
+            "Archetype": "ember",
+            "Movement": "Ground",
+            "TargetsCollectors": false,
+            "Siege": false,
+            "MoveSpeed": 1.66375,
+            "Hp": 34.2764969,
+            "DigRate": 1.0,
+            "Resist": [
+              1.0,
+              0.25,
+              1.0
+            ],
+            "SpawnIntervalTicks": 8,
+            "StartDelayTicks": 0
+          },
+          {
+            "SpawnIndex": 12,
+            "Count": 2,
+            "Archetype": "ember",
+            "Movement": "Ground",
+            "TargetsCollectors": false,
+            "Siege": false,
+            "MoveSpeed": 1.66375,
+            "Hp": 34.2764969,
+            "DigRate": 1.0,
+            "Resist": [
+              1.0,
+              0.25,
+              1.0
+            ],
+            "SpawnIntervalTicks": 8,
+            "StartDelayTicks": 0
+          },
+          {
+            "SpawnIndex": 83,
+            "Count": 1,
+            "Archetype": "sapper",
+            "Movement": "Sapper",
+            "TargetsCollectors": false,
+            "Siege": false,
+            "MoveSpeed": 1.21,
+            "Hp": 51.4147453,
+            "DigRate": 4.0,
+            "Resist": [
+              1.0,
+              1.0,
+              1.0
+            ],
+            "SpawnIntervalTicks": 8,
+            "StartDelayTicks": 0
+          },
+          {
+            "SpawnIndex": 90,
+            "Count": 1,
+            "Archetype": "sapper",
+            "Movement": "Sapper",
+            "TargetsCollectors": false,
+            "Siege": false,
+            "MoveSpeed": 1.21,
+            "Hp": 51.4147453,
+            "DigRate": 4.0,
+            "Resist": [
+              1.0,
+              1.0,
+              1.0
+            ],
+            "SpawnIntervalTicks": 8,
+            "StartDelayTicks": 0
+          },
+          {
+            "SpawnIndex": 12,
+            "Count": 1,
+            "Archetype": "sapper",
+            "Movement": "Sapper",
+            "TargetsCollectors": false,
+            "Siege": false,
+            "MoveSpeed": 1.21,
+            "Hp": 51.4147453,
+            "DigRate": 4.0,
+            "Resist": [
+              1.0,
+              1.0,
+              1.0
+            ],
+            "SpawnIntervalTicks": 8,
+            "StartDelayTicks": 0
+          }
+        ],
+        "ThreatSpent": 0.0,
+        "AnnouncementId": null
+      }
+    },
+    {
+      "Wave": 9,
+      "Plan": {
+        "WaveIndex": 9,
+        "StrategyId": "raid",
+        "Groups": [
+          {
+            "SpawnIndex": 71,
+            "Count": 6,
+            "Archetype": "bats",
+            "Movement": "Flying",
+            "TargetsCollectors": false,
+            "Siege": false,
+            "MoveSpeed": 1.86,
+            "Hp": 5.552793,
+            "DigRate": 0.0,
+            "Resist": [
+              1.0,
+              1.0,
+              1.0
+            ],
+            "SpawnIntervalTicks": 4,
+            "StartDelayTicks": 0
+          },
+          {
+            "SpawnIndex": 85,
+            "Count": 5,
+            "Archetype": "bats",
+            "Movement": "Flying",
+            "TargetsCollectors": false,
+            "Siege": false,
+            "MoveSpeed": 1.86,
+            "Hp": 5.552793,
+            "DigRate": 0.0,
+            "Resist": [
+              1.0,
+              1.0,
+              1.0
+            ],
+            "SpawnIntervalTicks": 4,
+            "StartDelayTicks": 0
+          },
+          {
+            "SpawnIndex": 7,
+            "Count": 5,
+            "Archetype": "bats",
+            "Movement": "Flying",
+            "TargetsCollectors": false,
+            "Siege": false,
+            "MoveSpeed": 1.86,
+            "Hp": 5.552793,
+            "DigRate": 0.0,
+            "Resist": [
+              1.0,
+              1.0,
+              1.0
+            ],
+            "SpawnIntervalTicks": 4,
+            "StartDelayTicks": 0
+          },
+          {
+            "SpawnIndex": 71,
+            "Count": 1,
+            "Archetype": "raider",
+            "Movement": "Ground",
+            "TargetsCollectors": true,
+            "Siege": false,
+            "MoveSpeed": 1.86,
+            "Hp": 37.01862,
+            "DigRate": 1.5,
+            "Resist": [
+              1.0,
+              1.0,
+              1.0
+            ],
+            "SpawnIntervalTicks": 8,
+            "StartDelayTicks": 0
+          },
+          {
+            "SpawnIndex": 85,
+            "Count": 1,
+            "Archetype": "raider",
+            "Movement": "Ground",
+            "TargetsCollectors": true,
+            "Siege": false,
+            "MoveSpeed": 1.86,
+            "Hp": 37.01862,
+            "DigRate": 1.5,
+            "Resist": [
+              1.0,
+              1.0,
+              1.0
+            ],
+            "SpawnIntervalTicks": 8,
+            "StartDelayTicks": 0
+          },
+          {
+            "SpawnIndex": 7,
+            "Count": 1,
+            "Archetype": "raider",
+            "Movement": "Ground",
+            "TargetsCollectors": true,
+            "Siege": false,
+            "MoveSpeed": 1.86,
+            "Hp": 37.01862,
+            "DigRate": 1.5,
+            "Resist": [
+              1.0,
+              1.0,
+              1.0
+            ],
+            "SpawnIntervalTicks": 8,
+            "StartDelayTicks": 0
+          }
+        ],
+        "ThreatSpent": 0.0,
+        "AnnouncementId": null
+      }
+    },
+    {
+      "Wave": 10,
+      "Plan": {
+        "WaveIndex": 10,
+        "StrategyId": "raid",
+        "Groups": [
+          {
+            "SpawnIndex": 13,
+            "Count": 6,
+            "Archetype": "swarm",
+            "Movement": "Ground",
+            "TargetsCollectors": false,
+            "Siege": false,
+            "MoveSpeed": 2.06374979,
+            "Hp": 15.9920444,
+            "DigRate": 1.0,
+            "Resist": [
+              1.0,
+              1.0,
+              1.0
+            ],
+            "SpawnIntervalTicks": 4,
+            "StartDelayTicks": 0
+          },
+          {
+            "SpawnIndex": 20,
+            "Count": 5,
+            "Archetype": "swarm",
+            "Movement": "Ground",
+            "TargetsCollectors": false,
+            "Siege": false,
+            "MoveSpeed": 2.06374979,
+            "Hp": 15.9920444,
+            "DigRate": 1.0,
+            "Resist": [
+              1.0,
+              1.0,
+              1.0
+            ],
+            "SpawnIntervalTicks": 4,
+            "StartDelayTicks": 0
+          },
+          {
+            "SpawnIndex": 27,
+            "Count": 5,
+            "Archetype": "swarm",
+            "Movement": "Ground",
+            "TargetsCollectors": false,
+            "Siege": false,
+            "MoveSpeed": 2.06374979,
+            "Hp": 15.9920444,
+            "DigRate": 1.0,
+            "Resist": [
+              1.0,
+              1.0,
+              1.0
+            ],
+            "SpawnIntervalTicks": 4,
+            "StartDelayTicks": 0
+          },
+          {
+            "SpawnIndex": 13,
+            "Count": 2,
+            "Archetype": "runner",
+            "Movement": "Ground",
+            "TargetsCollectors": false,
+            "Siege": false,
+            "MoveSpeed": 2.69875,
+            "Hp": 23.9880676,
+            "DigRate": 1.0,
+            "Resist": [
+              1.0,
+              1.0,
+              1.0
+            ],
+            "SpawnIntervalTicks": 8,
+            "StartDelayTicks": 0
+          },
+          {
+            "SpawnIndex": 20,
+            "Count": 2,
+            "Archetype": "runner",
+            "Movement": "Ground",
+            "TargetsCollectors": false,
+            "Siege": false,
+            "MoveSpeed": 2.69875,
+            "Hp": 23.9880676,
+            "DigRate": 1.0,
+            "Resist": [
+              1.0,
+              1.0,
+              1.0
+            ],
+            "SpawnIntervalTicks": 8,
+            "StartDelayTicks": 0
+          },
+          {
+            "SpawnIndex": 27,
+            "Count": 2,
+            "Archetype": "runner",
+            "Movement": "Ground",
+            "TargetsCollectors": false,
+            "Siege": false,
+            "MoveSpeed": 2.69875,
+            "Hp": 23.9880676,
+            "DigRate": 1.0,
+            "Resist": [
+              1.0,
+              1.0,
+              1.0
+            ],
+            "SpawnIntervalTicks": 8,
+            "StartDelayTicks": 0
+          }
+        ],
+        "ThreatSpent": 0.0,
+        "AnnouncementId": null
+      }
     }
   ],
   "FinalTick": 21113,

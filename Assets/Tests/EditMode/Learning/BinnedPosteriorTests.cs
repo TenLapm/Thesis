@@ -97,14 +97,15 @@ namespace Thesis.Tests.Learning
             Assert.Throws<ArgumentOutOfRangeException>(() => posterior.Update(Bin(0), 0, reward, 1f, new Pcg32(1UL, 1UL)));
         }
 
-        // Spec gap S3 (how the 0.5^lag credit weight combines with the Bernoulli
-        // update) is WP11's to close. Until then only full credit is accepted, so no
-        // caller can pick an answer by accident.
+        // Spec gap S3 was closed in WP11 (the student, 2026-11-18): partial credit is a
+        // fractional update, tested in FullDirectorTests.PartialCreditIsAFractionalUpdate. What
+        // stays refused is a weight outside (0, 1].
         [Test]
-        public void PartialCreditIsRefusedUntilSpecGapS3IsClosed()
+        public void ACreditWeightOutsideZeroToOneIsRefused()
         {
             var posterior = new BinnedPosterior(5, 4, 0.95);
-            Assert.Throws<NotSupportedException>(() => posterior.Update(Bin(0), 0, 1f, 0.5f, new Pcg32(1UL, 1UL)));
+            Assert.Throws<ArgumentOutOfRangeException>(() => posterior.Update(Bin(0), 0, 1f, 0f, new Pcg32(1UL, 1UL)));
+            Assert.Throws<ArgumentOutOfRangeException>(() => posterior.Update(Bin(0), 0, 1f, float.NaN, new Pcg32(1UL, 1UL)));
         }
 
         [Test]

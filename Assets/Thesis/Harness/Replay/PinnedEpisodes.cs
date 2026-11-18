@@ -202,6 +202,20 @@ namespace Thesis.Harness
                 MaxWaves = 10,
                 TickHashes = true,
             },
+            // WP11: the full director (heuristic, learner, reward and credit) against the player for
+            // today's rules. Recorded under .NET and under Mono, each replayed on the other runtime,
+            // with its plans re-made by the rebuilt director (RecordedPlanTests, PinnedReplayTests).
+            new Spec
+            {
+                Name = "full-director-8waves",
+                Config = EconomyConfig,
+                Map = () => MapGenerator.Generate(12, 48, 48, deposits: 25, depositsPerCluster: 4),
+                Policy = () => new BuilderPolicy(),
+                Planner = Thesis.Director.WaveDirector.FullId,
+                Seed = 12,
+                MaxWaves = 8,
+                TickHashes = true,
+            },
         };
 
         // The ore economy with a core that survives ten waves.

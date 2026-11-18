@@ -19,5 +19,11 @@ namespace Thesis.Learning
 
         // How many updates each cell has had, not discounted. 0 means Cold.
         public int[] Updates;
+
+        // KernelPriorEstimator only (WP11, S2); null and 0 for a plain BinnedPosterior.
+        public KernelState Kernel;
+        public int ThinBelow;
+        public double PriorWeight;
+        public double NearWeight;
     }
 }

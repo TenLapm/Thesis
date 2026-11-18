@@ -25,6 +25,8 @@ namespace Thesis.Sim
         private readonly List<ReplayCommand> commands = new List<ReplayCommand>();
         private readonly List<WaveHash> waveHashes = new List<WaveHash>();
         private readonly List<ulong> tickHashes = new List<ulong>();
+        private readonly List<RecordedPlan> plans = new List<RecordedPlan>();
+        private readonly string plannerSetup;
         private int ticksSeen;
 
         // Labels copied into the file; see ReplayFile.
@@ -47,6 +49,10 @@ namespace Thesis.Sim
             // reproduced, and this is how it gets caught - the stale hash no longer
             // matches the stored values, so ReplayFile.Validate() refuses the file.
             setupHash = ReplayFile.Hex(ReplaySetup.Hash(sim.Config, sim.Map, sim.ShapeLibrary, sim.TowerLibrary));
+            sim.Planned += (wave, plan) => plans.Add(new RecordedPlan { Wave = wave, Plan = plan });
+            // The planner as it starts, before any wave (a SafePlanner is looked through).
+            IWavePlanner inner = sim.Planner is SafePlanner safe ? safe.Inner : sim.Planner;
+            plannerSetup = inner is IPlannerSetup withSetup ? withSetup.PlannerSetup : null;
         }
 
         public int CommandCount => commands.Count;
@@ -103,6 +109,7 @@ namespace Thesis.Sim
                 MapSeed = 0,
                 RngSeed = sim.RngSeed,
                 Planner = sim.Planner.Name,
+                PlannerSetup = plannerSetup,
                 Config = sim.Config,
                 MapData = sim.InitialMap, // as the run began: a PlaceCore command moves the core again on replay
                 Shapes = sim.ShapeLibrary,
@@ -111,6 +118,7 @@ namespace Thesis.Sim
                 InitialHash = initialHash,
                 Commands = new List<ReplayCommand>(commands),
                 WaveHashes = new List<WaveHash>(waveHashes),
+                Plans = new List<RecordedPlan>(plans),
                 FinalTick = sim.State.Tick,
                 FinalHash = ReplayFile.Hex(sim.ComputeHash()),
                 TickHashes = recordTickHashes ? ReplayFile.EncodeTickHashes(tickHashes) : null,

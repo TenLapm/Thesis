@@ -1,5 +1,5 @@
 {
-  "Schema": 15,
+  "Schema": 16,
   "Build": "Unity 6000.4.10f1 editor (Mono)",
   "Session": "mono-cards-6waves",
   "Policy": "upgrader",
@@ -7,6 +7,7 @@
   "MapSeed": 0,
   "RngSeed": 5,
   "Planner": "class-cycle",
+  "PlannerSetup": null,
   "Config": {
     "TickSeconds": 0.02,
     "StartBudget": 80.0,
@@ -2844,6 +2845,218 @@
       "Wave": 6,
       "Tick": 8126,
       "Hash": "7e8c906a856f088f"
+    }
+  ],
+  "Plans": [
+    {
+      "Wave": 1,
+      "Plan": {
+        "WaveIndex": 1,
+        "StrategyId": "class-cycle",
+        "Groups": [
+          {
+            "SpawnIndex": 0,
+            "Count": 100,
+            "Archetype": "basic",
+            "Movement": "Ground",
+            "TargetsCollectors": false,
+            "Siege": false,
+            "MoveSpeed": 1.25,
+            "Hp": 10.0,
+            "DigRate": 1.0,
+            "Resist": [
+              1.0,
+              1.0,
+              1.0
+            ],
+            "SpawnIntervalTicks": 10,
+            "StartDelayTicks": 0
+          }
+        ],
+        "ThreatSpent": 0.0,
+        "AnnouncementId": null
+      }
+    },
+    {
+      "Wave": 2,
+      "Plan": {
+        "WaveIndex": 2,
+        "StrategyId": "class-cycle",
+        "Groups": [
+          {
+            "SpawnIndex": 0,
+            "Count": 52,
+            "Archetype": "sapper",
+            "Movement": "Sapper",
+            "TargetsCollectors": false,
+            "Siege": false,
+            "MoveSpeed": 1.03000009,
+            "Hp": 18.0,
+            "DigRate": 4.0,
+            "Resist": [
+              1.0,
+              1.0,
+              1.0
+            ],
+            "SpawnIntervalTicks": 9,
+            "StartDelayTicks": 0
+          }
+        ],
+        "ThreatSpent": 0.0,
+        "AnnouncementId": null
+      }
+    },
+    {
+      "Wave": 3,
+      "Plan": {
+        "WaveIndex": 3,
+        "StrategyId": "class-cycle",
+        "Groups": [
+          {
+            "SpawnIndex": 0,
+            "Count": 55,
+            "Archetype": "flyer",
+            "Movement": "Flying",
+            "TargetsCollectors": false,
+            "Siege": false,
+            "MoveSpeed": 1.325,
+            "Hp": 4.9,
+            "DigRate": 0.0,
+            "Resist": [
+              1.0,
+              1.0,
+              1.0
+            ],
+            "SpawnIntervalTicks": 8,
+            "StartDelayTicks": 0
+          }
+        ],
+        "ThreatSpent": 0.0,
+        "AnnouncementId": null
+      }
+    },
+    {
+      "Wave": 4,
+      "Plan": {
+        "WaveIndex": 4,
+        "StrategyId": "class-cycle",
+        "Groups": [
+          {
+            "SpawnIndex": 0,
+            "Count": 230,
+            "Archetype": "swarm",
+            "Movement": "Ground",
+            "TargetsCollectors": false,
+            "Siege": false,
+            "MoveSpeed": 1.77124989,
+            "Hp": 6.4,
+            "DigRate": 1.0,
+            "Resist": [
+              1.0,
+              1.0,
+              1.0
+            ],
+            "SpawnIntervalTicks": 4,
+            "StartDelayTicks": 0
+          }
+        ],
+        "ThreatSpent": 0.0,
+        "AnnouncementId": null
+      }
+    },
+    {
+      "Wave": 5,
+      "Plan": {
+        "WaveIndex": 5,
+        "StrategyId": "class-cycle",
+        "Groups": [
+          {
+            "SpawnIndex": 0,
+            "Count": 60,
+            "Archetype": "basic",
+            "Movement": "Ground",
+            "TargetsCollectors": false,
+            "Siege": false,
+            "MoveSpeed": 1.4,
+            "Hp": 18.0,
+            "DigRate": 1.0,
+            "Resist": [
+              1.0,
+              1.0,
+              1.0
+            ],
+            "SpawnIntervalTicks": 8,
+            "StartDelayTicks": 0
+          },
+          {
+            "SpawnIndex": 0,
+            "Count": 30,
+            "Archetype": "sapper",
+            "Movement": "Sapper",
+            "TargetsCollectors": false,
+            "Siege": false,
+            "MoveSpeed": 1.12,
+            "Hp": 27.0,
+            "DigRate": 4.0,
+            "Resist": [
+              1.0,
+              1.0,
+              1.0
+            ],
+            "SpawnIntervalTicks": 8,
+            "StartDelayTicks": 0
+          },
+          {
+            "SpawnIndex": 0,
+            "Count": 30,
+            "Archetype": "flyer",
+            "Movement": "Flying",
+            "TargetsCollectors": false,
+            "Siege": false,
+            "MoveSpeed": 1.4,
+            "Hp": 6.29999971,
+            "DigRate": 0.0,
+            "Resist": [
+              1.0,
+              1.0,
+              1.0
+            ],
+            "SpawnIntervalTicks": 8,
+            "StartDelayTicks": 0
+          }
+        ],
+        "ThreatSpent": 0.0,
+        "AnnouncementId": null
+      }
+    },
+    {
+      "Wave": 6,
+      "Plan": {
+        "WaveIndex": 6,
+        "StrategyId": "class-cycle",
+        "Groups": [
+          {
+            "SpawnIndex": 0,
+            "Count": 125,
+            "Archetype": "basic",
+            "Movement": "Ground",
+            "TargetsCollectors": false,
+            "Siege": false,
+            "MoveSpeed": 1.4375,
+            "Hp": 20.0,
+            "DigRate": 1.0,
+            "Resist": [
+              1.0,
+              1.0,
+              1.0
+            ],
+            "SpawnIntervalTicks": 8,
+            "StartDelayTicks": 0
+          }
+        ],
+        "ThreatSpent": 0.0,
+        "AnnouncementId": null
+      }
     }
   ],
   "FinalTick": 8126,

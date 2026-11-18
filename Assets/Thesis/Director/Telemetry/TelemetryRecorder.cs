@@ -36,6 +36,7 @@ namespace Thesis.Director
         private int tickResolved = -1;
         private WaveRecord.PlanRow plan;
         private DirectorTrace decision; // the director's account of this wave, or null (WP10)
+        private IDecisionSource decisionSource;
         private WaveRecord.OutcomeRow outcome;
         private string[] offered;
         private string stateHash;
@@ -156,6 +157,7 @@ namespace Thesis.Director
             tickStart = s.CurrentOutcome != null ? s.CurrentOutcome.TickStarted : s.Tick - 1;
             tickResolved = -1;
             plan = PlanRow(s.CurrentPlan);
+            decisionSource = null;
             decision = Decision(waveIndex);
             outcome = null;
             offered = null;
@@ -174,6 +176,7 @@ namespace Thesis.Director
             var source = p as IDecisionSource;
             DirectorTrace t = source == null ? null : source.TraceFor(waveIndex);
             if (t == null || plan == null || t.Chosen != plan.Strategy) return null;
+            decisionSource = source;
             return t;
         }
 
@@ -182,6 +185,20 @@ namespace Thesis.Director
             var v = new NamedValues();
             for (int i = 0; i < p.Names.Length; i++) v.Add(p.Names[i], p.Values[i]);
             return v;
+        }
+
+        // This wave's reward, worked out inside the next decision (WP11), which comes before the
+        // row closes; null when there was none (the last wave of a session, or no learner).
+        private static WaveRecord.RewardRow RewardRow(RewardRecord r)
+        {
+            if (r == null) return null;
+            var credited = new WaveRecord.CreditRow[r.Credited.Count];
+            for (int i = 0; i < credited.Length; i++) credited[i] = new WaveRecord.CreditRow { Wave = r.Credited[i].Wave, Weight = r.Credited[i].Weight };
+            return new WaveRecord.RewardRow
+            {
+                Restructure = r.Reward.Restructure, Survived = r.Reward.Survived, Pressure = r.Reward.Pressure,
+                Novelty = r.Reward.Novelty, Total = r.Reward.Total, Binary = r.Reward.Binary, Credited = credited,
+            };
         }
 
         private static WaveRecord.StrategyScore[] Scores(DirectorTrace t)
@@ -260,6 +277,8 @@ namespace Thesis.Director
                 Announcement = decision != null ? decision.Announcement : null,
                 // DirectorMicros stays null: wall-clock time never goes into a row (CLAUDE.md §7);
                 // the director keeps it on its trace for gate G2.
+                Reward = decision != null && decisionSource != null ? RewardRow(decisionSource.RewardFor(wave)) : null,
+                EstimatorDigest = decision != null ? decision.EstimatorDigest : null,
                 Plan = plan,
                 Outcome = outcome,
                 Placements = placements.ToArray(),

@@ -44,8 +44,8 @@ WP6 (telemetry) no longer exists as its own package: it is part of WP-C3 (D8).
 
 **Where things stand (2026-11-16):** WP0 to WP5, WP-H, WP-C1 to WP-C5, WP7 and WP8 are done.
 **WP9** is built (2026-11-16: S6, S8, S10 and S14 closed by the student; the cost table's factors
-measured, flyer 2.35 and sapper 1.30, with the new `BuilderPolicy`). **WP10** is built apart from the
-replay of recorded plans (2026-11-18); that part, then **WP11**.
+measured, flyer 2.35 and sapper 1.30, with the new `BuilderPolicy`). **WP10** is built (2026-11-18,
+recorded plans included). **WP11** is built (2026-11-18). Next is **WP12**, which first needs a scripted player that rebuilds.
 
 ### Revised semester-1 schedule (approved 2026-09-15)
 
@@ -106,9 +106,9 @@ Three changes:
 | done | **WP-C5** roster and balance check | W9 | 2026-10-12; two of six hypotheses fail, reported |
 | done | **WP8** profile | W11 | S9 closed 2026-11-10; WP8a done 2026-11-10, WP8b 2026-11-16 |
 | done | **WP9** strategies | W11 | 2026-11-16; factors measured (`Results/2026-11-16_threat-factors`) |
-| 7 | **WP10** layers, recorded plans in the replay | W12 | layers and director built 2026-11-18; recorded plans not yet |
+| done | **WP10** layers, recorded plans in the replay | W12 | 2026-11-18 |
 | 8 | **WP14** director UX and session setup | W12 | needed before the pilot |
-| 9 | **WP11** full director | W13 | |
+| done | **WP11** full director | W13 | 2026-11-18 |
 | 10 | **WP12** harness and ladder | W14 | |
 | 11 | **WP13** gates G1–G3 | W15 | this was the reserve week |
 | | report and session prep | W16 | unchanged |
@@ -707,16 +707,17 @@ threat budget pay the player less (measured in WP-C2). The cost table and the ki
 
 ---
 
-## WP10 — Constraints, heuristic, bucketizer, heuristic-only director — built 2026-11-18, apart from the recorded plans
+## WP10 — Constraints, heuristic, bucketizer, heuristic-only director ✅ done 2026-11-18
 
 **As built (2026-11-18, DEVLOG).** The student accepted provisional answers on 2026-11-16 (S1 and the
 director's numbers, `DirectorConfig.Provisional()`; ARCHITECTURE §10 S1). Built: the four constraints, the
 authored heuristic, the bucketizer, `WaveDirector` (HeuristicOnly, and Full reading an estimator without
 updating it), `RandomPlanner` and `RoundRobinPlanner`, `AnnouncementTable`, `DirectorConfig` and
 `PlannerFactory` (used by `Harness.Registry` and `DirectorHost`). The director's decision goes into each
-telemetry row. Every must-pass below has a test **except the last**: the replay does not yet store each
-wave's plan (`RecordedPlanner`, `replay --rerun-director`); that is the next step. Telemetry made again
-from a replay matches byte for byte, because the director is rebuilt from its name and the seed.
+telemetry row. Then the replay schema 16: every plan the planner hands the simulation is recorded in
+order, `RecordedPlanner` plays them back (the default in `ReplayRunner`), and `replay --rerun-director`
+rebuilds the planner and compares its plans. Every must-pass below has a test. Telemetry is still made
+with the planner rebuilt by name, because a row carries the director's reasons, which only it knows.
 
 **Reads:** §5.2, §5.5 · **Depends:** WP8a, WP9, **S1**
 
@@ -742,7 +743,13 @@ Also, from the 2026-10-02 review:
 
 ---
 
-## WP11 — Reward, credit, full director
+## WP11 — Reward, credit, full director ✅ done 2026-11-18 (DEVLOG 2026-11-18)
+
+**As built.** The student answered S2 to S5 provisionally on 2026-11-18. Built: `RewardEvaluator`
+(graduated and binary), credit inside `WaveDirector` (Full), `KernelPriorEstimator`, fractional updates
+in `BinnedPosterior`, `DirectorSetup` in the replay (`IPlannerSetup`, `ReplayFile.PlannerSetup`), the
+reward and the estimator digest in telemetry, `DirectorHost.Condition.FullDirector`, and the pinned
+episode `full-director-8waves` on both runtimes. Every must-pass below has a test.
 
 **Reads:** §5.1 (the timeline), §5.6, §5.7 · **Depends:** WP7, WP10, **S2**, **S3**, **S4**, **S5**
 

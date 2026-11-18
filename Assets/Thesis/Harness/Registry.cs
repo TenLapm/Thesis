@@ -18,9 +18,9 @@ namespace Thesis.Harness
         // One factory for every planner (Thesis.Director.PlannerFactory, WP10), shared with the
         // Unity host. The seed is the run's rngSeed: the director and the ladder planners draw
         // their own streams from it.
-        public static IWavePlanner CreatePlanner(string name, SimConfig config, MapData map, ulong seed = 1)
+        public static IWavePlanner CreatePlanner(string name, SimConfig config, MapData map, ulong seed = 1, string setup = null)
         {
-            return PlannerFactory.Create(name, config, map, seed);
+            return PlannerFactory.Create(name, config, map, seed, null, setup);
         }
 
         public static IPlayerPolicy CreatePolicy(string name)

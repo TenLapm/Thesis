@@ -8,20 +8,22 @@ work is an adaptive wave director driven by a contextual bandit.
 hardening pass WP-H, and the combat, movement, shop/telemetry, UI and roster packages WP-C1 to
 WP-C5 are done). Since the student's first play (2026-10-12) the gameplay has been reworked in
 rounds driven by testers, one `Docs/DEVLOG.md` entry per round. §1 describes the game as it plays
-**today**, in `ArknightsTest`, the only game scene (SampleScene was removed on 2026-10-24; its map
+**today**, in `StaticTest` (called `ArknightsTest` until 2026-11-18), the game scene (SampleScene was removed on 2026-10-24; its map
 file stays as a test fixture). Every round's rules are switched by `SimConfig` and off in the C#
 defaults, so the tests and the pinned replays still exercise the older rules as well.
-ArknightsTest runs the development planner `RoughDirector`
+StaticTest runs the development planner `RoughDirector`
 (`DirectorHost.Condition.DevRoughDirector`), which is not a study condition. The learner (WP7) is built
 (2026-11-10; G1-synthetic passes narrowly, `Results/2026-11-10_g1-synth/`), and so is the build
 profile (WP8, 2026-11-16: the proposal's five features, with the formulas the student decided in
 `Docs/ARCHITECTURE.md` §5.3), and so are the study's four strategies and the threat cost table
 (WP9, 2026-11-16; its flyer and sapper factors, 2.35 and 1.30, were measured with the new scripted
 player `BuilderPolicy`, `Results/2026-11-16_threat-factors/`). **Not built yet:** the director itself
-(WP10 is built apart from the replay of recorded plans, 2026-11-18: the heuristic director with its
-constraints, a selectable condition `DirectorHost.Condition.HeuristicDirector`; WP11, the learning and
-the reward, is not). Its numbers are the student's provisional choices (`DirectorConfig.Provisional()`,
-S1 in `Docs/ARCHITECTURE.md` §10), to be revisited at the threshold freeze. The older scripted players were written for the random shop and lose wave 1 under
+(WP10 and WP11 are built, 2026-11-18: the heuristic director with its constraints, the full director
+with its reward, credit and thin-cell prior, selectable as `DirectorHost.Condition.HeuristicDirector`
+and `FullDirector`, and replays that store every plan and the director's starting setup). Its numbers are the student's provisional choices (`DirectorConfig.Provisional()`,
+S1 to S5 in `Docs/ARCHITECTURE.md` §10), to be revisited at the threshold freeze. **The scripted player
+`builder` never rebuilds, so the reward's main term is about 0 against it: the offline ladder (WP12)
+needs a player that reacts before it can show learning.** The older scripted players were written for the random shop and lose wave 1 under
 today's rules; `builder` is the one that plays the game (7 to 16 waves against the baseline). The student finishes the gameplay before WP7 starts.
 A course proposal describing the whole project is in `Docs/proposal/` (2026-10-28).
 
@@ -40,7 +42,7 @@ Read §1 and §2 before writing any code.
 ## 1. What the game actually is today
 
 A maze tower defense with one unusual rule: **nothing the player builds blocks the path.**
-This section is the game in `ArknightsTest` with the numbers of `SimConfig.asset`, as of
+This section is the game in `StaticTest` with the numbers of `SimConfig.asset`, as of
 2026-10-28. Every number below is a first guess checked by the next tester session, not a
 balanced value.
 
@@ -137,7 +139,8 @@ into a MonoBehaviour.** The same simulation runs headless under `dotnet` (`Tools
 how tests, replays and the offline harness work.
 
 **What a session leaves behind (WP5, WP-C3):** `replay.json` (the seed, every command with its
-tick, and state hashes) and `telemetry.jsonl` (one row per wave: what was sent, how it went, and
+tick, state hashes, and since WP10 every plan the planner made, which a replay plays back so it needs
+no planner code; `thesis replay --rerun-director` checks the rebuilt planner still makes them) and `telemetry.jsonl` (one row per wave: what was sent, how it went, and
 what the player built, bought and sold around it). Unity writes both under
 `Runs/Sessions/<session>/`; a headless run under `--out`. The replay is the exact record.
 Telemetry is made from the simulation alone, so `thesis telemetry <replay>` gives back the same
@@ -208,13 +211,13 @@ Assets/Thesis/                pure C#, no UnityEngine; each folder is one assemb
               the game has no random shop since 2026-10-20)
     Waves/    IWavePlanner, EscalationPlanner (static baseline), RaidPlanner (composes the
               baseline's squads and picks the entries), SafePlanner, PlanValidator, WavePlan,
-              WaveOutcome, EnemyArchetype, RoughDirector (development director, ArknightsTest),
+              WaveOutcome, EnemyArchetype, RoughDirector (development director, StaticTest),
               ClassCyclePlanner (development only)
-    Replay/   ReplayFile, ReplayRecorder, ReplaySetup
+    Replay/   ReplayFile (schema 16: recorded plans), ReplayRecorder, ReplaySetup, RecordedPlanner
     Debug/    StateHasher, StateDump, AsciiMap, AsciiState, BenchScenarios
     Commands/ Events/ Stats/
   Learning/   BetaSampler, BinnedPosterior, KernelEstimator, CalibrationReport, IStrategyEstimator
-              (WP7); Synthetic/ ThresholdBanditEnv, SyntheticRun (G1-synthetic, `thesis synth`)
+              (WP7), KernelPriorEstimator (the director's: cells + kernel prior, WP11); Synthetic/ ThresholdBanditEnv, SyntheticRun (G1-synthetic, `thesis synth`)
   Director/   Telemetry/: WaveRecord (the row), TelemetryRecorder, TelemetryWriter,
               PlacementEntropy (the primary metric); Profile/ (WP8a): BuildProfiler, BuildProfile,
               ProfileInput, EmptyBoard, IBuildFeature, FeatureValue; Features/ MazeLength,
@@ -223,7 +226,8 @@ Assets/Thesis/                pure C#, no UnityEngine; each folder is one assemb
               BreachThinWall, SwarmChokepoint, SplitGroups, FlyingBypass, FixedStrategyPlanner;
               (WP10) Layers/ Constraints, AuthoredHeuristic; Context/ ContextBucketizer;
               Decision/ WaveDirector, DirectorTrace, DirectorConfig; Baselines/ RandomPlanner,
-              RoundRobinPlanner; Announce/ AnnouncementTable; PlannerFactory (every planner by name)
+              RoundRobinPlanner; Announce/ AnnouncementTable; PlannerFactory (every planner by name);
+              (WP11) Reward/ RewardEvaluator; Decision/ DirectorSetup (in WaveDirector.cs)
   Harness/    editor and headless only: EpisodeRunner, scripted policies (Idle,
               GreedyDetour, Sentry, Seller, Sequence, Raid; Builder, the only one for today's
               rules), GameMaps (the game's 48 x 48 map), ReplayRunner, PinnedEpisodes,
@@ -266,7 +270,8 @@ Maps/                         exported maps, Shapes.json, Towers.json and SimCon
 Results/                      committed results; Results/pinned-replays (recordings and their
                               telemetry) is re-run by tests
 Runs/                         (gitignored) raw output and Unity sessions (replay and telemetry)
-Assets/Scenes/                ArknightsTest (the game) + Bench_Open / Bench_Maze / Bench_Choke / Bench_Stress
+Assets/Scenes/                StaticTest (the game; ArknightsTest until 2026-11-18) + DirectorTest (the same game with the heuristic director,
+                              for play-testing WP10; not in the build list) + Bench_Open / Bench_Maze / Bench_Choke / Bench_Stress
                               (SampleScene, the old top-down scene, was removed 2026-10-24)
 Assets/Scripts/BlockS/        the wall shape assets: Wall (one tile, the game's) and the tetrominoes
 ```

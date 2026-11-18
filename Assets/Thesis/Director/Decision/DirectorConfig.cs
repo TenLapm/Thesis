@@ -38,6 +38,42 @@ namespace Thesis.Director
         // A strategy may run this many waves in a row; a backstop to the similarity rule.
         public int MaxStreak = 2;
 
+        // ---- the reward (WP11; S4, S5: the student's provisional answers of 2026-11-18) ----
+        public RewardMode Reward = RewardMode.Graduated;
+        public float RestructureWeight = 0.45f, SurvivedWeight = 0.25f, PressureWeight = 0.20f, NoveltyWeight = 0.10f;
+        // Full credit for restructure at this mean change of the built features (normalised); more
+        // counts the same. Also the binary control's threshold.
+        public float Tau = 0.2f;
+        // What "rebuilding" is measured on: the features that describe what is BUILT. Not
+        // chokepoint_reliance or damage_type_mix, which describe how last wave's damage fell and
+        // change with the director's own waves even when nothing was rebuilt.
+        public string[] RestructureFeatures = { MazeLengthName, BreachVulnerabilityName, TowerConcentrationName };
+        // Credit for an observed restructure, spread back over the decisions before it: the wave
+        // itself, then the two before, as a fractional update (S3).
+        public float[] CreditWeights = { 1f, 0.5f, 0.25f };
+
+        // ---- the learner (S2) ----
+        public string EstimatorKind = Thesis.Learning.KernelPriorEstimator.KindName;
+        public int ThinBelow = Thesis.Learning.KernelPriorEstimator.DefaultThinBelow;
+        public double PriorWeight = Thesis.Learning.KernelPriorEstimator.DefaultPriorWeight;
+        public double NearWeight = Thesis.Learning.KernelPriorEstimator.DefaultNearWeight;
+        public double Discount = Thesis.Learning.BinnedPosterior.DefaultDiscount;
+
+        // A fresh estimator of the configured kind (CLAUDE.md §7: chosen by config).
+        public Thesis.Learning.IStrategyEstimator NewEstimator()
+        {
+            int bins = BinEdges.Length + 1;
+            switch (EstimatorKind)
+            {
+                case Thesis.Learning.KernelPriorEstimator.KindName:
+                    return new Thesis.Learning.KernelPriorEstimator(bins, StrategyFeature.Length, Discount, ThinBelow, PriorWeight, NearWeight);
+                case Thesis.Learning.BinnedPosterior.KindName:
+                    return new Thesis.Learning.BinnedPosterior(bins, StrategyFeature.Length, Discount);
+                default:
+                    throw new ArgumentException("unknown estimator kind '" + EstimatorKind + "'");
+            }
+        }
+
         public const string MazeLengthName = "maze_length";
         public const string BreachVulnerabilityName = "breach_vulnerability";
         public const string ChokepointRelianceName = "chokepoint_reliance";

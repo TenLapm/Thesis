@@ -2615,3 +2615,121 @@ dotnet run --project Tools/dotnet/Thesis.Cli -c Release -- profile --seeds 20 --
 dotnet run --project Tools/dotnet/Thesis.Cli -c Release -- run --game-map 3 --policy builder --planner heuristic --seed 3 --waves 20
 dotnet test Tools/dotnet/Thesis.Tests --filter FullyQualifiedName~WaveDirectorTests
 ```
+
+## 2026-11-18 — WP10 finished: replays store every plan
+
+**Changed**
+- `Sim/Replay/ReplayFile.cs`: schema **16** adds `Plans`, every plan the planner handed the simulation,
+  in the order it made them (`RecordedPlan`: wave and plan). Schema 15 describes the same game and still
+  loads (`SchemaBeforePlans`); such a file rebuilds its planner by name as before.
+- `Simulation.Planned`: an event raised with each plan the planner returns, before it is checked. Not
+  part of the state and not copied by `Clone`. `ReplayRecorder` listens to it.
+- `Sim/Replay/RecordedPlanner.cs`: plays the plans back in order. The simulation asks its planner at the
+  same moments on a replay as in the session, so the n-th call gets the n-th plan; a wave planned twice
+  (the core moved, a wave restarted) has two entries. A recording that runs out of plans, or whose next
+  plan is for another wave, raises `RecordedPlansExhaustedException`, which `Verify` reports.
+- `ReplayRunner`: recorded plans by default (`NewSimulation(file, rebuildPlanner: false)`);
+  `CompareRebuiltPlanner` (with `PlanComparison`) rebuilds the planner and compares plan by plan as JSON;
+  `Telemetry` rebuilds the planner when the factory knows its name, because a row carries the director's
+  reasons, which only the planner knows.
+- CLI: `replay --rerun-director`.
+
+**Tests added** (`RecordedPlanTests`, 7): plans stored in order; a random-planner session replays exactly
+with its planner unknown to the factory (the must-pass); a pinned replay of schema 15 still loads and
+verifies; the rebuilt director reproduces every recorded plan; a changed plan is named; a recording that
+runs out of plans fails with a message; a director session's telemetry is still made again byte for
+byte. `ReplayRunnerTests.AnUnknownPlannerIsNamed` asserted the old rule (an unknown planner always
+throws); it is now `AnUnknownPlannerIsNamedWhenItMustBeRebuilt`, because WP10 deliberately removes that
+need. Green under .NET (797 of 797, every pinned replay included) and in the Unity editor.
+
+**Deviations and decisions**
+- Plans are recorded per planner call, not per wave: that needs no knowledge of why a wave was planned
+  again, and it is exact because a replay calls the planner at the same moments.
+- A planner that throws records nothing, so a headless session whose planner threw would not replay from
+  its plans. In the game every planner runs inside `SafePlanner`, which never lets one throw.
+- The pinned replays stay at schema 15: they load and verify as they are, so they were not re-recorded.
+
+**Commands**
+```
+dotnet run --project Tools/dotnet/Thesis.Cli -c Release -- run --game-map 4 --policy builder --planner heuristic --seed 4 --waves 6 --out Runs/h4
+dotnet run --project Tools/dotnet/Thesis.Cli -c Release -- replay Runs/h4/replay.json --rerun-director
+```
+
+## 2026-11-18 — DirectorTest: a scene for playing the heuristic director
+
+`Assets/Scenes/DirectorTest.unity` is a copy of `ArknightsTest` that differs in one value:
+`DirectorHost.condition` is `HeuristicDirector` (1) instead of `DevRoughDirector` (102). Everything else (the
+generated map, `SimConfig.asset`, the roster, the HUD) is the game's. It is for the student to play the
+WP10 director before deciding whether it replaces the development director in `ArknightsTest`. Not in the
+build's scene list. A change made later to `ArknightsTest` does not reach this copy: make the copy again,
+or set the condition on `ArknightsTest` itself, once the director has been played.
+
+## 2026-11-18 — WP11 The full director: reward, credit, the thin-cell prior
+
+**Decided first** (the student, this session, "yes" to all four suggestions): S2, a cell is thin below
+4 results and borrows the kernel's estimate worth 2 results on top; S3, partial credit is a fractional
+update; S4, full credit for restructure at a mean change of 0.2; S5, "close to the core" is 5 tiles.
+Saved with their impact in memory (`wp10-provisional-decisions`). One choice of mine, from what
+"rebuilding" means: restructure is measured on the three BUILT features only; `chokepoint_reliance` and
+`damage_type_mix` describe last wave's damage and would reward the director for its own waves.
+
+**Changed**
+- `Learning/BinnedPosterior.Update`: partial credit as a fractional update (weight in (0, 1]); with
+  weight 1 it is the WP7 update, so the pinned fingerprint holds.
+- `Learning/KernelPriorEstimator.cs` (`binned-kernel`): the cells plus the kernel as a prior for thin
+  cells; the kernel learns from direct credit only. `EstimatorState` gains its kernel and settings.
+- `Director/Reward/RewardEvaluator.cs`: restructure, survived, pressure, novelty; graduated
+  (0.45 / 0.25 / 0.20 / 0.10) and binary (`restructure >= tau && survived`, the G3 control).
+- `WaveDirector` (Full): keeps each wave's outcome from `OnWaveResolved`; inside `PlanWave(N + 1)`,
+  before any decision, rewards wave N once and credits the decisions for N, N - 1, N - 2 with 1, 0.5,
+  0.25. A digest of the estimator (over the numbers' bits) goes into each trace.
+- `DirectorConfig`: the reward, credit and learner settings, and `NewEstimator()` by kind (§7).
+- Replay: `IPlannerSetup` and `ReplayFile.PlannerSetup` keep the director's config and the estimator it
+  started from; `PlannerFactory` rebuilds `full` from it (or fresh without it). Schema stays 16 (new today).
+- Telemetry: each row gets its wave's reward (worked out in the next decision) and the estimator digest.
+- `DirectorHost.Condition.FullDirector`. `BuilderPolicy` skips a tower type the rules shut (research
+  that unlocks types, a tower cap): the new pinned episode runs on an older round's rules.
+- Pinned episodes: `full-director-8waves` (builder, full director, 8 waves, every tick hashed). Both
+  pinned sets were re-recorded so every file carries its plans: every old episode's final hash and
+  telemetry are unchanged, and the new one ends in the same hash under .NET and Mono (`aefb089f0cb0a190`).
+
+**Tests added** (`FullDirectorTests`, 14, and 2 in `RecordedPlanTests`): every WP11 must-pass. The reward
+for N is made inside PlanWave(N + 1), before its decision, never before N resolved, never twice; credit
+weights 1, 0.5, 0.25 and nothing for lag 3; the binary reward in all four cases; the graduated sum;
+restructure ignoring the damage features; cold cells nudge 0, kernel data near a thin cell is added worth
+2, and stops at 4 results; corrections within ±1; the fractional update; the estimator state round-trips;
+HeuristicOnly and Full with an always-cold estimator choose the same 8 waves (the I4 ablation check); a
+full-director session writes rewards to telemetry and is re-made from its setup; a director started from
+a trained estimator is rebuilt from that snapshot (the transfer condition); the pinned full-director
+episode is re-made by the rebuilt director on either runtime. Shortening the credit window on purpose
+turns the credit test red. Green under .NET (817 of 817) and in the Unity editor (817 passed, 2 explicit
+diagnostics skipped).
+
+**Found and fixed on the way**
+- The first estimator digest hashed the state's JSON text. Mono and .NET write some doubles with
+  different, equally exact text, so the two runtimes gave two digests for one state. It now hashes the
+  numbers' bits, as `StateHasher` does.
+- The full director's pinned episode first stopped: `builder` bought a tower type the older round's rules
+  keep shut until research. It now asks the same question the simulation does.
+
+**Deviations and decisions**
+- "Kernel data near" means a weight sum of at least 0.5 (half an entry's worth at σ = 0.15).
+- Each credit is its own discounted update, so a cell credited three times in one wave decays three
+  times. Simpler than one decay a wave; noted for the threshold freeze.
+- The learner cannot be shown to learn offline yet: `builder` never rebuilds, so restructure is about 0
+  and the reward is mostly "survived". WP12 needs a scripted player that reacts to the waves.
+
+**Commands**
+```
+dotnet test Tools/dotnet/Thesis.Tests --filter "FullyQualifiedName~FullDirectorTests|FullyQualifiedName~RecordedPlanTests"
+dotnet run --project Tools/dotnet/Thesis.Cli -c Release -- run --game-map 6 --policy builder --planner full --seed 6 --waves 10 --out Runs/full6
+dotnet run --project Tools/dotnet/Thesis.Cli -c Release -- replay Runs/full6/replay.json --rerun-director
+dotnet run --project Tools/dotnet/Thesis.Cli -c Release -- pin     (then Thesis > Replay > Record Pinned Episodes (Mono) in Unity)
+```
+
+## 2026-11-18 — The game scene renamed StaticTest
+
+The student renamed `Assets/Scenes/ArknightsTest.unity` to `StaticTest.unity` in Unity: the same scene,
+same asset ID and contents, still running the development director (`DevRoughDirector`). CLAUDE.md, the
+GDD's heading note and a comment in `GameMaps` now say `StaticTest`; earlier DEVLOG entries keep the
+name they were written with. `DirectorTest` was copied from it before the rename and is unaffected.

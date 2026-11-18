@@ -1,6 +1,6 @@
 # GDD.md — game design document
 
-**Rewritten 2026-10-28** for the game as it plays today in `ArknightsTest`. The first version
+**Rewritten 2026-10-28** for the game as it plays today in `ArknightsTest` (renamed `StaticTest` on 2026-11-18). The first version
 (2026-10-12) described a 24 × 24 board with a random tower shop; since then the game has been
 reworked in rounds after play tests (cards, tower levels and gear; a generated map with several
 entries; towers on walls; the ore economy and the build menu; power; upgrade paths; wall tiers

@@ -36,6 +36,10 @@ namespace Thesis.Director
         public string Chosen;
         public string Fallback;      // WaveDirector.FallbackAllVetoed, or null
         public string Announcement;  // the banner's line, or null
+        public DecisionContext Context;  // the learner's context, for crediting this decision later
+        public int ChosenId = -1;        // the chosen strategy's id, or -1 for the fallback
+        public RewardRecord RewardForPrevious; // the reward worked out in this call for the wave before (Full)
+        public string EstimatorDigest;   // the estimator's state when it was asked (Full), or null
         public long ElapsedMicroseconds;
     }
 
@@ -43,5 +47,6 @@ namespace Thesis.Director
     public interface IDecisionSource
     {
         DirectorTrace TraceFor(int wave);
+        RewardRecord RewardFor(int wave); // null until the wave has been rewarded (inside the next plan)
     }
 }

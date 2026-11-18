@@ -14,7 +14,7 @@ namespace Thesis.Cli
     {
         public static int Run(string[] argv)
         {
-            var args = new Args(argv, new[] { "--dump-tick", "--dump-out" }, new[] { "--per-tick", "--outcomes" });
+            var args = new Args(argv, new[] { "--dump-tick", "--dump-out" }, new[] { "--per-tick", "--outcomes", "--rerun-director" });
             string path = args.Positional(0, "the replay file");
             args.NoMorePositionals(1);
 
@@ -24,8 +24,20 @@ namespace Thesis.Cli
             Console.WriteLine("  map " + file.Map + ", seed " + file.RngSeed + ", planner " + file.Planner + ", " + file.Commands.Count + " commands, "
                               + file.WaveHashes.Count + " waves, " + file.FinalTick + " ticks, per-tick hashes " + (string.IsNullOrEmpty(file.TickHashes) ? "no" : "yes"));
 
+            Console.WriteLine("  plans: " + (file.Plans == null ? "none recorded (schema " + file.Schema + "): the planner is rebuilt by name"
+                                                                : file.Plans.Count + " recorded, which drive the waves"));
             ReplayReport report = ReplayRunner.Verify(file, args.Flag("--per-tick"));
             Console.WriteLine(report.Describe());
+
+            // --rerun-director: rebuild the planner from its name and the seed and check it still makes
+            // the recorded plans (WP10). Fails, with the first plan that differs, if its code changed.
+            bool plansOk = true;
+            if (args.Flag("--rerun-director"))
+            {
+                PlanComparison c = ReplayRunner.CompareRebuiltPlanner(file);
+                Console.WriteLine("[Replay] planner '" + file.Planner + "' rebuilt: " + c);
+                plansOk = c.Ok;
+            }
 
             if (args.Flag("--outcomes"))
             {
@@ -41,7 +53,7 @@ namespace Thesis.Cli
                 Console.WriteLine("[Replay] state at tick " + sim.State.Tick + " -> " + Path.GetFullPath(dumpPath));
             }
 
-            return report.Ok ? 0 : 1;
+            return report.Ok && plansOk ? 0 : 1;
         }
     }
 }

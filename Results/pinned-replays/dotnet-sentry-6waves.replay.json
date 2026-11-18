@@ -1,5 +1,5 @@
 {
-  "Schema": 15,
+  "Schema": 16,
   "Build": "headless .NET 9.0.10",
   "Session": "dotnet-sentry-6waves",
   "Policy": "sentry",
@@ -7,6 +7,7 @@
   "MapSeed": 0,
   "RngSeed": 7,
   "Planner": "escalation",
+  "PlannerSetup": null,
   "Config": {
     "TickSeconds": 0.02,
     "StartBudget": 60.0,
@@ -2558,6 +2559,37 @@
       "Wave": 1,
       "Tick": 2676,
       "Hash": "70ceab124c94dbd8"
+    }
+  ],
+  "Plans": [
+    {
+      "Wave": 1,
+      "Plan": {
+        "WaveIndex": 1,
+        "StrategyId": "escalation",
+        "Groups": [
+          {
+            "SpawnIndex": 0,
+            "Count": 100,
+            "Archetype": "basic",
+            "Movement": "Ground",
+            "TargetsCollectors": false,
+            "Siege": false,
+            "MoveSpeed": 1.25,
+            "Hp": 10.0,
+            "DigRate": 1.0,
+            "Resist": [
+              1.0,
+              1.0,
+              1.0
+            ],
+            "SpawnIntervalTicks": 10,
+            "StartDelayTicks": 0
+          }
+        ],
+        "ThreatSpent": 0.0,
+        "AnnouncementId": null
+      }
     }
   ],
   "FinalTick": 2676,

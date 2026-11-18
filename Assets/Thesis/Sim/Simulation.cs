@@ -163,6 +163,10 @@ namespace Thesis.Sim
             return new Simulation(this, planner);
         }
 
+        // Raised with each plan the planner returns (WP10). Not part of the state, and not copied by
+        // Clone: a recorder listens to the one simulation it records.
+        public event Action<int, WavePlan> Planned;
+
         public ulong ComputeHash()
         {
             return StateHasher.Compute(State);
@@ -1513,6 +1517,9 @@ namespace Thesis.Sim
             var context = new WaveContext(wave, s, map, config);
             ulong before = StateHasher.Compute(s);
             WavePlan plan = planner.PlanWave(context);
+            // Every plan the planner hands over, before anything checks it: the replay records them
+            // all, so playing them back reproduces the same calls (RecordedPlanner, WP10).
+            if (Planned != null && plan != null) Planned(wave, plan.Copy());
             GuardUnchanged(s, before, "PlanWave", wave);
             ValidatePlan(plan, wave);
             return plan.Copy();

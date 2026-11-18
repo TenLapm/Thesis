@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using Thesis.Core;
 using Thesis.Director;
 using Thesis.Sim;
 
@@ -13,11 +14,47 @@ namespace Thesis.Harness
     // game rules ran identically in both places, and any bug left is in the view.
     public static class ReplayRunner
     {
-        public static Simulation NewSimulation(ReplayFile file)
+        // By default the recording's own plans drive the waves (RecordedPlanner, schema 16), so a
+        // replay needs no planner code. rebuildPlanner: make the planner again from its name and the
+        // seed instead, as a file of schema 15 always does.
+        public static Simulation NewSimulation(ReplayFile file, bool rebuildPlanner = false)
         {
             if (file == null) throw new ArgumentNullException(nameof(file));
-            IWavePlanner planner = Registry.CreatePlanner(file.Planner, file.Config, file.MapData, file.RngSeed);
+            IWavePlanner planner = !rebuildPlanner && file.Plans != null
+                ? new RecordedPlanner(file.Planner, file.Plans)
+                : Registry.CreatePlanner(file.Planner, file.Config, file.MapData, file.RngSeed, file.PlannerSetup);
             return new Simulation(file.Config, file.MapData, file.Shapes, file.Towers, file.RngSeed, planner);
+        }
+
+        // Rebuilds the planner from its name and the seed, runs the recording with it, and checks that
+        // it hands over the same plans, in the same order, as the recording holds (`replay
+        // --rerun-director`). This is how a changed director is caught; the simulation itself no
+        // longer needs it.
+        public static PlanComparison CompareRebuiltPlanner(ReplayFile file)
+        {
+            var c = new PlanComparison();
+            if (file.Plans == null) { c.Fail(-1, "the file (schema " + file.Schema + ") holds no recorded plans to compare with."); return c; }
+            Simulation sim = NewSimulation(file, rebuildPlanner: true);
+            int index = 0;
+            sim.Planned += (wave, plan) =>
+            {
+                if (!c.Ok) return;
+                if (index >= file.Plans.Count) { c.Fail(index, "the rebuilt planner made plan " + index + " (wave " + wave + "), but the recording holds only " + file.Plans.Count + "."); return; }
+                RecordedPlan recorded = file.Plans[index];
+                string a = Json.Serialize(recorded.Plan), b = Json.Serialize(plan);
+                if (recorded.Wave != wave || a != b) c.Fail(index, "plan " + index + " (wave " + recorded.Wave + ") differs: recorded " + a + ", rebuilt " + b);
+                else c.PlansCompared++;
+                index++;
+            };
+            int cursor = 0;
+            while (sim.State.Tick < file.FinalTick && c.Ok)
+            {
+                Feed(file, sim, ref cursor);
+                if (!GoOnAfterGameOver(sim)) break;
+                sim.Tick();
+            }
+            if (c.Ok && index != file.Plans.Count) c.Fail(index, "the rebuilt planner made " + index + " plans, the recording holds " + file.Plans.Count + ".");
+            return c;
         }
 
         // The simulation as it stood when State.Tick == tick. With
@@ -85,9 +122,14 @@ namespace Thesis.Harness
         // replay (Session, Build, Policy), and nothing else in a row depends on
         // where or when it was written. Telemetry can therefore always be made
         // again, also after its schema has grown.
+        //
+        // A row carries the director's reasons (its profile, its scores), which only the planner
+        // knows, so the planner is rebuilt by name when the factory still knows it; otherwise the
+        // recorded plans drive the waves and those fields stay empty.
         public static List<WaveRecord> Telemetry(ReplayFile file)
         {
-            Simulation sim = NewSimulation(file);
+            bool known = Array.IndexOf(Registry.PlannerNames, file.Planner) >= 0;
+            Simulation sim = NewSimulation(file, rebuildPlanner: known);
             var recorder = new TelemetryRecorder(sim, file.Session, file.Build, file.Policy);
             var rows = new List<WaveRecord>();
 
@@ -147,7 +189,13 @@ namespace Thesis.Harness
                 }
 
                 int ran = s.Tick;
-                sim.Tick();
+                try { sim.Tick(); }
+                catch (RecordedPlansExhaustedException e)
+                {
+                    report.FirstDivergentWave = s.WaveIndex + 1;
+                    report.Fail("tick " + ran + ": " + e.Message);
+                    break;
+                }
                 s = sim.State;
                 report.TicksRun++;
 

@@ -115,6 +115,16 @@ namespace Thesis.Harness
             return -1;
         }
 
+        // What the simulation's BuyTower allows (Simulation.BuyTower): in rounds where research
+        // unlocks tower types (ResearchUnlocksUpgrades off) a type above the research tier is shut,
+        // and a tower cap may be full. In today's game every type is open.
+        private static bool MayBuy(Simulation sim, TowerDef def)
+        {
+            SimConfig config = sim.Config;
+            if (!config.ResearchUnlocksUpgrades && def.Tier > sim.State.ResearchLevel) return false;
+            return TowerCombine.HasRoomFor(sim.State.Towers, def, 1, config, sim.State.WaveIndex);
+        }
+
         // The next tower: an anti-air one while they are below their share, else the rotation.
         private int Choose(Simulation sim)
         {
@@ -131,13 +141,13 @@ namespace Thesis.Harness
                 foreach (string id in Rotation)
                 {
                     int i = IndexOf(roster, id);
-                    if (i >= 0 && roster[i].CanHitFlying) return i;
+                    if (i >= 0 && roster[i].CanHitFlying && MayBuy(sim, roster[i])) return i;
                 }
             }
             for (int k = 0; k < Rotation.Length; k++)
             {
                 int i = IndexOf(roster, Rotation[(bought + k) % Rotation.Length]);
-                if (i >= 0) return i;
+                if (i >= 0 && MayBuy(sim, roster[i])) return i;
             }
             return -1;
         }

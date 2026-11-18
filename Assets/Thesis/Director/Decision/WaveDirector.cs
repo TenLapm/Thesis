@@ -9,19 +9,25 @@ namespace Thesis.Director
 {
     // The director (ARCHITECTURE.md §5.2), as an IWavePlanner. Each wave, as its build phase begins:
     //
-    //   profile the board → bin and kernel context → the wave's threat budget →
+    //   profile the board → bin and kernel context →
+    //   (Full) reward the wave before, now that it has resolved, and credit it to the decisions
+    //   behind it (WP11) → the wave's threat budget →
     //   for every strategy, in id order: its plan, then the vetoes (layer 1, I5), then the authored
     //   score (layer 2), then in Full mode the learner's bounded correction (layer 3, I4) →
     //   play the highest score; ties to the lowest id; everything vetoed → the static baseline.
     //
     // HeuristicOnly is a complete director on its own: the ablation condition and a ladder rung.
-    // Full asks an IStrategyEstimator for the correction; the reward and the update are WP11, so
-    // here the estimator is only read. A vetoed strategy never reaches the estimator.
+    // A vetoed strategy never reaches the estimator.
+    //
+    // The reward for wave N is computed inside PlanWave(N + 1), before the decision for N + 1, and
+    // only once OnWaveResolved has delivered wave N's outcome: never from a wave still running. It
+    // is credited once per wave number, to the decisions for N, N - 1 and N - 2 with the weights of
+    // DirectorConfig.CreditWeights (1, 0.5, 0.25), as fractional updates (S3).
     //
     // The director keeps what it chose BY WAVE NUMBER: a wave planned again (the core moved, a wave
     // restarted) overwrites its own entry instead of adding one, so the anti-repeat rules always
     // compare with the wave before.
-    public sealed class WaveDirector : IWavePlanner, IDecisionSource
+    public sealed class WaveDirector : IWavePlanner, IDecisionSource, IPlannerSetup
     {
         public const string HeuristicId = "heuristic";
         public const string FullId = "full";
@@ -44,10 +50,14 @@ namespace Thesis.Director
         private readonly EscalationPlanner fallback;
         private readonly Pcg32 strategyRng;
         private readonly Pcg32 thompsonRng;
+        private readonly Pcg32 rewardRng;
+        private readonly string setup;
 
         private readonly Dictionary<int, WavePlan> chosenPlans = new Dictionary<int, WavePlan>();
         private readonly Dictionary<int, string> chosenNames = new Dictionary<int, string>();
         private readonly Dictionary<int, DirectorTrace> traces = new Dictionary<int, DirectorTrace>();
+        private readonly Dictionary<int, WaveOutcome> outcomes = new Dictionary<int, WaveOutcome>();
+        private readonly Dictionary<int, RewardRecord> rewards = new Dictionary<int, RewardRecord>();
         private EmptyBoard empty;
         private TileCoord emptyCore = new TileCoord(int.MinValue, int.MinValue);
 
@@ -71,14 +81,25 @@ namespace Thesis.Director
             fallback = new EscalationPlanner(config, map, table);
             strategyRng = new Pcg32(seed, RngStreams.Strategy);
             thompsonRng = new Pcg32(seed, RngStreams.Thompson);
+            rewardRng = new Pcg32(seed, RngStreams.RewardBernoulli);
+            // Taken now, before any wave: the state the session starts from (the replay keeps it).
+            setup = DirectorSetup.Write(cfg, mode, estimator);
         }
 
         public string Name => mode == DirectorMode.Full ? FullId : HeuristicId;
+
+        public string PlannerSetup => setup;
 
         public DirectorTrace TraceFor(int wave)
         {
             DirectorTrace t;
             return traces.TryGetValue(wave, out t) ? t : null;
+        }
+
+        public RewardRecord RewardFor(int wave)
+        {
+            RewardRecord r;
+            return rewards.TryGetValue(wave, out r) ? r : null;
         }
 
         public WavePlan PlanWave(WaveContext context)
@@ -93,8 +114,14 @@ namespace Thesis.Director
             trace.Profile = profile;
             trace.Bin = bucketizer.Bin(profile);
             DecisionContext dc = bucketizer.Context(profile);
+            trace.Context = dc;
+
+            // Before the decision: the wave before, if it has resolved and not been rewarded yet.
+            if (mode == DirectorMode.Full) trace.RewardForPrevious = RewardPrevious(wave - 1, profile);
+
             float budget = table.BudgetForWave(wave);
             trace.ThreatBudget = budget;
+            if (mode == DirectorMode.Full) trace.EstimatorDigest = Digest(estimator.Export());
 
             WavePlan previous;
             chosenPlans.TryGetValue(wave - 1, out previous);
@@ -139,6 +166,7 @@ namespace Thesis.Director
                 plan = best.Plan;
                 plan.AnnouncementId = AnnouncementTable.Id(best.Name, trace.Bin);
                 trace.Chosen = best.Name;
+                trace.ChosenId = best.Id;
                 trace.Announcement = AnnouncementTable.Line(plan.AnnouncementId);
             }
 
@@ -150,6 +178,110 @@ namespace Thesis.Director
             return plan;
         }
 
-        public void OnWaveResolved(WaveOutcome outcome) { } // the reward and the update are WP11
+        // The outcome of a wave, delivered by the simulation once it has resolved. The reward is
+        // worked out later, inside the next PlanWave, when the player's answer can be read.
+        public void OnWaveResolved(WaveOutcome outcome)
+        {
+            if (outcome != null) outcomes[outcome.WaveIndex] = outcome;
+        }
+
+        private RewardRecord RewardPrevious(int wave, BuildProfile now)
+        {
+            if (wave < 1 || rewards.ContainsKey(wave)) return null;
+            WaveOutcome outcome;
+            DirectorTrace decided;
+            if (!outcomes.TryGetValue(wave, out outcome) || !traces.TryGetValue(wave, out decided)) return null; // not resolved yet
+            WavePlan plan, before;
+            chosenPlans.TryGetValue(wave, out plan);
+            chosenPlans.TryGetValue(wave - 1, out before);
+
+            var record = new RewardRecord { Wave = wave, Reward = RewardEvaluator.Evaluate(decided.Profile, now, outcome, plan, before, cfg) };
+            for (int lag = 0; lag < cfg.CreditWeights.Length; lag++)
+            {
+                DirectorTrace t;
+                if (!traces.TryGetValue(wave - lag, out t) || t.ChosenId < 0) continue; // nothing chosen by the learner's arms
+                float w = cfg.CreditWeights[lag];
+                estimator.Update(t.Context, t.ChosenId, record.Reward.Total, w, rewardRng);
+                record.Credited.Add(new CreditEntry { Wave = t.Wave, Strategy = t.Chosen, Weight = w });
+            }
+            rewards[wave] = record;
+            return record;
+        }
+
+        // A short fingerprint of the estimator's state, written into telemetry: two sessions that
+        // asked the same estimator have the same digest. FNV-1a over the numbers' BITS, as
+        // StateHasher does. Not over the JSON text: the first version hashed Json.Serialize(state),
+        // and Mono and .NET write some doubles with different (equally exact) text, so the pinned
+        // full-director episode gave two digests for one state.
+        private static string Digest(EstimatorState s)
+        {
+            if (s == null) return null; // an estimator that keeps no state (a test's stand-in)
+            var h = new Fnv1a64();
+            h.Add(s.Kind ?? "");
+            h.Add(s.Bins);
+            h.Add(s.Strategies);
+            h.Add(s.Discount);
+            Add(h, s.Alpha);
+            Add(h, s.Beta);
+            if (s.Updates != null) foreach (int u in s.Updates) h.Add(u);
+            h.Add(s.ThinBelow);
+            h.Add(s.PriorWeight);
+            h.Add(s.NearWeight);
+            KernelState k = s.Kernel;
+            if (k != null)
+            {
+                h.Add(k.Capacity);
+                h.Add(k.Sigma);
+                h.Add(k.Count);
+                h.Add(k.Next);
+                for (int i = 0; i < k.Count; i++)
+                {
+                    h.Add(k.X[i]);
+                    h.Add(k.Y[i]);
+                    h.Add(k.Strategy[i]);
+                    h.Add(k.Reward[i]);
+                }
+            }
+            return ReplayFile.Hex(h.Value);
+        }
+
+        private static void Add(Fnv1a64 h, double[] values)
+        {
+            if (values == null) return;
+            foreach (double v in values) h.Add(v);
+        }
+    }
+
+    // What a director needs, besides its name and the seed, to be rebuilt exactly as it started:
+    // its config and its starting estimator (the transfer condition seeds one from another
+    // session). Stored in the replay as JSON (IPlannerSetup).
+    public sealed class DirectorSetup
+    {
+        public const int CurrentSchema = 1;
+        public int Schema = CurrentSchema;
+        public DirectorMode Mode;
+        public DirectorConfig Config;
+        public EstimatorState Estimator; // null for HeuristicOnly
+
+        public static string Write(DirectorConfig cfg, DirectorMode mode, IStrategyEstimator estimator)
+        {
+            return Json.Serialize(new DirectorSetup { Mode = mode, Config = cfg, Estimator = estimator != null ? estimator.Export() : null });
+        }
+
+        public static DirectorSetup Read(string json)
+        {
+            DirectorSetup s = Json.Deserialize<DirectorSetup>(json);
+            if (s == null || s.Schema != CurrentSchema || s.Config == null) throw new ArgumentException("not a director setup of schema " + CurrentSchema);
+            return s;
+        }
+
+        // A fresh estimator of the setup's kind, holding its starting state.
+        public IStrategyEstimator NewEstimator()
+        {
+            if (Estimator == null) return null;
+            IStrategyEstimator e = Estimator.Kind == KernelPriorEstimator.KindName ? (IStrategyEstimator)new KernelPriorEstimator() : new BinnedPosterior(Estimator.Bins, Estimator.Strategies, Estimator.Discount);
+            e.Import(Estimator);
+            return e;
+        }
     }
 }

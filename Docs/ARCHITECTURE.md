@@ -178,7 +178,7 @@ Assets/
       Decision/    WaveDirector.cs DirectorTrace.cs (DirectorMode, StrategyRow, IDecisionSource) DirectorConfig.cs   [WP10, built]
       Baselines/   LadderPlanners.cs (RandomPlanner, RoundRobinPlanner)   [WP10, built]
       PlannerFactory.cs   every planner by name; Harness.Registry and DirectorHost call it   [WP10, built]
-      Reward/      RewardEvaluator.cs RewardBreakdown.cs CreditAssigner.cs
+      Reward/      RewardEvaluator.cs (RewardMode, RewardBreakdown, RewardRecord; credit lives in WaveDirector)   [WP11, built]
       Announce/    AnnouncementTable.cs
       Telemetry/   WaveRecord.cs TelemetryRecorder.cs TelemetryWriter.cs
                    PlacementEntropy.cs PlacementScope.cs                                             (WP-C3, built)
@@ -1121,10 +1121,10 @@ Log prefixes: `[Sim]`, `[Director]`, `[Telemetry]`, `[Harness]`, `[Replay]`.
 | # | Gap | Needed by |
 |---|---|---|
 | S1 | Which single feature is binned into 5 bins, and which two features form the kernel's 2-D subspace. **Decided provisionally 2026-11-16 (the student, "for now"):** `chokepoint_reliance`, cut at 0.06 / 0.10 / 0.14 / 0.22 (its 20/40/60/80 % points over the builder player's boards, `thesis profile`); a profile without its data goes in bin 2; the kernel's coordinates are `tower_concentration` and `maze_length`, normalised over their 5 to 95 % range. Rests on a scripted player, not humans: **revisit at the threshold freeze (I6) with the pilot's data.** `DirectorConfig.Provisional()`. | Threshold freeze |
-| S2 | How the kernel prior combines with a cell's own counts (add `k·Q̂` on top of α/β, or replace them?), the value of `k`, and the definition of a "thin" or "cold" cell | WP11 |
-| S3 | How the `0.5^lag` credit weight combines with the Bernoulli update: scale `r` before the draw, or apply a fractional update? | WP11 |
-| S4 | τ for `restructure`, and the normalisation centres for the L1 distance on profiles | WP11 |
-| S5 | What counts as "got close to the core" for `pressure` (a radius in tile units) | WP3 (field) / WP11 (reward) |
+| S2 | How the kernel prior combines with a cell's own counts, the value of `k`, and "thin" and "cold". **Decided provisionally 2026-11-18 (the student, "for now"):** a cell is thin below 4 results; while thin the kernel's estimate is ADDED on top, worth k = 2 results; cold (correction 0) only with no results and no kernel data near (weight sum below 0.5). `KernelPriorEstimator`. Frozen with the thresholds (I6). | Threshold freeze |
+| S3 | How the `0.5^lag` credit weight combines with the Bernoulli update. **Decided 2026-11-18 (the student):** a fractional update, alpha += w r~ and beta += w (1 - r~); shrinking r before the draw would count older waves as failures. `BinnedPosterior.Update`. | Done |
+| S4 | τ for `restructure`, and the normalisation for the L1 distance on profiles. **Decided provisionally 2026-11-18 (the student):** restructure is the mean absolute change of the BUILT features (maze_length, breach_vulnerability, tower_concentration) over their measured 5 to 95 % ranges, with full credit at τ = 0.2. `chokepoint_reliance` and `damage_type_mix` are left out: they describe last wave's damage and move with the director's own waves. Revisit with the pilot's data. | Threshold freeze |
+| S5 | What counts as "got close to the core" for `pressure`. **Decided 2026-11-18 (the student):** within 5 tiles (`SimConfig.PressureRadiusTiles`), just outside the core's power reach of 4. | Done |
 | S6 | The formula of the threat cost table. **Decided 2026-11-16 (the student):** an enemy's price is its hit points × its speed × a factor for its movement class (Ground 1; Flying and Sapper each their own). A group costs its count times that; a plan costs the sum. Only relative prices matter, because the budget is the price of the static baseline's wave. The two class factors are **measured** with the scripted players (how much harder each class is to stop), not guessed: flyer 2.35, sapper 1.30 (`Results/2026-11-16_threat-factors`, `BuilderPolicy` on 20 game maps; the balance pass measures again). Resistances, raiders and siege enemies are not priced: the table refuses a group that has them. | WP9 |
 | S7 | G5 entropy: what the placement distribution is taken over, walls or towers, wave or session, shop-forced changes. **Decided provisionally in §5.9 (D7). Freeze it before the pilot; confirm with the supervisor.** | Before the pilot |
 | S8 | Where the extra spawn points for `split_groups` go. **Closed 2026-11-16:** out of date. SampleScene is gone; the generated map has entries all round its edge (`MapGenerator`). | Done |

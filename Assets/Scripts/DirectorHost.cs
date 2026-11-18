@@ -17,6 +17,10 @@ public class DirectorHost : MonoBehaviour
         // The ablation condition. The student plays it before it replaces the development director.
         HeuristicDirector = 1,
 
+        // The full director (WP11): the heuristic plus the learner's bounded correction, learning
+        // from how much the player rebuilds. Starts cold each session.
+        FullDirector = 2,
+
         // The bottom rungs of the offline ladder, playable for a look: a strategy at random, or
         // the four in turn. Not study conditions.
         LadderRandom = 200,
@@ -45,6 +49,10 @@ public class DirectorHost : MonoBehaviour
             case Condition.HeuristicDirector:
                 planner = PlannerFactory.Create(WaveDirector.HeuristicId, config, map, seed);
                 Debug.Log("[Director] the heuristic director (WP10): the study's four strategies, chosen by authored scores. No learning yet.");
+                break;
+            case Condition.FullDirector:
+                planner = PlannerFactory.Create(WaveDirector.FullId, config, map, seed);
+                Debug.Log("[Director] the full director (WP11): authored scores plus a learned correction of at most one point either way.");
                 break;
             case Condition.LadderRandom:
                 planner = PlannerFactory.Create(RandomPlanner.Id, config, map, seed);

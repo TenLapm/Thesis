@@ -98,18 +98,20 @@ namespace Thesis.Learning
             if (!(reward >= 0f && reward <= 1f))
                 throw new ArgumentOutOfRangeException(nameof(reward), reward, "a reward must be in [0, 1]");
 
-            // Spec gap S3: scale r before the draw, or a fractional update? WP11
-            // decides. Until then only full credit is accepted, so nothing picks an
-            // answer by accident.
-            if (creditWeight != 1f)
-                throw new NotSupportedException("Partial credit (weight " + creditWeight + ") waits for spec gap S3 (ARCHITECTURE.md §10, WP11).");
+            // Spec gap S3 (the student, 2026-11-18): partial credit (the 0.5^lag weight) is a
+            // FRACTIONAL update, w * r~ and w * (1 - r~), a weighted observation. Shrinking r before
+            // the draw was the other option; it would have counted older waves as failures.
+            if (!(creditWeight > 0f && creditWeight <= 1f))
+                throw new ArgumentOutOfRangeException(nameof(creditWeight), creditWeight, "a credit weight must be in (0, 1]");
 
             // Bernoulli(r) keeps the Beta update conjugate for a reward anywhere in
             // [0, 1]. The draw is taken even for r = 0 or 1, so the stream advances
-            // the same way whatever the reward.
+            // the same way whatever the reward. With weight 1 this is exactly the WP7
+            // update (the pinned fingerprint holds).
             int rTilde = rng.NextDouble() < reward ? 1 : 0;
-            alpha[cell] = 1.0 + discount * (alpha[cell] - 1.0) + rTilde;
-            beta[cell] = 1.0 + discount * (beta[cell] - 1.0) + (1 - rTilde);
+            double w = creditWeight;
+            alpha[cell] = 1.0 + discount * (alpha[cell] - 1.0) + w * rTilde;
+            beta[cell] = 1.0 + discount * (beta[cell] - 1.0) + w * (1 - rTilde);
             if (updates[cell] < int.MaxValue) updates[cell]++;
         }
 

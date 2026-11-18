@@ -94,7 +94,7 @@ namespace Thesis.Cli
             Console.WriteLine("             [--map f] [--shapes f] [--config f] [--planner escalation|class-cycle] [--policy sentry|mixed|restless|greedy|idle]");
             Console.WriteLine("             [--seed s] [--waves n] [--out dir] [--per-tick] [--wait]");
             Console.WriteLine("  replay   run a recording again and check its hashes (exit 1 on divergence)");
-            Console.WriteLine("             <replay.json> [--per-tick] [--outcomes] [--dump-tick T] [--dump-out f]");
+            Console.WriteLine("             <replay.json> [--per-tick] [--outcomes] [--rerun-director] [--dump-tick T] [--dump-out f]");
             Console.WriteLine("  ascii    render a recording's state as text, or a bare map and the route across it");
             Console.WriteLine("             <replay.json> [--wave N | --tick T] [--layer route|terrain|occupancy|cost] [--class ground|sapper]");
             Console.WriteLine("             --map f [--scenario open|maze|choke|scatter] [--layer route|terrain] [--class ground|sapper] [--sapper-factor 0..1]");

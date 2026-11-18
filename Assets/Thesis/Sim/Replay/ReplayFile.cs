@@ -27,8 +27,9 @@ namespace Thesis.Sim
         // A is now an offer slot, not a roster index, and there are three new
         // commands. A file of another schema is refused: its commands and hashes
         // describe a different game.
-        public const int CurrentSchema = 15; // 15: RetryWave, which may follow the end of a game (2026-10-24); // 14: Undo and Redo (2026-10-24); // 13: ore deposits on the map, collectors, the build menu, research, repair (2026-10-14); // 12: the chosen upgrade, a targeting order per tower, more enemy types (2026-10-14); // 11: RerollGearShop (2026-10-14); // 10: merging by choice, gear coming back from sold and merged towers (2026-10-14); // 9: the gear inventory (2026-10-14); // 8: generated maps, the core placed by the player, entry points, the wall stock, moves, the bench (2026-10-13); // 5: cards, tower levels and gear; 6: the draft, the gear shop, waves planned ahead; 7: combining, the tower cap, MoveTower (all 2026-10-12)
+        public const int CurrentSchema = 16; // 16: every plan the planner made, in order (WP10, 2026-11-18); the rules are those of 15, so a 15 still loads and rebuilds its planner by name; 15: RetryWave, which may follow the end of a game (2026-10-24); // 14: Undo and Redo (2026-10-24); // 13: ore deposits on the map, collectors, the build menu, research, repair (2026-10-14); // 12: the chosen upgrade, a targeting order per tower, more enemy types (2026-10-14); // 11: RerollGearShop (2026-10-14); // 10: merging by choice, gear coming back from sold and merged towers (2026-10-14); // 9: the gear inventory (2026-10-14); // 8: generated maps, the core placed by the player, entry points, the wall stock, moves, the bench (2026-10-13); // 5: cards, tower levels and gear; 6: the draft, the gear shop, waves planned ahead; 7: combining, the tower cap, MoveTower (all 2026-10-12)
 
+        public const int SchemaBeforePlans = 15;
         public int Schema = CurrentSchema;
 
         // --- labels: never read by a replay, only by people ---
@@ -41,6 +42,10 @@ namespace Thesis.Sim
         public ulong MapSeed;   // 0 until seeded mazes exist (semester 2 UX pass)
         public ulong RngSeed;
         public string Planner;  // IWavePlanner.Name, e.g. "escalation"
+        // What else the planner needs to be rebuilt as it began (IPlannerSetup, WP11): the full
+        // director's config and starting estimator, as JSON. Null for a planner made from its name
+        // and the seed alone. The simulation never reads it.
+        public string PlannerSetup;
         public SimConfig Config;
         public MapData MapData;
         public ShapeDef[] Shapes;
@@ -56,6 +61,10 @@ namespace Thesis.Sim
         // --- what happened ---
         public List<ReplayCommand> Commands = new List<ReplayCommand>();
         public List<WaveHash> WaveHashes = new List<WaveHash>();
+        // Every plan the planner handed the simulation, in the order it made them (schema 16). A
+        // replay plays these back (RecordedPlanner), so it does not need the planner's code. Null in
+        // a file of schema 15, whose planner is rebuilt by name.
+        public List<RecordedPlan> Plans;
 
         // Where the recording stops: State.Tick and the state hash at that point,
         // after every command up to it was applied. A session that was quit
@@ -111,7 +120,14 @@ namespace Thesis.Sim
         // file fails at load time rather than as a strange divergence later.
         public void Validate()
         {
-            if (Schema != CurrentSchema) throw new InvalidDataException("[Replay] Schema " + Schema + ", expected " + CurrentSchema + ".");
+            // 15 and 16 describe the same game; 16 adds the recorded plans. Anything else is refused.
+            if (Schema != CurrentSchema && Schema != SchemaBeforePlans)
+                throw new InvalidDataException("[Replay] Schema " + Schema + ", expected " + CurrentSchema + " (or " + SchemaBeforePlans + ", without recorded plans).");
+            if (Schema == CurrentSchema && Plans == null) throw new InvalidDataException("[Replay] Schema " + Schema + " needs its recorded plans (Plans).");
+            if (Plans != null)
+                for (int i = 0; i < Plans.Count; i++)
+                    if (Plans[i] == null || Plans[i].Plan == null || Plans[i].Plan.WaveIndex != Plans[i].Wave)
+                        throw new InvalidDataException("[Replay] Recorded plan " + i + " is missing or names another wave than its plan.");
             if (Config == null || MapData == null || Shapes == null || Towers == null) throw new InvalidDataException("[Replay] Config, MapData, Shapes and Towers are all required.");
             if (Commands == null || WaveHashes == null) throw new InvalidDataException("[Replay] Commands and WaveHashes must be present (they may be empty).");
             if (FinalTick < 0) throw new InvalidDataException("[Replay] FinalTick is " + FinalTick + ".");

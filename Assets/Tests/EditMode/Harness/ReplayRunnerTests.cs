@@ -115,14 +115,21 @@ namespace Thesis.Tests.Harness
         }
 
         [Test]
-        public void AnUnknownPlannerIsNamed()
+        public void AnUnknownPlannerIsNamedWhenItMustBeRebuilt()
         {
+            // Since WP10 a replay plays its recorded plans and needs no planner (RecordedPlanTests).
+            // A planner is still rebuilt by name for a file without plans (schema 15) and for
+            // `--rerun-director`; then an unknown name is an error that names it and the known ones.
             ReplayFile file = TestEpisodes.Reload(TestEpisodes.SmallReplay(waves: 1));
             file.Planner = "director-v9";
 
-            var e = Assert.Throws<System.ArgumentException>(() => ReplayRunner.Verify(file, perTick: false));
+            var e = Assert.Throws<System.ArgumentException>(() => ReplayRunner.CompareRebuiltPlanner(file));
             StringAssert.Contains("director-v9", e.Message);
             StringAssert.Contains(EscalationPlanner.Id, e.Message);
+
+            file.Plans = null;
+            file.Schema = ReplayFile.SchemaBeforePlans;
+            Assert.Throws<System.ArgumentException>(() => ReplayRunner.Verify(file, perTick: false));
         }
 
         [Test]
