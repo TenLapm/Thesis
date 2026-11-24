@@ -2904,3 +2904,21 @@ rung too. A balance question before the pilot (CLAUDE.md §3), not a reason to c
 
 **Note:** Unity crashed once during this work, probably from memory, with both test runners at once. It left
 `Assets/_Recovery/0.unity`, which is not committed: the student should look at it and delete it.
+
+## 2026-11-24 — A tester's session: two bugs
+
+The tester's files (`replay.json.tmp`, `telemetry(1).jsonl`) are a 59-wave session in `StaticTest` with the
+development director. Nothing got through in any wave, and ore piled up to 1,794. **The tester played a build
+from before 2026-10-28:** the replay is schema 15, and its config lacks every field added that day (wall tiers,
+breakable rocks, ore that runs out, a retry that keeps the build). The gameplay feedback is about that build.
+
+**Bug 1, "after a retry at the start of a round the route line stays where the path was".** That build predates
+the 2026-10-28 fix that rebinds the route lines to the grid an undo or retry puts in place (`fe6eec8`), so it is
+most likely already fixed. A probe found a remaining gap: a retry puts back a grid whose `FieldVersion` is the
+very number already drawn. `PathPreviewer` and `FlowFieldVisualizer` now also redraw when the grid object
+changes. Not verified in Unity: the editor was not running.
+
+**Bug 2, "the pylon can be equipped with gear".** Still true in today's code. `TowerState.FreeGearSlot` now
+gives no slot for a power tower. Every way gear goes on asks it (equip, equip from the spare pieces, buy onto a
+tower, merge), and so does the ghost, which now shows a pylon as no target. `PylonGearTests` (2). 895 of 895
+under .NET; no pinned file changed.

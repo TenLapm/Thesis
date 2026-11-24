@@ -56,6 +56,10 @@ public class PathPreviewer : MonoBehaviour
     private readonly List<SimNode> route = new List<SimNode>();
     private readonly List<Vector3> points = new List<Vector3>();
     private int drawnVersion = int.MinValue;
+    // The grid the lines were drawn on. A retried wave or an undo puts a whole other grid in place
+    // whose FieldVersion can be the very number already drawn (2026-11-24, a tester: the line stayed
+    // where the path had been), so the grid itself is compared too.
+    private Thesis.Sim.SimGrid drawnGrid;
     private ulong drawnLanes;
     private int shownMask = -1;
     private bool faint;
@@ -102,8 +106,9 @@ public class PathPreviewer : MonoBehaviour
         h.Add(lanes.Count);
         for (int i = 0; i < lanes.Count; i++) { h.Add(lanes[i].Spawn); h.Add((int)lanes[i].Movement); h.Add(lanes[i].Raid); }
         if (host != null) { h.Add(host.State.Core.X); h.Add(host.State.Core.Y); }
-        if (flowManager.FieldVersion == drawnVersion && h.Value == drawnLanes) return;
+        if (flowManager.FieldVersion == drawnVersion && h.Value == drawnLanes && flowManager.Grid == drawnGrid) return;
         drawnVersion = flowManager.FieldVersion;
+        drawnGrid = flowManager.Grid;
         drawnLanes = h.Value;
         faint = inWave;
         Draw(host);

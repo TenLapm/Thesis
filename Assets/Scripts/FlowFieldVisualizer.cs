@@ -46,6 +46,7 @@ public class FlowFieldVisualizer : MonoBehaviour
     private GameObject arrowGO, heatGO;
     private Mesh arrowMesh, heatMesh;
     private int builtVersion = -1;
+    private Thesis.Sim.SimGrid builtGrid; // a retry or an undo can bring a grid of the same version (see PathPreviewer)
     private Mode builtMode = Mode.Off;
 
     // Scratch buffers reused across rebuilds to avoid per-rebuild allocations.
@@ -98,7 +99,7 @@ public class FlowFieldVisualizer : MonoBehaviour
         if (CurrentMode == Mode.Off) return;
         if (flowManager == null || flowManager.gridManager == null || flowManager.Grid == null) return;
 
-        if (builtVersion != flowManager.FieldVersion || builtMode != CurrentMode) Rebuild();
+        if (builtVersion != flowManager.FieldVersion || builtMode != CurrentMode || builtGrid != flowManager.Grid) Rebuild();
     }
 
     public void CycleMode() { SetMode((Mode)(((int)CurrentMode + 1) % ModeCount)); }
@@ -116,6 +117,7 @@ public class FlowFieldVisualizer : MonoBehaviour
     {
         SimGrid grid = flowManager.Grid;
         builtVersion = flowManager.FieldVersion;
+        builtGrid = flowManager.Grid;
         builtMode = CurrentMode;
 
         bool wantArrows = CurrentMode == Mode.Arrows || CurrentMode == Mode.ArrowsAndHeatmap;

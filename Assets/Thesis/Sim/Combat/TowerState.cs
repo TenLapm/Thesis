@@ -212,6 +212,9 @@ namespace Thesis.Sim
         // The first empty slot the tower may use, or -1.
         public int FreeGearSlot()
         {
+            // A pylon (a power tower) takes no gear: it does not shoot, so gear would only be
+            // wasted on it (a tester, 2026-11-24). Every way gear goes on asks this, the ghost too.
+            if (PowerCapacity > 0) return -1;
             for (int i = 0; i < GearSlots; i++) if (Gear[i] == NoGear) return i;
             return -1;
         }
