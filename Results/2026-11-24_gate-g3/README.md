@@ -45,7 +45,7 @@ With the graduated reward (0.45 restructure + 0.25 survived + 0.20 pressure + 0.
 
 Median: graduated 3000, binary 500.5. Reached within 3000: graduated 6 of 20, binary 20 of 20.
 
-**Verdict: FAIL**. By the rule fixed beforehand, the director ships with the binary reward; before the pilot this is reported to the supervisor with the result.
+**Verdict: FAIL**. By the rule fixed beforehand, the director ships with the binary reward. **Not switched yet:** `DirectorConfig.Provisional()` still uses the graduated one; the switch changes the study and is the student's and the supervisor's to make, with this result in hand.
 
 ## Limits
 
