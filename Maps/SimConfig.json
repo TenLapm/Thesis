@@ -92,6 +92,7 @@
   "ResearchUnlocksUpgrades": true,
   "FreshSellFullRefund": true,
   "RetryKeepsBuild": true,
+  "TileRange": true,
   "WallTiers": true,
   "DepositOre": 30,
   "StoneWallCost": 3,

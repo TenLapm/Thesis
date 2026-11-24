@@ -241,7 +241,7 @@ namespace Thesis.Sim
             SimNode core = s.Grid.Get(map.Core);
             int firstCombatEvent = events.Count;
             TowerSystem.Step(s.Grid, core, s.Towers, s.Live, s.Damage, s.CurrentOutcome == null ? null : s.CurrentOutcome.DamageByType,
-                             config.MinSlowFactor, ref s.BuildBudget, events, config.TickSeconds);
+                             config.MinSlowFactor, ref s.BuildBudget, events, config.TickSeconds, config.TileRange);
 
             // 4. Agent pass (ascending agent id). Agents killed in step 3 are skipped.
             // Each moves by its own class: ground field, sapper field, or a straight

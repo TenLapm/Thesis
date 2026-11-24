@@ -27,7 +27,7 @@ namespace Thesis.Sim
         // `core` is the grid's node for the core tile: target choice ranks enemies
         // by how far they still have to go to it.
         public static void Step(SimGrid grid, SimNode core, IList<TowerState> towers, IList<AgentState> live, DamageMap damage,
-                                float[] damageByType, float minSlowFactor, ref float buildBudget, IList<SimEvent> events, float tickSeconds = 0.02f)
+                                float[] damageByType, float minSlowFactor, ref float buildBudget, IList<SimEvent> events, float tickSeconds = 0.02f, bool rangeByTile = false)
         {
             // Burning and exposed enemies first (path abilities, 2026-10-27): the burn's damage
             // for this tick, credited to the tower that lit it, and both clocks run down.
@@ -61,7 +61,7 @@ namespace Thesis.Sim
                 int fired = 0;
                 for (int bolt = 0; bolt < tower.Targets && bolt < taken.Length; bolt++)
                 {
-                    int index = Targeting.Pick(tower.Mode, tower, grid, core, live, taken, fired);
+                    int index = Targeting.Pick(tower.Mode, tower, grid, core, live, taken, fired, rangeByTile);
                     if (index < 0) break;
                     taken[fired++] = index;
 

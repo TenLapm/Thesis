@@ -102,6 +102,7 @@
     "ResearchUnlocksUpgrades": false,
     "FreshSellFullRefund": false,
     "RetryKeepsBuild": false,
+    "TileRange": false,
     "WallTiers": false,
     "DepositOre": 0,
     "StoneWallCost": 3,
@@ -2523,7 +2524,7 @@
       "Levels": null
     }
   ],
-  "SetupHash": "dc89ce940196ed06",
+  "SetupHash": "3c53b811622b4fcf",
   "InitialHash": "3c3527f7938f1cf0",
   "Commands": [
     {

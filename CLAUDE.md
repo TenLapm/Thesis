@@ -81,7 +81,9 @@ balanced value.
 
 **Towers, walls and power**
 - **Towers stand only on a wall or a rock** (`TowersOnWalls`) and can be moved freely in a build
-  phase. Each has one of five target orders.
+  phase. Each has one of five target orders. **A tower reaches an enemy standing on any tile it
+  lights up** (`TileRange`, 2026-11-24: the tile's centre within range), not a circle to the
+  enemy's exact position. A pylon takes no gear.
 - **Towers fire only while powered** (`PowerRule`): the core powers up to 4 towers within 4 tiles,
   each collector 2 within 3, a pylon 2 within 3 (a pylon may not stand within 5 tiles of the core).
   Which source powers which tower can be swapped by the player.

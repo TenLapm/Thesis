@@ -2922,3 +2922,19 @@ changes. Not verified in Unity: the editor was not running.
 gives no slot for a power tower. Every way gear goes on asks it (equip, equip from the spare pieces, buy onto a
 tower, merge), and so does the ghost, which now shows a pylon as no target. `PylonGearTests` (2). 895 of 895
 under .NET; no pinned file changed.
+
+## 2026-11-24 — Towers shoot by the lit tiles
+
+The student saw an enemy cross the brazier's outermost lit tile unshot. The game lit every tile whose centre lies
+within range, but a tower shot only an enemy whose own position lay inside the circle. On a lit tile at the edge,
+only its centre point was in reach. For the brazier (range 2), the four tiles straight out at distance 2 were
+lit and almost entirely out of reach. The student chose to make the shooting match the tiles.
+
+- `SimConfig.TileRange` (on in `SimConfig.asset` and `Maps/SimConfig.json`, off in the C# defaults): a tower
+  reaches an enemy when the tile it stands on has its centre within range (`Targeting.Reaches`, the same test
+  as `Simulation.InPowerReach` and the lit tiles). All five target orders use it. The splash keeps its circle.
+- Towers reach a little further than before: the whole of each edge tile instead of its centre point.
+- A new setting changes every recording's setup fingerprint, so both pinned sets were re-recorded (.NET with
+  `thesis pin`, Mono with Unity in batch mode). Every final hash is unchanged, and the two runtimes agree.
+- `TileRangeTests` (3). 898 of 898 under .NET; 898 passed and 2 diagnostics skipped in Unity, which also
+  compiled the route-line fix of earlier today.

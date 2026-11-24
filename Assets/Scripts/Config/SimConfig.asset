@@ -106,6 +106,7 @@ MonoBehaviour:
     ResearchUnlocksUpgrades: 1
     FreshSellFullRefund: 1
     RetryKeepsBuild: 1
+    TileRange: 1
     WallTiers: 1
     DepositOre: 30
     StoneWallCost: 3

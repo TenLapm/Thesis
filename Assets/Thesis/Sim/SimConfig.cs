@@ -289,6 +289,12 @@ namespace Thesis.Sim
         // it still standing (2026-10-28); without, from the start of its build phase.
         public bool RetryKeepsBuild = false;
 
+        // A tower reaches an enemy when the tile the enemy stands on has its centre within range
+        // (2026-11-24, the student, after an enemy crossed the brazier's outermost lit tile unshot):
+        // exactly the tiles the game lights up. Without it, the enemy's position must lie within the
+        // circle, so on a lit edge tile only its centre point was in reach. The splash keeps its circle.
+        public bool TileRange = false;
+
         // Wall tiers (2026-10-28): besides the plain wall of the shape library, a stone wall and a
         // fortified wall, each dearer, costlier to walk through and longer to chew. PlaceShape's
         // A names the tier (0 the plain wall).

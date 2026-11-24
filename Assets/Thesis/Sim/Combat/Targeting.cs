@@ -23,6 +23,15 @@ namespace Thesis.Sim
         // far: only a tower with CanHitFlying reaches a flyer (WP-C2). It covers the
         // whole shot, not just the aim: such a tower never picks a flyer as its
         // target, and its splash and its slow pass a flyer by.
+        // The tower's reach (see Pick): by the enemy's tile, or by its position.
+        public static bool Reaches(TowerState tower, AgentState agent, SimGrid grid, bool rangeByTile)
+        {
+            if (!rangeByTile) return InRange(agent.Position, tower.Position, tower.RangeSquared);
+            SimNode at = grid.NodeFromPosition(agent.Position);
+            int dx = at.X - tower.Tile.X, dy = at.Y - tower.Tile.Y;
+            return (float)(dx * dx + dy * dy) <= (float)(tower.RangeTiles * tower.RangeTiles); // as Simulation.InPowerReach
+        }
+
         public static bool CanHit(TowerState tower, AgentState agent)
         {
             return agent.Movement != MovementClass.Flying || tower.CanHitFlying;
@@ -36,17 +45,21 @@ namespace Thesis.Sim
         // bolts) asks once per enemy and names those it has already taken in `taken`
         // (the first `takenCount` entries): each bolt goes to the next enemy in the
         // same order.
-        public static int Pick(TargetingMode mode, TowerState tower, SimGrid grid, SimNode core, IList<AgentState> live, int[] taken = null, int takenCount = 0)
+        //
+        // rangeByTile (SimConfig.TileRange, 2026-11-24): an enemy is in range when the tile it stands
+        // on has its centre within the tower's range, which is exactly the tiles the game lights up
+        // for the tower. Without it, the enemy's own position must lie within the circle.
+        public static int Pick(TargetingMode mode, TowerState tower, SimGrid grid, SimNode core, IList<AgentState> live, int[] taken = null, int takenCount = 0, bool rangeByTile = false)
         {
             switch (mode)
             {
-                case TargetingMode.First: return PickFirst(tower, grid, core, live, taken, takenCount);
+                case TargetingMode.First: return PickFirst(tower, grid, core, live, taken, takenCount, false, rangeByTile);
                 case TargetingMode.Raiders:
-                    int raider = PickFirst(tower, grid, core, live, taken, takenCount, true);
-                    return raider >= 0 ? raider : PickFirst(tower, grid, core, live, taken, takenCount);
+                    int raider = PickFirst(tower, grid, core, live, taken, takenCount, true, rangeByTile);
+                    return raider >= 0 ? raider : PickFirst(tower, grid, core, live, taken, takenCount, false, rangeByTile);
                 case TargetingMode.Strongest:
                 case TargetingMode.Weakest:
-                case TargetingMode.Nearest: return PickBy(mode, tower, live, taken, takenCount);
+                case TargetingMode.Nearest: return PickBy(mode, tower, grid, live, taken, takenCount, rangeByTile);
                 default: throw new InvalidOperationException("[Sim] Unknown targeting mode " + mode + ".");
             }
         }
@@ -55,7 +68,7 @@ namespace Thesis.Sim
         // comparison the first one found keeps a tie: the list is in id order, so that is the
         // lowest id. Hit points and squared distances are floats that the simulation already
         // keeps bit for bit the same on both runtimes.
-        private static int PickBy(TargetingMode mode, TowerState tower, IList<AgentState> live, int[] taken, int takenCount)
+        private static int PickBy(TargetingMode mode, TowerState tower, SimGrid grid, IList<AgentState> live, int[] taken, int takenCount, bool rangeByTile)
         {
             int best = -1;
             float bestValue = 0f;
@@ -66,7 +79,7 @@ namespace Thesis.Sim
                 float dx = (float)(a.Position.X - tower.Position.X);
                 float dy = (float)(a.Position.Y - tower.Position.Y);
                 float distance = (float)((float)(dx * dx) + (float)(dy * dy));
-                if (distance > tower.RangeSquared) continue;
+                if (rangeByTile ? !Reaches(tower, a, grid, true) : distance > tower.RangeSquared) continue;
                 bool already = false;
                 for (int k = 0; k < takenCount; k++) if (taken[k] == i) already = true;
                 if (already) continue;
@@ -87,7 +100,7 @@ namespace Thesis.Sim
         // a flyer is ranked by its straight line and a sapper by the sapper field.
         // Ties go to the lowest id: with a strict '<' the first one found keeps the
         // shot, and the list is in id order.
-        private static int PickFirst(TowerState tower, SimGrid grid, SimNode core, IList<AgentState> live, int[] taken, int takenCount, bool raidersOnly = false)
+        private static int PickFirst(TowerState tower, SimGrid grid, SimNode core, IList<AgentState> live, int[] taken, int takenCount, bool raidersOnly, bool rangeByTile)
         {
             int best = -1;
             int bestCost = int.MaxValue;
@@ -97,7 +110,7 @@ namespace Thesis.Sim
                 if (!a.IsAlive) continue; // killed earlier this tick, not yet removed
                 if (raidersOnly && !a.TargetsCollectors) continue;
                 if (!CanHit(tower, a)) continue;
-                if (!InRange(a.Position, tower.Position, tower.RangeSquared)) continue;
+                if (!Reaches(tower, a, grid, rangeByTile)) continue;
                 bool already = false;
                 for (int k = 0; k < takenCount; k++) if (taken[k] == i) already = true;
                 if (already) continue;

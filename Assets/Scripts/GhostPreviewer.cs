@@ -339,8 +339,10 @@ public class GhostPreviewer : MonoBehaviour
             return;
         }
         ring.enabled = false;
-        // As tiles (2026-10-26): every tile whose centre the tower reaches, which is exactly
-        // where an enemy can be shot (Targeting measures to the enemy, tile centre to centre).
+        // As tiles (2026-10-26): every tile whose centre the tower reaches. With SimConfig.TileRange
+        // (on in the game since 2026-11-24) that is exactly where an enemy can be shot: Targeting asks
+        // whether the enemy's tile is one of these. Without it the tower measures to the enemy's own
+        // position, and on an edge tile only the centre point was in reach.
         float cell = gridManager.nodeRadius * 2f;
         float tiles = radius / cell;
         int reach = Mathf.CeilToInt(tiles);
