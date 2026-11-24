@@ -30,6 +30,11 @@ namespace Thesis.Learning.Synthetic
             public double Discount = BinnedPosterior.DefaultDiscount;
             public int FlipAtEpisode = -1;
             public ThresholdBanditEnv.Options Env;   // null: the defaults, with FlipAtEpisode above
+
+            // What a pull pays, in place of the environment's 0-or-1 (gate G3, WP13: a graduated reward
+            // and its binary control). Given the arm, the context, the episode and the pay-out stream.
+            // The best arm is still the environment's. Null: ThresholdBanditEnv.Pull.
+            public Func<int, double, int, IRandom, float> Pull;
         }
 
         public sealed class Result
@@ -60,7 +65,7 @@ namespace Thesis.Learning.Synthetic
 
                 // The prediction is taken before the update it is checked against.
                 double predicted = posterior.Mean(ctx.Bin, arm);
-                float reward = env.Pull(arm, x, e, payouts);
+                float reward = options.Pull != null ? options.Pull(arm, x, e, payouts) : env.Pull(arm, x, e, payouts);
                 result.Calibration.Add(predicted, reward);
 
                 if (policy == SyntheticPolicy.Thompson || policy == SyntheticPolicy.DirectorCorrection)

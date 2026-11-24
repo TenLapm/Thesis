@@ -13,7 +13,7 @@ namespace Thesis.Harness
         // sappers and flyers until the director's strategies exist (WP9).
         public static readonly string[] PlannerNames = PlannerFactory.Names;
 
-        public static readonly string[] PolicyNames = { IdlePolicy.Id, GreedyDetourPolicy.Id, SentryPolicy.Id, SentryPolicy.UpgraderId, SequencePolicy.MixedId, SequencePolicy.RestlessId, RaidPolicy.Id, SentryPolicy.TurtleId, BuilderPolicy.Id };
+        public static readonly string[] PolicyNames = { IdlePolicy.Id, GreedyDetourPolicy.Id, SentryPolicy.Id, SentryPolicy.UpgraderId, SequencePolicy.MixedId, SequencePolicy.RestlessId, RaidPolicy.Id, SentryPolicy.TurtleId, BuilderPolicy.Id, ReactivePolicy.Id };
 
         // One factory for every planner (Thesis.Director.PlannerFactory, WP10), shared with the
         // Unity host. The seed is the run's rngSeed: the director and the ladder planners draw
@@ -36,6 +36,7 @@ namespace Thesis.Harness
                 case RaidPolicy.Id: return new RaidPolicy();
                 case SentryPolicy.TurtleId: return new SentryPolicy { RouteTail = 7 };
                 case BuilderPolicy.Id: return new BuilderPolicy();
+                case ReactivePolicy.Id: return new ReactivePolicy();
                 default: throw new ArgumentException("Unknown policy '" + name + "'. Known: " + string.Join(", ", PolicyNames) + ".");
             }
         }

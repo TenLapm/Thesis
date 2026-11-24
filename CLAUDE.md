@@ -21,9 +21,13 @@ player `BuilderPolicy`, `Results/2026-11-16_threat-factors/`). **Not built yet:*
 (WP10 and WP11 are built, 2026-11-18: the heuristic director with its constraints, the full director
 with its reward, credit and thin-cell prior, selectable as `DirectorHost.Condition.HeuristicDirector`
 and `FullDirector`, and replays that store every plan and the director's starting setup). Its numbers are the student's provisional choices (`DirectorConfig.Provisional()`,
-S1 to S5 in `Docs/ARCHITECTURE.md` §10), to be revisited at the threshold freeze. **The scripted player
-`builder` never rebuilds, so the reward's main term is about 0 against it: the offline ladder (WP12)
-needs a player that reacts before it can show learning.** The older scripted players were written for the random shop and lose wave 1 under
+S1 to S5 in `Docs/ARCHITECTURE.md` §10), to be revisited at the threshold freeze. **WP12 to WP14 are built
+(2026-11-24):** the reacting scripted player `reactive` and the offline ladder (`thesis ladder`; it does **not**
+hold at the top, full director = heuristic, and both directors end games in about half the waves of the static
+version, `Results/2026-11-24_ladder`), the gates (`thesis gate`; G1 and G2 pass, **G3 fails**: the binary reward
+learns faster, so by its rule the director should ship binary; not switched, the student's call), and the study's
+session setup (the `SessionStart` scene, `StudySessions`: seeds X 109, Y 116, practice 103). What remains is
+tuning and design: the balance pass, the threshold freeze, the pre-pilot checklist (`Docs/WORKPLAN.md`). The older scripted players were written for the random shop and lose wave 1 under
 today's rules; `builder` is the one that plays the game (7 to 16 waves against the baseline). The student finishes the gameplay before WP7 starts.
 A course proposal describing the whole project is in `Docs/proposal/` (2026-10-28).
 
@@ -213,7 +217,8 @@ Assets/Thesis/                pure C#, no UnityEngine; each folder is one assemb
               baseline's squads and picks the entries), SafePlanner, PlanValidator, WavePlan,
               WaveOutcome, EnemyArchetype, RoughDirector (development director, StaticTest),
               ClassCyclePlanner (development only)
-    Replay/   ReplayFile (schema 16: recorded plans), ReplayRecorder, ReplaySetup, RecordedPlanner
+    Replay/   ReplayFile (schema 16: recorded plans), ReplayRecorder, ReplaySetup, RecordedPlanner,
+              StudyInfo (the participant and session, WP14)
     Debug/    StateHasher, StateDump, AsciiMap, AsciiState, BenchScenarios
     Commands/ Events/ Stats/
   Learning/   BetaSampler, BinnedPosterior, KernelEstimator, CalibrationReport, IStrategyEstimator
@@ -227,15 +232,21 @@ Assets/Thesis/                pure C#, no UnityEngine; each folder is one assemb
               (WP10) Layers/ Constraints, AuthoredHeuristic; Context/ ContextBucketizer;
               Decision/ WaveDirector, DirectorTrace, DirectorConfig; Baselines/ RandomPlanner,
               RoundRobinPlanner; Announce/ AnnouncementTable; PlannerFactory (every planner by name);
-              (WP11) Reward/ RewardEvaluator; Decision/ DirectorSetup (in WaveDirector.cs)
+              (WP11) Reward/ RewardEvaluator; Decision/ DirectorSetup (in WaveDirector.cs);
+              (WP14) Session/ StudySessions (participant code -> condition and seed)
   Harness/    editor and headless only: EpisodeRunner, scripted policies (Idle,
-              GreedyDetour, Sentry, Seller, Sequence, Raid; Builder, the only one for today's
+              GreedyDetour, Sentry, Seller, Sequence, Raid; Builder and Reactive, the two for today's
               rules), GameMaps (the game's 48 x 48 map), ReplayRunner, PinnedEpisodes,
-              PathfindingBench, ThreatCalibration (`thesis threat`)
+              PathfindingBench, ThreatCalibration (`thesis threat`); Ladder/ Ladder, Counterfactual,
+              ResultWriter (`thesis ladder`, WP12); Gates/ Gates (`thesis gate`, WP13)
 Assets/Scripts/               Unity host and views
   SimHost.cs               runs the Simulation: fixed ticks, input in, events out, records the
                            replay and the telemetry; generates the map from the seed
-  DirectorHost.cs          picks the planner (the study condition), wraps it in SafePlanner
+  DirectorHost.cs          picks the planner (the study condition), wraps it in SafePlanner;
+                           an estimator snapshot to start the full director from (transfer)
+  Study/                   WP14: SessionStartScreen, SessionSetup (the start screen's choice),
+                           StudySessionView (practice end, Ctrl+Shift+Q), DirectorOverlay (F9,
+                           development only), StudyUi
   SceneMapBuilder.cs RockLayout.cs   scene or generated map → MapData; the rocks on the board
   WaveSpawner.cs BlockManager.cs PlayerCore.cs
                            thin adapters that keep the member names the HUD reads
@@ -261,7 +272,7 @@ Assets/Scripts/               Unity host and views
 Assets/Tests/EditMode/        one set of tests, run by Unity and by `dotnet test`
 Tools/dotnet/                 headless build of Assets/Thesis, and Thesis.Cli
                               (run, replay, ascii, pin, bench, telemetry, trace, entropy, balance, towers,
-                              synth, threat, profile)
+                              synth, threat, profile, ladder, gate)
 Tools/gdd/                    makes Docs/GDD.pdf and the pictures in Docs/gdd from Docs/GDD.md
 Docs/proposal/                the course proposal (Proposal.docx and .pdf), its figures, the
                               Graphviz sources and the script that builds it (build-proposal.js)
@@ -270,7 +281,7 @@ Maps/                         exported maps, Shapes.json, Towers.json and SimCon
 Results/                      committed results; Results/pinned-replays (recordings and their
                               telemetry) is re-run by tests
 Runs/                         (gitignored) raw output and Unity sessions (replay and telemetry)
-Assets/Scenes/                StaticTest (the game; ArknightsTest until 2026-11-18) + DirectorTest (the same game with the heuristic director,
+Assets/Scenes/                SessionStart (the study build's first screen, WP14) + StaticTest (the game; ArknightsTest until 2026-11-18) + DirectorTest (the same game with the heuristic director,
                               for play-testing WP10; not in the build list) + Bench_Open / Bench_Maze / Bench_Choke / Bench_Stress
                               (SampleScene, the old top-down scene, was removed 2026-10-24)
 Assets/Scripts/BlockS/        the wall shape assets: Wall (one tile, the game's) and the tetrominoes

@@ -2733,3 +2733,70 @@ The student renamed `Assets/Scenes/ArknightsTest.unity` to `StaticTest.unity` in
 same asset ID and contents, still running the development director (`DevRoughDirector`). CLAUDE.md, the
 GDD's heading note and a comment in `GameMaps` now say `StaticTest`; earlier DEVLOG entries keep the
 name they were written with. `DirectorTest` was copied from it before the rename and is unaffected.
+
+## 2026-11-24 — Game decisions, WP14 session setup, WP12 the ladder, WP13 the gates
+
+**Decided first** (the student, this session, answering 21 questions):
+- A session has no last wave: until the core falls, or the experimenter ends it. Wave restarts stay on in the study.
+- The static version shows no banner line ("just let the player experience it").
+- A practice run of three static waves on its own seed. Pause and speed allowed.
+- "Thesis" as product and company name for now.
+- Enemy elements are told apart by colour for now. Keys 1 to 3 are speed only.
+- The adaptive version is the full director, starting cold. Seeds picked by measurement. Participant codes P01..., the group from the number.
+- The F9 overlay is development only. Snapshot import is built.
+- The ladder: `builder` and a new reacting player, 50 waves, ranked by the rebuild measure.
+- G1 and G3 are run on the synthetic problem.
+- The price list moves to an asset, unless that costs more than it gives (it did; see below). Commits after each package.
+
+**Game fixes**
+- `DeckBar`: the build tabs lost their keys 1 to 4, which also set the speed (GDD question 23).
+- Sappers are earth brown instead of orange (`FlowAgent`, `HudOverlay`, `PathPreviewer`, `TowerShopPanel`, both scenes), so orange means fire (ember) only and an enemy's colour tells its element (question 24).
+- `ProjectSettings`: company and product name `Thesis`. The game had no wave cap and the static planner never announced, so questions 1 and 7 needed no code.
+
+**WP14** (`Results/2026-11-24_study-seeds`)
+- `Director/Session/StudySessions`: the four groups of D9 from the code's number; X = 109, Y = 116, practice = 103. Of seeds 101 to 130, these two were the most alike for `builder` against all three planners.
+- `Sim/Replay/StudyInfo` is in `ReplayFile.Study` and each telemetry row's `study`. It is left out when null, so every older file is unchanged byte for byte and the schema numbers stay. This is a deviation from "schema changes bump a version": it is an optional field at the end, and a reader that does not know it loses nothing.
+- Unity: the `SessionStart` scene, first in the build list. Code is drawn in `Scripts/Study/`:
+  - the start screen (it never names the condition)
+  - `SessionSetup`
+  - `StudySessionView` (the practice run's end; Ctrl+Shift+Q back to the start)
+  - `DirectorOverlay` (F9, off in study sessions)
+- `SimHost` takes the seed and planner from the session. `DirectorHost` takes a study planner name and an estimator snapshot.
+- `WaveDirector.ExportEstimator` and `DirectorSetup.WriteSnapshot`/`FromSnapshot`: a session writes `estimator.json`, and another can start from it.
+- **Not verified in Unity:** the editor stopped answering the MCP bridge after the first refresh (probably a dialog about the open scene, whose file was edited outside). The scene file and the script meta files were written by hand. Compile, open `SessionStart`, play once, and run the EditMode tests in Unity before trusting this package.
+- **Found:** both directors end games sooner than the static waves for `builder` (8 to 9 waves against 10 to 11 on the study seeds). The threat budget is equal, but the waves are harder for a player who does not answer them. This is for the balance pass (CLAUDE.md §3).
+
+**WP12** (`Results/2026-11-24_ladder`)
+- `Harness/Policies/ReactivePolicy` (`reactive`) is `builder` plus answers to the last wave:
+  - anti-air after flyers leak
+  - a greedy maze after walkers leak
+  - selling maze walls after sappers
+  - a collector toward the entries after a split wave
+- `Harness/Ladder/`:
+  - `Ladder`: one episode per core; entropy is compared over the fewest waves any rung lasted for that player and seed.
+  - `Counterfactual.PlayOn`: a clone with its own planner; the live one is refused.
+  - `ResultWriter`: refuses a table without a hypothesis.
+  - `thesis ladder`
+- `EpisodeOptions.PlannerInstance` lets the ladder read the director's timings.
+- 160 episodes of up to 50 waves in 5 s on 12 threads, so 50 waves costs nothing.
+- **Result: FAIL.** For `reactive`, random 0.219 < escalation 0.230 < heuristic 0.252, but full 0.249. Against the directors the player lasts 4.5 waves, so the learner makes about four decisions on cold cells and cannot yet differ from the heuristic. The directors do make the reacting player rebuild about twice as much per wave as the static waves (0.11 against 0.06).
+
+**WP13** (`Results/2026-11-24_gate-g1`, `-g2`, `-g3`)
+- `Harness/Gates/Gates.cs` and `thesis gate g1|g2|g3|all`. `SyntheticRun.Options.Pull` lets a run use another reward.
+- **G1 PASS** (0.851, as in WP7).
+- **G2 PASS** (109 decisions; median 0.33 ms, most 2.36 ms; headless .NET, not yet in Mono).
+- **G3 FAIL:** with a reward built like the director's, the binary control reached 85 % in all 20 seeds (median 500 episodes), the graduated reward in 6 of 20 within 3000. The graduated reward's survival, pressure and novelty terms are, in this problem, the same noise for every strategy, and they dilute the rebuild signal that the binary reward keeps clean. The rule says to ship binary. **Not switched**: `DirectorConfig.Provisional()` still uses the graduated reward. It changes the study, so it is the student's and the supervisor's call. In the real game, pressure and novelty do depend on the strategy, which this problem does not model.
+
+**Deviations and decisions**
+- The price list stays in code (`ThreatCostTable.MeasuredFlyingFactor`, `MeasuredSapperFactor`), not an asset. One source keeps the game, the headless runs and every replay's rebuilt director the same. An inspector copy would be a second source that could drift.
+- `ClassCyclePlanner` stays: eight pinned replays and `RaidPlanner` use it.
+
+**Tests added**
+- `StudySessionsTests` (32), `StudyLabelTests` (3), `DirectorSnapshotTests` (5), `LadderTests` (7), `GateTests` (5).
+- 869 of 869 pass under .NET. Unity not run (see WP14).
+
+**Commands**
+```
+dotnet run --project Tools/dotnet/Thesis.Cli -c Release -- ladder --seeds 20 --waves 50
+dotnet run --project Tools/dotnet/Thesis.Cli -c Release -- gate all
+```

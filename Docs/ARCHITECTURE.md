@@ -975,6 +975,16 @@ order of the pieces. Across participants, each condition is played on each seed 
 each position equally often (6 per group at n = 24). Participant code, session number,
 condition and seed are written into the replay and into every telemetry row.
 
+**As built (WP14, 2026-11-24).** `StudySessions` (Thesis.Director) is the table: the group is the
+code's number counted round 1 to 4 (P01 group 1, P05 group 1 again), X = seed 109, Y = seed 116,
+practice = seed 103 (`Results/2026-11-24_study-seeds`); the adaptive version is the full director,
+cold. `StudyInfo` (participant, group, session, condition, seed set, practice) is `ReplayFile.Study`
+and each row's `study`; both are left out when null, so a development session's files are what they
+were before. The `SessionStart` scene (first in the build) holds `SessionStartScreen`, which puts the
+choice in `SessionSetup`; `SimHost` takes seed and planner from it and ignores the scene's seed and
+`DirectorHost.condition`. A session saves what the full director learned as `estimator.json` next to
+its replay; `DirectorHost.estimatorSnapshot` starts a director from one (the transfer condition).
+
 **Build settings (D5).** Windows 64-bit, Mono, managed stripping off.
 `Editor/BuildGuard` fails any other player build with a message that says why. Set the
 company and product name (still `DefaultCompany/InternProj`) before the first build that
@@ -995,15 +1005,15 @@ dotnet run --project Tools/dotnet/Thesis.Cli -- ascii   --map Maps/Bench_Maze.ma
 dotnet run --project Tools/dotnet/Thesis.Cli -- telemetry Runs/<name>/replay.json [--out file] [--check Runs/<name>/telemetry.jsonl]
 dotnet run --project Tools/dotnet/Thesis.Cli -- trace   Runs/<name>/telemetry.jsonl [--wave 7]
 dotnet run --project Tools/dotnet/Thesis.Cli -- entropy Runs/<a>/replay.json [Runs/<b>/replay.json] [--waves W] [--partition P]
-dotnet run --project Tools/dotnet/Thesis.Cli -- ladder  --map Maps/SampleScene.map.json --seeds 20 --out Results/<yyyy-MM-dd>_ladder
+dotnet run --project Tools/dotnet/Thesis.Cli -- ladder  [--seeds 20] [--first-seed 201] [--waves 50] [--threads N] [--out Results/<yyyy-MM-dd>_ladder]
 dotnet run --project Tools/dotnet/Thesis.Cli -- synth   --episodes 1000000 --estimator binned --out Results/<yyyy-MM-dd>_g1-synth
-dotnet run --project Tools/dotnet/Thesis.Cli -- gate    G1|G2|G3 ...
+dotnet run --project Tools/dotnet/Thesis.Cli -- gate    g1|g2|g3|all [--date yyyy-MM-dd]
 dotnet run --project Tools/dotnet/Thesis.Cli -- bench   --map Maps/Bench_Maze.map.json
 dotnet run --project Tools/dotnet/Thesis.Cli -- pin     [--out Results/pinned-replays]
 ```
 
 - `run`, `replay` and `ascii` exist as of WP5; `bench` since WP4; `pin` since WP-H; `telemetry`,
-  `trace` and `entropy` since WP-C3; `ladder`, `synth` and `gate` are planned.
+  `trace` and `entropy` since WP-C3; `synth` since WP7; `ladder` and `gate` since WP12 and WP13 (2026-11-24).
   `telemetry` makes a session's rows again from its replay; with `--check` it compares them
   with a file and exits 1 on the first byte that differs, naming the line. `trace` reads a
   telemetry file: one line per wave, or with `--wave N` everything that row holds (and, once

@@ -45,7 +45,10 @@ WP6 (telemetry) no longer exists as its own package: it is part of WP-C3 (D8).
 **Where things stand (2026-11-16):** WP0 to WP5, WP-H, WP-C1 to WP-C5, WP7 and WP8 are done.
 **WP9** is built (2026-11-16: S6, S8, S10 and S14 closed by the student; the cost table's factors
 measured, flyer 2.35 and sapper 1.30, with the new `BuilderPolicy`). **WP10** is built (2026-11-18,
-recorded plans included). **WP11** is built (2026-11-18). Next is **WP12**, which first needs a scripted player that rebuilds.
+recorded plans included). **WP11** is built (2026-11-18). **WP12, WP13 and WP14** are built (2026-11-24): the
+reacting scripted player and the ladder (it does **not** hold at the top: full = heuristic), the gates (G1 and G2 pass,
+**G3 fails**: the binary reward learns faster on the synthetic problem), and the study's session setup. What is left
+before the pilot is tuning and design: the balance pass, the threshold freeze, the checklist at the end of this file.
 
 ### Revised semester-1 schedule (approved 2026-09-15)
 
@@ -107,10 +110,10 @@ Three changes:
 | done | **WP8** profile | W11 | S9 closed 2026-11-10; WP8a done 2026-11-10, WP8b 2026-11-16 |
 | done | **WP9** strategies | W11 | 2026-11-16; factors measured (`Results/2026-11-16_threat-factors`) |
 | done | **WP10** layers, recorded plans in the replay | W12 | 2026-11-18 |
-| 8 | **WP14** director UX and session setup | W12 | needed before the pilot |
+| done | **WP14** director UX and session setup | W12 | 2026-11-24 |
 | done | **WP11** full director | W13 | 2026-11-18 |
-| 10 | **WP12** harness and ladder | W14 | |
-| 11 | **WP13** gates G1–G3 | W15 | this was the reserve week |
+| done | **WP12** harness and ladder | W14 | 2026-11-24; the ladder does not hold at the top |
+| done | **WP13** gates G1–G3 | W15 | 2026-11-24; G1, G2 pass, G3 fails |
 | | report and session prep | W16 | unchanged |
 
 There is no slack left in this table. Cutting Flying at the checkpoint buys back roughly
@@ -769,7 +772,12 @@ episode `full-director-8waves` on both runtimes. Every must-pass below has a tes
 
 ---
 
-## WP12 — Harness: policies, counterfactual, ladder
+## WP12 — Harness: policies, counterfactual, ladder ✅ done 2026-11-24 (DEVLOG 2026-11-24)
+
+**As built.** `ReactivePolicy` (`reactive`: `builder` plus four answers to the last wave), `Ladder` (rungs ×
+players × seeds, one episode per core, a common entropy window), `Counterfactual.PlayOn`, `ResultWriter`, and
+`thesis ladder`. Result: `Results/2026-11-24_ladder` (FAIL: full 0.249 against heuristic 0.252 for `reactive`;
+the directors end games in half the waves of the static version). Every must-pass below has a test (`LadderTests`).
 
 **Reads:** §7 · **Depends:** WP5, WP11
 
@@ -812,14 +820,27 @@ policies and planners get their names.)*
 
 ---
 
-## WP13 — Gates G1–G3
+## WP13 — Gates G1–G3 ✅ done 2026-11-24 (DEVLOG 2026-11-24)
+
+**As built.** `Harness/Gates/Gates.cs` and `thesis gate g1|g2|g3|all`. G1 PASS (0.851, synthetic), G2 PASS (at
+most 2.4 ms a decision, headless .NET), **G3 FAIL** (graduated reached the accuracy in 6 of 20 seeds within 3000
+episodes, binary in 20 of 20, median 500): by the rule, ship binary; not switched, the student's call.
+`Results/2026-11-24_gate-g1`, `-g2`, `-g3`.
 
 **Depends:** WP12 · Adds `Harness/Gates/*` and the CLI command `gate`. Each gate writes its own `Results/` folder, recording the pass and fail numbers
 from `CLAUDE.md` §6 **before** the run and the decision the result implies afterward.
 
 ---
 
-## WP14 — Director UX in Unity
+## WP14 — Director UX in Unity ✅ done 2026-11-24 (DEVLOG 2026-11-24)
+
+**As built.** The `SessionStart` scene (first in the build) with `SessionStartScreen`; `StudySessions` (the four
+groups, seeds X = 109, Y = 116, practice 103, `Results/2026-11-24_study-seeds`); `StudyInfo` in the replay and
+every telemetry row (left out when null, so older files are unchanged); the practice run's end and the
+experimenter's exit (`StudySessionView`, Ctrl+Shift+Q); `DirectorOverlay` on F9 (development only); estimator
+snapshots (`estimator.json` saved per session, `DirectorHost.estimatorSnapshot` to start from one). The
+announcement table stays in code (`AnnouncementTable`), not an asset. **Not verified in Unity on 2026-11-24**: the
+editor did not respond while this was built; compile, play the start scene and run the tests there first.
 
 **Depends:** WP-C4, WP10 · The announcement line shown before each wave (`AnnouncementTableAsset`), the `DirectorOverlay` on F9
 (the latest `DirectorTrace` as a table), estimator snapshot import, and **session setup (D9, §6)**: a start screen that takes a
@@ -841,7 +862,7 @@ None of these is a package; each is small, and each protects the pilot's data.
       open the file and check that every field has a value: a stripped build would write empty objects.
 - [ ] **S7 frozen (D7).** The metric in §5.9 confirmed with the supervisor and marked frozen.
 - [ ] **A session played by hand** in the editor verifies headless (the WP4 playtest checklist in DEVLOG).
-- [ ] **Company and product name set** (still `DefaultCompany/InternProj`): they decide where the data is written.
+- [x] **Company and product name set**: `Thesis` / `Thesis` (2026-11-24, for now); they decide where the data is written.
 - [ ] **Exports are current.** `Maps/*.map.json`, `Maps/Shapes.json` and the config the harness uses match
       the scene and the `SimConfig` asset. (Today the game reads the asset and headless reads the C# defaults;
       they are equal, but nothing checks it. Add an export for the config and a check before the S2 balance pass.)
