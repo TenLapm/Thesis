@@ -125,7 +125,7 @@ public class FlowAgent : MonoBehaviour
             case "ember": color = new Color(1f, 0.42f, 0.08f); break;
             case "frostborn": color = new Color(0.55f, 0.9f, 1f); break;
             case "bats": size = 0.6f; color = new Color(0.55f, 0.4f, 1f); break;
-            case "swarm": size = 0.7f; break;
+            case "swarm": size = 0.7f; color = new Color(1f, 0.9f, 0.4f); break; // as its chip (HudOverlay.EnemyColor)
             case "raider": size = 1.1f; color = new Color(0.25f, 0.9f, 0.35f); break;
             case "siege": size = 1.8f; color = new Color(0.85f, 0.65f, 0.15f); break;
         }

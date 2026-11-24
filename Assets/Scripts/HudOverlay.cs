@@ -242,7 +242,7 @@ public class HudOverlay : MonoBehaviour
     {
         switch (archetype)
         {
-            case "swarm": return new Color(0.94f, 0.67f, 0.99f);
+            case "swarm": return new Color(1f, 0.9f, 0.4f);   // light yellow (2026-11-24, the student: it was the walkers' pink)
             case "sapper": return new Color(0.7f, 0.52f, 0.34f);  // earth brown (2026-11-24)
             case "flyer": return new Color(0.38f, 0.65f, 0.98f);
             case "brute": return new Color(0.86f, 0.15f, 0.15f);
