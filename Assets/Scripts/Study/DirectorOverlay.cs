@@ -76,12 +76,14 @@ public class DirectorOverlay : MonoBehaviour
                 b.Append("  ").Append(t.Profile.Names[i].PadRight(22)).Append(t.Profile.HasData[i] ? F(t.Profile.Values[i]) : "no data").Append('\n');
         b.Append("context bin <b>").Append(t.Bin).Append("</b> of 0 to 4, threat budget ").Append(F(t.ThreatBudget)).Append("\n\n");
 
-        b.Append("<b>").Append("strategy".PadRight(16)).Append("veto".PadRight(16)).Append("authored  learned  total</b>\n");
+        // A fixed-width table (found in play, 2026-11-24: in the proportional font the columns ran together).
+        b.Append("<mspace=0.55em>");
+        b.Append("<b>").Append("strategy".PadRight(17)).Append("veto".PadRight(16)).Append("authored  learned  total</b>\n");
         foreach (StrategyRow r in t.Rows)
         {
             bool chosen = r.Name == t.Chosen;
             if (chosen) b.Append("<color=#2dd4bf>");
-            b.Append(r.Name.PadRight(16));
+            b.Append(r.Name.PadRight(17));
             b.Append((r.Veto ?? "-").PadRight(16));
             b.Append((r.Heuristic.HasValue ? F(r.Heuristic.Value) : "-").PadRight(10));
             string learned = r.Correction.HasValue ? (r.Correction.Value.Cold ? "cold" : (r.Correction.Value.Value >= 0f ? "+" : "") + F(r.Correction.Value.Value)) : "-";
@@ -90,6 +92,8 @@ public class DirectorOverlay : MonoBehaviour
             if (chosen) b.Append("  (chosen)</color>");
             b.Append('\n');
         }
+        b.Append("</mspace>");
+        if (t.Support.Count > 0) b.Append("the wave: ").Append(string.Join(", ", t.Support)).Append("  (lead first; shares of the budget)\n");
         if (t.Fallback != null) b.Append("<color=#f87171>every strategy was vetoed: the static wave is sent (").Append(t.Fallback).Append(")</color>\n");
         if (t.Announcement != null) b.Append("banner: \"").Append(t.Announcement).Append("\"\n");
         b.Append("decided in ").Append((t.ElapsedMicroseconds / 1000f).ToString("0.0", CultureInfo.InvariantCulture)).Append(" ms\n\n");

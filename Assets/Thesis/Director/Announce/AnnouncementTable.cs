@@ -22,7 +22,8 @@ namespace Thesis.Director
             {
                 case BreachThinWall.StrategyName: return "Sappers are coming for your thinnest wall.";
                 case SwarmChokepoint.StrategyName: return "A swarm is coming through the spot your towers hold.";
-                case SplitGroups.StrategyName: return "They are coming from three sides at once.";
+                // Not "three sides" (found in play, 2026-11-24): a wave's entries grow from 2 to 5.
+                case SplitGroups.StrategyName: return "They are coming from several sides at once.";
                 case FlyingBypass.StrategyName: return "Flyers are coming over your maze.";
                 case RaidOutposts.StrategyName: return "Raiders are coming for your collectors.";
                 default: return null;

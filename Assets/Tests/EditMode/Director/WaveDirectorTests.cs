@@ -403,7 +403,7 @@ namespace Thesis.Tests.Director
                 Assert.GreaterOrEqual(types.Count, 2, "wave " + w + ": more than one enemy type");
                 var used = new HashSet<int>();
                 foreach (AgentGroup g in plan.Groups) used.Add(g.SpawnIndex);
-                Assert.LessOrEqual(used.Count, StrategyKit.EntriesFor(w), "wave " + w + ": no more entries than the static version's");
+                Assert.AreEqual(Math.Min(StrategyKit.EntriesFor(w), map.Spawns.Length), used.Count, "wave " + w + ": exactly as many entries as the static version's (found in play, 2026-11-24: 2 of 3)");
                 int surviving = 0;
                 foreach (StrategyRow r in t.Rows) if (r.Veto == null && r.Score > 0f) surviving++;
                 if (surviving >= 2) Assert.GreaterOrEqual(t.Support.Count, 2, "wave " + w + ": others that scored support the lead");

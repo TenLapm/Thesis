@@ -2938,3 +2938,41 @@ lit and almost entirely out of reach. The student chose to make the shooting mat
   `thesis pin`, Mono with Unity in batch mode). Every final hash is unchanged, and the two runtimes agree.
 - `TileRangeTests` (3). 898 of 898 under .NET; 898 passed and 2 diagnostics skipped in Unity, which also
   compiled the route-line fix of earlier today.
+
+## 2026-11-24 — A play-through of everything promised today
+
+Played in the editor through the start screen, a practice run, an adaptive study session (P01, session 2) and
+`FullDirectorTest`. The scripted builder did the building, and every screen was checked from the game view.
+
+**Works as promised**
+- The start screen: a wrong code is refused with its message. "P03 / Practice run" gives seed 103 and the static
+  version; "P01 / Session 2" gives seed 116 and the full director (group 1, adaptive, Y). The condition is never
+  shown.
+- Practice ends after wave 3 with "Practice over" and the game stops. Ctrl+Shift+Q (and the panel's button) go
+  back to the start screen.
+- The study session's replay (schema 16) and every telemetry row carry the participant; `estimator.json` is
+  saved; the replay re-runs headless tick for tick and its telemetry byte for byte.
+- The static version comes from 2 entries at wave 1. Director waves mix types (3 to 5 a wave). The raid joined a
+  wave once a collector stood unguarded. Two-in-a-row is enforced. The flyer ban holds until anti-air stands.
+- A retry at the start of a wave swaps in another grid of the same version (12 and 12); the route lines followed it.
+- Sappers are brown. The director's decision takes 1 to 5 ms after the first (19.8 ms, Mono's first run, made
+  while the scene loads).
+
+**Found and fixed**
+- **A wave came from fewer entries than promised** (wave 7: 2 of 3; wave 10 in a test: 2 of 4). Two parts could
+  pick the same entry. `WaveDirector.Compose` now shares the wave's entries out, each part its own, the lead
+  first, anything unused to the lead. So a wave comes from exactly `EntriesFor(wave)` entries, as the static
+  version's does. The composition test now asks for exactly that.
+- **Split's banner said "three sides"** while a wave can come from 2. Now "from several sides at once".
+- **The F9 overlay's columns ran together** in the proportional font. Now a fixed-width table, with a line for
+  how the wave is shared ("swarm_chokepoint 0.5, split_groups 0.5").
+
+**Seen, not changed**
+- Static build phases show a hint ("Build, then start the wave.") where the adaptive version shows the director's
+  line. It is an instruction, not an announcement.
+- The banner names only the lead.
+- The swarm's chip is nearly the same pink as the plain walker's (the label tells them apart).
+- Behind "Practice over" the HUD already reads "Wave 4"; the panel blocks every click.
+
+The pinned full-director episode was re-recorded on both runtimes (`8a7a674cf0ab78bf`). 898 of 898 under .NET;
+898 passed and 2 diagnostics skipped in Unity.

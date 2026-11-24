@@ -224,34 +224,62 @@ namespace Thesis.Director
                 trace.Support.Add(lead.Name + " 1");
                 return pool[lead.Id].BuildPlan(budget, context, strategyRng, entries);
             }
-            // split_groups always wants three sides; inside the wave's entries it takes what there is.
+            // (split_groups asks for its three sides; inside the entries a part is given it takes what there is.)
 
             double sum = 0.0;
             foreach (StrategyRow r in supports) sum += r.Score;
             var parts = new List<(StrategyRow row, float share)> { (lead, cfg.LeadShare) };
             foreach (StrategyRow r in supports) parts.Add((r, (float)(rest * (float)(r.Score / sum))));
 
-            // Pass 1: where each part would come from on its own; the wave's entries are the first
-            // `entries` of those, the lead's first. Pass 2: every part again, inside that set.
+            // Pass 1: where each part would come from on its own, in its order of preference. The
+            // wave's entries are the first `entries` of those, the lead's first, then any others.
             var wanted = new List<int>();
+            var prefs = new List<List<int>>();
             var ks = new List<int>();
             foreach (var (row, share) in parts)
             {
                 int k = Math.Max(1, (int)(float)((float)(entries * share) + 0.5f));
                 ks.Add(k);
+                var pref = new List<int>();
                 foreach (AgentGroup g in pool[row.Id].BuildPlan((float)(budget * share), context, strategyRng, k).Groups)
+                {
+                    if (!pref.Contains(g.SpawnIndex)) pref.Add(g.SpawnIndex);
                     if (wanted.Count < entries && !wanted.Contains(g.SpawnIndex)) wanted.Add(g.SpawnIndex);
+                }
+                prefs.Add(pref);
             }
             foreach (int e in kit.Candidates(context)) if (wanted.Count < entries && !wanted.Contains(e)) wanted.Add(e);
 
+            // The entries shared out (found in play, 2026-11-24: two parts picking the same entry left
+            // a wave of 3 entries coming from 2): each part its own, up to its count, the lead first;
+            // a part left with none takes an unused one, or shares its first choice; what is still
+            // unused goes to the lead. So the wave comes from exactly `entries` entries, as the
+            // static version's does.
+            var assigned = new List<List<int>>();
+            var taken = new HashSet<int>();
+            for (int i = 0; i < parts.Count; i++)
+            {
+                var mine = new List<int>();
+                foreach (int e in prefs[i]) if (mine.Count < ks[i] && wanted.Contains(e) && taken.Add(e)) mine.Add(e);
+                assigned.Add(mine);
+            }
+            for (int i = 0; i < parts.Count; i++)
+            {
+                if (assigned[i].Count > 0) continue;
+                foreach (int e in wanted) if (assigned[i].Count == 0 && taken.Add(e)) assigned[i].Add(e);
+                if (assigned[i].Count == 0) assigned[i].Add(prefs[i].Count > 0 && wanted.Contains(prefs[i][0]) ? prefs[i][0] : wanted[0]);
+            }
+            foreach (int e in wanted) if (taken.Add(e)) assigned[0].Add(e);
+
+            // Pass 2: every part again, inside its own entries.
             var groups = new List<AgentGroup>();
-            kit.Only = wanted;
             try
             {
                 for (int i = 0; i < parts.Count; i++)
                 {
                     var (row, share) = parts[i];
-                    WavePlan part = pool[row.Id].BuildPlan((float)(budget * share), context, strategyRng, ks[i]);
+                    kit.Only = assigned[i];
+                    WavePlan part = pool[row.Id].BuildPlan((float)(budget * share), context, strategyRng, assigned[i].Count);
                     groups.AddRange(part.Groups);
                     trace.Support.Add(row.Name + " " + share.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture));
                 }
