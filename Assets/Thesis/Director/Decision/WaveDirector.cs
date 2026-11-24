@@ -90,6 +90,11 @@ namespace Thesis.Director
 
         public string PlannerSetup => setup;
 
+        // What the learner knows now (WP14): saved at the end of a session, so another session's
+        // director can start from it (DirectorSetup.FromSnapshot; the transfer condition). Null for
+        // the heuristic director, which learns nothing.
+        public EstimatorState ExportEstimator() { return estimator != null ? estimator.Export() : null; }
+
         public DirectorTrace TraceFor(int wave)
         {
             DirectorTrace t;
@@ -273,6 +278,41 @@ namespace Thesis.Director
             DirectorSetup s = Json.Deserialize<DirectorSetup>(json);
             if (s == null || s.Schema != CurrentSchema || s.Config == null) throw new ArgumentException("not a director setup of schema " + CurrentSchema);
             return s;
+        }
+
+        // A snapshot file is the estimator's state as JSON (WriteSnapshot). FromSnapshot makes the
+        // setup a full director starts from (PlannerFactory.Create's setup), so the replay keeps the
+        // snapshot as its starting estimator like any other setup.
+        public static string WriteSnapshot(EstimatorState state)
+        {
+            if (state == null) throw new ArgumentNullException(nameof(state));
+            return Json.SerializeIndented(state);
+        }
+
+        public static string FromSnapshot(string snapshot, DirectorConfig cfg)
+        {
+            if (cfg == null) throw new ArgumentNullException(nameof(cfg));
+            EstimatorState state;
+            try
+            {
+                state = string.IsNullOrWhiteSpace(snapshot) ? null : Json.Deserialize<EstimatorState>(snapshot);
+            }
+            catch (Exception e) when (!(e is ArgumentException))
+            {
+                throw new ArgumentException("the snapshot is not an estimator's state: " + e.Message, e);
+            }
+            if (state == null || state.Kind == null || state.Alpha == null || state.Beta == null)
+                throw new ArgumentException("the snapshot is not an estimator's state (no kind or no cells).");
+            var setup = new DirectorSetup { Mode = DirectorMode.Full, Config = cfg, Estimator = state };
+            try
+            {
+                setup.NewEstimator(); // refuses a state that does not fit its kind
+            }
+            catch (Exception e) when (!(e is ArgumentException))
+            {
+                throw new ArgumentException("the snapshot does not load: " + e.Message, e);
+            }
+            return Json.Serialize(setup);
         }
 
         // A fresh estimator of the setup's kind, holding its starting state.

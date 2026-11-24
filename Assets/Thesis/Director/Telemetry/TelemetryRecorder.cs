@@ -47,6 +47,9 @@ namespace Thesis.Director
         private bool finished;
         private int retriesSeen;             // SimState.Retries when last looked
 
+        // Copied into every row (WP14); set before the first row is finished. Null in development.
+        public StudyInfo Study;
+
         public TelemetryRecorder(Simulation sim, string session, string build, string player)
         {
             this.sim = sim ?? throw new ArgumentNullException(nameof(sim));
@@ -290,6 +293,7 @@ namespace Thesis.Director
                     Rerolls = rerolls,
                 },
                 StateHash = stateHash,
+                Study = Study != null ? Study.Copy() : null,
             });
             RowCount++;
         }

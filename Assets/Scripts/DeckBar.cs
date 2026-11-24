@@ -114,6 +114,8 @@ public class DeckBar : MonoBehaviour
         Build();
         if (GetComponent<DamagePanel>() == null) gameObject.AddComponent<DamagePanel>(); // the damage panel (2026-10-27)
         if (GetComponent<HudOverlay>() == null) gameObject.AddComponent<HudOverlay>(); // the HUD of the approved mockup (2026-10-27)
+        if (GetComponent<DirectorOverlay>() == null) gameObject.AddComponent<DirectorOverlay>(); // F9, development only (WP14)
+        if (GetComponent<StudySessionView>() == null) gameObject.AddComponent<StudySessionView>(); // the practice run's end, the experimenter's exit (WP14)
         HudArt.Skin(bar);
         HudArt.Skin(info);
         HudArt.Skin(tipBox);
@@ -567,13 +569,9 @@ public class DeckBar : MonoBehaviour
 
     private void UpdateBuild(SimState state, SimConfig config)
     {
-        if (Keyboard.current != null)
-        {
-            if (Keyboard.current.digit1Key.wasPressedThisFrame) category = 0;
-            if (Keyboard.current.digit2Key.wasPressedThisFrame) category = 1;
-            if (Keyboard.current.digit3Key.wasPressedThisFrame) category = 2;
-            if (Keyboard.current.digit4Key.wasPressedThisFrame) category = 3;
-        }
+        // The tabs had the keys 1 to 4, which also set the game speed (GameSpeedController), so one
+        // press did both (GDD question 23). The student, 2026-11-24: speed keeps 1 to 3 and the
+        // tabs have no keys; they are clicked.
         for (int c = 0; c < categoryButtons.Count; c++)
         {
             categoryButtons[c].outline.color = c == category ? Teal : Edge;

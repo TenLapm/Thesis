@@ -130,7 +130,7 @@ namespace Thesis.Harness
         {
             bool known = Array.IndexOf(Registry.PlannerNames, file.Planner) >= 0;
             Simulation sim = NewSimulation(file, rebuildPlanner: known);
-            var recorder = new TelemetryRecorder(sim, file.Session, file.Build, file.Policy);
+            var recorder = new TelemetryRecorder(sim, file.Session, file.Build, file.Policy) { Study = file.Study };
             var rows = new List<WaveRecord>();
 
             int cursor = 0;

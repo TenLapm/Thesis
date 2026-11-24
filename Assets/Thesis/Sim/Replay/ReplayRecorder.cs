@@ -33,6 +33,7 @@ namespace Thesis.Sim
         public string Build;
         public string Session;
         public string Policy;
+        public StudyInfo Study; // WP14; null in development
 
         public ReplayRecorder(Simulation sim, bool recordTickHashes)
         {
@@ -105,6 +106,7 @@ namespace Thesis.Sim
                 Build = Build,
                 Session = Session,
                 Policy = Policy,
+                Study = Study != null ? Study.Copy() : null,
                 Map = sim.Map.Name,
                 MapSeed = 0,
                 RngSeed = sim.RngSeed,

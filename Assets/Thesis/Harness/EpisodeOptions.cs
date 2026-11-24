@@ -13,6 +13,9 @@ namespace Thesis.Harness
         public TowerDef[] Towers;
         public ulong Seed = 1;
         public string Planner = EscalationPlanner.Id;
+        // A planner made by the caller instead of from `Planner` (WP12: the ladder keeps the director
+        // to read its timings afterwards). Must be new for this episode and used by nothing else.
+        public IWavePlanner PlannerInstance;
         public IPlayerPolicy Policy = new IdlePolicy();
 
         // The episode ends when this many waves have resolved, when the core dies,
@@ -34,5 +37,6 @@ namespace Thesis.Harness
 
         public string Build = "headless";
         public string Session;
+        public StudyInfo Study; // WP14: a study session's label; null in development
     }
 }

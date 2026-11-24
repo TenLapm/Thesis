@@ -1,3 +1,4 @@
+using System.IO;
 using Thesis.Director;
 using Thesis.Sim;
 using UnityEngine;
@@ -40,10 +41,20 @@ public class DirectorHost : MonoBehaviour
 
     public Condition condition = Condition.StaticEscalation;
 
+    [Tooltip("Start the full director from what another session's director learned (WP14, the transfer condition): the path of an estimator.json that a session left in its folder. Empty = start cold, as every study session does.")]
+    public string estimatorSnapshot = "";
+
     // seed: the session's rngSeed; the director and the ladder planners draw their streams from it.
-    public IWavePlanner CreatePlanner(SimConfig config, MapData map, ulong seed)
+    // plannerName: set by a study session (SessionSetup, StudySessions.PlannerOf), and then it
+    // decides instead of `condition`, so the scene's development setting can never leak into the study.
+    public IWavePlanner CreatePlanner(SimConfig config, MapData map, ulong seed, string plannerName = null)
     {
         IWavePlanner planner;
+        if (plannerName != null)
+        {
+            planner = PlannerFactory.Create(plannerName, config, map, seed, setup: plannerName == WaveDirector.FullId ? SnapshotSetup() : null);
+            return Wrap(planner, config, map);
+        }
         switch (condition)
         {
             case Condition.HeuristicDirector:
@@ -51,7 +62,7 @@ public class DirectorHost : MonoBehaviour
                 Debug.Log("[Director] the heuristic director (WP10): the study's four strategies, chosen by authored scores. No learning yet.");
                 break;
             case Condition.FullDirector:
-                planner = PlannerFactory.Create(WaveDirector.FullId, config, map, seed);
+                planner = PlannerFactory.Create(WaveDirector.FullId, config, map, seed, setup: SnapshotSetup());
                 Debug.Log("[Director] the full director (WP11): authored scores plus a learned correction of at most one point either way.");
                 break;
             case Condition.LadderRandom:
@@ -79,6 +90,21 @@ public class DirectorHost : MonoBehaviour
                 break;
         }
 
+        return Wrap(planner, config, map);
+    }
+
+    // The setup a full director starts from: the snapshot when one is named, else null (cold).
+    private string SnapshotSetup()
+    {
+        if (string.IsNullOrWhiteSpace(estimatorSnapshot)) return null;
+        string path = Path.IsPathRooted(estimatorSnapshot) ? estimatorSnapshot : Path.Combine(SimHost.SessionsRoot(), estimatorSnapshot);
+        string setup = DirectorSetup.FromSnapshot(File.ReadAllText(path), DirectorConfig.Provisional());
+        Debug.Log("[Director] the full director starts from the estimator saved in " + path + ".");
+        return setup;
+    }
+
+    private static IWavePlanner Wrap(IWavePlanner planner, SimConfig config, MapData map)
+    {
         // Every planner runs inside SafePlanner, the baseline included: if it throws
         // or returns a plan the simulation would refuse, that wave falls back to the
         // static escalation and the session goes on. The wrapper keeps the inner

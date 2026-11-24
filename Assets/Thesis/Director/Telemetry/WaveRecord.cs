@@ -1,5 +1,6 @@
 using Newtonsoft.Json;
 using Thesis.Core;
+using Thesis.Sim;
 
 namespace Thesis.Director
 {
@@ -71,6 +72,12 @@ namespace Thesis.Director
         // The simulation's state hash on the tick the wave resolved: the same value
         // the replay stores for that wave. Null when the wave did not resolve.
         [JsonProperty("stateHash", Order = 27)] public string StateHash;
+
+        // The participant, the session and the condition (WP14, D9), the replay's StudyInfo. Null in
+        // development and then left out of the line, so rows written before it are unchanged byte for
+        // byte; an optional field at the end, so the schema number stays (a reader that does not know
+        // it loses nothing).
+        [JsonProperty("study", Order = 28, NullValueHandling = NullValueHandling.Ignore)] public StudyInfo Study;
 
         public string ToJsonLine() { return Json.SerializeLine(this); }
 

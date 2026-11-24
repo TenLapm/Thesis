@@ -206,6 +206,14 @@ public class SimHost : MonoBehaviour
 
     public ulong Seed { get; private set; }
 
+    // The study session this is (WP14, the start screen's choice), or null in development.
+    public StudyInfo Study { get; private set; }
+
+    // The practice run stops after its waves (StudySessions.PracticeWaves): StudySessionView shows
+    // the end and the simulation stops ticking.
+    public bool PracticeOver => Study != null && Study.Practice && sim != null && sim.State.WaveIndex >= StudySessions.PracticeWaves
+                                && sim.State.Phase != SimPhase.Spawning && sim.State.Phase != SimPhase.Resolving;
+
     // How far (0..1) the accumulator is toward the next tick: views interpolate
     // between the previous and the current tick's positions by this.
     public float TickAlpha { get; private set; }
@@ -252,7 +260,10 @@ public class SimHost : MonoBehaviour
 
         Retry retry = pendingRetry;
         pendingRetry = null;
-        Seed = retry != null ? retry.Seed : randomSeed ? (ulong)(uint)Environment.TickCount : (ulong)(uint)seed;
+        // A study session takes its seed and its planner from the participant code (D9); the
+        // scene's seed, randomSeed and DirectorHost.condition are for development only.
+        Study = SessionSetup.Current;
+        Seed = retry != null ? retry.Seed : Study != null ? StudySessions.SeedOf(Study) : randomSeed ? (ulong)(uint)Environment.TickCount : (ulong)(uint)seed;
         if (generateMap)
         {
             float diameter = gridManager.nodeRadius * 2f;
@@ -269,7 +280,9 @@ public class SimHost : MonoBehaviour
         runConfig = (configAsset != null ? configAsset.config : new SimConfig()).Clone();
         // The gear inventory needs the bottom bar to be seen and used: a scene without it plays without one.
         if (FindFirstObjectByType<DeckBar>() == null) runConfig.GearInventorySlots = 0;
-        IWavePlanner planner = directorHost != null ? directorHost.CreatePlanner(runConfig, map, Seed) : new EscalationPlanner(runConfig, map);
+        string studyPlanner = Study != null ? StudySessions.PlannerOf(Study) : null;
+        if (Study != null && directorHost == null) throw new InvalidOperationException("[Sim] A study session needs a DirectorHost in the scene.");
+        IWavePlanner planner = directorHost != null ? directorHost.CreatePlanner(runConfig, map, Seed, studyPlanner) : new EscalationPlanner(runConfig, map);
         sim = new Simulation(runConfig, map, blockManager.BuildShapeLibrary(), BuildTowerRoster(), Seed, planner);
         flowManager.Bind(sim.State.Grid);
         if (generateMap) ShowCore();
@@ -294,19 +307,21 @@ public class SimHost : MonoBehaviour
         // Wall-clock time only names the folder; it never reaches the simulation.
         // Invariant culture: a machine set to a non-Gregorian calendar would otherwise
         // name the folder with a different year.
-        string session = DateTime.Now.ToString("yyyyMMdd-HHmmss", System.Globalization.CultureInfo.InvariantCulture) + "_seed" + Seed;
+        string session = DateTime.Now.ToString("yyyyMMdd-HHmmss", System.Globalization.CultureInfo.InvariantCulture)
+                         + (Study != null ? "_" + Study.Participant + (Study.Practice ? "_practice" : "_s" + Study.SessionNumber) : "") + "_seed" + Seed;
         recorder = new ReplayRecorder(sim, recordTickHashes)
         {
             Build = "Unity " + Application.unityVersion + (Application.isEditor ? " editor" : " player " + Application.version),
             Session = session,
             Policy = sessionPolicy,
+            Study = Study,
         };
         replayPath = Path.Combine(SessionsRoot(), session, "replay.json");
         Debug.Log("[Replay] Recording to " + replayPath);
 
         // The same labels as the replay: telemetry made again from the replay must
         // come out as this file, byte for byte.
-        telemetry = new TelemetryRecorder(sim, recorder.Session, recorder.Build, recorder.Policy);
+        telemetry = new TelemetryRecorder(sim, recorder.Session, recorder.Build, recorder.Policy) { Study = Study };
         telemetryPath = Path.Combine(SessionsRoot(), session, "telemetry.jsonl");
         try
         {
@@ -391,6 +406,27 @@ public class SimHost : MonoBehaviour
             if (telemetryWriter != null) Debug.Log("[Telemetry] " + telemetryWriter.RowsWritten + " rows -> " + telemetryPath);
             CloseTelemetry();
         }
+        SaveEstimator();
+    }
+
+    // What the full director learned, next to the replay (WP14): another session can start from
+    // it (DirectorHost.estimatorSnapshot, the transfer condition). Nothing for other planners.
+    private void SaveEstimator()
+    {
+        IWavePlanner inner = sim.Planner is SafePlanner safe ? safe.Inner : sim.Planner;
+        if (!(inner is WaveDirector director) || replayPath == null) return;
+        Thesis.Learning.EstimatorState state = director.ExportEstimator();
+        if (state == null) return;
+        string path = Path.Combine(Path.GetDirectoryName(replayPath), "estimator.json");
+        try
+        {
+            File.WriteAllText(path, DirectorSetup.WriteSnapshot(state));
+            Debug.Log("[Director] What the director learned -> " + path);
+        }
+        catch (Exception e) when (e is IOException || e is UnauthorizedAccessException)
+        {
+            Debug.LogError("[Director] Could not write " + path + ": " + e.Message);
+        }
     }
 
     // Player input. Applied at once (FlushInput), not at the next tick, so it feels
@@ -408,7 +444,7 @@ public class SimHost : MonoBehaviour
     void Update()
     {
         if (sim == null) return;
-        if (sim.State.IsGameOver)
+        if (sim.State.IsGameOver || PracticeOver)
         {
             TickAlpha = 1f;
             return;

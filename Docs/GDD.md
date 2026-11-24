@@ -345,7 +345,8 @@ speed 1.25 tiles a second, 0.0375 more a wave, at most 2.25.
 Each wave is made of one to three types in a fixed twelve-wave cycle (basic; runners; sappers;
 armored; flyers; swarm; brutes and basic; ember and sappers; bats; swarm and runners; armored
 and flyers; brutes, swarm and bats). On the ore map raiders come too, from wave 4, every few
-waves. **Open (question 21):** whether the study's static version keeps this cycle, or sends
+waves. **The static version shows no banner line** (the student, 2026-11-24: question 7, "just let
+the player experience it"); only the adaptive version announces its waves. **Open (question 21):** whether the study's static version keeps this cycle, or sends
 plain walkers only.
 
 ### 7.2 The development director
@@ -420,17 +421,20 @@ the waves differs, and with it the banner's line and which route lines are drawn
 **Built.** The core has 10 hit points and loses one for every enemy that reaches it. At zero the
 game is over: "You reached Wave N", and Restart. There is no way to win today.
 
-**Built:** a wave can be restarted any number of times (§2). **Open (question 22):** whether a
-participant may restart waves in the study, since a restart replays the director's choice and
-changes how many waves count.
+**Built:** a wave can be restarted any number of times (§2), in the study too (the student,
+2026-11-24: question 22). Every restart is recorded in the replay and counted in telemetry.
 
-**Open (question 1): how long is a session?** The study compares the waves a player completed in
-each of their two sessions, cut to the shorter one, so it needs a stated length (about 25 waves
-is assumed) and a game in which an ordinary player gets most of the way there.
+**A session has no last wave** (the student, 2026-11-24: question 1). The game goes on until the
+core falls; the experimenter ends a session (Ctrl+Shift+Q goes back to the start screen, and the
+files are saved on the way). The study compares the two sessions over the waves both reached.
 
-**Planned (WP14): a study session.** The participant types a code on a start screen; the code
-decides their two sessions (one static, one adaptive, two different seeds, in a counterbalanced
-order).
+**Built (WP14): a study session.** The build opens on a start screen. The experimenter types the
+participant's code (P01, P02, ...) and picks the practice run, session 1 or session 2; the screen
+shows only "P07, Session 1 of 2", never which version it is. The code decides the two sessions
+(`StudySessions`: one static, one adaptive, on seeds 109 and 116, in a counterbalanced order; the
+group is the code's number counted round 1 to 4). **The practice run** (question 8) is three waves of
+the static version on seed 103, recorded and marked as practice, then "Practice over" and back to
+the start screen. The adaptive version is the full director, starting cold for every participant.
 
 ---
 
@@ -483,8 +487,8 @@ arrow.
 
 | Screen | Status |
 |---|---|
-| Session start: participant code | **Planned** (WP14) |
-| Director overlay (F9): why the director chose what it chose; development only | **Planned** (WP14) |
+| Session start: participant code | **Built** (WP14, the `SessionStart` scene) |
+| Director overlay (F9): why the director chose what it chose; development only, off in every study session | **Built** (WP14) |
 | Preview of how the routes would change before a wall is paid for | **Planned** (second-semester UX pass) |
 | Art: models for towers and enemies, sound | **Open** (question 13) |
 
@@ -497,7 +501,7 @@ arrow.
 | Action | How |
 |---|---|
 | Build | pick it in the bottom bar, then click a tile; walls by click or drag |
-| Build-menu tabs | click, or 1 to 4 |
+| Build-menu tabs | click |
 | Wall tool | Q |
 | Collector | C |
 | Sell | X, then click (drag over walls) |
@@ -514,8 +518,7 @@ arrow.
 | Move the view, zoom | WASD or arrows, mouse wheel |
 | Flow-field view | V, for development |
 
-**A clash to fix:** the keys 1 to 3 change the game speed *and* the build-menu tab at the same
-time (question 23).
+The build-menu tabs have no keys (2026-11-24): 1 to 3 are the game speed only (question 23).
 
 ---
 
@@ -537,22 +540,22 @@ decision.
 
 | # | Question | Suggestion | Who decides | Needed by |
 |---|---|---|---|---|
-| 1 | **How long is a session, and what ends it?** | A fixed length of 25 waves; the session still ends early if the core falls; balance so that an ordinary player gets past wave 15. Reaching the last wave is the win. | you and your supervisor | the balance pass, firmly before the pilot |
-| 7 | **The banner in the static version.** | Both versions show one: the static one states the wave plainly ("Wave 7: armored and flyers"), the adaptive one also says why. | you and your supervisor | WP14 |
-| 8 | **How does a participant learn the game?** | A short practice run of three waves on a third seed, static, not analysed. | you and your supervisor | the pilot |
-| 12 | **A name for the game,** and the company and product name in the build settings. | — | you | the first build that records data |
 | 13 | **Art and sound.** | Distinct shapes for enemy types and a handful of sounds in the UX pass, if there is time. | you | the second-semester UX pass |
-| 14 | **May a participant pause and change speed?** | Yes to both. | you and your supervisor | the pilot |
 | 20 | **Do research, upgrades and gear stay?** A tester called research the worst feature and gear a waste of ore (2026-10-23). | Keep upgrades (they are the towers' identity); decide research and gear after the next tests. | you | the balance pass |
 | 21 | **What does the static version send?** The fixed cycle of types (§7.1), or plain walkers? | The cycle: otherwise the two versions differ in variety, not in adaptation. | you and your supervisor | WP9 |
-| 22 | **Restarting waves in the study.** | Off in the study build, or counted and reported. | you and your supervisor | the pilot |
-| 23 | **Keys 1 to 3** change the speed and the build-menu tab together. | Give the tabs other keys or none (they lost their labels on 2026-10-28). | delegated | the next round |
-| 24 | **Nothing tells the player that damage types matter** (noted 2026-11-10). A tower's card names its type and the damage panel shows the mix, but no screen says that armored enemies shrug off physical damage or ember enemies fire (only an upgrade tag, "ignores armour", hints at it); they differ from the rest only in colour and size. The development director's `resist_mix` and the `damage_type_mix` measure assume the player can see this. | Show each enemy chip's resistance (an icon or "resists fire") and the type on the route-line legend. | you | the UX pass, before the pilot |
 
 ### Answered
 
 | # | Question | Answer | When |
 |---|---|---|---|
+| 1 | How long is a session? | No last wave: until the core falls, or the experimenter ends it. | 2026-11-24 |
+| 7 | The banner in the static version | None: only the adaptive version announces its waves. | 2026-11-24 |
+| 8 | How does a participant learn the game? | A practice run of three static waves on its own seed (103), not analysed. | 2026-11-24 |
+| 12 | A name | "Thesis" for now, as product and company name (they decide where data is saved). | 2026-11-24 |
+| 14 | Pause and speed in the study | Both allowed. | 2026-11-24 |
+| 22 | Restarting waves in the study | Always allowed; recorded and counted. | 2026-11-24 |
+| 23 | Keys 1 to 3 | Speed only; the build tabs have no keys. | 2026-11-24 |
+| 24 | Nothing says damage types matter | Colour for now: an enemy's colour tells its element (ember is fire's orange, armoured the steel grey of physical damage); sappers moved from orange to earth brown so orange means fire only. | 2026-11-24 |
 | 4 | Which wave types? (S10) | The proposal's four: breach, swarm, split, flying (`ARCHITECTURE.md` §10). | 2026-11-16 |
 | 6 | Raids and sieges change income and firepower (I11, S14) | Not in the study's pool; they stay in the development director. | 2026-11-16 |
 | 5 | The exact formulas of the five measures (S9) | `ARCHITECTURE.md` §5.3. Damage types stay as they are. | 2026-11-10 |

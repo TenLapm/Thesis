@@ -36,6 +36,10 @@ namespace Thesis.Sim
         public string Build;    // who recorded it, e.g. "Unity 6000.4.10f1 editor" or "headless .NET 9.0.10"
         public string Session;  // the session folder name
         public string Policy;   // "human", or the scripted policy's name
+        // The participant, the session and the study condition (WP14, D9); null in development, and
+        // then not written at all, so files recorded before it are unchanged. A label only.
+        [Newtonsoft.Json.JsonProperty(NullValueHandling = Newtonsoft.Json.NullValueHandling.Ignore)]
+        public StudyInfo Study;
 
         // --- what the run was built from ---
         public string Map;      // MapData.Name
