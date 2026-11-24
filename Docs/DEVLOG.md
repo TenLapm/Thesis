@@ -2800,3 +2800,7 @@ name they were written with. `DirectorTest` was copied from it before the rename
 dotnet run --project Tools/dotnet/Thesis.Cli -c Release -- ladder --seeds 20 --waves 50
 dotnet run --project Tools/dotnet/Thesis.Cli -c Release -- gate all
 ```
+
+**Later the same day: G3.** The student chose to keep the graduated reward for now (2026-11-24), despite G3's
+rule. `DirectorConfig.Provisional()` is unchanged. To be decided again with the supervisor before the pilot, when
+the pilot's telemetry shows how much pressure and novelty really depend on the strategy.
