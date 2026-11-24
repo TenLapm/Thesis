@@ -83,7 +83,12 @@ balanced value.
 - **Towers stand only on a wall or a rock** (`TowersOnWalls`) and can be moved freely in a build
   phase. Each has one of five target orders. **A tower reaches an enemy standing on any tile it
   lights up** (`TileRange`, 2026-11-24: the tile's centre within range), not a circle to the
-  enemy's exact position. A pylon takes no gear.
+  enemy's exact position. A pylon takes no gear. **A tower on a wall or rock adds its digging
+  cost and health to the tile's** (`TowerAddsToFoundation`, 2026-11-24): it no longer softens a
+  fort or opens a tunnel through a mountain.
+- **A collector may go back on a dry deposit** (`CollectorOnDryDeposit`, 2026-11-24): it earns
+  nothing there but still powers towers. **Damage gear is a percentage** (`PercentDamageGear`:
+  "+10% damage" for 8 ore, "+30%" for 20) in place of the flat damage a second.
 - **Towers fire only while powered** (`PowerRule`): the core powers up to 4 towers within 4 tiles,
   each collector 2 within 3, a pylon 2 within 3 (a pylon may not stand within 5 tiles of the core).
   Which source powers which tower can be swapped by the player.
@@ -487,7 +492,9 @@ because a player may be reacting to the last two or three waves.
   director alternate two strategies); the limit of two in a row (`MaxStreak`) stays.
 - Announce every selected strategy before the wave, one authored line keyed by
   `(bin, strategy)`. Templated, never generated. It is both game feel and the
-  manipulation check for gate G7.
+  manipulation check for gate G7. **Not shown since 2026-11-24 (the student: "we don't need to
+  tell the player anything")**: the line is still chosen and written to telemetry, but the HUD
+  shows no banner (`HudOverlay.showWaveLine`). G7 then rests on players noticing unprompted.
 
 ### Classes to add
 

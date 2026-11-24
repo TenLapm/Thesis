@@ -103,6 +103,9 @@
     "FreshSellFullRefund": false,
     "RetryKeepsBuild": false,
     "TileRange": false,
+    "CollectorOnDryDeposit": false,
+    "TowerAddsToFoundation": false,
+    "PercentDamageGear": false,
     "WallTiers": false,
     "DepositOre": 0,
     "StoneWallCost": 3,
@@ -2524,7 +2527,7 @@
       "Levels": null
     }
   ],
-  "SetupHash": "faffe31c700b4ea3",
+  "SetupHash": "e308853f7069142a",
   "InitialHash": "f949f2178fac9272",
   "Commands": [
     {

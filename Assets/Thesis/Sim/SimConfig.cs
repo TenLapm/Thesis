@@ -295,6 +295,18 @@ namespace Thesis.Sim
         // circle, so on a lit edge tile only its centre point was in reach. The splash keeps its circle.
         public bool TileRange = false;
 
+        // A tester's three points, 2026-11-24, as the student decided them:
+        // a collector may go back on a deposit that has run dry, where it earns nothing but still
+        // powers towers (otherwise a lost collector there was a lost power spot for good);
+        public bool CollectorOnDryDeposit = false;
+        // a tower on a wall or a rock adds its digging cost and health to the tile's, instead of
+        // replacing them (a tower made a fort 45 -> 20 and a rock 60 -> 20, so enemies went
+        // through towers);
+        public bool TowerAddsToFoundation = false;
+        // damage gear is a share of the tower's damage (GearRoster "honed", "keen-honed") instead
+        // of a flat amount a second ("edge", "keen-edge"), so it grows with the tower's upgrades.
+        public bool PercentDamageGear = false;
+
         // Wall tiers (2026-10-28): besides the plain wall of the shape library, a stone wall and a
         // fortified wall, each dearer, costlier to walk through and longer to chew. PlaceShape's
         // A names the tier (0 the plain wall).

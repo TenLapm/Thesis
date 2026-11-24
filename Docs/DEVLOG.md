@@ -2976,3 +2976,30 @@ Played in the editor through the start screen, a practice run, an adaptive study
 
 The pinned full-director episode was re-recorded on both runtimes (`8a7a674cf0ab78bf`). 898 of 898 under .NET;
 898 passed and 2 diagnostics skipped in Unity.
+
+## 2026-11-24 — The tester's three points, the swarm's colour, no banner
+
+**Files.** The tester's new `replay.json` is schema 16 but has no `TileRange` in its config. It came from
+the GitHub version (`151aff6`, mixed waves), without the later fixes (none pushed). The session stopped
+after 97 ticks, before wave 1.
+
+**Decided** (the student):
+- The swarm gets a colour of its own (light yellow, chip and board).
+- "We focus on the full director." "We don't need to tell the player anything": no banner (`HudOverlay.showWaveLine`
+  off). The line is still in telemetry. **G7 now rests on players noticing unprompted.**
+- The tester's three points, behind `SimConfig` switches (on in the game, off in the C# defaults):
+  1. *"If the vein runs out the collector can't be placed again and the tower won't get powered."* True: a dry
+     deposit refused a collector, so a lost collector there was a lost power spot. `CollectorOnDryDeposit`: it
+     may go back, earning nothing, still powering.
+  2. *"A tower on a fort wall is more attractive than a fort wall."* True, and worse on rocks. `SetTower` gave
+     the tile the tower's own numbers (fort 45 / 36 s and rock 60 / 60 s became 20 / 8 s), so enemies went
+     through towers. `TowerAddsToFoundation`: cost and health add up. `SyncTowerTerrain` and `MoveTower` now
+     count the tower's part only (`SimGrid.TowerPartCost` and the like); a move leaves the wall whole.
+  3. *"Damage gear is worth less on a damage-upgraded tower than on one with crowd control."* True by design:
+     flat damage a second, multiplied by nothing. `PercentDamageGear`: "honed" (+10%, 8 ore) and "keen-honed"
+     (+30%, 20 ore, tier 2) replace "edge" and "keen-edge". Appended to the roster, so every older index holds.
+     The percentages are first guesses for the balance pass.
+
+**Tests:** `TesterRulesTests` (7); the roster test lists the two new pieces. New settings mean a new setup
+fingerprint, so both pinned sets were re-recorded: every final hash is unchanged and the runtimes agree.
+905 of 905 under .NET.

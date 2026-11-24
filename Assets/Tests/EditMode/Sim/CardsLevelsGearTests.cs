@@ -309,7 +309,7 @@ namespace Thesis.Tests.Sim
             GearDef[] gear = GearRoster.Default();
             var names = new List<string>();
             foreach (GearDef g in gear) names.Add(g.Id);
-            CollectionAssert.AreEqual(new[] { "scope", "whetstone", "sky-sight", "powder", "chill", "extractor", "beacon", "anti-armor", "lure", "edge", "keen-edge", "far-scope" }, names, "order is part of a replay");
+            CollectionAssert.AreEqual(new[] { "scope", "whetstone", "sky-sight", "powder", "chill", "extractor", "beacon", "anti-armor", "lure", "edge", "keen-edge", "far-scope", "honed", "keen-honed" }, names, "order is part of a replay (2026-11-24: the percent pieces appended)");
 
             TowerDef def = TestTowers.Gun(damage: 10f, range: 3f, interval: 20);
             System.Func<int, TowerState> with = piece =>
@@ -330,6 +330,8 @@ namespace Thesis.Tests.Sim
             Assert.IsTrue(gear[5].Extracts, "extractor: not worn, it takes gear off (Simulation.EquipGear)");
             Assert.IsFalse(gear[2].IsStatBoost);
             Assert.IsTrue(gear[3].IsStatBoost);
+            Assert.AreEqual(11f, with(12).Damage, 1e-5f, "honed: +10% damage");
+            Assert.AreEqual(13f, with(13).Damage, 1e-5f, "keen-honed: +30% damage");
         }
 
         [Test]

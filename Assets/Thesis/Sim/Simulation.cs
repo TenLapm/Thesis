@@ -63,7 +63,7 @@ namespace Thesis.Sim
 
             var s = new SimState
             {
-                Grid = new SimGrid(map, config.RockHealth > 0f),
+                Grid = new SimGrid(map, config.RockHealth > 0f) { TowerAddsToFoundation = config.TowerAddsToFoundation },
                 BagRng = new Pcg32(rngSeed, RngStreams.Bag),
                 SpawnRng = new Pcg32(rngSeed, RngStreams.Spawn),
                 BuildBudget = config.StartBudget,
@@ -851,6 +851,7 @@ namespace Thesis.Sim
                 if (!node.IsWalkable || node.Occupant != Occupant.Tower || node.TowerId != tower.Id) continue;
                 float full = Math.Max(0.5f, tower.Def.TowerHealth);
                 if (tower.Lure) full = (float)(full * GearDef.LureHealthFactor);
+                full = (float)(full + s.Grid.FoundationPartMaxHealth(node)); // the wall beneath, with TowerAddsToFoundation
                 if (node.Lure == tower.Lure && node.MaxWallHealth == full) continue;
                 // Damage taken so far is kept as a share of the whole.
                 float share = node.MaxWallHealth > 0f ? (float)(node.WallHealth / node.MaxWallHealth) : 1f;
@@ -1088,7 +1089,8 @@ namespace Thesis.Sim
         private void BuildCollector(SimState s, TileCoord tile)
         {
             if (!InBuildPhase(s) || map.DepositAt(tile) < 0 || s.BuildBudget < config.CollectorPrice) return;
-            if (s.DepositLeft != null && s.DepositLeft[map.DepositAt(tile)] <= 0) return; // nothing left to dig
+            // Nothing left to dig: no collector, unless it may go back as a power source only.
+            if (!config.CollectorOnDryDeposit && s.DepositLeft != null && s.DepositLeft[map.DepositAt(tile)] <= 0) return;
             SimNode node = s.Grid.Get(tile);
             if (!node.IsWalkable || node.Occupant != Occupant.None || tile == map.Core) return;
             s.BuildBudget -= config.CollectorPrice;

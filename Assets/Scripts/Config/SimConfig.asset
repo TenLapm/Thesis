@@ -107,6 +107,9 @@ MonoBehaviour:
     FreshSellFullRefund: 1
     RetryKeepsBuild: 1
     TileRange: 1
+    CollectorOnDryDeposit: 1
+    TowerAddsToFoundation: 1
+    PercentDamageGear: 1
     WallTiers: 1
     DepositOre: 30
     StoneWallCost: 3

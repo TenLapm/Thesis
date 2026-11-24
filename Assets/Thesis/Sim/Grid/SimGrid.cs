@@ -23,6 +23,10 @@ namespace Thesis.Sim
         // (FlowFieldVisualizer, PathPreviewer) can rebuild only when needed.
         public int FieldVersion;
 
+        // SimConfig.TowerAddsToFoundation, set by the simulation: SetTower adds the tower's cost and
+        // health to the wall or rock it stands on. A rule switch, not state (it is never hashed).
+        public bool TowerAddsToFoundation;
+
         // rocksAsTerrain: the map's rocks are walkable tiles, for the simulation to put
         // breakable rock walls on (SimConfig.RockHealth, 2026-10-28).
         public SimGrid(MapData map, bool rocksAsTerrain = false)
@@ -65,6 +69,7 @@ namespace Thesis.Sim
             worldSizeX = source.worldSizeX;
             worldSizeY = source.worldSizeY;
             FieldVersion = source.FieldVersion;
+            TowerAddsToFoundation = source.TowerAddsToFoundation;
             RaidGoals = source.RaidGoals;
             LureGoals = source.LureGoals;
             nodes = new SimNode[source.nodes.Length];
@@ -269,6 +274,12 @@ namespace Thesis.Sim
                 node.FoundationMaxHealth = node.MaxWallHealth;
                 node.FoundationPiece = node.PieceId;
             }
+            if (TowerAddsToFoundation && node.Occupant == Occupant.Wall)
+            {
+                // Both stand in the enemies' way: the wall (or rock) and the tower on it.
+                terrainCost = node.TerrainCost + terrainCost;
+                towerHealth = (float)(node.WallHealth + towerHealth);
+            }
             if (node.IsWalkable) SetWall(node, terrainCost, towerHealth);
             else
             {
@@ -280,6 +291,24 @@ namespace Thesis.Sim
             }
             node.Occupant = Occupant.Tower;
             node.TowerId = towerId;
+        }
+
+        // The tower's own part of a tower tile (TowerAddsToFoundation): its cost and full health
+        // without the wall or rock beneath. Without the rule, or with nothing beneath, the whole.
+        public int TowerPartCost(SimNode node)
+        {
+            return TowerAddsToFoundation && node.FoundationCost > 0 ? node.TerrainCost - node.FoundationCost : node.TerrainCost;
+        }
+
+        public float TowerPartMaxHealth(SimNode node)
+        {
+            return TowerAddsToFoundation && node.FoundationCost > 0 ? (float)(node.MaxWallHealth - node.FoundationMaxHealth) : node.MaxWallHealth;
+        }
+
+        // What lies beneath a tower in the enemies' way (TowerAddsToFoundation), or 0.
+        public float FoundationPartMaxHealth(SimNode node)
+        {
+            return TowerAddsToFoundation && node.FoundationCost > 0 ? node.FoundationMaxHealth : 0f;
         }
 
         // A tower leaves its tile alive (sold, moved, benched, merged away): the wall it

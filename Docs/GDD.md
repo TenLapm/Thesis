@@ -418,6 +418,8 @@ Fixed rules of the project (`CLAUDE.md` §4):
   one shared price list. The director chooses the shape of a wave, never its size.
 - **Nothing that cannot be answered, at first.** Flyers are not sent while no tower can hit them,
   up to wave 5; from wave 6 every wave type may come (the student, 2026-11-24).
+- **Nothing announced** (the student, 2026-11-24): no banner in either version; the waves speak
+  for themselves. The director's line is still written to telemetry.
 - **No long streaks.** The same wave type at most twice in a row. A wave merely *like* the last
   one is allowed (the student, 2026-11-24; the similarity rule is off).
 - **Hands off your side, except raids.** The director never changes a price, a tower or your ore,

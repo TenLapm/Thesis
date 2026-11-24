@@ -22,6 +22,7 @@ namespace Thesis.Sim
         // each shot, so it is worth the same to every tower. Halved again the same day.
         public float DpsAdd;
         public bool FlatOnly;            // sold only with SimConfig.FlatGear, so older shops stay as they were
+        public bool PercentOnly;         // sold only with SimConfig.PercentDamageGear (2026-11-24)
         public float IntervalMul = 1f;   // below 1 = fires faster
         public float RangeAdd;           // tiles
         public float SplashAdd;          // tiles; gives a single-target tower a small splash
@@ -63,7 +64,10 @@ namespace Thesis.Sim
         public bool OnSale(SimConfig config)
         {
             if (Extracts) return config != null && config.ExtractorGear;
-            if (config != null && config.FlatGear) return IsFlat;
+            // 2026-11-24 (a tester; the student): with PercentDamageGear the damage gear is a share of
+            // the tower's damage, and the flat damage-a-second pieces leave the shop.
+            if (PercentOnly) return config != null && config.FlatGear && config.PercentDamageGear;
+            if (config != null && config.FlatGear) return IsFlat && !(config.PercentDamageGear && DpsAdd != 0f);
             if (FlatOnly) return false;
             if (Beacon || IgnoresResist || Lure) return config != null && config.AbilityGear;
             if (IsStatBoost) return config == null || config.StatGear;
@@ -96,6 +100,11 @@ namespace Thesis.Sim
                 new GearDef { Id = "edge", Label = "+1 damage a second", DpsAdd = 1f, Price = 8, FlatOnly = true },
                 new GearDef { Id = "keen-edge", Label = "+3 damage a second", DpsAdd = 3f, Price = 20, Tier = 2, FlatOnly = true },
                 new GearDef { Id = "far-scope", Label = "+2 range", RangeAdd = 2f, Price = 18, Tier = 2, FlatOnly = true },
+                // 2026-11-24: damage as a share (SimConfig.PercentDamageGear), so it grows with the
+                // tower's upgrades; first guesses at the price of edge and keen-edge, for the balance
+                // pass. Appended, so every older piece keeps its index.
+                new GearDef { Id = "honed", Label = "+10% damage", DamageMul = 1.1f, Price = 8, PercentOnly = true },
+                new GearDef { Id = "keen-honed", Label = "+30% damage", DamageMul = 1.3f, Price = 20, Tier = 2, PercentOnly = true },
             };
         }
     }

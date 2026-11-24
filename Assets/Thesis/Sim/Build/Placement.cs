@@ -243,14 +243,18 @@ namespace Thesis.Sim
 
             TowerState tower = towers[source.TowerId];
             if (PylonTooClose(map, tower.Def, to, pylonKeepOut)) return false;
-            int terrainCost = source.TerrainCost;
+            // The tower's own part moves; the wall or rock beneath stays (TowerAddsToFoundation).
+            int terrainCost = grid.TowerPartCost(source);
             float health = source.WallHealth;
-            float fullHealth = source.MaxWallHealth;
+            float fullHealth = grid.TowerPartMaxHealth(source);
+            float share = source.MaxWallHealth > 0f ? (float)(health / source.MaxWallHealth) : 1f;
 
             grid.LiftTower(source);
             SimNode target = grid.Get(to);
             grid.SetTower(target, terrainCost, fullHealth, tower.Id);
-            target.WallHealth = health;
+            // Without the rule the tile keeps its health as it was; with it, as the same share of
+            // the new whole (tower and what it now stands on).
+            target.WallHealth = grid.TowerAddsToFoundation ? (float)(target.MaxWallHealth * share) : health;
             tower.MoveTo(to, target.Position);
             events?.Add(SimEvent.TowerChanged(tower.Id));
 

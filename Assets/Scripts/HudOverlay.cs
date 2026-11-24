@@ -38,6 +38,8 @@ public class HudOverlay : MonoBehaviour
     private TextMeshProUGUI hpText, waveTitle, waveNote;
     private RectTransform banner;
     private TextMeshProUGUI bannerText;
+    // The top banner (the director's line, or "build, then start"). Off since 2026-11-24.
+    public static bool showWaveLine = false;
     private TextMeshProUGUI oreText, incomeText, powerText, researchText;
     private RectTransform powerBadge;
     private RectTransform chipsCard;
@@ -167,6 +169,10 @@ public class HudOverlay : MonoBehaviour
         WavePlan plan = build ? s.NextPlan : s.CurrentPlan;
         string line = plan != null ? (Thesis.Director.AnnouncementTable.Line(plan.AnnouncementId) ?? RoughDirector.Line(plan.AnnouncementId)) : null;
         if (line == null && build && !builder.ChoosingCore) line = "Build, then start the wave.";
+        // The student, 2026-11-24: "we don't need to tell the player anything". No banner: the waves
+        // speak for themselves. The director still writes its line into telemetry (the
+        // announcement); gate G7 then rests on players noticing unprompted (CLAUDE.md §6).
+        if (!showWaveLine) line = null;
         banner.gameObject.SetActive(line != null && !builder.ChoosingCore);
         if (line != null && line != bannerText.text) { Set(bannerText, line); FitBanner(); }
 
