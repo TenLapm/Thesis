@@ -35,6 +35,7 @@ namespace Thesis.Cli
                 case "profile": return ProfileCmd.Run(args);
                 case "ladder": return LadderCmd.Run(args);
                 case "gate": return GateCmd.Run(args);
+                case "curve": return CurveCmd.Run(args);
                     default:
                         Console.Error.WriteLine("Unknown command: " + args[0]);
                         PrintUsage();

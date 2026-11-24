@@ -22,9 +22,11 @@ namespace Thesis.Director
     // not measured. A raid changes the player's income, which the static version does not (I11).
     public sealed class ThreatCostTable : IThreatPricer
     {
-        // Results/2026-11-16_threat-factors (20 seeds; 40 seeds gave 2.18 and 1.25).
-        public const float MeasuredFlyingFactor = 2.35f;
-        public const float MeasuredSapperFactor = 1.30f;
+        // Measured again after the balance pass's hit-point curve (2026-11-24,
+        // Results/2026-11-24_threat-factors-balance, 40 seeds; 20 gave 2.54 and 1.08). Before it,
+        // Results/2026-11-16_threat-factors: 2.35 and 1.30.
+        public const float MeasuredFlyingFactor = 2.48f;
+        public const float MeasuredSapperFactor = 1.10f;
         // Raiders (TargetsCollectors), on top of their class's factor. A first guess, not measured.
         public const float RaiderFactor = 1f;
 

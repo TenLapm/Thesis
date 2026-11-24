@@ -16,7 +16,7 @@ StaticTest runs the development planner `RoughDirector`
 (2026-11-10; G1-synthetic passes narrowly, `Results/2026-11-10_g1-synth/`), and so is the build
 profile (WP8, 2026-11-16: the proposal's five features, with the formulas the student decided in
 `Docs/ARCHITECTURE.md` §5.3), and so are the study's four strategies and the threat cost table
-(WP9, 2026-11-16; its flyer and sapper factors, 2.35 and 1.30, were measured with the new scripted
+(WP9, 2026-11-16; its flyer and sapper factors, 2.48 and 1.10 since the balance pass, were measured with the new scripted
 player `BuilderPolicy`, `Results/2026-11-16_threat-factors/`). **Not built yet:** the director itself
 (WP10 and WP11 are built, 2026-11-18: the heuristic director with its constraints, the full director
 with its reward, credit and thin-cell prior, selectable as `DirectorHost.Condition.HeuristicDirector`
@@ -28,7 +28,7 @@ version, `Results/2026-11-24_ladder`), the gates (`thesis gate`; G1 and G2 pass,
 learns faster, so by its rule the director should ship binary; not switched, the student's call), and the study's
 session setup (the `SessionStart` scene, `StudySessions`: seeds X 109, Y 116, practice 103). What remains is
 tuning and design: the balance pass, the threshold freeze, the pre-pilot checklist (`Docs/WORKPLAN.md`). The older scripted players were written for the random shop and lose wave 1 under
-today's rules; `builder` is the one that plays the game (7 to 16 waves against the baseline). The student finishes the gameplay before WP7 starts.
+today's rules; `builder` is the one that plays the game (7 to 16 waves against the old baseline; about 6 since the balance pass of 2026-11-24, which tuned the waves to a tester's boards, so the ladder needs a stronger scripted player). The student finishes the gameplay before WP7 starts.
 A course proposal describing the whole project is in `Docs/proposal/` (2026-10-28).
 
 Read §1 and §2 before writing any code.
@@ -104,7 +104,7 @@ balanced value.
 
 **Enemies**
 - The static baseline (`EscalationPlanner`, composed by `RaidPlanner`) escalates every wave: 12
-  enemies in wave 1 and one more every two waves; hit points 30 + 4.5 a wave, then +4 % compounded;
+  enemies in wave 1 and one more every two waves; hit points 30 + 14 a wave, then +1 % compounded (balance pass 2026-11-24, `Results/2026-11-24_balance`; was 4.5 and 4 %);
   speed up 0.0375 a wave to 2.25. Waves are squads of a few types.
 - Twelve enemy types (`EnemyArchetypes`): basic, swarm, runner, brute, armored (resists physical),
   ember (resists fire), flyer, bats, sapper, raider, siege, and frostborn (kept for the tests, no

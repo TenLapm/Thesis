@@ -3032,3 +3032,33 @@ process") before the fix.
 - The learner learned: 17 of 25 cells updated, the kernel holds 34 results. Mean reward parts: rebuild 0.26,
   survived 1, pressure 0.30, novelty 0.41. **The player rebuilt** (rebuild reached full credit in some waves),
   which the scripted players never did.
+
+## 2026-11-24 — The balance pass, first round
+
+The student asked for a balance pass and left the targets to me. Written before any number changed:
+first core loss around waves 8 to 12, games of 20 to 30 waves, ore spent, no damage tower more than
+1.5× the damage per ore of the others, and the threat budget equal for every kind of wave. Full write-up
+in `Results/2026-11-24_balance/README.md`.
+
+- **The yardstick is the tester's 35-wave session, not a scripted player.** `thesis curve <replay>`
+  (new; `Harness/Bench/BoardCurve.cs`, `Thesis.Cli/CurveCmd.cs`) plays a recorded session again with its
+  commands re-timed by build phase and the core unbreakable, and measures at chosen waves how much
+  stronger the met wave would have to be for 10 % to get through. Under the old numbers the tester's
+  board held waves 3.9 to 7.4 times as strong from wave 5 to wave 12. The middle of the game asked
+  nothing of them.
+- **The change:** `HpIncrementPerWave` 4.5 → 14 and `HpGrowthPerWave` 0.04 → 0.01 in the game's numbers
+  (the C# defaults stay). That makes waves 3 to 25 1.3 to 1.7 times as tough, equal again at wave 35,
+  and gentler after it (0.68 of the old at wave 50, where the old 4 % compounding ran away). The
+  tester's margin becomes 1.1 at wave 3, 2.1 to 4.3 from waves 5 to 15, and under 1 from wave 20: they
+  would have started leaking around wave 20 instead of 29.
+- **Threat factors measured again** (`Results/2026-11-24_threat-factors-balance`): flyers 2.48 (was 2.35),
+  sappers 1.10 (was 1.30), now in `ThreatCostTable`.
+- **Towers unchanged.** Cannon, sniper and archer gave 196 to 222 damage per ore in the tester's maze.
+  The brazier gave 67, with the flat gear that `PercentDamageGear` replaced the same day. One session
+  is too little to retune eight towers.
+- **The scripted players can no longer keep up.** `builder` loses wave 6 on two of three seeds, so the
+  six-wave bar in `BuilderPolicyTests` is now four. The ladder (`Results/2026-11-24_ladder-balance`)
+  still fails, now with games of 3 to 6 waves, too short to separate the rungs. The waves were not
+  made easier for the bot; the ladder needs a stronger scripted player.
+- **Not met:** ore piling up (175 at wave 20) needs something to spend it on, a design question for the
+  student. Targets 1 and 2 need a session by a less practised tester to check.

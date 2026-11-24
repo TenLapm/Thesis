@@ -345,7 +345,8 @@ all of them from one entry. Question 21 (the type cycle described next, or plain
 open; today it is plain walkers.
 
 **Built** as the baseline the director starts from. The plain walker of wave *n*: 12 enemies in
-wave 1 and one more every two waves; hit points 30 + 4.5 a wave, then 4 % more a wave on top;
+wave 1 and one more every two waves; hit points 30 + 14 a wave, then 1 % more a wave on top (the balance pass of 2026-11-24;
+it was 4.5 and 4 % before);
 speed 1.25 tiles a second, 0.0375 more a wave, at most 2.25.
 
 Each wave is made of one to three types in a fixed twelve-wave cycle (basic; runners; sappers;
