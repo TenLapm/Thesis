@@ -235,7 +235,7 @@ public class TowerShopPanel : MonoBehaviour
 
         Label(lower, "ROUTES", 17, Dim, TextAlignmentOptions.TopLeft, new Vector2(18f, -114f), new Vector2(120f, 24f), true);
         Color walker = pathPreviewer != null ? pathPreviewer.walkerColor : Color.magenta;
-        Color sapper = pathPreviewer != null ? pathPreviewer.sapperColor : new Color(1f, 0.6f, 0.2f);
+        Color sapper = pathPreviewer != null ? pathPreviewer.sapperColor : new Color(0.7f, 0.52f, 0.34f);
         Color flyer = pathPreviewer != null ? pathPreviewer.flyerColor : Color.cyan;
         LegendLine(MovementClass.Ground, walker, "Walkers", "round your walls");
         LegendLine(MovementClass.Sapper, sapper, "Sappers", "through thin walls");

@@ -30,7 +30,7 @@ public class FlowAgent : MonoBehaviour
     [Header("Movement classes")]
     [Tooltip("How far above the ground a flyer is drawn. Walls are one tile (2 units) tall, so this clears them.")]
     public float flyHeight = 2.6f;
-    public Color sapperColor = new Color(1f, 0.3f, 0.08f);
+    public Color sapperColor = new Color(0.72f, 0.5f, 0.3f); // earth brown: orange is fire's (ember), 2026-11-24
     public Color flyerColor = new Color(0.3f, 0.85f, 1f);
     [Tooltip("Size of a sapper and of a flyer, as a multiple of the prefab's own size.")]
     public float sapperScale = 1.7f;

@@ -4626,7 +4626,7 @@ MonoBehaviour:
   lineHoverHeight: 0.5
   lineWidth: 0.32
   walkerColor: {r: 1, g: 0.24, b: 0.94, a: 1}
-  sapperColor: {r: 0.98, g: 0.57, b: 0.24, a: 1}
+  sapperColor: {r: 0.7, g: 0.52, b: 0.34, a: 1}
   flyerColor: {r: 0.38, g: 0.65, b: 0.98, a: 1}
   raiderColor: {r: 0.25, g: 0.9, b: 0.35, a: 1}
   sapperOffset: 0.45

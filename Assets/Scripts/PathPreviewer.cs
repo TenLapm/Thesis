@@ -31,7 +31,7 @@ public class PathPreviewer : MonoBehaviour
     public float lineHoverHeight = 0.5f;
     public float lineWidth = 0.32f;
     public Color walkerColor = new Color(1f, 0.24f, 0.94f);
-    public Color sapperColor = new Color(0.98f, 0.57f, 0.24f);
+    public Color sapperColor = new Color(0.7f, 0.52f, 0.34f); // earth brown: orange is fire's (ember), 2026-11-24
     public Color flyerColor = new Color(0.38f, 0.65f, 0.98f);
     // Raiders (2026-10-20): the way to the nearest collector they go for first.
     public Color raiderColor = new Color(0.25f, 0.9f, 0.35f);
