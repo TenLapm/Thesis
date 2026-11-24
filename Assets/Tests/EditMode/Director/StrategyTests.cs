@@ -57,6 +57,7 @@ namespace Thesis.Tests.Director
         }
 
         [Test]
+        // Raiders are priced since 2026-11-24 (the raid strategy): as walkers, RaiderFactor 1.
         public void ResistancesRaidersAndSiegeEnemiesAreNotPriced()
         {
             var table = new ThreatCostTable(new SimConfig(), Generated());
@@ -67,7 +68,7 @@ namespace Thesis.Tests.Director
             AgentGroup siege = Group(1, 40f, 1f);
             siege.Siege = true;
             Assert.Throws<ArgumentException>(() => table.EnemyPrice(resists));
-            Assert.Throws<ArgumentException>(() => table.EnemyPrice(raider));
+            Assert.AreEqual(table.EnemyPrice(Group(1, 40f, 1f)) * ThreatCostTable.RaiderFactor, table.EnemyPrice(raider), 1e-6f);
             Assert.Throws<ArgumentException>(() => table.EnemyPrice(siege));
         }
 
@@ -110,7 +111,7 @@ namespace Thesis.Tests.Director
             MapData map = Generated();
             var table = new ThreatCostTable(config, map);
             WavePlan plan = new EscalationPlanner(config, map, table).PlanFor(3);
-            plan.Groups[0].TargetsCollectors = true;
+            plan.Groups[0].Siege = true;
             StringAssert.Contains("cannot be priced", PlanValidator.Check(plan, 3, map, config, table));
         }
 
@@ -127,9 +128,9 @@ namespace Thesis.Tests.Director
             var config = new SimConfig();
             MapData map = Generated();
             IReadOnlyList<IWaveStrategy> pool = Pool(config, map, new ThreatCostTable(config, map));
-            Assert.AreEqual(4, pool.Count);
-            CollectionAssert.AreEqual(new[] { "breach_thin_wall", "swarm_chokepoint", "split_groups", "flying_bypass" },
-                                      new[] { pool[0].Name, pool[1].Name, pool[2].Name, pool[3].Name });
+            Assert.AreEqual(5, pool.Count, "the proposal's four, then the raid (2026-11-24)");
+            CollectionAssert.AreEqual(new[] { "breach_thin_wall", "swarm_chokepoint", "split_groups", "flying_bypass", "raid_outposts" },
+                                      new[] { pool[0].Name, pool[1].Name, pool[2].Name, pool[3].Name, pool[4].Name });
             for (int i = 0; i < pool.Count; i++) Assert.AreEqual(i, pool[i].Id);
         }
 

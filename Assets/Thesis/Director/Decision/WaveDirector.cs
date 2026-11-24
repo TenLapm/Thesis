@@ -46,6 +46,7 @@ namespace Thesis.Director
         private readonly OverBudget overBudget = new OverBudget();
         private readonly RepeatStreak repeatStreak;
         private readonly Uncounterable uncounterable;
+        private readonly NoRaidTarget noRaidTarget;
         private readonly TooSimilarToPrevious tooSimilar;
         private readonly EscalationPlanner fallback;
         private readonly Pcg32 strategyRng;
@@ -74,11 +75,16 @@ namespace Thesis.Director
             this.mode = mode;
             this.estimator = estimator;
             pool = StrategyPool.Study(new StrategyKit(config, map, table));
+            // An estimator made for another pool (four strategies, before the raid) would fail mid-session.
+            EstimatorState starting = estimator != null ? estimator.Export() : null;
+            if (starting != null && starting.Strategies != pool.Count)
+                throw new ArgumentException("the estimator has " + starting.Strategies + " strategies, the pool " + pool.Count, nameof(estimator));
             bucketizer = new ContextBucketizer(cfg);
             heuristic = new AuthoredHeuristic(cfg);
             repeatStreak = new RepeatStreak(cfg.MaxStreak);
             tooSimilar = new TooSimilarToPrevious(cfg.SimilarityThreshold);
             uncounterable = new Uncounterable(cfg.FlyersNeedAntiAirUntilWave);
+            noRaidTarget = new NoRaidTarget(cfg.RaidsFromWave);
             fallback = new EscalationPlanner(config, map, table);
             strategyRng = new Pcg32(seed, RngStreams.Strategy);
             thompsonRng = new Pcg32(seed, RngStreams.Thompson);
@@ -145,6 +151,7 @@ namespace Thesis.Director
                 row.Veto = overBudget.Check(row.Plan, budget, config)
                         ?? repeatStreak.Check(strategy.Name, recent)
                         ?? uncounterable.Check(strategy.Name, s, wave)
+                        ?? noRaidTarget.Check(strategy.Name, s, wave)
                         ?? tooSimilar.Check(row.Plan, previous);
                 if (row.Veto != null) { row.Score = float.NegativeInfinity; continue; } // I5: before the learner
 

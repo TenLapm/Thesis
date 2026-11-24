@@ -407,9 +407,10 @@ Fixed rules of the project (`CLAUDE.md` §4):
   up to wave 5; from wave 6 every wave type may come (the student, 2026-11-24).
 - **No long streaks.** The same wave type at most twice in a row. A wave merely *like* the last
   one is allowed (the student, 2026-11-24; the similarity rule is off).
-- **Hands off your side.** The director never changes a price, a tower or your ore. **Open
-  (question 6):** raiders destroy collectors and siege enemies knock towers out, so a wave type
-  that sends them changes your income and firepower, which the static version does not.
+- **Hands off your side, except raids.** The director never changes a price, a tower or your ore,
+  but since 2026-11-24 it may send a raid (from wave 4, while a collector stands): raiders go for
+  unguarded collectors, so the adaptive version can cut your income where the static one never
+  does. The student's choice; the supervisor has to agree before the pilot.
 
 ### 7.5 What is the same in both versions
 
@@ -559,7 +560,7 @@ decision.
 | 23 | Keys 1 to 3 | Speed only; the build tabs have no keys. | 2026-11-24 |
 | 24 | Nothing says damage types matter | Colour for now: an enemy's colour tells its element (ember is fire's orange, armoured the steel grey of physical damage); sappers moved from orange to earth brown so orange means fire only. | 2026-11-24 |
 | 4 | Which wave types? (S10) | The proposal's four: breach, swarm, split, flying (`ARCHITECTURE.md` §10). | 2026-11-16 |
-| 6 | Raids and sieges change income and firepower (I11, S14) | Not in the study's pool; they stay in the development director. | 2026-11-16 |
+| 6 | Raids and sieges change income and firepower (I11, S14) | Not in the study's pool (2026-11-16). **Changed 2026-11-24:** raids are back as the director's fifth wave type, aimed at unguarded collectors, adaptive version only; sieges stay out. Needs the supervisor's agreement. | 2026-11-16, 2026-11-24 |
 | 5 | The exact formulas of the five measures (S9) | `ARCHITECTURE.md` §5.3. Damage types stay as they are. | 2026-11-10 |
 | 2 | Which towers? | Eight towers and the pylon (§5.2, §5.5). | 2026-10-24 |
 | 3 | Which enemy types? | The eleven sent today (§6.3). | 2026-10-14 to -26 |

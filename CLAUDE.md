@@ -332,7 +332,9 @@ Consequences to keep in mind:
   bought and sold (built in WP-C3: each row's `shop` block), and features must
   describe what the player *chose*, not what the roll happened to offer.
 - The proposal's strategy pool applies: `breach_thin_wall`, `swarm_chokepoint`,
-  `split_groups` and `flying_bypass`. The movement classes they need exist since
+  `split_groups` and `flying_bypass`, and since 2026-11-24 a fifth, `raid_outposts` (the
+  student: "there must be something that is aiming for the player's collectors"; it reads the
+  sixth feature `collector_exposure`, comes from wave 4 while a collector stands, and breaks I11). The movement classes they need exist since
   WP-C2 (sappers for the first, flyers for the last). `flying_bypass` is vetoed
   in layer 1 while the player has no way to hit flyers, **up to wave 5 only**: from wave 6
   every strategy may come (the student relaxed this on 2026-11-24;
@@ -392,7 +394,7 @@ wave number.
 | I8 | No director logic on the per-frame path. | The simulation ticks 50 to 150 times a second. The director runs once per wave boundary and has 16 ms there (G2). |
 | I9 | `Thesis.Sim.Placement.CanPlace` is the single source of truth for placement legality, for walls and towers. `PlayerBuilder.AreTilesPlaceable` only wraps it, and `GhostPreviewer` keeps calling that wrapper. *(Reworded 2026-09-15, D3.)* | The preview can never disagree with a real click, and the harness uses the same rule. |
 | I10 | Shop offers are a pure function of `(rngSeed, waveIndex, rerollCount)`. They never depend on the study condition, the director, or the player's board. *(Added 2026-09-15.)* | Both conditions must see the same tower offers, or shop luck could explain the result. **Satisfied since WP-C3:** `ShopRoller.Roll` is given those three numbers, the roster and a count, and nothing else; a test plays five scripted players against both planners for 30 waves and reads the same offers from every session's telemetry. **Dormant since 2026-10-20:** the game has no random offers (build menu, §2); the rule stands for any random offer that comes back. |
-| I11 | The director shapes enemy waves only. It never touches the shop, tower stats, prices, or the player's budget. *(Added 2026-09-15.)* | Otherwise the director changes the player's power, and difficulty is no longer held constant (§3). **Open (spec gap S14):** raiders destroy collectors and siege enemies knock towers out, so a strategy that sends them changes the player's income and firepower, which the static baseline does not. Before the pilot this needs a rule (counted in the threat budget, or sent the same way in both conditions) and the supervisor's agreement. |
+| I11 | The director shapes enemy waves only. It never touches the shop, tower stats, prices, or the player's budget. *(Added 2026-09-15.)* | Otherwise the director changes the player's power, and difficulty is no longer held constant (§3). **Knowingly broken since 2026-11-24 (the student):** the study pool has a fifth strategy, `raid_outposts`, whose raiders destroy collectors when the player leaves them unguarded; only the adaptive version sends it. Needs the supervisor's agreement before the pilot. **Earlier note (spec gap S14):** raiders destroy collectors and siege enemies knock towers out, so a strategy that sends them changes the player's income and firepower, which the static baseline does not. Before the pilot this needs a rule (counted in the threat budget, or sent the same way in both conditions) and the supervisor's agreement. |
 | I12 | Tower attacks resolve inside the simulation in whole ticks (an instant hit, or a delay fixed at the moment of firing). Projectile motion exists only in the Unity view. *(Added 2026-09-15.)* | Projectile physics would put frame-rate-dependent flight time back into the rules (I1). |
 
 If a task seems to require breaking one of these, stop and say so.

@@ -16,15 +16,17 @@ namespace Thesis.Director
     // walkers need, sappers on 1/1.30. Only this table gets tuned (I2); the balance pass
     // measures again on the final game.
     //
-    // Not priced, and refused with an ArgumentException: resistances, raiders and siege enemies.
-    // The study's pool sends none of them (S10, S14), so a strategy cannot change the player's
-    // income or firepower beyond what the baseline does (I11). PlanValidator turns the refusal
-    // into a rejected plan.
+    // Not priced, and refused with an ArgumentException: resistances and siege enemies (S10, S14).
+    // PlanValidator turns the refusal into a rejected plan. Raiders are priced since 2026-11-24 (the
+    // raid strategy, the student's choice): as walkers of their hit points and speed, RaiderFactor 1,
+    // not measured. A raid changes the player's income, which the static version does not (I11).
     public sealed class ThreatCostTable : IThreatPricer
     {
         // Results/2026-11-16_threat-factors (20 seeds; 40 seeds gave 2.18 and 1.25).
         public const float MeasuredFlyingFactor = 2.35f;
         public const float MeasuredSapperFactor = 1.30f;
+        // Raiders (TargetsCollectors), on top of their class's factor. A first guess, not measured.
+        public const float RaiderFactor = 1f;
 
         public readonly float FlyingFactor;
         public readonly float SapperFactor;
@@ -55,12 +57,12 @@ namespace Thesis.Director
         public float EnemyPrice(AgentGroup group)
         {
             if (group == null) throw new ArgumentNullException(nameof(group));
-            if (group.TargetsCollectors) throw new ArgumentException("raiders have no price (S14: not in the study's pool)", nameof(group));
             if (group.Siege) throw new ArgumentException("siege enemies have no price (S14: not in the study's pool)", nameof(group));
             if (group.Resist != null)
                 for (int r = 0; r < group.Resist.Length; r++)
                     if (group.Resist[r] != 1f) throw new ArgumentException("resistances have no price (S6): " + (DamageType)r + " is " + group.Resist[r], nameof(group));
-            return (float)((float)(group.Hp * group.MoveSpeed) * ClassFactor(group.Movement));
+            float price = (float)((float)(group.Hp * group.MoveSpeed) * ClassFactor(group.Movement));
+            return group.TargetsCollectors ? (float)(price * RaiderFactor) : price;
         }
 
         // Summed in group order, in double, then rounded once: the same on every runtime.

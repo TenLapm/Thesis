@@ -5,12 +5,13 @@ using Thesis.Sim;
 namespace Thesis.Director
 {
     // The study's strategies (S10, the student, 2026-11-16): the proposal's four, in a fixed
-    // order that is also their arm in the learner (5 bins × 4 strategies).
+    // order that is also their arm in the learner, and since 2026-11-24 the raid (the student), so
+    // 5 bins × 5 strategies.
     public static class StrategyPool
     {
         public static IReadOnlyList<IWaveStrategy> Study(StrategyKit kit)
         {
-            return new IWaveStrategy[] { new BreachThinWall(kit), new SwarmChokepoint(kit), new SplitGroups(kit), new FlyingBypass(kit) };
+            return new IWaveStrategy[] { new BreachThinWall(kit), new SwarmChokepoint(kit), new SplitGroups(kit), new FlyingBypass(kit), new RaidOutposts(kit) };
         }
     }
 

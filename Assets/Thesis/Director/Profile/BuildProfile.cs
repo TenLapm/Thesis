@@ -10,7 +10,8 @@ namespace Thesis.Director
         // 1: WP8a, maze_length, tower_concentration, damage_type_mix (2026-11-10).
         // 2: WP8b, the proposal's five: breach_vulnerability and chokepoint_reliance added in
         //    the proposal's order (2026-11-16). Schema 1 was never written to a file.
-        public const int SchemaVersion = 2;
+        // 3: collector_exposure, a sixth feature for the raid strategy (2026-11-24).
+        public const int SchemaVersion = 3;
 
         public readonly int Schema;
         public readonly string[] Names;

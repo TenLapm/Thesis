@@ -67,6 +67,25 @@ namespace Thesis.Director
         }
     }
 
+    // A raid needs something to raid, and comes from wave RaidsFromWave on (as the development
+    // director's outpost raids did): a raid in the first waves would end the player's economy
+    // before it began. Vetoed with this reason otherwise.
+    public sealed class NoRaidTarget
+    {
+        public const string Reason = "NoRaidTarget";
+        private readonly int fromWave;
+
+        public NoRaidTarget(int fromWave) { this.fromWave = fromWave; }
+
+        public string Check(string strategy, SimState state, int wave)
+        {
+            if (strategy != RaidOutposts.StrategyName) return null;
+            if (wave < fromWave) return Reason;
+            for (int i = 0; i < state.Grid.NodeCount; i++) if (state.Grid.ByIndex(i).Occupant == Occupant.Collector) return null;
+            return Reason;
+        }
+    }
+
     // The anti-collapse rule (CLAUDE.md §5): a plan whose composition lies within a threshold of the
     // previous wave's is vetoed. It replaces a hardcoded "no repeat".
     //

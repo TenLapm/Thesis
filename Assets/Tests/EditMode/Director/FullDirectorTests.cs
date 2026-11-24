@@ -36,7 +36,7 @@ namespace Thesis.Tests.Director
                 Log.Add("update " + strategy);
                 Weights.Add(creditWeight);
             }
-            public EstimatorState Export() { return new BinnedPosterior().Export(); }
+            public EstimatorState Export() { return new BinnedPosterior(5, 5).Export(); } // five strategies since the raid
             public void Import(EstimatorState state) { }
         }
 
@@ -332,13 +332,13 @@ namespace Thesis.Tests.Director
         {
             // The transfer condition: a director seeded from another session's estimator. The replay
             // keeps the state it started from, so a re-run starts there too.
-            var trained = new KernelPriorEstimator();
+            var trained = new KernelPriorEstimator(strategies: 5); // the pool's five (the raid since 2026-11-24)
             var rng = new Pcg32(12UL, 5UL);
             for (int i = 0; i < 40; i++) trained.Update(At(i % 5, (i % 9) / 9f, (i % 4) / 4f), i % 4, (i % 3) / 2f, 1f, rng);
 
             SimConfig config = GameConfig();
             MapData map = GameMaps.Generate(8);
-            var start = new KernelPriorEstimator();
+            var start = new KernelPriorEstimator(strategies: 5);
             start.Import(trained.Export());
             var d = new WaveDirector(DirectorConfig.Provisional(), config, map, new ThreatCostTable(config, map), 8UL, DirectorMode.Full, start);
             var sim = new Simulation(config, map, TestSims.GameShapes(), TestSims.GameTowers(), 8UL, d);

@@ -95,8 +95,8 @@ namespace Thesis.Tests.Director
             WaveDirector d = Director(config, map, cfg: cfg);
             Simulation sim = Sim(config, map, d);
             WavePlan plan = d.PlanWave(new WaveContext(1, sim.State, map, config));
-            Assert.AreEqual(4, d.LastTrace.Rows.Count);
-            for (int i = 0; i < 4; i++) Assert.AreEqual(i, d.LastTrace.Rows[i].Id);
+            Assert.AreEqual(5, d.LastTrace.Rows.Count);
+            for (int i = 0; i < 5; i++) Assert.AreEqual(i, d.LastTrace.Rows[i].Id);
             Assert.AreEqual(BreachThinWall.StrategyName, plan.StrategyId);
             Assert.AreEqual(BreachThinWall.StrategyName, d.LastTrace.Chosen);
         }
@@ -257,7 +257,7 @@ namespace Thesis.Tests.Director
                 Assert.LessOrEqual(Math.Abs(p.ThreatSpent - table.BudgetForWave(w)), config.ThreatEpsilon * table.BudgetForWave(w));
                 seen.Add(p.StrategyId);
             }
-            CollectionAssert.AreEqual(new[] { "breach_thin_wall", "swarm_chokepoint", "split_groups", "flying_bypass", "breach_thin_wall", "swarm_chokepoint", "split_groups", "flying_bypass" }, seen);
+            CollectionAssert.AreEqual(new[] { "breach_thin_wall", "swarm_chokepoint", "split_groups", "flying_bypass", "raid_outposts", "breach_thin_wall", "swarm_chokepoint", "split_groups" }, seen);
 
             string a = "", b = "";
             var r1 = new RandomPlanner(config, map, table, 5UL);
@@ -303,7 +303,7 @@ namespace Thesis.Tests.Director
                 if (row.Plan == null) continue;
                 Assert.IsNotNull(row.Profile, "wave " + row.Wave);
                 Assert.IsNotNull(row.Bin, "wave " + row.Wave);
-                Assert.AreEqual(4, row.Strategies.Length, "wave " + row.Wave);
+                Assert.AreEqual(5, row.Strategies.Length, "wave " + row.Wave);
                 Assert.AreEqual(row.Chosen, row.Plan.Strategy, "wave " + row.Wave);
                 Assert.IsFalse(string.IsNullOrEmpty(row.Announcement), "wave " + row.Wave);
                 Assert.IsNull(row.DirectorMicros, "no wall-clock time in a row (CLAUDE.md §7)");

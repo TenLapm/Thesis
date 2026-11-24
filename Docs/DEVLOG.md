@@ -2830,3 +2830,33 @@ The pinned full-director episode still replays: it stores the config it was reco
 
 **Tests:** 6 added in `WaveDirectorTests` (the flyer ban by wave, the similarity ban off, the play-test board below
 the maximum); 3 changed to read the ranges from the config rather than repeat them.
+
+## 2026-11-24 — Raids back, as the director's fifth wave type
+
+The student's second play-test (`FullDirectorTest`) sent no raiders although a collector stood in the open. That
+was by design (S14, 2026-11-16: no raids in the study pool, so income stays the same in both versions). The student
+wants something aimed at the collectors. Given three options (the same raids in both versions; the director chooses;
+both), they chose **the director chooses**, knowing it breaks I11.
+
+**Built**
+- `Profile/Features/CollectorExposure` (`collector_exposure`, the sixth feature; profile schema 3): the share of
+  standing collectors no defending tower reaches; no data without collectors.
+- `Strategies/RaidOutposts` (`raid_outposts`, id 4): half the budget raiders, half walkers, from the entry nearest
+  an unguarded collector.
+- `Layers/Constraints.NoRaidTarget`: no raid before wave 4 (`DirectorConfig.RaidsFromWave`) or with no collector.
+- `ThreatCostTable` prices raiders as walkers (`RaiderFactor` 1, not measured); sieges are still refused.
+- A banner line ("Raiders are coming for your collectors."). The heuristic reads `collector_exposure` over 0 to 1.
+- `WaveDirector` refuses an estimator made for another number of strategies (a four-strategy snapshot would fail
+  mid-session).
+
+**Effect:** in five sample games of the full director against `reactive`, it sent a raid in four. Raiders destroyed
+2 to 4 collectors in each.
+
+**Pinned:** only the full-director episode was re-recorded (five strategies now); both runtimes end at
+`7a50d2ca2dba0d44`, and every other pinned file came out the same.
+
+**Tests:** `RaidStrategyTests` (5); eight older tests updated for five strategies and six features. 880 of 880
+under .NET; 880 passed and 2 diagnostics skipped in Unity.
+
+**Open:** I11 and S14 are knowingly broken until the supervisor agrees. The raider price and the exposure range are
+guesses for the balance pass and the threshold freeze.

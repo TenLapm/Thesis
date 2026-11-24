@@ -28,16 +28,17 @@ namespace Thesis.Director
         // ---- the heuristic (layer 2) ----
         // Each strategy's feature (by strategy id), and every feature's 5 % and 95 % points from
         // the measurement: a value is mapped to 0..1 over that range, then times HeuristicScale.
-        public string[] StrategyFeature = { BreachVulnerabilityName, ChokepointRelianceName, TowerConcentrationName, MazeLengthName };
-        public string[] RangeFeature = { MazeLengthName, BreachVulnerabilityName, ChokepointRelianceName, TowerConcentrationName };
+        // The raid (id 4, 2026-11-24) reads collector_exposure, a share already in 0..1, unmeasured.
+        public string[] StrategyFeature = { BreachVulnerabilityName, ChokepointRelianceName, TowerConcentrationName, MazeLengthName, CollectorExposureName };
+        public string[] RangeFeature = { MazeLengthName, BreachVulnerabilityName, ChokepointRelianceName, TowerConcentrationName, CollectorExposureName };
         // Widened 2026-11-24 (the student: "do as you suggest"): the lowest 5 % point and the highest
         // 95 % point over `builder`, `reactive` (on the ladder, against all four rungs) and the student's
         // play-test, plus a tenth of the span at the top so that no board sits fixed at the maximum
         // (tower_concentration capped at 1, its largest possible value). Was 1.056-1.309, 0-0.067,
         // 0.017-0.339, 0.763-0.933: the builder's boards against the static waves only, which the
         // student's own board overran on three of the four features (Results/2026-11-24_director-ranges).
-        public float[] RangeLow = { 1.048f, 0.000f, 0.033f, 0.740f };
-        public float[] RangeHigh = { 1.385f, 0.052f, 0.888f, 1.000f };
+        public float[] RangeLow = { 1.048f, 0.000f, 0.033f, 0.740f, 0f };
+        public float[] RangeHigh = { 1.385f, 0.052f, 0.888f, 1.000f, 1f };
         // 0 to 4, so the learner's ±1 can only flip strategies within 2 points of each other.
         public float HeuristicScale = 4f;
 
@@ -51,6 +52,9 @@ namespace Thesis.Director
         // next one every strategy may come (the student, 2026-11-24, rule B3). Before, always banned
         // (CLAUDE.md §2's rule, which the student relaxed).
         public int FlyersNeedAntiAirUntilWave = 5;
+
+        // The raid comes from this wave on, and only while a collector stands (NoRaidTarget).
+        public int RaidsFromWave = 4;
         // A strategy may run this many waves in a row; a backstop to the similarity rule.
         public int MaxStreak = 2;
 
@@ -94,6 +98,7 @@ namespace Thesis.Director
         public const string BreachVulnerabilityName = "breach_vulnerability";
         public const string ChokepointRelianceName = "chokepoint_reliance";
         public const string TowerConcentrationName = "tower_concentration";
+        public const string CollectorExposureName = "collector_exposure";
 
         public static DirectorConfig Provisional() { return new DirectorConfig(); }
 

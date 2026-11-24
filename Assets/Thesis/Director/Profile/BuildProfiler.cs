@@ -24,12 +24,12 @@ namespace Thesis.Director
             this.features = (IBuildFeature[])features.Clone();
         }
 
-        // The proposal's five, in its order.
+        // The proposal's five, in its order, then collector_exposure (2026-11-24, the raid strategy).
         public static BuildProfiler Default()
         {
             return new BuildProfiler(new IBuildFeature[]
             {
-                new MazeLength(), new BreachVulnerability(), new ChokepointReliance(), new TowerConcentration(), new DamageTypeMix(),
+                new MazeLength(), new BreachVulnerability(), new ChokepointReliance(), new TowerConcentration(), new DamageTypeMix(), new CollectorExposure(),
             });
         }
 

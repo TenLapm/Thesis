@@ -194,10 +194,11 @@ namespace Thesis.Tests.Director
         // ---- the full profile ----
 
         [Test]
+        // The proposal's five in its order, then collector_exposure (2026-11-24, the raid).
         public void TheDefaultProfileHasTheFiveFeaturesInTheProposalsOrder()
         {
             CollectionAssert.AreEqual(
-                new[] { "maze_length", "breach_vulnerability", "chokepoint_reliance", "tower_concentration", "damage_type_mix" },
+                new[] { "maze_length", "breach_vulnerability", "chokepoint_reliance", "tower_concentration", "damage_type_mix", "collector_exposure" },
                 BuildProfiler.Default().Names);
         }
 
