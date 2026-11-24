@@ -3003,3 +3003,32 @@ after 97 ticks, before wave 1.
 **Tests:** `TesterRulesTests` (7); the roster test lists the two new pieces. New settings mean a new setup
 fingerprint, so both pinned sets were re-recorded: every final hash is unchanged and the runtimes agree.
 905 of 905 under .NET.
+
+## 2026-11-24 — A tester's 35-wave session with the full director
+
+Session `20261124-203002_seed41010671`, `FullDirectorTest`, recorded on the GitHub version (`151aff6`). It
+reached wave 35 (60 telemetry rows with retries); the core fell in wave 35.
+
+**Exact.** Checked with the code it was recorded on. The replay re-runs tick for tick (548,279 ticks, 27 wave
+hashes); the director rebuilt from the file makes all 28 plans as recorded; the telemetry is made again byte
+for byte up to the last row. Today's code refuses the file (its settings fingerprint now has today's new
+switches), as with every recording made before a setting was added.
+
+**Bug found: the replay stopped at wave 27** with a `replay.json.tmp` beside it. Saving swaps a new file in with
+`File.Replace`, which on Windows fails while another program holds the old file open without delete access.
+After one failure `SimHost` saved nothing more. `ReplayFile.Save` now falls back to copying over the file, and
+`SimHost` tries again at every wave. `ReplaySaveTests` (2) reproduced the failure ("being used by another
+process") before the fix.
+
+**What the session shows**
+- The waves are mixes of 3 to 6 enemy types, and the raid leads in 10 waves.
+- From wave 16 several waves came from 4 entries where the rule says 5: the entry bug fixed today (`ea6794f`),
+  which this build did not have.
+- Leads: flying 16, raid 10, breach 6, split 2, swarm 1. The player's maze was long (`maze_length` 1.57, above
+  the top of its range), so flying scored the maximum. The two-in-a-row limit held.
+- Nothing got through until wave 29; the core fell in waves 32 to 35. Ore piled up to 155 by wave 20, then
+  was spent. Towers bought: brazier 6, flak 6, archer 3, sniper 2, pylon 2, frost 1, cannon 1. Raiders
+  destroyed 2 collectors in all.
+- The learner learned: 17 of 25 cells updated, the kernel holds 34 results. Mean reward parts: rebuild 0.26,
+  survived 1, pressure 0.30, novelty 0.41. **The player rebuilt** (rebuild reached full credit in some waves),
+  which the scripted players never did.

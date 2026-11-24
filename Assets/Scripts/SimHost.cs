@@ -380,15 +380,19 @@ public class SimHost : MonoBehaviour
     // the session ends. A failed write is logged once and never stops the game.
     private void WriteReplay()
     {
-        if (recorder == null || replayWriteFailed) return;
+        if (recorder == null) return;
         try
         {
             recorder.Snapshot().Save(replayPath);
+            if (replayWriteFailed) Debug.Log("[Replay] Saved again: " + replayPath);
+            replayWriteFailed = false;
         }
         catch (Exception e) when (e is IOException || e is UnauthorizedAccessException)
         {
+            // Tried again at the next wave (2026-11-24: one failed save used to end the recording; the
+            // whole session is in memory, so a later save catches up). Logged once per run of failures.
+            if (!replayWriteFailed) Debug.LogError("[Replay] Could not write " + replayPath + ": " + e.Message + " It is tried again at the next wave.");
             replayWriteFailed = true;
-            Debug.LogError("[Replay] Could not write " + replayPath + ": " + e.Message + " This session will not be recorded.");
         }
     }
 

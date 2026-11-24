@@ -187,8 +187,20 @@ namespace Thesis.Sim
 
             string temp = full + ".tmp";
             File.WriteAllText(temp, ToJson());
-            if (File.Exists(full)) File.Replace(temp, full, null);
-            else File.Move(temp, full);
+            if (!File.Exists(full)) { File.Move(temp, full); return; }
+            try
+            {
+                File.Replace(temp, full, null);
+            }
+            catch (IOException)
+            {
+                // The swap needs the old file deletable; another program holding it open (an editor, a
+                // sync tool, a virus scan) prevents that on Windows. A tester's session lost its last
+                // eight waves to it (2026-11-24). Then the new text is copied over the old file, and
+                // the complete .tmp stays until the copy has succeeded.
+                File.Copy(temp, full, true);
+                File.Delete(temp);
+            }
         }
 
         public static ReplayFile Load(string path)
