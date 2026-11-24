@@ -53,6 +53,12 @@ namespace Thesis.Director
         // (CLAUDE.md §2's rule, which the student relaxed).
         public int FlyersNeedAntiAirUntilWave = 5;
 
+        // A wave is the chosen strategy leading with this share of the budget, and the others that
+        // scored above 0 sharing the rest by score, each with at least MinSupportShare (the student,
+        // 2026-11-24). LeadShare 1 is the old one-strategy wave.
+        public float LeadShare = 0.5f;
+        public float MinSupportShare = 0.1f;
+
         // The raid comes from this wave on, and only while a collector stands (NoRaidTarget).
         public int RaidsFromWave = 4;
         // A strategy may run this many waves in a row; a backstop to the similarity rule.

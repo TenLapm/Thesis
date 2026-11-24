@@ -26,7 +26,7 @@ namespace Thesis.Tests.Director
             Assert.That(info.SeedSet, Is.EqualTo(seedSet));
             Assert.That(info.Practice, Is.False);
             Assert.That(StudySessions.SeedOf(info), Is.EqualTo(seedSet == "X" ? StudySessions.SeedX : StudySessions.SeedY));
-            Assert.That(StudySessions.PlannerOf(info), Is.EqualTo(condition == StudyInfo.Adaptive ? WaveDirector.FullId : EscalationPlanner.Id));
+            Assert.That(StudySessions.PlannerOf(info), Is.EqualTo(condition == StudyInfo.Adaptive ? WaveDirector.FullId : SpreadStaticPlanner.Id));
         }
 
         [TestCase(1, 1)] [TestCase(2, 2)] [TestCase(4, 4)] [TestCase(5, 1)] [TestCase(23, 3)] [TestCase(24, 4)]
@@ -98,7 +98,7 @@ namespace Thesis.Tests.Director
             Assert.That(info.Condition, Is.EqualTo(StudyInfo.Static));
             Assert.That(info.SeedSet, Is.EqualTo("practice"));
             Assert.That(StudySessions.SeedOf(info), Is.EqualTo(StudySessions.PracticeSeed));
-            Assert.That(StudySessions.PlannerOf(info), Is.EqualTo(EscalationPlanner.Id));
+            Assert.That(StudySessions.PlannerOf(info), Is.EqualTo(SpreadStaticPlanner.Id));
             Assert.That(StudySessions.PracticeWaves, Is.EqualTo(3));
         }
 

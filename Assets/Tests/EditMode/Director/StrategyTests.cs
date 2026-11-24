@@ -222,15 +222,26 @@ namespace Thesis.Tests.Director
         }
 
         [Test]
-        public void EachStrategySendsItsKindOfEnemy()
+        // Since 2026-11-24 each strategy sends pairs (the student): its main type, then a helper,
+        // at every entry it uses, the main type with most of the budget.
+        [TestCase("flying_bypass", "flyer", "bats")]
+        [TestCase("breach_thin_wall", "sapper", "brute")]
+        [TestCase("swarm_chokepoint", "swarm", "runner")]
+        [TestCase("split_groups", "basic", "runner")]
+        [TestCase("raid_outposts", "raider", "basic")]
+        public void EachStrategySendsItsKindOfEnemyWithAHelper(string strategy, string main, string helper)
         {
             MapData map = Generated();
             for (int w = 1; w <= 12; w++)
             {
-                foreach (AgentGroup g in PlanOf("flying_bypass", w, map).Groups) Assert.AreEqual(MovementClass.Flying, g.Movement);
-                foreach (AgentGroup g in PlanOf("breach_thin_wall", w, map).Groups) Assert.AreEqual(MovementClass.Sapper, g.Movement);
-                foreach (AgentGroup g in PlanOf("swarm_chokepoint", w, map).Groups) Assert.AreEqual(EnemyArchetypes.SwarmId, g.Archetype);
-                foreach (AgentGroup g in PlanOf("split_groups", w, map).Groups) Assert.AreEqual(MovementClass.Ground, g.Movement);
+                AgentGroup[] groups = PlanOf(strategy, w, map).Groups;
+                Assert.AreEqual(0, groups.Length % 2, strategy + " wave " + w);
+                for (int i = 0; i < groups.Length; i += 2)
+                {
+                    Assert.AreEqual(main, groups[i].Archetype, strategy + " wave " + w);
+                    Assert.AreEqual(helper, groups[i + 1].Archetype, strategy + " wave " + w);
+                    Assert.AreEqual(groups[i].SpawnIndex, groups[i + 1].SpawnIndex, "a pair comes in together");
+                }
             }
         }
 
@@ -260,6 +271,7 @@ namespace Thesis.Tests.Director
             var basic = new EscalationPlanner(config, map).PlanFor(10).Groups[0];
             foreach (AgentGroup g in PlanOf("swarm_chokepoint", 10, map, config).Groups)
             {
+                if (g.Archetype != EnemyArchetypes.SwarmId) continue; // the runners beside them
                 float typeHp = (float)(basic.Hp * EnemyArchetypes.Swarm().HpFactor);
                 Assert.AreEqual(typeHp, g.Hp, typeHp * 0.25f);
                 Assert.Greater(g.Count, basic.Count, "a swarm is more enemies than the baseline");

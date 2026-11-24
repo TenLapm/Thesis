@@ -31,7 +31,7 @@ namespace Thesis.Director
         public int Id => 4;
         public string Name => StrategyName;
 
-        public WavePlan BuildPlan(float threatBudget, WaveContext context, IRandom rng)
+        public WavePlan BuildPlan(float threatBudget, WaveContext context, IRandom rng, int entries)
         {
             SimState s = context.State;
             var targets = new List<TileCoord>();
@@ -50,22 +50,14 @@ namespace Thesis.Director
             }
             if (targets.Count == 0) targets = any;
 
-            List<int> candidates = kit.Candidates(context);
-            int best = candidates[0], bestDistance = int.MaxValue;
-            foreach (int e in candidates)
+            List<int> ranked = StrategyKit.RankBy(kit.Candidates(context), e =>
             {
                 TileCoord sp = kit.Map.Spawns[e];
                 int d = int.MaxValue;
                 foreach (TileCoord c in targets) d = Math.Min(d, Math.Max(Math.Abs(c.X - sp.X), Math.Abs(c.Y - sp.Y)));
-                if (d < bestDistance) { bestDistance = d; best = e; }
-            }
-
-            AgentGroup basic = kit.Basic(context.WaveIndex);
-            AgentGroup raiders = EnemyArchetypes.Raider().Apply(basic, 1f);
-            raiders.SpawnIndex = best;
-            AgentGroup walkers = EnemyArchetypes.Basic().Apply(basic, 1f);
-            walkers.SpawnIndex = best;
-            return kit.Fit(Name, context.WaveIndex, new[] { raiders, walkers }, new[] { RaiderShare, (float)(1f - RaiderShare) }, threatBudget);
+                return d;
+            });
+            return kit.Squads(Name, context.WaveIndex, ranked, entries, EnemyArchetypes.Raider(), EnemyArchetypes.Basic(), RaiderShare, threatBudget);
         }
     }
 }

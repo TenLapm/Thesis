@@ -373,5 +373,77 @@ namespace Thesis.Tests.Director
             Assert.Less(cfg.Normalise(DirectorConfig.ChokepointRelianceName, 0.5f), 1f);
             Assert.Greater(cfg.Normalise(DirectorConfig.ChokepointRelianceName, 0.5f), cfg.Normalise(DirectorConfig.ChokepointRelianceName, 0.2f));
         }
+
+
+        // ---- the wave as sent (the student, 2026-11-24) ----
+
+        [TestCase(1, 2)] [TestCase(4, 2)] [TestCase(5, 3)] [TestCase(9, 4)] [TestCase(13, 5)] [TestCase(40, 5)]
+        public void AWaveComesFromMoreEntriesAsTheGameGoesOn(int wave, int entries)
+        {
+            Assert.AreEqual(entries, StrategyKit.EntriesFor(wave));
+        }
+
+        [Test]
+        public void TheChosenStrategyLeadsAndTheOthersSupportByScore()
+        {
+            var config = new SimConfig();
+            MapData map = Generated();
+            WaveDirector d = Director(config, map);
+            Simulation sim = Sim(config, map, d);
+            var table = new ThreatCostTable(config, map);
+            for (int w = 1; w <= 12; w++)
+            {
+                WavePlan plan = d.PlanWave(new WaveContext(w, sim.State, map, config));
+                DirectorTrace t = d.LastTrace;
+                Assert.AreEqual(t.Chosen, plan.StrategyId, "the wave is named after its lead");
+                StringAssert.StartsWith(t.Chosen + " ", t.Support[0], "the lead comes first");
+                Assert.IsNull(PlanValidator.Check(plan, w, map, config, table), "wave " + w + ": the whole wave spends the budget");
+                var types = new HashSet<string>();
+                foreach (AgentGroup g in plan.Groups) types.Add(g.Archetype);
+                Assert.GreaterOrEqual(types.Count, 2, "wave " + w + ": more than one enemy type");
+                var used = new HashSet<int>();
+                foreach (AgentGroup g in plan.Groups) used.Add(g.SpawnIndex);
+                Assert.LessOrEqual(used.Count, StrategyKit.EntriesFor(w), "wave " + w + ": no more entries than the static version's");
+                int surviving = 0;
+                foreach (StrategyRow r in t.Rows) if (r.Veto == null && r.Score > 0f) surviving++;
+                if (surviving >= 2) Assert.GreaterOrEqual(t.Support.Count, 2, "wave " + w + ": others that scored support the lead");
+            }
+        }
+
+        [Test]
+        public void WithLeadShareOneTheWaveIsTheChosenStrategyAlone()
+        {
+            var config = new SimConfig();
+            MapData map = Generated();
+            DirectorConfig cfg = DirectorConfig.Provisional();
+            cfg.LeadShare = 1f;
+            WaveDirector d = Director(config, map, cfg: cfg);
+            Simulation sim = Sim(config, map, d);
+            WavePlan plan = d.PlanWave(new WaveContext(3, sim.State, map, config));
+            Assert.AreEqual(1, d.LastTrace.Support.Count);
+            foreach (AgentGroup g in plan.Groups) Assert.AreNotEqual(EnemyArchetypes.RaiderId, g.Archetype);
+        }
+
+        [Test]
+        public void TheStaticVersionSpreadsTheEscalationsWalkersOverTheSameNumberOfEntries()
+        {
+            var config = new SimConfig();
+            MapData map = Generated();
+            var table = new ThreatCostTable(config, map);
+            var planner = new SpreadStaticPlanner(config, map, table, 4UL);
+            Simulation sim = Sim(config, map, planner);
+            var escalation = new EscalationPlanner(config, map, table);
+            for (int w = 1; w <= 20; w++)
+            {
+                WavePlan plan = planner.PlanWave(new WaveContext(w, sim.State, map, config));
+                WavePlan reference = escalation.PlanFor(w);
+                var entries = new HashSet<int>();
+                int count = 0;
+                foreach (AgentGroup g in plan.Groups) { entries.Add(g.SpawnIndex); count += g.Count; Assert.AreEqual(EscalationPlanner.Archetype, g.Archetype); }
+                Assert.AreEqual(Math.Min(StrategyKit.EntriesFor(w), map.Spawns.Length), entries.Count, "wave " + w);
+                Assert.AreEqual(reference.Groups[0].Count, count, "the same walkers, shared out");
+                Assert.AreEqual(table.Price(reference), plan.ThreatSpent, 1e-3f * plan.ThreatSpent, "the same price (I2)");
+            }
+        }
     }
 }

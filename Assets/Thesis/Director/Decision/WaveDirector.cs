@@ -40,6 +40,7 @@ namespace Thesis.Director
         private readonly DirectorMode mode;
         private readonly IStrategyEstimator estimator;
         private readonly IReadOnlyList<IWaveStrategy> pool;
+        private readonly StrategyKit kit;
         private readonly BuildProfiler profiler = BuildProfiler.Default();
         private readonly ContextBucketizer bucketizer;
         private readonly AuthoredHeuristic heuristic;
@@ -74,7 +75,8 @@ namespace Thesis.Director
             if (mode == DirectorMode.Full && estimator == null) throw new ArgumentException("the full director needs an estimator", nameof(estimator));
             this.mode = mode;
             this.estimator = estimator;
-            pool = StrategyPool.Study(new StrategyKit(config, map, table));
+            kit = new StrategyKit(config, map, table);
+            pool = StrategyPool.Study(kit);
             // An estimator made for another pool (four strategies, before the raid) would fail mid-session.
             EstimatorState starting = estimator != null ? estimator.Export() : null;
             if (starting != null && starting.Strategies != pool.Count)
@@ -176,7 +178,7 @@ namespace Thesis.Director
             }
             else
             {
-                plan = best.Plan;
+                plan = Compose(best, trace, budget, context);
                 plan.AnnouncementId = AnnouncementTable.Id(best.Name, trace.Bin);
                 trace.Chosen = best.Name;
                 trace.ChosenId = best.Id;
@@ -188,6 +190,78 @@ namespace Thesis.Director
             trace.ElapsedMicroseconds = clock.ElapsedTicks * 1000000L / Stopwatch.Frequency; // G2; never in a telemetry row
             traces[wave] = trace;
             LastTrace = trace;
+            return plan;
+        }
+
+        // The wave as it is sent (the student, 2026-11-24: "more enemy types attacking each weak
+        // point", "enemies coming from all over"): the chosen strategy leads with LeadShare of the
+        // budget; the rest goes to the other strategies that survived the vetoes and scored above 0,
+        // in proportion to their scores (a support below MinSupportShare of the budget is dropped and
+        // its part shared out again). The wave comes from StrategyKit.EntriesFor(wave) entries, each
+        // strategy taking a part of them in proportion to its share, its own best by its own measure.
+        // With no support the lead takes the whole budget and every entry.
+        //
+        // The learner still learns one decision a wave, the lead (I4 unchanged): the supports follow
+        // the authored scores. The whole wave spends the budget (each part is fitted to its own share).
+        private WavePlan Compose(StrategyRow lead, DirectorTrace trace, float budget, WaveContext context)
+        {
+            int entries = Math.Max(1, Math.Min(StrategyKit.EntriesFor(context.WaveIndex), kit.Candidates(context).Count));
+            var supports = new List<StrategyRow>();
+            foreach (StrategyRow row in trace.Rows)
+                if (row != lead && row.Veto == null && row.Score > 0f) supports.Add(row);
+            float rest = (float)(1f - cfg.LeadShare);
+            for (bool dropped = true; dropped && supports.Count > 0;)
+            {
+                dropped = false;
+                double total = 0.0;
+                foreach (StrategyRow r in supports) total += r.Score;
+                for (int i = supports.Count - 1; i >= 0; i--)
+                    if ((float)(rest * (float)(supports[i].Score / total)) < cfg.MinSupportShare) { supports.RemoveAt(i); dropped = true; }
+            }
+            trace.Support.Clear();
+            if (supports.Count == 0)
+            {
+                trace.Support.Add(lead.Name + " 1");
+                return pool[lead.Id].BuildPlan(budget, context, strategyRng, entries);
+            }
+            // split_groups always wants three sides; inside the wave's entries it takes what there is.
+
+            double sum = 0.0;
+            foreach (StrategyRow r in supports) sum += r.Score;
+            var parts = new List<(StrategyRow row, float share)> { (lead, cfg.LeadShare) };
+            foreach (StrategyRow r in supports) parts.Add((r, (float)(rest * (float)(r.Score / sum))));
+
+            // Pass 1: where each part would come from on its own; the wave's entries are the first
+            // `entries` of those, the lead's first. Pass 2: every part again, inside that set.
+            var wanted = new List<int>();
+            var ks = new List<int>();
+            foreach (var (row, share) in parts)
+            {
+                int k = Math.Max(1, (int)(float)((float)(entries * share) + 0.5f));
+                ks.Add(k);
+                foreach (AgentGroup g in pool[row.Id].BuildPlan((float)(budget * share), context, strategyRng, k).Groups)
+                    if (wanted.Count < entries && !wanted.Contains(g.SpawnIndex)) wanted.Add(g.SpawnIndex);
+            }
+            foreach (int e in kit.Candidates(context)) if (wanted.Count < entries && !wanted.Contains(e)) wanted.Add(e);
+
+            var groups = new List<AgentGroup>();
+            kit.Only = wanted;
+            try
+            {
+                for (int i = 0; i < parts.Count; i++)
+                {
+                    var (row, share) = parts[i];
+                    WavePlan part = pool[row.Id].BuildPlan((float)(budget * share), context, strategyRng, ks[i]);
+                    groups.AddRange(part.Groups);
+                    trace.Support.Add(row.Name + " " + share.ToString("0.##", System.Globalization.CultureInfo.InvariantCulture));
+                }
+            }
+            finally
+            {
+                kit.Only = null;
+            }
+            var plan = new WavePlan { WaveIndex = context.WaveIndex, StrategyId = lead.Name, Groups = groups.ToArray() };
+            plan.ThreatSpent = table.Price(plan);
             return plan;
         }
 

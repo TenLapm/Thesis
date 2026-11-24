@@ -29,8 +29,13 @@ namespace Thesis.Director
         // The entries a wave may use: those the walkers reach the core from, at least
         // MinEntryRouteTiles away by their route (as RaidPlanner), so no wave starts next to the
         // core. If none is that far (a small test map), every reachable entry; then every entry.
+        // When set, the entries a wave may use are only these (WaveDirector.Compose: every part of a
+        // wave shares the wave's EntriesFor entries, so it comes from as many as the static version's).
+        public List<int> Only;
+
         public List<int> Candidates(WaveContext context)
         {
+            if (Only != null && Only.Count > 0) return new List<int>(Only);
             SimGrid grid = context.State.Grid;
             var far = new List<int>();
             var reachable = new List<int>();
@@ -78,6 +83,53 @@ namespace Thesis.Director
             plan.ThreatSpent = Table.Price(plan);
             return plan;
         }
+
+        // How many entries a wave comes from (the student, 2026-11-24: "enemies coming from all
+        // over"): 2 at wave 1, one more every 4 waves, at most 5. The static version uses the same
+        // number (SpreadStaticPlanner), so the spread is not a difference between the versions.
+        public const int FirstEntries = 2, MostEntries = 5, MoreEntriesEvery = 4;
+
+        public static int EntriesFor(int wave)
+        {
+            return Math.Min(MostEntries, FirstEntries + Math.Max(0, wave - 1) / MoreEntriesEvery);
+        }
+
+        // Pairs at the first `entries` of `ranked`: at each, the main type with mainShare of that
+        // entry's part of the budget and the helper with the rest (all start together).
+        public WavePlan Squads(string strategy, int wave, IList<int> ranked, int entries, EnemyArchetype main, EnemyArchetype helper, float mainShare, float budget)
+        {
+            int k = Math.Max(1, Math.Min(entries, ranked.Count));
+            AgentGroup basic = Basic(wave);
+            var shapes = new AgentGroup[2 * k];
+            var shares = new float[2 * k];
+            for (int i = 0; i < k; i++)
+            {
+                AgentGroup m = main.Apply(basic, 1f);
+                m.SpawnIndex = ranked[i];
+                m.StartDelayTicks = 0;
+                AgentGroup h = helper.Apply(basic, 1f);
+                h.SpawnIndex = ranked[i];
+                h.StartDelayTicks = 0;
+                shapes[2 * i] = m;
+                shapes[2 * i + 1] = h;
+                shares[2 * i] = (float)(mainShare / k);
+                shares[2 * i + 1] = (float)((float)(1f - mainShare) / k);
+            }
+            return Fit(strategy, wave, shapes, shares, budget);
+        }
+
+        // The candidates sorted by a key, smallest first; ties keep the lower entry.
+        public static List<int> RankBy(List<int> candidates, Func<int, double> key)
+        {
+            var keys = new Dictionary<int, double>();
+            foreach (int e in candidates) keys[e] = key(e);
+            var ranked = new List<int>(candidates);
+            ranked.Sort((a, b) => keys[a] != keys[b] ? keys[a].CompareTo(keys[b]) : a.CompareTo(b));
+            return ranked;
+        }
+
+        // The main type's share of each pair.
+        public const float MainShare = 0.7f;
 
         // A tower that takes part in the defence (as the build profile counts them).
         public static bool Defends(TowerState t) { return ProfileInput.CountsAsTower(t); }

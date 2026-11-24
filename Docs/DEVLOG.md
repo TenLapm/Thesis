@@ -2860,3 +2860,47 @@ under .NET; 880 passed and 2 diagnostics skipped in Unity.
 
 **Open:** I11 and S14 are knowingly broken until the supervisor agrees. The raider price and the exposure range are
 guesses for the balance pass and the threshold freeze.
+
+## 2026-11-24 — Mixed waves from all over
+
+The student: "instead of a whole wave dedicated to a single enemy type, the director should use more enemy types
+attacking each weak point", and the entries are round the map "because I want enemies coming from all over".
+
+**Decided** (four questions, all the suggested answers):
+1. Lead and support: the chosen strategy leads with half the budget; the others that survived the vetoes and
+   scored above 0 share the other half by score (below a tenth of the budget, a support is dropped).
+2. Entries grow with the waves: 2 at wave 1, one more every 4 waves, at most 5.
+3. Pairs: every squad is its main type and a helper (70 / 30; the raid stays 50 / 50 so half goes for the core).
+4. The static version uses the same number of entries.
+
+**Built**
+- `IWaveStrategy.BuildPlan(..., entries)`; an extension keeps the old three-argument call (one entry).
+- `StrategyKit`: `EntriesFor`, `Squads`, `RankBy`, and `Only`, the wave's entry set.
+- Each strategy ranks the entries by its own measure and sends pairs from its best.
+- `WaveDirector.Compose` builds the wave in two passes. The first finds where each part wants to come from;
+  the wave's entries are the first `EntriesFor(wave)` of those, the lead's first. The second builds every part
+  inside that set, so a wave never comes from more entries than the static version's.
+- `DirectorTrace.Support` lists the parts and their shares. `DirectorConfig.LeadShare` (0.5; 1 gives the old
+  one-strategy wave) and `MinSupportShare` (0.1).
+- `Baselines/SpreadStaticPlanner` (`static`): the escalation's walkers shared over the same entries, the same
+  count, hit points and price (I2). The study's static condition (`StudySessions.PlannerOf`) and the ladder's
+  static rung are now this; `escalation` stays for the tests and the pinned replays.
+- Found on the way: the study's static version had sent every wave from entry 0 alone.
+
+**Effect** (`Results/2026-11-24_ladder-mixed-waves`): the ranking moved a long way. The spread static version
+now ends games soonest (4.8 waves for `reactive`, against 6.3 for the full director), and the reacting player
+rebuilds most against it (entropy 0.365, against 0.256 for the full director). Many walkers from many sides
+press the scripted players harder than a mixed wave aimed at their weak points. The ladder fails for the static
+rung too. A balance question before the pilot (CLAUDE.md §3), not a reason to change the measure.
+
+**Learner:** unchanged. It learns the lead strategy only; the supports follow the authored scores.
+
+**Pinned:** the full-director episode re-recorded on both runtimes (`bc4933df31364640`); all others unchanged.
+
+**Tests:** 893 of 893 under .NET; 893 passed and 2 diagnostics skipped in Unity.
+- `StrategyTests`: pairs per strategy, replacing "each strategy sends its kind of enemy".
+- `WaveDirectorTests`: the entry count by wave; lead and supports, more than one type, and no more entries than
+  the static version; LeadShare 1; the spread static version (same count and price).
+
+**Note:** Unity crashed once during this work, probably from memory, with both test runners at once. It left
+`Assets/_Recovery/0.unity`, which is not committed: the student should look at it and delete it.

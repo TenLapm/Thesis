@@ -14,7 +14,7 @@ namespace Thesis.Director
         public static readonly string[] Names =
         {
             EscalationPlanner.Id, ClassCyclePlanner.Id, RaidPlanner.Id, RoughDirector.Id,
-            WaveDirector.HeuristicId, WaveDirector.FullId, RandomPlanner.Id, RoundRobinPlanner.Id,
+            WaveDirector.HeuristicId, WaveDirector.FullId, RandomPlanner.Id, RoundRobinPlanner.Id, SpreadStaticPlanner.Id,
         };
 
         // setup: a replay's PlannerSetup (DirectorSetup JSON). With it the director is rebuilt with the
@@ -38,6 +38,7 @@ namespace Thesis.Director
                     Thesis.Learning.IStrategyEstimator estimator = recorded != null ? recorded.NewEstimator() : cfg.NewEstimator();
                     return new WaveDirector(cfg, config, map, new ThreatCostTable(config, map), seed, DirectorMode.Full, estimator);
                 }
+                case SpreadStaticPlanner.Id: return new SpreadStaticPlanner(config, map, new ThreatCostTable(config, map), seed);
                 case RandomPlanner.Id: return new RandomPlanner(config, map, new ThreatCostTable(config, map), seed);
                 case RoundRobinPlanner.Id: return new RoundRobinPlanner(config, map, new ThreatCostTable(config, map), seed);
                 default: throw new ArgumentException("Unknown planner '" + name + "'. Known: " + string.Join(", ", Names) + ".");

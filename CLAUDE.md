@@ -334,7 +334,13 @@ Consequences to keep in mind:
 - The proposal's strategy pool applies: `breach_thin_wall`, `swarm_chokepoint`,
   `split_groups` and `flying_bypass`, and since 2026-11-24 a fifth, `raid_outposts` (the
   student: "there must be something that is aiming for the player's collectors"; it reads the
-  sixth feature `collector_exposure`, comes from wave 4 while a collector stands, and breaks I11). The movement classes they need exist since
+  sixth feature `collector_exposure`, comes from wave 4 while a collector stands, and breaks I11).
+  **Since 2026-11-24 a wave mixes them** (the student): the chosen strategy leads with half the
+  budget, the others that scored share the rest by score (`WaveDirector.Compose`); each sends
+  pairs of enemy types (sappers + brutes, swarm + runners, walkers + runners, flyers + bats,
+  raiders + walkers); a wave comes from `StrategyKit.EntriesFor(wave)` entries (2, one more every
+  4 waves, at most 5). The study's static version (`SpreadStaticPlanner`, `static`) spreads the
+  escalation's walkers over the same number of entries. The learner still learns the lead only. The movement classes they need exist since
   WP-C2 (sappers for the first, flyers for the last). `flying_bypass` is vetoed
   in layer 1 while the player has no way to hit flyers, **up to wave 5 only**: from wave 6
   every strategy may come (the student relaxed this on 2026-11-24;

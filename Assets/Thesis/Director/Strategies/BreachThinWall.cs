@@ -4,8 +4,8 @@ using Thesis.Sim;
 
 namespace Thesis.Director
 {
-    // breach_thin_wall (S10): sappers at the thinnest wall. The whole wave is sappers, from the
-    // one entry whose sapper route to the core is cheapest. The sapper field prices the player's
+    // breach_thin_wall (S10): sappers at the thinnest wall, with brutes behind them (2026-11-24:
+    // pairs), from the entries whose sapper route to the core is cheapest. The sapper field prices the player's
     // tiles at SapperDigCostFactor and rocks at full price, so the cheapest sapper route is the
     // one with the least of the player's wall in the way: the thinnest wall. Ties go to the
     // lowest entry, so the choice depends on the board alone.
@@ -20,21 +20,11 @@ namespace Thesis.Director
         public int Id => 0;
         public string Name => StrategyName;
 
-        public WavePlan BuildPlan(float threatBudget, WaveContext context, IRandom rng)
+        public WavePlan BuildPlan(float threatBudget, WaveContext context, IRandom rng, int entries)
         {
-            List<int> candidates = kit.Candidates(context);
             SimGrid grid = context.State.Grid;
-            int best = candidates[0];
-            int bestCost = int.MaxValue;
-            foreach (int e in candidates)
-            {
-                int cost = grid.Get(kit.Map.Spawns[e]).SapperCost;
-                if (cost < bestCost) { bestCost = cost; best = e; }
-            }
-
-            AgentGroup sappers = EnemyArchetypes.Sapper().Apply(kit.Basic(context.WaveIndex), 1f);
-            sappers.SpawnIndex = best;
-            return kit.Fit(Name, context.WaveIndex, new[] { sappers }, new[] { 1f }, threatBudget);
+            List<int> ranked = StrategyKit.RankBy(kit.Candidates(context), e => grid.Get(kit.Map.Spawns[e]).SapperCost);
+            return kit.Squads(Name, context.WaveIndex, ranked, entries, EnemyArchetypes.Sapper(), EnemyArchetypes.Brute(), StrategyKit.MainShare, threatBudget);
         }
     }
 }

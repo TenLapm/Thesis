@@ -338,6 +338,12 @@ to a lure as the enemies do.
 
 ### 7.1 The static version
 
+**In the study** (since 2026-11-24, `SpreadStaticPlanner`): the plain walker of wave *n* below, its
+whole count shared out over as many entries as the adaptive version's waves use (2 at wave 1, one
+more every 4 waves, at most 5), chosen from the seed. Before that the study's static version sent
+all of them from one entry. Question 21 (the type cycle described next, or plain walkers) is still
+open; today it is plain walkers.
+
 **Built** as the baseline the director starts from. The plain walker of wave *n*: 12 enemies in
 wave 1 and one more every two waves; hit points 30 + 4.5 a wave, then 4 % more a wave on top;
 speed 1.25 tiles a second, 0.0375 more a wave, at most 2.25.
@@ -391,6 +397,13 @@ the proposal's four (breach the thin wall, swarm the chokepoint, split groups, f
 and the development director's kinds (§7.2) are the candidates. The final set is **Open**
 (question 4). Which builds each type really moves a player to change is not a rule of the
 game: it is what the study measures.
+
+**What a wave is** (the student, 2026-11-24). Several squads, each aimed at a weak point: the
+wave type the director picks leads with half the wave's strength; the other wave types that
+scored share the other half by their scores. Every squad is a pair, its main enemy and a helper
+(sappers with brutes, swarm with runners, walkers with runners, flyers with bats, raiders with
+walkers). A wave comes from 2 entries at first, one more every 4 waves, up to 5, the same number
+as the static version.
 
 **How it chooses.** It starts from written scores, as the development director does. On top of
 them it learns, during your session, which wave types actually made *you* rebuild, and nudges

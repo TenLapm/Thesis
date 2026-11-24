@@ -4,7 +4,7 @@ using Thesis.Sim;
 
 namespace Thesis.Director
 {
-    // flying_bypass (S10): flyers over the maze. The whole wave is flyers, from the one entry
+    // flying_bypass (S10): flyers over the maze, with bats (2026-11-24: pairs), from the entries
     // whose straight line to the core passes the fewest towers that can hit flyers (a tower
     // counts when its range reaches the line). Ties go to the lowest entry.
     //
@@ -21,14 +21,11 @@ namespace Thesis.Director
         public int Id => 3;
         public string Name => StrategyName;
 
-        public WavePlan BuildPlan(float threatBudget, WaveContext context, IRandom rng)
+        public WavePlan BuildPlan(float threatBudget, WaveContext context, IRandom rng, int entries)
         {
-            List<int> candidates = kit.Candidates(context);
             SimState s = context.State;
             TileCoord core = context.State.Core;
-            int best = candidates[0];
-            int bestCover = int.MaxValue;
-            foreach (int e in candidates)
+            List<int> ranked = StrategyKit.RankBy(kit.Candidates(context), e =>
             {
                 TileCoord from = kit.Map.Spawns[e];
                 int cover = 0;
@@ -37,12 +34,9 @@ namespace Thesis.Director
                     TowerState tower = s.Towers[t];
                     if (StrategyKit.Defends(tower) && tower.CanHitFlying && ReachesLine(tower, from, core)) cover++;
                 }
-                if (cover < bestCover) { bestCover = cover; best = e; }
-            }
-
-            AgentGroup flyers = EnemyArchetypes.Flyer().Apply(kit.Basic(context.WaveIndex), 1f);
-            flyers.SpawnIndex = best;
-            return kit.Fit(Name, context.WaveIndex, new[] { flyers }, new[] { 1f }, threatBudget);
+                return cover;
+            });
+            return kit.Squads(Name, context.WaveIndex, ranked, entries, EnemyArchetypes.Flyer(), EnemyArchetypes.Bats(), StrategyKit.MainShare, threatBudget);
         }
 
         // Squared distance from the tower to the segment from → to, in tiles, against its range.

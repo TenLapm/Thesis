@@ -4,8 +4,8 @@ using Thesis.Sim;
 
 namespace Thesis.Director
 {
-    // swarm_chokepoint (S10): many weak enemies through the gap the player relies on most. The
-    // whole wave is a swarm, from the one entry whose walkers' route passes the most of last
+    // swarm_chokepoint (S10): many weak enemies through the gap the player relies on most, with
+    // runners (2026-11-24: pairs), from the entries whose walkers' route passes the most of last
     // wave's damage: for each entry, the sum of WaveDamage of the towers that reach any tile of
     // its route. That is the chokepoint as the student defined it (the towers doing the work,
     // chokepoint_reliance). Before any damage has been dealt, the number of towers reaching the
@@ -22,13 +22,12 @@ namespace Thesis.Director
         public int Id => 1;
         public string Name => StrategyName;
 
-        public WavePlan BuildPlan(float threatBudget, WaveContext context, IRandom rng)
+        public WavePlan BuildPlan(float threatBudget, WaveContext context, IRandom rng, int entries)
         {
             List<int> candidates = kit.Candidates(context);
             SimState s = context.State;
-            int best = candidates[0];
-            double bestDamage = -1.0;
-            int bestCover = -1;
+            var damageOf = new Dictionary<int, double>();
+            var coverOf = new Dictionary<int, int>();
             foreach (int e in candidates)
             {
                 Route.Collect(s.Grid, s.Grid.Get(kit.Map.Spawns[e]), route);
@@ -41,17 +40,12 @@ namespace Thesis.Director
                     damage += tower.WaveDamage;
                     cover++;
                 }
-                if (damage > bestDamage || (damage == bestDamage && cover > bestCover))
-                {
-                    bestDamage = damage;
-                    bestCover = cover;
-                    best = e;
-                }
+                damageOf[e] = damage;
+                coverOf[e] = cover;
             }
-
-            AgentGroup swarm = EnemyArchetypes.Swarm().Apply(kit.Basic(context.WaveIndex), 1f);
-            swarm.SpawnIndex = best;
-            return kit.Fit(Name, context.WaveIndex, new[] { swarm }, new[] { 1f }, threatBudget);
+            // Most damage first, then most towers; the key is negated because RankBy sorts up.
+            List<int> ranked = StrategyKit.RankBy(candidates, e => -(damageOf[e] * 1000.0 + coverOf[e]));
+            return kit.Squads(Name, context.WaveIndex, ranked, entries, EnemyArchetypes.Swarm(), EnemyArchetypes.Runner(), StrategyKit.MainShare, threatBudget);
         }
 
         private bool ReachesRoute(TowerState tower)

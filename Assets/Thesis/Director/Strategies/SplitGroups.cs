@@ -5,9 +5,9 @@ using Thesis.Sim;
 
 namespace Thesis.Director
 {
-    // split_groups (S10): enemies from several sides at once. Plain walkers, shared equally
-    // over the most entries the game uses in one wave, three (RaidPlanner.EntriesFor), or fewer
-    // if the map has fewer; every group starts at once. The student chose "always the most",
+    // split_groups (S10): enemies from several sides at once. Walkers with runners (2026-11-24:
+    // pairs), shared equally over at least three entries (more when the wave asks for more), or
+    // fewer if the map has fewer; every group starts at once. The student chose "always the most",
     // because the development waves already use one to three entries and "several sides"
     // must stand out from them.
     //
@@ -25,7 +25,7 @@ namespace Thesis.Director
         public int Id => 2;
         public string Name => StrategyName;
 
-        public WavePlan BuildPlan(float threatBudget, WaveContext context, IRandom rng)
+        public WavePlan BuildPlan(float threatBudget, WaveContext context, IRandom rng, int entries)
         {
             List<int> order = kit.Candidates(context);
             for (int i = order.Count - 1; i > 0; i--) // Fisher-Yates, from the strategy's own stream
@@ -34,22 +34,14 @@ namespace Thesis.Director
                 int swap = order[i]; order[i] = order[j]; order[j] = swap;
             }
 
-            int want = Math.Min(MostEntries, order.Count);
+            // Asked for one entry (a part of a wave, or on its own): its three sides. Asked for more: that
+            // many, so a wave never comes from more entries than the static version's.
+            int want = Math.Min(entries <= 1 ? MostEntries : entries, order.Count);
             var chosen = new List<int>(want);
             foreach (int e in order) if (chosen.Count < want && FarFromAll(e, chosen)) chosen.Add(e);
             foreach (int e in order) if (chosen.Count < want && !chosen.Contains(e)) chosen.Add(e); // spacing could not be kept
 
-            AgentGroup basic = EnemyArchetypes.Basic().Apply(kit.Basic(context.WaveIndex), 1f);
-            var shapes = new AgentGroup[chosen.Count];
-            var shares = new float[chosen.Count];
-            for (int i = 0; i < chosen.Count; i++)
-            {
-                shapes[i] = basic.Copy();
-                shapes[i].SpawnIndex = chosen[i];
-                shapes[i].StartDelayTicks = 0;
-                shares[i] = (float)(1f / chosen.Count);
-            }
-            return kit.Fit(Name, context.WaveIndex, shapes, shares, threatBudget);
+            return kit.Squads(Name, context.WaveIndex, chosen, chosen.Count, EnemyArchetypes.Basic(), EnemyArchetypes.Runner(), StrategyKit.MainShare, threatBudget);
         }
 
         private bool FarFromAll(int entry, List<int> chosen)

@@ -29,7 +29,8 @@ namespace Thesis.Harness
     // must be identical.
     public static class Ladder
     {
-        public static readonly string[] Rungs = { RandomPlanner.Id, EscalationPlanner.Id, WaveDirector.HeuristicId, WaveDirector.FullId };
+        // The static rung is the study's static version (SpreadStaticPlanner since 2026-11-24).
+        public static readonly string[] Rungs = { RandomPlanner.Id, SpreadStaticPlanner.Id, WaveDirector.HeuristicId, WaveDirector.FullId };
         public static readonly string[] Policies = { BuilderPolicy.Id, ReactivePolicy.Id };
 
         public sealed class Spec

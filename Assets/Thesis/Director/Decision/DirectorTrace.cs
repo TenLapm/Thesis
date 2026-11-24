@@ -34,6 +34,9 @@ namespace Thesis.Director
         public float ThreatBudget;
         public readonly List<StrategyRow> Rows = new List<StrategyRow>();
         public string Chosen;
+        // The wave as sent (WaveDirector.Compose): each strategy in it with its share of the budget,
+        // the lead first ("split_groups 0.5"). Not in telemetry; the plan's groups are.
+        public readonly List<string> Support = new List<string>();
         public string Fallback;      // WaveDirector.FallbackAllVetoed, or null
         public string Announcement;  // the banner's line, or null
         public DecisionContext Context;  // the learner's context, for crediting this decision later

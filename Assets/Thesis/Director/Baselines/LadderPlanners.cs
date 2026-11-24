@@ -30,7 +30,7 @@ namespace Thesis.Director
         public WavePlan PlanWave(WaveContext context)
         {
             IWaveStrategy s = pool[rng.NextInt(pool.Count)];
-            return s.BuildPlan(table.BudgetForWave(context.WaveIndex), context, rng);
+            return s.BuildPlan(table.BudgetForWave(context.WaveIndex), context, rng, StrategyKit.EntriesFor(context.WaveIndex));
         }
 
         public void OnWaveResolved(WaveOutcome outcome) { }
@@ -58,7 +58,7 @@ namespace Thesis.Director
         public WavePlan PlanWave(WaveContext context)
         {
             IWaveStrategy s = pool[(context.WaveIndex - 1) % pool.Count];
-            return s.BuildPlan(table.BudgetForWave(context.WaveIndex), context, rng);
+            return s.BuildPlan(table.BudgetForWave(context.WaveIndex), context, rng, StrategyKit.EntriesFor(context.WaveIndex));
         }
 
         public void OnWaveResolved(WaveOutcome outcome) { }

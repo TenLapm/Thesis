@@ -124,7 +124,7 @@ namespace Thesis.Tests.Harness
         public void TheReactivePlayerRebuildsMoreThanTheBuilder()
         {
             Ladder.Spec spec = Small(Environment.ProcessorCount);
-            spec.Rungs = new[] { EscalationPlanner.Id, WaveDirector.FullId };
+            spec.Rungs = new[] { SpreadStaticPlanner.Id, WaveDirector.FullId };
             spec.MaxWaves = 8;
             List<Ladder.RungSummary> s = Ladder.Summarise(Ladder.Run(spec), spec);
             double builder = 0, reactive = 0;

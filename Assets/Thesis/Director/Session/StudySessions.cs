@@ -92,11 +92,12 @@ namespace Thesis.Director
         }
 
         // The planner's name (PlannerFactory): the adaptive version is the full director, starting
-        // cold each session (the student, 2026-11-24); the static one is the escalation.
+        // cold each session (the student, 2026-11-24); the static one is the escalation spread over
+        // as many entries as the director's waves use (SpreadStaticPlanner, the same day).
         public static string PlannerOf(StudyInfo info)
         {
             if (info == null) throw new ArgumentNullException(nameof(info));
-            return info.Condition == StudyInfo.Adaptive ? WaveDirector.FullId : EscalationPlanner.Id;
+            return info.Condition == StudyInfo.Adaptive ? WaveDirector.FullId : SpreadStaticPlanner.Id;
         }
     }
 }
