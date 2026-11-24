@@ -132,13 +132,16 @@ namespace Thesis.Tests.Director
         public void RestructureIsTheMeanChangeOfTheBuiltFeaturesCappedAtTau()
         {
             var cfg = DirectorConfig.Provisional();
-            BuildProfile a = Profile(1.056f, 0f, 0.763f);
+            float maze = cfg.RangeLow[cfg.RangeIndex(DirectorConfig.MazeLengthName)];
+            float low = cfg.RangeLow[cfg.RangeIndex(DirectorConfig.TowerConcentrationName)];
+            float high = cfg.RangeHigh[cfg.RangeIndex(DirectorConfig.TowerConcentrationName)];
+            BuildProfile a = Profile(maze, 0f, low);
             Assert.AreEqual(0f, RewardEvaluator.Restructure(a, a, cfg), 1e-6f);
             // tower_concentration over its whole range, the others unchanged: a third of 1.
-            BuildProfile b = Profile(1.056f, 0f, 0.933f);
+            BuildProfile b = Profile(maze, 0f, high);
             Assert.AreEqual(1f / 3f, RewardEvaluator.Restructure(a, b, cfg), 1e-5f);
             // chokepoint_reliance is about last wave's damage, not the build: it does not count.
-            Assert.AreEqual(0f, RewardEvaluator.Restructure(a, Profile(1.056f, 0f, 0.763f, choke: 0.9f), cfg), 1e-6f);
+            Assert.AreEqual(0f, RewardEvaluator.Restructure(a, Profile(maze, 0f, low, choke: 0.9f), cfg), 1e-6f);
         }
 
         [Test]

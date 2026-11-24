@@ -209,18 +209,21 @@ namespace Thesis.Tests.Director
         {
             var b = new ContextBucketizer(DirectorConfig.Provisional());
             Assert.AreEqual(0, b.Bin(Profile(1f, 0f, 0.01f, 0.8f)));
-            Assert.AreEqual(1, b.Bin(Profile(1f, 0f, 0.08f, 0.8f)));
-            Assert.AreEqual(2, b.Bin(Profile(1f, 0f, 0.12f, 0.8f)));
-            Assert.AreEqual(3, b.Bin(Profile(1f, 0f, 0.18f, 0.8f)));
-            Assert.AreEqual(4, b.Bin(Profile(1f, 0f, 0.5f, 0.8f)));
+            // The edges widened on 2026-11-24: 0.125 / 0.224 / 0.352 / 0.484.
+            Assert.AreEqual(1, b.Bin(Profile(1f, 0f, 0.15f, 0.8f)));
+            Assert.AreEqual(2, b.Bin(Profile(1f, 0f, 0.30f, 0.8f)));
+            Assert.AreEqual(3, b.Bin(Profile(1f, 0f, 0.40f, 0.8f)));
+            Assert.AreEqual(4, b.Bin(Profile(1f, 0f, 0.6f, 0.8f)));
+            Assert.AreEqual(1, b.Bin(Profile(1f, 0f, 0.125f, 0.8f)), "an edge belongs to the bin above it");
             Assert.AreEqual(2, b.Bin(Profile(1f, 0f, 0.5f, 0.8f, chokeData: false)), "no data: the middle bin, not the top");
         }
 
         [Test]
         public void TheKernelCoordinatesAreConcentrationAndMazeLengthNormalised()
         {
-            var b = new ContextBucketizer(DirectorConfig.Provisional());
-            DecisionContext c = b.Context(Profile(1.056f, 0f, 0.1f, 0.933f));
+            DirectorConfig cfg = DirectorConfig.Provisional();
+            var b = new ContextBucketizer(cfg);
+            DecisionContext c = b.Context(Profile(cfg.RangeLow[cfg.RangeIndex(DirectorConfig.MazeLengthName)], 0f, 0.1f, cfg.RangeHigh[cfg.RangeIndex(DirectorConfig.TowerConcentrationName)]));
             Assert.AreEqual(1f, c.KernelX, 1e-4f, "tower_concentration at its 95 % point");
             Assert.AreEqual(0f, c.KernelY, 1e-4f, "maze_length at its 5 % point");
         }
@@ -322,6 +325,53 @@ namespace Thesis.Tests.Director
             List<WaveRecord> again = ReplayRunner.Telemetry(r.Replay);
             Assert.AreEqual(r.Telemetry.Count, again.Count);
             for (int i = 0; i < again.Count; i++) Assert.AreEqual(r.Telemetry[i].ToJsonLine(), again[i].ToJsonLine(), "row " + i);
+        }
+
+        // The student, 2026-11-24 (rule B3): flyers stay banned without anti-air for the first five
+        // waves only; from wave 6 every wave type may come.
+        [TestCase(1, true)] [TestCase(5, true)] [TestCase(6, false)] [TestCase(20, false)]
+        public void WithoutAntiAirFlyersAreBannedOnlyUpToWaveFive(int wave, bool banned)
+        {
+            var config = new SimConfig();
+            MapData map = Generated();
+            WaveDirector d = Director(config, map);
+            Simulation sim = Sim(config, map, d);
+            d.PlanWave(new WaveContext(wave, sim.State, map, config));
+            StrategyRow flying = d.LastTrace.Rows[FlyingBypassId];
+            if (banned) Assert.AreEqual(Uncounterable.Reason, flying.Veto);
+            else Assert.IsNull(flying.Veto, "wave " + wave);
+        }
+
+        // Rule B4, the student 2026-11-24: a wave like the last one is no longer banned. The two-in-a-row
+        // limit (B2) still holds.
+        [Test]
+        public void AWaveLikeTheLastOneIsNoLongerBanned()
+        {
+            DirectorConfig cfg = DirectorConfig.Provisional();
+            Assert.AreEqual(0f, cfg.SimilarityThreshold);
+            var config = new SimConfig();
+            MapData map = Generated();
+            WaveDirector d = Director(config, map);
+            Simulation sim = Sim(config, map, d);
+            d.PlanWave(new WaveContext(1, sim.State, map, config));
+            string first = d.LastTrace.Chosen;
+            d.PlanWave(new WaveContext(2, sim.State, map, config));
+            StrategyRow same = d.LastTrace.Rows.Find(r => r.Name == first);
+            Assert.IsNull(same.Veto, "the same strategy may come twice in a row");
+            d.PlanWave(new WaveContext(3, sim.State, map, config));
+            if (d.LastTrace.Rows.Find(r => r.Name == first).Veto == null) Assert.AreNotEqual(first, d.TraceFor(2).Chosen, "unless it already came twice");
+        }
+
+        // The ranges widened on 2026-11-24 (Results/2026-11-24_director-ranges): the student's own board
+        // in the 11-wave play-test no longer maxes out every score.
+        [Test]
+        public void TheStudentsPlayTestBoardNoLongerMaxesTheScores()
+        {
+            DirectorConfig cfg = DirectorConfig.Provisional();
+            Assert.Less(cfg.Normalise(DirectorConfig.MazeLengthName, 1.354f), 1f);
+            Assert.Less(cfg.Normalise(DirectorConfig.TowerConcentrationName, 0.97f), 1f);
+            Assert.Less(cfg.Normalise(DirectorConfig.ChokepointRelianceName, 0.5f), 1f);
+            Assert.Greater(cfg.Normalise(DirectorConfig.ChokepointRelianceName, 0.5f), cfg.Normalise(DirectorConfig.ChokepointRelianceName, 0.2f));
         }
     }
 }

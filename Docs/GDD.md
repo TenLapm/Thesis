@@ -403,8 +403,10 @@ Fixed rules of the project (`CLAUDE.md` §4):
 
 - **Same strength.** Every wave type costs exactly what the static wave of that number costs, on
   one shared price list. The director chooses the shape of a wave, never its size.
-- **Nothing that cannot be answered.** Flyers are not sent while no tower can hit them.
-- **No repeats in disguise.** A wave too similar to the previous one is ruled out.
+- **Nothing that cannot be answered, at first.** Flyers are not sent while no tower can hit them,
+  up to wave 5; from wave 6 every wave type may come (the student, 2026-11-24).
+- **No long streaks.** The same wave type at most twice in a row. A wave merely *like* the last
+  one is allowed (the student, 2026-11-24; the similarity rule is off).
 - **Hands off your side.** The director never changes a price, a tower or your ore. **Open
   (question 6):** raiders destroy collectors and siege enemies knock towers out, so a wave type
   that sends them changes your income and firepower, which the static version does not.

@@ -48,6 +48,16 @@ namespace Thesis.Director
     {
         public const string Reason = "Uncounterable";
 
+        // Up to this wave only (DirectorConfig.FlyersNeedAntiAirUntilWave); after it, never.
+        private readonly int untilWave;
+
+        public Uncounterable(int untilWave = int.MaxValue) { this.untilWave = untilWave; }
+
+        public string Check(string strategy, SimState state, int wave)
+        {
+            return wave > untilWave ? null : Check(strategy, state);
+        }
+
         public string Check(string strategy, SimState state)
         {
             if (strategy != FlyingBypass.StrategyName) return null;

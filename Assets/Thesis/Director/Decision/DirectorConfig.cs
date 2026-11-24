@@ -15,7 +15,10 @@ namespace Thesis.Director
         // ---- the context (S1) ----
         // The feature binned into five, and the four edges between the bins.
         public string BinFeature = ChokepointRelianceName;
-        public float[] BinEdges = { 0.06f, 0.10f, 0.14f, 0.22f };
+        // Widened 2026-11-24 (the student, after an 11-wave play-test in which this feature sat in the
+        // top bins): its 20/40/60/80 % points over three players weighted alike, `builder`, `reactive`
+        // and the student's session (Results/2026-11-24_director-ranges). Was 0.06 / 0.10 / 0.14 / 0.22.
+        public float[] BinEdges = { 0.125f, 0.224f, 0.352f, 0.484f };
         // A profile whose bin feature has no data goes in this bin, not where its 0.5 would fall.
         public int NoDataBin = 2;
         // The kernel's two coordinates, each normalised by its range below.
@@ -27,14 +30,27 @@ namespace Thesis.Director
         // the measurement: a value is mapped to 0..1 over that range, then times HeuristicScale.
         public string[] StrategyFeature = { BreachVulnerabilityName, ChokepointRelianceName, TowerConcentrationName, MazeLengthName };
         public string[] RangeFeature = { MazeLengthName, BreachVulnerabilityName, ChokepointRelianceName, TowerConcentrationName };
-        public float[] RangeLow = { 1.056f, 0.000f, 0.017f, 0.763f };
-        public float[] RangeHigh = { 1.309f, 0.067f, 0.339f, 0.933f };
+        // Widened 2026-11-24 (the student: "do as you suggest"): the lowest 5 % point and the highest
+        // 95 % point over `builder`, `reactive` (on the ladder, against all four rungs) and the student's
+        // play-test, plus a tenth of the span at the top so that no board sits fixed at the maximum
+        // (tower_concentration capped at 1, its largest possible value). Was 1.056-1.309, 0-0.067,
+        // 0.017-0.339, 0.763-0.933: the builder's boards against the static waves only, which the
+        // student's own board overran on three of the four features (Results/2026-11-24_director-ranges).
+        public float[] RangeLow = { 1.048f, 0.000f, 0.033f, 0.740f };
+        public float[] RangeHigh = { 1.385f, 0.052f, 0.888f, 1.000f };
         // 0 to 4, so the learner's ±1 can only flip strategies within 2 points of each other.
         public float HeuristicScale = 4f;
 
         // ---- the constraints (layer 1) ----
         // A plan this close (L2, share per enemy type plus entries / 3) to the last wave's is vetoed.
-        public float SimilarityThreshold = 0.1f;
+        // 0 = off: the student, 2026-11-24 (rule B4), "it's ok if the enemy type is similar". Was 0.1,
+        // which made the director alternate two strategies; MaxStreak below still limits repeats.
+        public float SimilarityThreshold = 0f;
+
+        // Flyers are banned while the player has no powered anti-air tower, up to this wave; from the
+        // next one every strategy may come (the student, 2026-11-24, rule B3). Before, always banned
+        // (CLAUDE.md §2's rule, which the student relaxed).
+        public int FlyersNeedAntiAirUntilWave = 5;
         // A strategy may run this many waves in a row; a backstop to the similarity rule.
         public int MaxStreak = 2;
 

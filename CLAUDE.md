@@ -333,8 +333,10 @@ Consequences to keep in mind:
   describe what the player *chose*, not what the roll happened to offer.
 - The proposal's strategy pool applies: `breach_thin_wall`, `swarm_chokepoint`,
   `split_groups` and `flying_bypass`. The movement classes they need exist since
-  WP-C2 (sappers for the first, flyers for the last). `flying_bypass` must be vetoed
-  in layer 1 whenever the player has no way to hit flyers. `split_groups` has the
+  WP-C2 (sappers for the first, flyers for the last). `flying_bypass` is vetoed
+  in layer 1 while the player has no way to hit flyers, **up to wave 5 only**: from wave 6
+  every strategy may come (the student relaxed this on 2026-11-24;
+  `DirectorConfig.FlyersNeedAntiAirUntilWave`). `split_groups` has the
   multi-spawn support it needs since 2026-10-13 (`RaidPlanner`: one to three entries
   a wave). The development director's strategies (raid, siege, resist, air, breach,
   §1) are further candidates; the final pool is spec gap S10 (WP9).
@@ -471,6 +473,8 @@ because a player may be reacting to the last two or three waves.
 
 - Suppress a strategy whose realised composition lies within a threshold L2
   distance of the previous wave's. This replaces any hardcoded "no repeat" rule.
+  **Switched off on 2026-11-24 by the student** (`SimilarityThreshold` 0: it made the
+  director alternate two strategies); the limit of two in a row (`MaxStreak`) stays.
 - Announce every selected strategy before the wave, one authored line keyed by
   `(bin, strategy)`. Templated, never generated. It is both game feel and the
   manipulation check for gate G7.

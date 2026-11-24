@@ -45,7 +45,7 @@ namespace Thesis.Director
         private readonly AuthoredHeuristic heuristic;
         private readonly OverBudget overBudget = new OverBudget();
         private readonly RepeatStreak repeatStreak;
-        private readonly Uncounterable uncounterable = new Uncounterable();
+        private readonly Uncounterable uncounterable;
         private readonly TooSimilarToPrevious tooSimilar;
         private readonly EscalationPlanner fallback;
         private readonly Pcg32 strategyRng;
@@ -78,6 +78,7 @@ namespace Thesis.Director
             heuristic = new AuthoredHeuristic(cfg);
             repeatStreak = new RepeatStreak(cfg.MaxStreak);
             tooSimilar = new TooSimilarToPrevious(cfg.SimilarityThreshold);
+            uncounterable = new Uncounterable(cfg.FlyersNeedAntiAirUntilWave);
             fallback = new EscalationPlanner(config, map, table);
             strategyRng = new Pcg32(seed, RngStreams.Strategy);
             thompsonRng = new Pcg32(seed, RngStreams.Thompson);
@@ -143,7 +144,7 @@ namespace Thesis.Director
                 row.Plan = strategy.BuildPlan(budget, context, strategyRng);
                 row.Veto = overBudget.Check(row.Plan, budget, config)
                         ?? repeatStreak.Check(strategy.Name, recent)
-                        ?? uncounterable.Check(strategy.Name, s)
+                        ?? uncounterable.Check(strategy.Name, s, wave)
                         ?? tooSimilar.Check(row.Plan, previous);
                 if (row.Veto != null) { row.Score = float.NegativeInfinity; continue; } // I5: before the learner
 

@@ -2804,3 +2804,29 @@ dotnet run --project Tools/dotnet/Thesis.Cli -c Release -- gate all
 **Later the same day: G3.** The student chose to keep the graduated reward for now (2026-11-24), despite G3's
 rule. `DirectorConfig.Provisional()` is unchanged. To be decided again with the supervisor before the pilot, when
 the pilot's telemetry shows how much pressure and novelty really depend on the strategy.
+
+## 2026-11-24 — The first play-test of the director, and three rules changed
+
+The student played `DirectorTest` (the heuristic director) for 11 waves and found it "isn't working". The log shows
+it alternating between swarm and split for ten waves:
+- flyers were banned every wave (no anti-air on the board)
+- breach scored 0 (no walls on the route)
+- swarm and split both scored the maximum, because the score ranges came from the scripted player and the
+  student's board overran them
+- the similarity ban then forced the two to alternate
+
+**Decided** (the student, after reviewing every scoring rule):
+- B3: flyers banned without anti-air only up to wave 5 (`FlyersNeedAntiAirUntilWave`); from wave 6 every wave type may come.
+- B4: the similarity ban is off (`SimilarityThreshold` 0); two in a row stays the limit.
+- The rest as suggested: the ranges and the board groups widened over `builder`, `reactive` and the play-test
+  (`Results/2026-11-24_director-ranges`).
+
+**Also:** a `FullDirectorTest` scene (the full director, learning on); `thesis ladder --profiles <file>` writes
+every build profile the ladder read.
+
+**Effect** (`Results/2026-11-24_ladder-new-rules`): for the reacting player the full director now comes out above
+the heuristic (0.253 against 0.239), but random now comes out above the static version, so the ladder still fails.
+The pinned full-director episode still replays: it stores the config it was recorded with.
+
+**Tests:** 6 added in `WaveDirectorTests` (the flyer ban by wave, the similarity ban off, the play-test board below
+the maximum); 3 changed to read the ranges from the config rather than repeat them.

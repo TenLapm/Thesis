@@ -27,7 +27,7 @@ namespace Thesis.Cli
 
         public static int Run(string[] argv)
         {
-            var args = new Args(argv, new[] { "--seeds", "--first-seed", "--waves", "--threads", "--config", "--out", "--date" }, new string[0]);
+            var args = new Args(argv, new[] { "--seeds", "--first-seed", "--waves", "--threads", "--config", "--out", "--date", "--profiles" }, new string[0]);
             args.NoMorePositionals(0);
             int seeds = args.GetInt("--seeds", 20);
             ulong first = args.GetULong("--first-seed", 201);
@@ -100,6 +100,26 @@ namespace Thesis.Cli
                    .Append(e.CoreDestroyed ? "true" : "false").Append(',').Append(e.Window).Append(',').Append(Json.FormatDouble(e.Entropy)).Append(',')
                    .Append(Json.FormatDouble(e.Restructure)).Append(',').Append(e.Placements).Append(',').Append(e.FinalHash).Append('\n');
             File.WriteAllText(Path.Combine(outDir, "episodes.csv"), csv.ToString());
+
+            // --profiles <file>: every build profile read on the way (after the player built, by the wave
+            // about to come), for measuring the features' spread (S1, the threshold freeze).
+            string profilesPath = args.Get("--profiles", null);
+            if (profilesPath != null)
+            {
+                var pcsv = new StringBuilder("policy,rung,seed,wave");
+                BuildProfiler names = BuildProfiler.Default();
+                foreach (string n in names.Names) pcsv.Append(',').Append(n);
+                pcsv.AppendLine();
+                foreach (Ladder.Episode e in episodes)
+                    foreach (var kv in e.Profiles)
+                    {
+                        pcsv.Append(e.Policy).Append(',').Append(e.Rung).Append(',').Append(e.Seed.ToString(Inv)).Append(',').Append(kv.Key);
+                        for (int f = 0; f < kv.Value.Values.Length; f++) pcsv.Append(',').Append(kv.Value.HasData[f] ? Json.FormatDouble(kv.Value.Values[f]) : "");
+                        pcsv.AppendLine();
+                    }
+                File.WriteAllText(profilesPath, pcsv.ToString());
+                Console.WriteLine("[ladder] profiles -> " + Path.GetFullPath(profilesPath));
+            }
             Console.WriteLine("[ladder] " + (pass ? "PASS" : "FAIL") + " -> " + Path.GetFullPath(outDir));
             return 0;
         }
