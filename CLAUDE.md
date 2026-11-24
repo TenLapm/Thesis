@@ -282,7 +282,7 @@ Results/                      committed results; Results/pinned-replays (recordi
                               telemetry) is re-run by tests
 Runs/                         (gitignored) raw output and Unity sessions (replay and telemetry)
 Assets/Scenes/                SessionStart (the study build's first screen, WP14) + StaticTest (the game; ArknightsTest until 2026-11-18) + DirectorTest (the same game with the heuristic director,
-                              for play-testing WP10; not in the build list) + Bench_Open / Bench_Maze / Bench_Choke / Bench_Stress
+                              for play-testing WP10; not in the build list) + FullDirectorTest (the same with the full director, learning on; 2026-11-24) + Bench_Open / Bench_Maze / Bench_Choke / Bench_Stress
                               (SampleScene, the old top-down scene, was removed 2026-10-24)
 Assets/Scripts/BlockS/        the wall shape assets: Wall (one tile, the game's) and the tetrominoes
 ```
